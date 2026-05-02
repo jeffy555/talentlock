@@ -85,7 +85,7 @@ router.post("/openai/conversations/:id/messages", async (req, res) => {
     ).join("\n");
 
     const completion = await openai.chat.completions.create({
-      model: "gpt-5-mini",
+      model: "gpt-4o-mini",
       messages: [
         {
           role: "system",
@@ -93,7 +93,7 @@ router.post("/openai/conversations/:id/messages", async (req, res) => {
         },
         ...history.map(m => ({ role: m.role as "user" | "assistant", content: m.content })),
       ],
-      max_tokens: 800,
+      max_completion_tokens: 800,
     });
 
     const aiContent = completion.choices[0]?.message?.content ?? "I couldn't process your request. Please try again.";
