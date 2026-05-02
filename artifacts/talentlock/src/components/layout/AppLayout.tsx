@@ -19,7 +19,6 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const { data: dbUser } = useGetMe({ query: { enabled: !!user } as any });
 
   const isEmployer = dbUser?.role === "employer";
-  const isFreelancer = dbUser?.role === "freelancer";
 
   const navigation = [
     { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
@@ -32,27 +31,32 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      <header className="border-b border-border bg-card sticky top-0 z-50">
+      {/* Navy header */}
+      <header
+        className="sticky top-0 z-50"
+        style={{ backgroundColor: "#0d1f3c", borderBottom: "1px solid rgba(255,255,255,0.08)" }}
+      >
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
-          <Link href={dbUser ? "/dashboard" : "/"} className="flex items-center gap-2">
-            <Shield className="h-6 w-6 text-primary" />
-            <span className="font-bold text-lg tracking-tight">TalentLock</span>
+          <Link href={dbUser ? "/dashboard" : "/"} className="flex items-center gap-2.5">
+            <Shield className="h-5 w-5" style={{ color: "#c9a84c" }} />
+            <span className="font-bold text-lg tracking-tight text-white">TalentLock</span>
           </Link>
 
           {dbUser && (
             <div className="flex items-center gap-4">
-              <nav className="hidden md:flex items-center gap-1 mr-4">
+              <nav className="hidden md:flex items-center gap-1 mr-2">
                 {navigation.map((item) => {
                   const isActive = location.startsWith(item.href);
                   return (
                     <Link
                       key={item.name}
                       href={item.href}
-                      className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                      className="flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium transition-colors"
+                      style={
                         isActive
-                          ? "bg-secondary text-secondary-foreground"
-                          : "text-muted-foreground hover:bg-secondary/50 hover:text-foreground"
-                      }`}
+                          ? { backgroundColor: "rgba(201,168,76,0.18)", color: "#c9a84c" }
+                          : { color: "rgba(255,255,255,0.6)" }
+                      }
                     >
                       <item.icon className="h-4 w-4" />
                       {item.name}
@@ -63,12 +67,12 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
 
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="rounded-full h-8 w-8">
-                    <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
+                  <Button variant="ghost" size="icon" className="rounded-full h-9 w-9 hover:bg-white/10">
+                    <div className="h-8 w-8 rounded-full flex items-center justify-center overflow-hidden" style={{ backgroundColor: "rgba(201,168,76,0.2)", border: "1px solid rgba(201,168,76,0.35)" }}>
                       {user?.imageUrl ? (
                         <img src={user.imageUrl} alt={user.fullName || ""} className="h-8 w-8 rounded-full object-cover" />
                       ) : (
-                        <UserIcon className="h-4 w-4 text-primary" />
+                        <UserIcon className="h-4 w-4" style={{ color: "#c9a84c" }} />
                       )}
                     </div>
                   </Button>
@@ -78,7 +82,9 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                     <div className="flex flex-col space-y-1">
                       <p className="text-sm font-medium leading-none">{dbUser.name}</p>
                       <p className="text-xs leading-none text-muted-foreground">{dbUser.email}</p>
-                      <p className="text-xs font-medium text-primary mt-1 uppercase tracking-wider">{dbUser.role}</p>
+                      <p className="text-xs font-semibold mt-1 uppercase tracking-wider" style={{ color: "#c9a84c" }}>
+                        {dbUser.role}
+                      </p>
                     </div>
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
@@ -89,7 +95,10 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => signOut()} className="text-destructive focus:text-destructive cursor-pointer">
+                  <DropdownMenuItem
+                    onClick={() => signOut()}
+                    className="text-destructive focus:text-destructive cursor-pointer"
+                  >
                     <LogOut className="mr-2 h-4 w-4" />
                     Log out
                   </DropdownMenuItem>
