@@ -92,7 +92,8 @@ router.get("/freelancers/:id", async (req, res) => {
   try {
     const [profile] = await db.select().from(freelancerProfilesTable).where(eq(freelancerProfilesTable.id, id)).limit(1);
     if (!profile) { res.status(404).json({ error: "Freelancer not found" }); return; }
-    res.json(mapProfile(profile));
+    const [user] = await db.select({ email: usersTable.email }).from(usersTable).where(eq(usersTable.id, profile.userId)).limit(1);
+    res.json({ ...mapProfile(profile), email: user?.email ?? null });
   } catch (err) {
     req.log.error({ err }, "Failed to get freelancer profile");
     res.status(500).json({ error: "Internal server error" });
