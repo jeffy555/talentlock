@@ -6,7 +6,9 @@ import {
 } from "@workspace/db";
 import { eq, or, and, SQL } from "drizzle-orm";
 import { CreateAgreementBody, SignAgreementBody, ListAgreementsQueryParams } from "@workspace/api-zod";
-import { openai } from "@workspace/integrations-openai-ai-server";
+import OpenAI from "openai";
+
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY_TALENTLOCK });
 
 const router = Router();
 
@@ -50,7 +52,7 @@ router.post("/agreements", async (req, res) => {
     const [employer] = await db.select().from(employerProfilesTable).where(eq(employerProfilesTable.id, booking.employerId)).limit(1);
 
     const completion = await openai.chat.completions.create({
-      model: "gpt-5-mini",
+      model: "gpt-4o-mini",
       messages: [
         {
           role: "system",
@@ -70,7 +72,7 @@ Skills: ${freelancer?.skills?.join(", ") ?? "Various"}
 Include: scope of work, payment terms, confidentiality, IP ownership, termination clauses, dispute resolution, governing law, and signature blocks for both parties.`,
         },
       ],
-      max_tokens: 2000,
+      max_completion_tokens: 2000,
     });
 
     const content = completion.choices[0]?.message?.content ?? "Agreement content could not be generated.";

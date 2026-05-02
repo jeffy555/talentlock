@@ -11,11 +11,13 @@ import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, BadgeCheck, Briefcase, Calendar, Clock, DollarSign, Lock, Star } from "lucide-react";
 import { useState } from "react";
 import { Link } from "wouter";
+import { useQueryClient } from "@tanstack/react-query";
 
 export default function FreelancerDetail() {
   const { id } = useParams<{ id: string }>();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const { data: me } = useGetMe();
   const { data: freelancer, isLoading } = useGetFreelancerProfile(parseInt(id!), { query: { enabled: !!id } as any });
   const createBooking = useCreateBooking();
@@ -37,11 +39,13 @@ export default function FreelancerDetail() {
           rate: freelancer.hourlyRate ?? freelancer.dailyRate ?? 0,
         },
       });
-      toast({ title: "Booking created", description: "The freelancer has been locked in successfully." });
+      // Invalidate bookings list so it reflects the new booking immediately
+      await queryClient.invalidateQueries({ queryKey: ["/api/bookings"] });
+      toast({ title: "Booking created!", description: "Freelancer locked in. Now generate a legal agreement to activate the engagement." });
       setBookingOpen(false);
       setLocation(`/bookings/${booking.id}`);
     } catch {
-      toast({ title: "Booking failed", description: "Could not create the booking.", variant: "destructive" });
+      toast({ title: "Booking failed", description: "Could not create the booking. Make sure you have an employer profile.", variant: "destructive" });
     }
   };
 
