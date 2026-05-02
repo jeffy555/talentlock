@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useGetMe, useUpsertMe, useCreateFreelancerProfile, useUpsertMyEmployerProfile } from "@workspace/api-client-react";
 import { useUser } from "@clerk/react";
@@ -9,13 +9,23 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Briefcase, Building } from "lucide-react";
+import { Briefcase, Building, CheckCircle } from "lucide-react";
+
+function getIntendedRole(): "freelancer" | "employer" | null {
+  const val = localStorage.getItem("talentlock_intended_role");
+  if (val === "freelancer" || val === "employer") return val;
+  return null;
+}
+
+function clearIntendedRole() {
+  localStorage.removeItem("talentlock_intended_role");
+}
 
 export default function Onboarding() {
   const [, setLocation] = useLocation();
   const { user } = useUser();
   const { toast } = useToast();
-  
+
   const { data: dbUser, isLoading: isLoadingUser, isError: isMeError } = useGetMe();
   const upsertMe = useUpsertMe();
   const createFreelancerProfile = useCreateFreelancerProfile();
@@ -24,7 +34,6 @@ export default function Onboarding() {
   const [step, setStep] = useState<"role" | "freelancer-details" | "employer-details">("role");
   const [role, setRole] = useState<"freelancer" | "employer" | null>(null);
 
-  // Freelancer state
   const [tagline, setTagline] = useState("");
   const [fieldOfWork, setFieldOfWork] = useState("");
   const [skills, setSkills] = useState("");
@@ -32,23 +41,37 @@ export default function Onboarding() {
   const [paymentPreference, setPaymentPreference] = useState("hourly");
   const [hourlyRate, setHourlyRate] = useState("");
 
-  // Employer state
   const [companyName, setCompanyName] = useState("");
   const [industry, setIndustry] = useState("");
   const [companySize, setCompanySize] = useState("");
   const [description, setDescription] = useState("");
 
+  useEffect(() => {
+    const intended = getIntendedRole();
+    if (intended) {
+      setRole(intended);
+      setStep(intended === "freelancer" ? "freelancer-details" : "employer-details");
+      clearIntendedRole();
+    }
+  }, []);
+
   if (isLoadingUser && !isMeError) {
-    return <div className="flex h-[50vh] items-center justify-center"><div className="animate-pulse flex flex-col items-center"><div className="h-8 w-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div><p className="mt-4 text-muted-foreground">Loading profile...</p></div></div>;
+    return (
+      <div className="flex h-[50vh] items-center justify-center">
+        <div className="flex flex-col items-center">
+          <div className="h-8 w-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+          <p className="mt-4 text-muted-foreground">Loading profile...</p>
+        </div>
+      </div>
+    );
   }
 
-  // If already onboarded, redirect
   if (dbUser && dbUser.role && dbUser.role !== "pending") {
-    // Actually we can check if they have a profile, but role is good enough for now
-    // Wait, the API spec says role is string.
+    setLocation("/dashboard");
+    return null;
   }
 
-  const handleRoleSelection = async (selectedRole: "freelancer" | "employer") => {
+  const handleRoleSelection = (selectedRole: "freelancer" | "employer") => {
     setRole(selectedRole);
     setStep(selectedRole === "freelancer" ? "freelancer-details" : "employer-details");
   };
@@ -56,7 +79,6 @@ export default function Onboarding() {
   const handleFreelancerSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
-
     try {
       await upsertMe.mutateAsync({
         data: {
@@ -64,24 +86,22 @@ export default function Onboarding() {
           email: user.primaryEmailAddress?.emailAddress || "",
           name: user.fullName || "",
           avatarUrl: user.imageUrl,
-        }
+        },
       });
-
       await createFreelancerProfile.mutateAsync({
         data: {
           tagline,
           fieldOfWork,
-          skills: skills.split(",").map(s => s.trim()).filter(Boolean),
+          skills: skills.split(",").map((s) => s.trim()).filter(Boolean),
           yearsExperience: parseInt(yearsExperience, 10),
           paymentPreference,
           hourlyRate: hourlyRate ? parseInt(hourlyRate, 10) : null,
-          subscriptionPlan: "basic"
-        }
+          subscriptionPlan: "basic",
+        },
       });
-
       toast({ title: "Profile created", description: "Welcome to TalentLock." });
       setLocation("/dashboard");
-    } catch (error) {
+    } catch {
       toast({ title: "Error", description: "Could not create profile. Please try again.", variant: "destructive" });
     }
   };
@@ -89,7 +109,6 @@ export default function Onboarding() {
   const handleEmployerSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
-
     try {
       await upsertMe.mutateAsync({
         data: {
@@ -97,22 +116,20 @@ export default function Onboarding() {
           email: user.primaryEmailAddress?.emailAddress || "",
           name: user.fullName || "",
           avatarUrl: user.imageUrl,
-        }
+        },
       });
-
       await upsertEmployerProfile.mutateAsync({
         data: {
           companyName,
           industry,
           companySize,
           description,
-          subscriptionPlan: "basic"
-        }
+          subscriptionPlan: "basic",
+        },
       });
-
       toast({ title: "Profile created", description: "Welcome to TalentLock." });
       setLocation("/dashboard");
-    } catch (error) {
+    } catch {
       toast({ title: "Error", description: "Could not create profile. Please try again.", variant: "destructive" });
     }
   };
@@ -125,53 +142,110 @@ export default function Onboarding() {
       </div>
 
       {step === "role" && (
-        <div className="grid md:grid-cols-2 gap-6">
-          <Card className="cursor-pointer hover:border-primary transition-colors" onClick={() => handleRoleSelection("freelancer")}>
-            <CardHeader className="text-center pb-2">
-              <div className="mx-auto bg-primary/10 w-16 h-16 rounded-full flex items-center justify-center mb-4">
-                <Briefcase className="w-8 h-8 text-primary" />
-              </div>
-              <CardTitle>I am a Freelancer</CardTitle>
-              <CardDescription>I want to find exclusive, verified engagements.</CardDescription>
-            </CardHeader>
-          </Card>
-          <Card className="cursor-pointer hover:border-primary transition-colors" onClick={() => handleRoleSelection("employer")}>
-            <CardHeader className="text-center pb-2">
-              <div className="mx-auto bg-primary/10 w-16 h-16 rounded-full flex items-center justify-center mb-4">
-                <Building className="w-8 h-8 text-primary" />
-              </div>
-              <CardTitle>I am an Employer</CardTitle>
-              <CardDescription>I want to book high-end talent for my projects.</CardDescription>
-            </CardHeader>
-          </Card>
-        </div>
+        <>
+          <p className="text-center text-sm text-muted-foreground mb-6">Choose your account type to continue</p>
+          <div className="grid md:grid-cols-2 gap-6">
+            <Card
+              className="cursor-pointer hover:border-primary transition-colors"
+              onClick={() => handleRoleSelection("freelancer")}
+            >
+              <CardHeader className="text-center pb-2">
+                <div className="mx-auto bg-primary/10 w-16 h-16 rounded-full flex items-center justify-center mb-4">
+                  <Briefcase className="w-8 h-8 text-primary" />
+                </div>
+                <CardTitle>I am a Freelancer</CardTitle>
+                <CardDescription>I want to find exclusive, verified engagements.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ul className="text-sm text-muted-foreground space-y-1 mt-2">
+                  <li className="flex items-center gap-2"><CheckCircle className="h-4 w-4 text-primary shrink-0" /> Build a verified professional profile</li>
+                  <li className="flex items-center gap-2"><CheckCircle className="h-4 w-4 text-primary shrink-0" /> Get matched to exclusive roles via AI</li>
+                  <li className="flex items-center gap-2"><CheckCircle className="h-4 w-4 text-primary shrink-0" /> Sign binding agreements digitally</li>
+                </ul>
+              </CardContent>
+            </Card>
+
+            <Card
+              className="cursor-pointer hover:border-primary transition-colors"
+              onClick={() => handleRoleSelection("employer")}
+            >
+              <CardHeader className="text-center pb-2">
+                <div className="mx-auto bg-primary/10 w-16 h-16 rounded-full flex items-center justify-center mb-4">
+                  <Building className="w-8 h-8 text-primary" />
+                </div>
+                <CardTitle>I am an Employer</CardTitle>
+                <CardDescription>I want to book high-end talent for my projects.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ul className="text-sm text-muted-foreground space-y-1 mt-2">
+                  <li className="flex items-center gap-2"><CheckCircle className="h-4 w-4 text-primary shrink-0" /> AI-match talent to your requirements</li>
+                  <li className="flex items-center gap-2"><CheckCircle className="h-4 w-4 text-primary shrink-0" /> Guarantee exclusivity with bookings</li>
+                  <li className="flex items-center gap-2"><CheckCircle className="h-4 w-4 text-primary shrink-0" /> Auto-generate legal agreements</li>
+                </ul>
+              </CardContent>
+            </Card>
+          </div>
+        </>
       )}
 
       {step === "freelancer-details" && (
         <Card>
           <CardHeader>
-            <CardTitle>Freelancer Profile</CardTitle>
-            <CardDescription>Tell us about your expertise and skills.</CardDescription>
+            <div className="flex items-center gap-3 mb-1">
+              <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center">
+                <Briefcase className="h-5 w-5 text-primary" />
+              </div>
+              <div>
+                <CardTitle>Freelancer Profile</CardTitle>
+                <CardDescription>Tell us about your expertise and skills.</CardDescription>
+              </div>
+            </div>
           </CardHeader>
           <form onSubmit={handleFreelancerSubmit}>
             <CardContent className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="tagline">Professional Tagline</Label>
-                <Input id="tagline" placeholder="e.g. Senior Full-Stack Engineer" value={tagline} onChange={e => setTagline(e.target.value)} required />
+                <Input
+                  id="tagline"
+                  placeholder="e.g. Senior Full-Stack Engineer"
+                  value={tagline}
+                  onChange={(e) => setTagline(e.target.value)}
+                  required
+                />
               </div>
               <div className="grid md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="fieldOfWork">Primary Field</Label>
-                  <Input id="fieldOfWork" placeholder="e.g. Software Engineering" value={fieldOfWork} onChange={e => setFieldOfWork(e.target.value)} required />
+                  <Input
+                    id="fieldOfWork"
+                    placeholder="e.g. Software Engineering"
+                    value={fieldOfWork}
+                    onChange={(e) => setFieldOfWork(e.target.value)}
+                    required
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="yearsExperience">Years of Experience</Label>
-                  <Input id="yearsExperience" type="number" min="0" placeholder="e.g. 5" value={yearsExperience} onChange={e => setYearsExperience(e.target.value)} required />
+                  <Input
+                    id="yearsExperience"
+                    type="number"
+                    min="0"
+                    placeholder="e.g. 5"
+                    value={yearsExperience}
+                    onChange={(e) => setYearsExperience(e.target.value)}
+                    required
+                  />
                 </div>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="skills">Skills (comma separated)</Label>
-                <Input id="skills" placeholder="React, TypeScript, Node.js" value={skills} onChange={e => setSkills(e.target.value)} required />
+                <Input
+                  id="skills"
+                  placeholder="React, TypeScript, Node.js"
+                  value={skills}
+                  onChange={(e) => setSkills(e.target.value)}
+                  required
+                />
               </div>
               <div className="grid md:grid-cols-2 gap-4">
                 <div className="space-y-2">
@@ -188,12 +262,22 @@ export default function Onboarding() {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="rate">Rate (USD)</Label>
-                  <Input id="rate" type="number" min="0" placeholder="e.g. 150" value={hourlyRate} onChange={e => setHourlyRate(e.target.value)} required />
+                  <Input
+                    id="rate"
+                    type="number"
+                    min="0"
+                    placeholder="e.g. 150"
+                    value={hourlyRate}
+                    onChange={(e) => setHourlyRate(e.target.value)}
+                    required
+                  />
                 </div>
               </div>
             </CardContent>
             <CardFooter className="flex justify-between">
-              <Button type="button" variant="outline" onClick={() => setStep("role")}>Back</Button>
+              <Button type="button" variant="outline" onClick={() => { setStep("role"); setRole(null); }}>
+                Back
+              </Button>
               <Button type="submit" disabled={upsertMe.isPending || createFreelancerProfile.isPending}>
                 {createFreelancerProfile.isPending ? "Saving..." : "Complete Profile"}
               </Button>
@@ -205,19 +289,38 @@ export default function Onboarding() {
       {step === "employer-details" && (
         <Card>
           <CardHeader>
-            <CardTitle>Employer Profile</CardTitle>
-            <CardDescription>Tell us about your company and hiring needs.</CardDescription>
+            <div className="flex items-center gap-3 mb-1">
+              <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center">
+                <Building className="h-5 w-5 text-primary" />
+              </div>
+              <div>
+                <CardTitle>Employer Profile</CardTitle>
+                <CardDescription>Tell us about your company and hiring needs.</CardDescription>
+              </div>
+            </div>
           </CardHeader>
           <form onSubmit={handleEmployerSubmit}>
             <CardContent className="space-y-4">
               <div className="grid md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="companyName">Company Name</Label>
-                  <Input id="companyName" placeholder="Acme Inc." value={companyName} onChange={e => setCompanyName(e.target.value)} required />
+                  <Input
+                    id="companyName"
+                    placeholder="Acme Inc."
+                    value={companyName}
+                    onChange={(e) => setCompanyName(e.target.value)}
+                    required
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="industry">Industry</Label>
-                  <Input id="industry" placeholder="Technology" value={industry} onChange={e => setIndustry(e.target.value)} required />
+                  <Input
+                    id="industry"
+                    placeholder="Technology"
+                    value={industry}
+                    onChange={(e) => setIndustry(e.target.value)}
+                    required
+                  />
                 </div>
               </div>
               <div className="space-y-2">
@@ -227,21 +330,29 @@ export default function Onboarding() {
                     <SelectValue placeholder="Select company size" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="1-10">1-10 employees</SelectItem>
-                    <SelectItem value="11-50">11-50 employees</SelectItem>
-                    <SelectItem value="51-200">51-200 employees</SelectItem>
-                    <SelectItem value="201-500">201-500 employees</SelectItem>
+                    <SelectItem value="1-10">1–10 employees</SelectItem>
+                    <SelectItem value="11-50">11–50 employees</SelectItem>
+                    <SelectItem value="51-200">51–200 employees</SelectItem>
+                    <SelectItem value="201-500">201–500 employees</SelectItem>
                     <SelectItem value="500+">500+ employees</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="description">Company Description</Label>
-                <Textarea id="description" placeholder="Briefly describe what your company does..." value={description} onChange={e => setDescription(e.target.value)} required />
+                <Textarea
+                  id="description"
+                  placeholder="Briefly describe what your company does..."
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  required
+                />
               </div>
             </CardContent>
             <CardFooter className="flex justify-between">
-              <Button type="button" variant="outline" onClick={() => setStep("role")}>Back</Button>
+              <Button type="button" variant="outline" onClick={() => { setStep("role"); setRole(null); }}>
+                Back
+              </Button>
               <Button type="submit" disabled={upsertMe.isPending || upsertEmployerProfile.isPending}>
                 {upsertEmployerProfile.isPending ? "Saving..." : "Complete Profile"}
               </Button>
