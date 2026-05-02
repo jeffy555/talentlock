@@ -60,16 +60,52 @@ router.post("/agreements", async (req, res) => {
         },
         {
           role: "user",
-          content: `Generate a comprehensive freelance engagement agreement for the following:
-Freelancer: ${freelancer?.name ?? "Unknown"} (${freelancer?.fieldOfWork ?? "General"})
-Employer: ${employer?.companyName ?? "Unknown"} (${employer?.industry ?? "General"})
-Start Date: ${booking.startDate.toISOString().split("T")[0]}
-End Date: ${booking.endDate.toISOString().split("T")[0]}
-Payment Type: ${booking.paymentType}
-Rate: ${booking.rate ?? "To be agreed"}
-Skills: ${freelancer?.skills?.join(", ") ?? "Various"}
+          content: `Generate a comprehensive freelance engagement agreement using EXACTLY this structure and all sections below. Use professional legal language.
 
-Include: scope of work, payment terms, confidentiality, IP ownership, termination clauses, dispute resolution, governing law, and signature blocks for both parties.`,
+PARTIES:
+- Employer (Company): ${employer?.companyName ?? "Unknown"}, Industry: ${employer?.industry ?? "General"}
+- Freelancer: ${freelancer?.name ?? "Unknown"}, Field: ${freelancer?.fieldOfWork ?? "General"}
+- Skills: ${freelancer?.skills?.join(", ") ?? "Various"}
+
+ENGAGEMENT DETAILS:
+- Start Date: ${booking.startDate.toISOString().split("T")[0]}
+- End Date: ${booking.endDate.toISOString().split("T")[0]}
+- Payment Type: ${booking.paymentType}
+- Rate: ${booking.rate ?? "To be mutually agreed"}
+
+Generate the agreement with ALL of the following sections in order:
+
+1. PARTIES INVOLVED — Full names of employer and freelancer, their roles, and a note that verified identification and compliance documents have been reviewed via TalentLock's AI verification system.
+
+2. ROLE & SCOPE OF WORK — Job title, detailed responsibilities, deliverables, and duration of engagement (use the exact start and end dates above).
+
+3. PAYMENT TERMS — Exact rate, payment schedule (specify weekly/bi-weekly/end of contract as appropriate), and accepted payment modes (bank transfer, UPI, etc.).
+
+4. CONFIDENTIALITY & DATA PROTECTION — Non-disclosure of client/patient/company data, secure handling of sensitive information, and consequences of breach.
+
+5. PERFORMANCE & REPORTING — Minimum performance expectations, reporting structure (who the freelancer reports to), and review cadence.
+
+6. TERMINATION CLAUSE — Conditions under which either party may terminate early, required notice period (minimum 14 days), and any penalties.
+
+7. EXTENSION CLAUSE — Option for employer to extend the contract by mutual written consent, and the process for generating a new TalentLock agreement for the extension.
+
+8. EXCLUSIVITY BADGE — A clear statement that the freelancer is exclusively "LOCKED IN" to this employer for the full contract duration, and is prohibited from accepting competing engagements until the contract end date. Reference TalentLock's exclusivity enforcement.
+
+9. VERIFICATION & COMPLIANCE — Confirmation that TalentLock's AI system has verified the freelancer's identity, qualifications, and compliance documents. This agreement is valid only upon successful verification.
+
+10. GOVERNING LAW & DISPUTE RESOLUTION — Applicable jurisdiction, and process for resolving disputes (mediation before arbitration).
+
+11. SIGNATURES — Leave TWO clearly formatted signature blocks at the end:
+
+EMPLOYER SIGNATURE
+Name: ___________________________
+Signature: ___________________________
+Date: ___________________________
+
+FREELANCER SIGNATURE
+Name: ___________________________
+Signature: ___________________________
+Date: ___________________________`,
         },
       ],
       max_completion_tokens: 2000,
@@ -110,18 +146,33 @@ router.post("/agreements/:id/sign", async (req, res) => {
   if (isNaN(id)) { res.status(400).json({ error: "Invalid ID" }); return; }
   const parsed = SignAgreementBody.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
+
+  const signatureName = (parsed.data as any).signatureName as string | undefined;
+  if (!signatureName?.trim()) {
+    res.status(400).json({ error: "Signature name is required" }); return;
+  }
+
   try {
     const [agreement] = await db.select().from(agreementsTable).where(eq(agreementsTable.id, id)).limit(1);
     if (!agreement) { res.status(404).json({ error: "Agreement not found" }); return; }
 
     const now = new Date();
-    const updates: Partial<typeof agreement> = {};
-    if (parsed.data.role === "freelancer") {
-      if (agreement.freelancerSignedAt) { res.status(400).json({ error: "Freelancer has already signed" }); return; }
-      updates.freelancerSignedAt = now;
-    } else if (parsed.data.role === "employer") {
+    const updates: Record<string, unknown> = {};
+
+    if (parsed.data.role === "employer") {
       if (agreement.employerSignedAt) { res.status(400).json({ error: "Employer has already signed" }); return; }
       updates.employerSignedAt = now;
+      updates.employerSignatureName = signatureName.trim();
+    } else if (parsed.data.role === "freelancer") {
+      // Freelancer can only sign AFTER employer has signed
+      if (!agreement.employerSignedAt) {
+        res.status(400).json({ error: "Employer must sign first before the freelancer can sign" }); return;
+      }
+      if (agreement.freelancerSignedAt) { res.status(400).json({ error: "Freelancer has already signed" }); return; }
+      updates.freelancerSignedAt = now;
+      updates.freelancerSignatureName = signatureName.trim();
+    } else {
+      res.status(400).json({ error: "Invalid role" }); return;
     }
 
     const [updated] = await db.update(agreementsTable)

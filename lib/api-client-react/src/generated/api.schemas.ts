@@ -229,6 +229,10 @@ export interface Agreement {
   /** @nullable */
   employerSignedAt?: string | null;
   /** @nullable */
+  freelancerSignatureName?: string | null;
+  /** @nullable */
+  employerSignatureName?: string | null;
+  /** @nullable */
   documentUrl?: string | null;
   /** @nullable */
   freelancerName?: string | null;
@@ -244,6 +248,8 @@ export interface CreateAgreementBody {
 export interface SignAgreementBody {
   /** freelancer or employer */
   role: string;
+  /** Full name typed as signature */
+  signatureName: string;
 }
 
 export interface OpenaiConversation {

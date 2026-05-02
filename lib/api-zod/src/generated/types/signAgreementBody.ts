@@ -9,4 +9,6 @@
 export interface SignAgreementBody {
   /** freelancer or employer */
   role: string;
+  /** Full name typed as signature */
+  signatureName: string;
 }

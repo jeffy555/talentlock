@@ -467,6 +467,8 @@ export const ListAgreementsResponseItem = zod.object({
     .describe("draft, pending_signatures, signed, active, completed"),
   freelancerSignedAt: zod.coerce.date().nullish(),
   employerSignedAt: zod.coerce.date().nullish(),
+  freelancerSignatureName: zod.string().nullish(),
+  employerSignatureName: zod.string().nullish(),
   documentUrl: zod.string().nullish(),
   freelancerName: zod.string().nullish(),
   employerName: zod.string().nullish(),
@@ -499,6 +501,8 @@ export const GetAgreementResponse = zod.object({
     .describe("draft, pending_signatures, signed, active, completed"),
   freelancerSignedAt: zod.coerce.date().nullish(),
   employerSignedAt: zod.coerce.date().nullish(),
+  freelancerSignatureName: zod.string().nullish(),
+  employerSignatureName: zod.string().nullish(),
   documentUrl: zod.string().nullish(),
   freelancerName: zod.string().nullish(),
   employerName: zod.string().nullish(),
@@ -514,6 +518,7 @@ export const SignAgreementParams = zod.object({
 
 export const SignAgreementBody = zod.object({
   role: zod.string().describe("freelancer or employer"),
+  signatureName: zod.string().describe("Full name typed as signature"),
 });
 
 export const SignAgreementResponse = zod.object({
@@ -527,6 +532,8 @@ export const SignAgreementResponse = zod.object({
     .describe("draft, pending_signatures, signed, active, completed"),
   freelancerSignedAt: zod.coerce.date().nullish(),
   employerSignedAt: zod.coerce.date().nullish(),
+  freelancerSignatureName: zod.string().nullish(),
+  employerSignatureName: zod.string().nullish(),
   documentUrl: zod.string().nullish(),
   freelancerName: zod.string().nullish(),
   employerName: zod.string().nullish(),

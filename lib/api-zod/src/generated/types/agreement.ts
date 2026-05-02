@@ -20,6 +20,10 @@ export interface Agreement {
   /** @nullable */
   employerSignedAt?: Date | null;
   /** @nullable */
+  freelancerSignatureName?: string | null;
+  /** @nullable */
+  employerSignatureName?: string | null;
+  /** @nullable */
   documentUrl?: string | null;
   /** @nullable */
   freelancerName?: string | null;

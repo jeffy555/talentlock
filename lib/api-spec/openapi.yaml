@@ -1190,6 +1190,10 @@ components:
         employerSignedAt:
           type: ["string", "null"]
           format: date-time
+        freelancerSignatureName:
+          type: ["string", "null"]
+        employerSignatureName:
+          type: ["string", "null"]
         documentUrl:
           type: ["string", "null"]
         freelancerName:
@@ -1222,8 +1226,12 @@ components:
         role:
           type: string
           description: "freelancer or employer"
+        signatureName:
+          type: string
+          description: "Full name typed as signature"
       required:
         - role
+        - signatureName
 
     # ── OpenAI Conversations ───────────────────────────────────────────────────
     OpenaiConversation:
