@@ -3,13 +3,32 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: TalentLock API specification
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: users
+    description: User profile management
+  - name: freelancers
+    description: Freelancer profile operations
+  - name: employers
+    description: Employer profile operations
+  - name: job-requirements
+    description: Employer job requirement postings
+  - name: bookings
+    description: Booking and exclusivity management
+  - name: agreements
+    description: Legal agreement generation and signing
+  - name: openai
+    description: AI-powered matching chat
+  - name: dashboard
+    description: Dashboard summary and stats
+  - name: Storage
+    description: Object storage upload and serving endpoints
+
 paths:
   /healthz:
     get:
@@ -24,6 +43,697 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  # ── Users ──────────────────────────────────────────────────────────────────
+  /users/me:
+    get:
+      operationId: getMe
+      tags: [users]
+      summary: Get current user profile
+      responses:
+        "200":
+          description: Current user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+    put:
+      operationId: upsertMe
+      tags: [users]
+      summary: Create or update current user profile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpsertUserBody"
+      responses:
+        "200":
+          description: Upserted user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+
+  # ── Freelancers ─────────────────────────────────────────────────────────────
+  /freelancers:
+    get:
+      operationId: listFreelancers
+      tags: [freelancers]
+      summary: List freelancer profiles
+      parameters:
+        - name: field
+          in: query
+          schema:
+            type: string
+          description: Filter by field of work
+        - name: available
+          in: query
+          schema:
+            type: boolean
+          description: Filter by availability
+        - name: limit
+          in: query
+          schema:
+            type: integer
+          description: Number of results
+        - name: offset
+          in: query
+          schema:
+            type: integer
+          description: Pagination offset
+      responses:
+        "200":
+          description: List of freelancers
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/FreelancerProfile"
+    post:
+      operationId: createFreelancerProfile
+      tags: [freelancers]
+      summary: Create freelancer profile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateFreelancerProfileBody"
+      responses:
+        "201":
+          description: Created freelancer profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FreelancerProfile"
+
+  /freelancers/me:
+    get:
+      operationId: getMyFreelancerProfile
+      tags: [freelancers]
+      summary: Get my freelancer profile
+      responses:
+        "200":
+          description: My freelancer profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FreelancerProfile"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+    patch:
+      operationId: updateMyFreelancerProfile
+      tags: [freelancers]
+      summary: Update my freelancer profile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateFreelancerProfileBody"
+      responses:
+        "200":
+          description: Updated freelancer profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FreelancerProfile"
+
+  /freelancers/{id}:
+    get:
+      operationId: getFreelancerProfile
+      tags: [freelancers]
+      summary: Get a freelancer profile by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Freelancer profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FreelancerProfile"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  # ── Employers ───────────────────────────────────────────────────────────────
+  /employers/me:
+    get:
+      operationId: getMyEmployerProfile
+      tags: [employers]
+      summary: Get my employer profile
+      responses:
+        "200":
+          description: My employer profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EmployerProfile"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+    put:
+      operationId: upsertMyEmployerProfile
+      tags: [employers]
+      summary: Create or update my employer profile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpsertEmployerProfileBody"
+      responses:
+        "200":
+          description: Upserted employer profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EmployerProfile"
+
+  # ── Job Requirements ─────────────────────────────────────────────────────────
+  /job-requirements:
+    get:
+      operationId: listJobRequirements
+      tags: [job-requirements]
+      summary: List job requirements
+      parameters:
+        - name: employerId
+          in: query
+          schema:
+            type: integer
+          description: Filter by employer
+        - name: status
+          in: query
+          schema:
+            type: string
+          description: Filter by status (open, filled, closed)
+      responses:
+        "200":
+          description: List of job requirements
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/JobRequirement"
+    post:
+      operationId: createJobRequirement
+      tags: [job-requirements]
+      summary: Create a job requirement
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateJobRequirementBody"
+      responses:
+        "201":
+          description: Created job requirement
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JobRequirement"
+
+  /job-requirements/{id}:
+    get:
+      operationId: getJobRequirement
+      tags: [job-requirements]
+      summary: Get a job requirement
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Job requirement
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JobRequirement"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+    patch:
+      operationId: updateJobRequirement
+      tags: [job-requirements]
+      summary: Update a job requirement
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateJobRequirementBody"
+      responses:
+        "200":
+          description: Updated job requirement
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JobRequirement"
+    delete:
+      operationId: deleteJobRequirement
+      tags: [job-requirements]
+      summary: Delete a job requirement
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  # ── Bookings ─────────────────────────────────────────────────────────────────
+  /bookings:
+    get:
+      operationId: listBookings
+      tags: [bookings]
+      summary: List bookings
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+          description: Filter by status (active, completed, cancelled)
+        - name: role
+          in: query
+          schema:
+            type: string
+          description: Filter by role (freelancer, employer)
+      responses:
+        "200":
+          description: List of bookings
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Booking"
+    post:
+      operationId: createBooking
+      tags: [bookings]
+      summary: Create a booking
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateBookingBody"
+      responses:
+        "201":
+          description: Created booking
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Booking"
+
+  /bookings/{id}:
+    get:
+      operationId: getBooking
+      tags: [bookings]
+      summary: Get a booking
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Booking
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Booking"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+    patch:
+      operationId: updateBooking
+      tags: [bookings]
+      summary: Update booking status
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateBookingBody"
+      responses:
+        "200":
+          description: Updated booking
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Booking"
+
+  # ── Agreements ───────────────────────────────────────────────────────────────
+  /agreements:
+    get:
+      operationId: listAgreements
+      tags: [agreements]
+      summary: List agreements
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+          description: Filter by status (draft, pending_signatures, signed, active, completed)
+      responses:
+        "200":
+          description: List of agreements
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Agreement"
+    post:
+      operationId: createAgreement
+      tags: [agreements]
+      summary: Generate an AI legal agreement for a booking
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateAgreementBody"
+      responses:
+        "201":
+          description: Created agreement with AI-generated content
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Agreement"
+
+  /agreements/{id}:
+    get:
+      operationId: getAgreement
+      tags: [agreements]
+      summary: Get an agreement
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Agreement
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Agreement"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /agreements/{id}/sign:
+    post:
+      operationId: signAgreement
+      tags: [agreements]
+      summary: Sign an agreement (employer or freelancer)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SignAgreementBody"
+      responses:
+        "200":
+          description: Updated agreement after signing
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Agreement"
+        "400":
+          description: Already signed or invalid
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  # ── AI Matching (OpenAI) ─────────────────────────────────────────────────────
+  /openai/conversations:
+    get:
+      operationId: listOpenaiConversations
+      tags: [openai]
+      summary: List AI matching conversations
+      responses:
+        "200":
+          description: List of conversations
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/OpenaiConversation"
+    post:
+      operationId: createOpenaiConversation
+      tags: [openai]
+      summary: Start a new AI matching conversation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateOpenaiConversationBody"
+      responses:
+        "201":
+          description: Created conversation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OpenaiConversation"
+
+  /openai/conversations/{id}:
+    get:
+      operationId: getOpenaiConversation
+      tags: [openai]
+      summary: Get conversation with messages
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Conversation with messages
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OpenaiConversationWithMessages"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+    delete:
+      operationId: deleteOpenaiConversation
+      tags: [openai]
+      summary: Delete a conversation
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /openai/conversations/{id}/messages:
+    post:
+      operationId: sendOpenaiMessage
+      tags: [openai]
+      summary: Send a message in a conversation and get AI response
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SendOpenaiMessageBody"
+      responses:
+        "200":
+          description: AI response message
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OpenaiMessage"
+
+  # ── Dashboard ────────────────────────────────────────────────────────────────
+  /dashboard/stats:
+    get:
+      operationId: getDashboardStats
+      tags: [dashboard]
+      summary: Get dashboard statistics for the current user
+      responses:
+        "200":
+          description: Dashboard stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardStats"
+
+  /dashboard/activity:
+    get:
+      operationId: getDashboardActivity
+      tags: [dashboard]
+      summary: Recent activity feed for the current user
+      responses:
+        "200":
+          description: Activity items
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ActivityItem"
+
+  # ── Storage ───────────────────────────────────────────────────────────────────
+  /storage/uploads/request-url:
+    post:
+      tags: [Storage]
+      operationId: requestUploadUrl
+      summary: Request a presigned URL for file upload
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UploadUrlRequest'
+      responses:
+        '200':
+          description: Presigned upload URL generated.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UploadUrlResponse'
+        '400':
+          description: Missing or invalid required fields.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+        '500':
+          description: Failed to generate upload URL.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+
+  /storage/public-objects/{filePath}:
+    get:
+      tags: [Storage]
+      operationId: getPublicObject
+      summary: Serve a public asset
+      parameters:
+        - name: filePath
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Object content streamed.
+          content:
+            '*/*':
+              schema:
+                type: string
+                format: binary
+        '404':
+          description: Not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+
+  /storage/objects/{filePath}:
+    get:
+      tags: [Storage]
+      operationId: getObject
+      summary: Serve a private object entity
+      parameters:
+        - name: filePath
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Object content streamed.
+          content:
+            '*/*':
+              schema:
+                type: string
+                format: binary
+        '404':
+          description: Not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+
 components:
   schemas:
     HealthStatus:
@@ -34,3 +744,653 @@ components:
       required:
         - status
 
+    ErrorEnvelope:
+      type: object
+      properties:
+        error:
+          type: string
+      required:
+        - error
+
+    # ── User ──────────────────────────────────────────────────────────────────
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+        clerkId:
+          type: string
+        role:
+          type: string
+          description: "freelancer or employer"
+        email:
+          type: string
+        name:
+          type: string
+        avatarUrl:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - clerkId
+        - role
+        - email
+        - name
+        - createdAt
+
+    UpsertUserBody:
+      type: object
+      properties:
+        role:
+          type: string
+          description: "freelancer or employer"
+        email:
+          type: string
+        name:
+          type: string
+        avatarUrl:
+          type: ["string", "null"]
+      required:
+        - role
+        - email
+        - name
+
+    # ── Freelancer Profile ─────────────────────────────────────────────────────
+    FreelancerProfile:
+      type: object
+      properties:
+        id:
+          type: integer
+        userId:
+          type: integer
+        clerkId:
+          type: string
+        name:
+          type: string
+        tagline:
+          type: string
+        fieldOfWork:
+          type: string
+        skills:
+          type: array
+          items:
+            type: string
+        yearsExperience:
+          type: integer
+        bio:
+          type: ["string", "null"]
+        resumeUrl:
+          type: ["string", "null"]
+        portfolioUrl:
+          type: ["string", "null"]
+        paymentPreference:
+          type: string
+          description: "hourly or daily"
+        hourlyRate:
+          type: ["number", "null"]
+        dailyRate:
+          type: ["number", "null"]
+        achievements:
+          type: ["string", "null"]
+        isVerified:
+          type: boolean
+        isAvailable:
+          type: boolean
+        currentBookingId:
+          type: ["integer", "null"]
+        bookingEndDate:
+          type: ["string", "null"]
+          format: date-time
+        subscriptionPlan:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - userId
+        - clerkId
+        - name
+        - tagline
+        - fieldOfWork
+        - skills
+        - yearsExperience
+        - paymentPreference
+        - isVerified
+        - isAvailable
+        - subscriptionPlan
+        - createdAt
+
+    CreateFreelancerProfileBody:
+      type: object
+      properties:
+        tagline:
+          type: string
+        fieldOfWork:
+          type: string
+        skills:
+          type: array
+          items:
+            type: string
+        yearsExperience:
+          type: integer
+        resumeUrl:
+          type: ["string", "null"]
+        paymentPreference:
+          type: string
+        hourlyRate:
+          type: ["number", "null"]
+        dailyRate:
+          type: ["number", "null"]
+        achievements:
+          type: ["string", "null"]
+        subscriptionPlan:
+          type: string
+      required:
+        - tagline
+        - fieldOfWork
+        - skills
+        - yearsExperience
+        - paymentPreference
+        - subscriptionPlan
+
+    UpdateFreelancerProfileBody:
+      type: object
+      properties:
+        tagline:
+          type: string
+        bio:
+          type: ["string", "null"]
+        fieldOfWork:
+          type: string
+        skills:
+          type: array
+          items:
+            type: string
+        yearsExperience:
+          type: integer
+        resumeUrl:
+          type: ["string", "null"]
+        portfolioUrl:
+          type: ["string", "null"]
+        paymentPreference:
+          type: string
+        hourlyRate:
+          type: ["number", "null"]
+        dailyRate:
+          type: ["number", "null"]
+        achievements:
+          type: ["string", "null"]
+        subscriptionPlan:
+          type: string
+
+    # ── Employer Profile ───────────────────────────────────────────────────────
+    EmployerProfile:
+      type: object
+      properties:
+        id:
+          type: integer
+        userId:
+          type: integer
+        clerkId:
+          type: string
+        companyName:
+          type: string
+        industry:
+          type: string
+        companySize:
+          type: ["string", "null"]
+        description:
+          type: ["string", "null"]
+        website:
+          type: ["string", "null"]
+        isVerified:
+          type: boolean
+        subscriptionPlan:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - userId
+        - clerkId
+        - companyName
+        - industry
+        - isVerified
+        - subscriptionPlan
+        - createdAt
+
+    UpsertEmployerProfileBody:
+      type: object
+      properties:
+        companyName:
+          type: string
+        industry:
+          type: string
+        companySize:
+          type: ["string", "null"]
+        description:
+          type: ["string", "null"]
+        website:
+          type: ["string", "null"]
+        subscriptionPlan:
+          type: string
+      required:
+        - companyName
+        - industry
+        - subscriptionPlan
+
+    # ── Job Requirement ────────────────────────────────────────────────────────
+    JobRequirement:
+      type: object
+      properties:
+        id:
+          type: integer
+        employerId:
+          type: integer
+        title:
+          type: string
+        fieldOfWork:
+          type: string
+        description:
+          type: string
+        requiredSkills:
+          type: array
+          items:
+            type: string
+        minExperience:
+          type: integer
+        paymentType:
+          type: string
+          description: "hourly or daily"
+        budget:
+          type: ["number", "null"]
+        startDate:
+          type: string
+          format: date-time
+        endDate:
+          type: string
+          format: date-time
+        status:
+          type: string
+          description: "open, filled, closed"
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - employerId
+        - title
+        - fieldOfWork
+        - description
+        - requiredSkills
+        - minExperience
+        - paymentType
+        - startDate
+        - endDate
+        - status
+        - createdAt
+
+    CreateJobRequirementBody:
+      type: object
+      properties:
+        title:
+          type: string
+        fieldOfWork:
+          type: string
+        description:
+          type: string
+        requiredSkills:
+          type: array
+          items:
+            type: string
+        minExperience:
+          type: integer
+        paymentType:
+          type: string
+        budget:
+          type: ["number", "null"]
+        startDate:
+          type: string
+          format: date-time
+        endDate:
+          type: string
+          format: date-time
+      required:
+        - title
+        - fieldOfWork
+        - description
+        - requiredSkills
+        - minExperience
+        - paymentType
+        - startDate
+        - endDate
+
+    UpdateJobRequirementBody:
+      type: object
+      properties:
+        title:
+          type: string
+        description:
+          type: string
+        requiredSkills:
+          type: array
+          items:
+            type: string
+        minExperience:
+          type: integer
+        budget:
+          type: ["number", "null"]
+        startDate:
+          type: string
+          format: date-time
+        endDate:
+          type: string
+          format: date-time
+        status:
+          type: string
+
+    # ── Booking ────────────────────────────────────────────────────────────────
+    Booking:
+      type: object
+      properties:
+        id:
+          type: integer
+        freelancerId:
+          type: integer
+        employerId:
+          type: integer
+        jobRequirementId:
+          type: ["integer", "null"]
+        startDate:
+          type: string
+          format: date-time
+        endDate:
+          type: string
+          format: date-time
+        status:
+          type: string
+          description: "pending, active, completed, cancelled"
+        paymentType:
+          type: string
+        rate:
+          type: ["number", "null"]
+        notes:
+          type: ["string", "null"]
+        freelancerName:
+          type: ["string", "null"]
+        employerName:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - freelancerId
+        - employerId
+        - startDate
+        - endDate
+        - status
+        - paymentType
+        - createdAt
+
+    CreateBookingBody:
+      type: object
+      properties:
+        freelancerId:
+          type: integer
+        jobRequirementId:
+          type: ["integer", "null"]
+        startDate:
+          type: string
+          format: date-time
+        endDate:
+          type: string
+          format: date-time
+        paymentType:
+          type: string
+        rate:
+          type: ["number", "null"]
+      required:
+        - freelancerId
+        - startDate
+        - endDate
+        - paymentType
+
+    UpdateBookingBody:
+      type: object
+      properties:
+        status:
+          type: string
+
+    # ── Agreement ──────────────────────────────────────────────────────────────
+    Agreement:
+      type: object
+      properties:
+        id:
+          type: integer
+        bookingId:
+          type: integer
+        freelancerId:
+          type: integer
+        employerId:
+          type: integer
+        content:
+          type: string
+          description: AI-generated legal agreement text
+        status:
+          type: string
+          description: "draft, pending_signatures, signed, active, completed"
+        freelancerSignedAt:
+          type: ["string", "null"]
+          format: date-time
+        employerSignedAt:
+          type: ["string", "null"]
+          format: date-time
+        documentUrl:
+          type: ["string", "null"]
+        freelancerName:
+          type: ["string", "null"]
+        employerName:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - bookingId
+        - freelancerId
+        - employerId
+        - content
+        - status
+        - createdAt
+
+    CreateAgreementBody:
+      type: object
+      properties:
+        bookingId:
+          type: integer
+      required:
+        - bookingId
+
+    SignAgreementBody:
+      type: object
+      properties:
+        role:
+          type: string
+          description: "freelancer or employer"
+      required:
+        - role
+
+    # ── OpenAI Conversations ───────────────────────────────────────────────────
+    OpenaiConversation:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        userId:
+          type: integer
+        jobRequirementId:
+          type: ["integer", "null"]
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - title
+        - userId
+        - createdAt
+        - updatedAt
+
+    OpenaiConversationWithMessages:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        userId:
+          type: integer
+        jobRequirementId:
+          type: ["integer", "null"]
+        messages:
+          type: array
+          items:
+            $ref: "#/components/schemas/OpenaiMessage"
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - title
+        - userId
+        - messages
+        - createdAt
+        - updatedAt
+
+    OpenaiMessage:
+      type: object
+      properties:
+        id:
+          type: integer
+        conversationId:
+          type: integer
+        role:
+          type: string
+          description: "user or assistant"
+        content:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - conversationId
+        - role
+        - content
+        - createdAt
+
+    CreateOpenaiConversationBody:
+      type: object
+      properties:
+        title:
+          type: string
+        jobRequirementId:
+          type: ["integer", "null"]
+      required:
+        - title
+
+    SendOpenaiMessageBody:
+      type: object
+      properties:
+        content:
+          type: string
+      required:
+        - content
+
+    # ── Dashboard ──────────────────────────────────────────────────────────────
+    DashboardStats:
+      type: object
+      properties:
+        activeBookings:
+          type: integer
+        completedBookings:
+          type: integer
+        pendingAgreements:
+          type: integer
+        signedAgreements:
+          type: integer
+        totalEarnings:
+          type: ["number", "null"]
+        totalSpent:
+          type: ["number", "null"]
+        availableFreelancers:
+          type: integer
+        openJobRequirements:
+          type: integer
+        role:
+          type: string
+      required:
+        - activeBookings
+        - completedBookings
+        - pendingAgreements
+        - signedAgreements
+        - availableFreelancers
+        - openJobRequirements
+        - role
+
+    ActivityItem:
+      type: object
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+          description: "booking_created, agreement_signed, booking_completed, job_posted"
+        description:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+        metadata:
+          type: object
+          additionalProperties: true
+      required:
+        - id
+        - type
+        - description
+        - timestamp
+
+    # ── Storage ────────────────────────────────────────────────────────────────
+    UploadUrlRequest:
+      type: object
+      properties:
+        fileName:
+          type: string
+        contentType:
+          type: string
+      required:
+        - fileName
+        - contentType
+
+    UploadUrlResponse:
+      type: object
+      properties:
+        uploadUrl:
+          type: string
+        objectPath:
+          type: string
+      required:
+        - uploadUrl
+        - objectPath

@@ -1,0 +1,25 @@
+Application – Enhanced Idea (with Verification)
+
+This application is designed exclusively for freelancers. They will subscribe with a minimum plan of $10–$20 per month. Each freelancer must add their skills, resume, and a short tagline summarizing their experience. They will first choose their field of work (e.g., IT, Medicine, Law Firm, etc.) and provide their payment information. Once this setup is complete, the user activity side is done.
+
+For example, consider a dental clinic that needs a temporary replacement for two weeks while their doctor is on vacation. The clinic will check details such as minimum experience, number of patients treated, achievements, and payment preference (per hour or per day). To access this, the clinic must be on the Pro plan. They will share these requirements with the AI chat built into the application, which will then search and match registered freelancers. The AI will return suitable candidates based on the description provided and share the details with the employer.
+
+Once the employer confirms a candidate, the application will automatically generate a legal document through AI. This document must be signed by both the employer and the freelancer. After signing, the agreement will be securely stored within the application in protected mode, with the option to download a copy. A badge will also be enabled, stating “Booked for this Employer from [start date] to [end date],” ensuring that no one else can contact the freelancer during the agreement period. Additionally, the agreement’s end date will be highlighted, and the employer will have the option to extend the contract by creating a new agreement.
+
+Future Enhancements:
+
+Smart Reassignment: If the same position becomes available again, the AI will check who previously worked in that role. It will then verify whether that freelancer is currently available or already booked. If available, the AI will proactively notify the employer that the previous freelancer is ready to discuss the opportunity again.
+
+Dedicated Dashboards: Both employers and freelancers will have personalized dashboards.
+
+Employer Dashboard: Displays complete hiring history, agreements, past freelancers engaged, performance metrics, and contract extensions.
+
+Freelancer Dashboard: Shows work history, completed contracts, achievements, ratings, and badges earned.
+
+Document Verification at Registration:
+
+Employer Registration: Employers must upload company details such as GST ID, business license, and other required documents.
+
+Freelancer Registration: Freelancers must upload education certificates, ID proof, and work experience documents.
+
+AI Verification: The AI will automatically validate the authenticity of these documents. If valid, a registration link will be sent to the user’s email. If invalid, the registration will be rejected.
