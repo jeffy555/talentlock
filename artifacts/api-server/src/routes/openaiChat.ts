@@ -83,15 +83,32 @@ router.post("/openai/conversations/:id/messages", async (req, res) => {
 
     const freelancers = await db.select().from(freelancerProfilesTable).where(eq(freelancerProfilesTable.isAvailable, true)).limit(20);
     const freelancerContext = freelancers.map(f =>
-      `ID:${f.id} | ${f.name} | ${f.fieldOfWork} | ${f.yearsExperience}yrs exp | Skills: ${f.skills.join(", ")} | Rate: ${f.paymentPreference} $${f.hourlyRate ?? f.dailyRate ?? "TBD"} | ${f.tagline}`
-    ).join("\n");
+      [
+        `--- Freelancer ID: ${f.id} ---`,
+        `Name: ${f.name}`,
+        `Tagline: ${f.tagline}`,
+        `Primary Field: ${f.fieldOfWork}`,
+        `Years Experience: ${f.yearsExperience}`,
+        `Skills: ${f.skills.length ? f.skills.join(", ") : "Not specified"}`,
+        `Rate: ${f.paymentPreference === "hourly" ? `$${f.hourlyRate ?? "TBD"}/hr` : `$${f.dailyRate ?? "TBD"}/day`}`,
+      ].join("\n")
+    ).join("\n\n");
 
     const completion = await openai.chat.completions.create({
       model: "gpt-4o-mini",
       messages: [
         {
           role: "system",
-          content: `You are TalentLock's AI matching assistant. Help employers find the right freelancers from our platform. Available freelancers:\n\n${freelancerContext}\n\nWhen you identify matches, mention their names and IDs clearly. Be professional and concise.`,
+          content: `You are TalentLock's AI matching assistant. Help employers find the right freelancers from our platform.
+
+IMPORTANT MATCHING RULES:
+- Match candidates primarily on their SKILLS list, not just their Primary Field label.
+- A candidate whose Primary Field says "Software Engineering" but whose skills include Kubernetes, Terraform, AWS, Docker etc. IS a DevOps/Platform candidate — match them accordingly.
+- Always check the Tagline and Skills together. A person with DevOps skills and a DevOps tagline IS a DevOps candidate regardless of how they labelled their Primary Field.
+- Never say there are no matches without carefully checking the Skills of every candidate.
+- When presenting matches, always include the Freelancer ID, name, years of experience, and their relevant skills.
+
+Available freelancers on the platform:\n\n${freelancerContext}`,
         },
         ...history.map(m => ({ role: m.role as "user" | "assistant", content: m.content })),
       ],
