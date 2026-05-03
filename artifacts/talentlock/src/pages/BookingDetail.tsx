@@ -4,9 +4,10 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Calendar, CheckCircle2, FileText, XCircle, Sparkles, AlertCircle } from "lucide-react";
+import { ArrowLeft, Calendar, CheckCircle2, FileText, XCircle, Sparkles, AlertCircle, ExternalLink } from "lucide-react";
 import { Link } from "wouter";
 import { format } from "date-fns";
+import { buildGoogleCalendarUrl } from "@/lib/calendarUrl";
 
 const statusColors: Record<string, string> = {
   pending: "bg-yellow-100 text-yellow-800 border-yellow-200",
@@ -171,7 +172,28 @@ export default function BookingDetail() {
           </div>
 
           {/* Actions */}
-          <div className="border-t pt-4 flex flex-wrap gap-3">
+          <div className="border-t pt-4 flex flex-wrap gap-3 items-center">
+            {/* Add to Google Calendar — always visible for non-cancelled bookings */}
+            {!isCancelled && (
+              <a
+                href={buildGoogleCalendarUrl({
+                  title: `TalentLock: ${isEmployer ? booking.freelancerName : booking.employerName}`,
+                  startDate: booking.startDate,
+                  endDate: booking.endDate,
+                  details: `TalentLock Booking #${booking.id}\n${isEmployer ? `Freelancer: ${booking.freelancerName}` : `Employer: ${booking.employerName}`}\nPayment: ${booking.paymentType}${booking.rate ? ` · $${booking.rate}` : ""}\n\nManage at: ${window.location.href}`,
+                })}
+                target="_blank"
+                rel="noreferrer"
+              >
+                <Button variant="outline" className="gap-2" style={{ borderColor: "#4285F4", color: "#4285F4" }}>
+                  <svg viewBox="0 0 24 24" className="h-4 w-4" fill="currentColor">
+                    <path d="M19.5 3h-3V1.5h-1.5V3h-6V1.5H7.5V3h-3C3.675 3 3 3.675 3 4.5v15C3 20.325 3.675 21 4.5 21h15c.825 0 1.5-.675 1.5-1.5v-15C21 3.675 20.325 3 19.5 3zm0 16.5h-15V9h15v10.5zM7.5 12H6v-1.5h1.5V12zm3 0H9v-1.5h1.5V12zm3 0H12v-1.5h1.5V12zm3 0H15v-1.5h1.5V12zM7.5 15H6v-1.5h1.5V15zm3 0H9v-1.5h1.5V15zm3 0H12v-1.5h1.5V15zm3 0H15v-1.5h1.5V15zM7.5 18H6v-1.5h1.5V18zm3 0H9v-1.5h1.5V18zm3 0H12v-1.5h1.5V18z"/>
+                  </svg>
+                  Add to Google Calendar
+                  <ExternalLink className="h-3 w-3 ml-0.5 opacity-60" />
+                </Button>
+              </a>
+            )}
             {isEmployer && booking.status === "active" && (
               <Button variant="outline" onClick={() => handleStatusUpdate("completed")}>
                 <CheckCircle2 className="h-4 w-4 mr-2" />Mark Complete

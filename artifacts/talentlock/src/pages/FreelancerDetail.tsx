@@ -8,10 +8,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, BadgeCheck, Briefcase, Calendar, Clock, DollarSign, Lock, Star } from "lucide-react";
+import { ArrowLeft, BadgeCheck, Briefcase, Calendar, Clock, DollarSign, Lock, Star, ExternalLink } from "lucide-react";
 import { useState } from "react";
 import { Link } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
+import { buildGoogleCalendarUrl } from "@/lib/calendarUrl";
 
 export default function FreelancerDetail() {
   const { id } = useParams<{ id: string }>();
@@ -26,6 +27,7 @@ export default function FreelancerDetail() {
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [paymentType, setPaymentType] = useState("hourly");
+  const [confirmedBookingId, setConfirmedBookingId] = useState<number | null>(null);
 
   const handleBook = async () => {
     if (!freelancer || !startDate || !endDate) return;
@@ -39,11 +41,8 @@ export default function FreelancerDetail() {
           rate: freelancer.hourlyRate ?? freelancer.dailyRate ?? 0,
         },
       });
-      // Invalidate bookings list so it reflects the new booking immediately
       await queryClient.invalidateQueries({ queryKey: ["/api/bookings"] });
-      toast({ title: "Booking created!", description: "Freelancer locked in. Now generate a legal agreement to activate the engagement." });
-      setBookingOpen(false);
-      setLocation(`/bookings/${booking.id}`);
+      setConfirmedBookingId(booking.id);
     } catch {
       toast({ title: "Booking failed", description: "Could not create the booking. Make sure you have an employer profile.", variant: "destructive" });
     }
@@ -137,48 +136,102 @@ export default function FreelancerDetail() {
               <CardHeader className="pb-3"><CardTitle className="text-sm">Engage This Talent</CardTitle></CardHeader>
               <CardContent>
                 {freelancer.isAvailable ? (
-                  <Dialog open={bookingOpen} onOpenChange={setBookingOpen}>
+                  <Dialog open={bookingOpen} onOpenChange={(open) => {
+                    if (!open && confirmedBookingId) {
+                      setLocation(`/bookings/${confirmedBookingId}`);
+                    }
+                    setBookingOpen(open);
+                    if (!open) setConfirmedBookingId(null);
+                  }}>
                     <DialogTrigger asChild>
                       <Button className="w-full"><Calendar className="h-4 w-4 mr-2" />Book Now</Button>
                     </DialogTrigger>
                     <DialogContent>
-                      <DialogHeader>
-                        <DialogTitle>Book {freelancer.name}</DialogTitle>
-                        <DialogDescription>Set engagement dates and payment terms to lock in this talent exclusively.</DialogDescription>
-                      </DialogHeader>
-                      <div className="space-y-4 py-4">
-                        <div className="space-y-2">
-                          <Label>Start Date</Label>
-                          <Input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} />
-                        </div>
-                        <div className="space-y-2">
-                          <Label>End Date</Label>
-                          <Input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} />
-                        </div>
-                        <div className="space-y-2">
-                          <Label>Payment Type</Label>
-                          <Select value={paymentType} onValueChange={setPaymentType}>
-                            <SelectTrigger><SelectValue /></SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="hourly">Hourly</SelectItem>
-                              <SelectItem value="daily">Daily</SelectItem>
-                              <SelectItem value="fixed">Fixed</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div className="rounded-md bg-secondary/50 p-3 text-sm">
-                          <p className="font-medium">Rate</p>
-                          <p className="text-muted-foreground">
-                            {paymentType === "hourly" && freelancer.hourlyRate ? `$${freelancer.hourlyRate}/hr` : paymentType === "daily" && freelancer.dailyRate ? `$${freelancer.dailyRate}/day` : "Fixed (to be agreed)"}
-                          </p>
-                        </div>
-                      </div>
-                      <DialogFooter>
-                        <Button variant="outline" onClick={() => setBookingOpen(false)}>Cancel</Button>
-                        <Button onClick={handleBook} disabled={createBooking.isPending || !startDate || !endDate}>
-                          {createBooking.isPending ? "Booking..." : "Confirm Booking"}
-                        </Button>
-                      </DialogFooter>
+                      {confirmedBookingId ? (
+                        /* ── Success state ── */
+                        <>
+                          <DialogHeader>
+                            <DialogTitle className="flex items-center gap-2">
+                              <span className="text-green-600">✓</span> Booking Confirmed!
+                            </DialogTitle>
+                            <DialogDescription>
+                              {freelancer.name} is now locked in exclusively for your engagement.
+                            </DialogDescription>
+                          </DialogHeader>
+                          <div className="py-4 space-y-4">
+                            <div className="rounded-lg border bg-secondary/30 p-4 text-sm space-y-1">
+                              <div className="flex justify-between"><span className="text-muted-foreground">Freelancer</span><span className="font-medium">{freelancer.name}</span></div>
+                              <div className="flex justify-between"><span className="text-muted-foreground">From</span><span className="font-medium">{startDate}</span></div>
+                              <div className="flex justify-between"><span className="text-muted-foreground">To</span><span className="font-medium">{endDate}</span></div>
+                            </div>
+                            <a
+                              href={buildGoogleCalendarUrl({
+                                title: `TalentLock: ${freelancer.name}`,
+                                startDate: new Date(startDate).toISOString(),
+                                endDate: new Date(endDate).toISOString(),
+                                details: `Freelancer engagement booked via TalentLock.\nFreelancer: ${freelancer.name}\nField: ${freelancer.fieldOfWork}\nPayment: ${paymentType}`,
+                              })}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="block"
+                            >
+                              <Button variant="outline" className="w-full gap-2" style={{ borderColor: "#4285F4", color: "#4285F4" }}>
+                                <svg viewBox="0 0 24 24" className="h-4 w-4" fill="currentColor">
+                                  <path d="M19.5 3h-3V1.5h-1.5V3h-6V1.5H7.5V3h-3C3.675 3 3 3.675 3 4.5v15C3 20.325 3.675 21 4.5 21h15c.825 0 1.5-.675 1.5-1.5v-15C21 3.675 20.325 3 19.5 3zm0 16.5h-15V9h15v10.5zM7.5 12H6v-1.5h1.5V12zm3 0H9v-1.5h1.5V12zm3 0H12v-1.5h1.5V12zm3 0H15v-1.5h1.5V12zM7.5 15H6v-1.5h1.5V15zm3 0H9v-1.5h1.5V15zm3 0H12v-1.5h1.5V15zm3 0H15v-1.5h1.5V15zM7.5 18H6v-1.5h1.5V18zm3 0H9v-1.5h1.5V18zm3 0H12v-1.5h1.5V18z"/>
+                                </svg>
+                                Add to Google Calendar
+                                <ExternalLink className="h-3 w-3 opacity-60" />
+                              </Button>
+                            </a>
+                          </div>
+                          <DialogFooter>
+                            <Button onClick={() => setLocation(`/bookings/${confirmedBookingId}`)}>
+                              View Booking &amp; Generate Agreement →
+                            </Button>
+                          </DialogFooter>
+                        </>
+                      ) : (
+                        /* ── Booking form ── */
+                        <>
+                          <DialogHeader>
+                            <DialogTitle>Book {freelancer.name}</DialogTitle>
+                            <DialogDescription>Set engagement dates and payment terms to lock in this talent exclusively.</DialogDescription>
+                          </DialogHeader>
+                          <div className="space-y-4 py-4">
+                            <div className="space-y-2">
+                              <Label>Start Date</Label>
+                              <Input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} />
+                            </div>
+                            <div className="space-y-2">
+                              <Label>End Date</Label>
+                              <Input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} />
+                            </div>
+                            <div className="space-y-2">
+                              <Label>Payment Type</Label>
+                              <Select value={paymentType} onValueChange={setPaymentType}>
+                                <SelectTrigger><SelectValue /></SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="hourly">Hourly</SelectItem>
+                                  <SelectItem value="daily">Daily</SelectItem>
+                                  <SelectItem value="fixed">Fixed</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div className="rounded-md bg-secondary/50 p-3 text-sm">
+                              <p className="font-medium">Rate</p>
+                              <p className="text-muted-foreground">
+                                {paymentType === "hourly" && freelancer.hourlyRate ? `$${freelancer.hourlyRate}/hr` : paymentType === "daily" && freelancer.dailyRate ? `$${freelancer.dailyRate}/day` : "Fixed (to be agreed)"}
+                              </p>
+                            </div>
+                          </div>
+                          <DialogFooter>
+                            <Button variant="outline" onClick={() => setBookingOpen(false)}>Cancel</Button>
+                            <Button onClick={handleBook} disabled={createBooking.isPending || !startDate || !endDate}>
+                              {createBooking.isPending ? "Booking..." : "Confirm Booking"}
+                            </Button>
+                          </DialogFooter>
+                        </>
+                      )}
                     </DialogContent>
                   </Dialog>
                 ) : (
