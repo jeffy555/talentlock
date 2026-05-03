@@ -1,16 +1,16 @@
 import { useListMeetings, useGetMe } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
-import { Calendar, Clock, Users, Video, ArrowRight, PlusCircle } from "lucide-react";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Calendar, Clock, Users, Video, ArrowRight, PlusCircle, Search } from "lucide-react";
 import { Link } from "wouter";
 import { format } from "date-fns";
 
 const statusColors: Record<string, string> = {
-  pending:   "bg-yellow-100 text-yellow-800 border-yellow-200",
-  confirmed: "bg-green-100 text-green-800 border-green-200",
-  completed: "bg-blue-100 text-blue-800 border-blue-200",
-  cancelled: "bg-red-100 text-red-800 border-red-200",
+  pending:   "bg-yellow-50 text-yellow-700 border-yellow-200",
+  confirmed: "bg-green-50 text-green-700 border-green-200",
+  completed: "bg-blue-50 text-blue-700 border-blue-200",
+  cancelled: "bg-red-50 text-red-700 border-red-200",
 };
 
 export default function MeetingsList() {
@@ -21,8 +21,19 @@ export default function MeetingsList() {
 
   if (isLoading) {
     return (
-      <div className="flex h-[50vh] items-center justify-center">
-        <div className="h-8 w-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+      <div className="max-w-3xl mx-auto space-y-8 animate-fade-in">
+        <div className="space-y-2">
+          <div className="h-8 w-64 bg-muted rounded animate-pulse" />
+          <div className="h-5 w-96 bg-muted rounded animate-pulse" />
+        </div>
+        <div className="space-y-3">
+          {[1, 2, 3].map((i) => (
+            <Card key={i} className="animate-pulse shadow-sm border-border bg-card">
+              <CardHeader className="pb-2"><div className="h-6 w-1/3 bg-muted rounded" /></CardHeader>
+              <CardContent><div className="h-12 w-full bg-muted rounded" /></CardContent>
+            </Card>
+          ))}
+        </div>
       </div>
     );
   }
@@ -32,51 +43,58 @@ export default function MeetingsList() {
   );
 
   return (
-    <div className="max-w-3xl mx-auto space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="max-w-3xl mx-auto space-y-8 animate-fade-in">
+      <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6 border-b border-border/50 pb-6">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Discovery Meetings</h1>
-          <p className="text-muted-foreground mt-1">
+          <h1 className="text-3xl font-serif font-bold tracking-tight text-foreground">Discovery Meetings</h1>
+          <p className="text-muted-foreground mt-2 font-light max-w-xl">
             {isEmployer
-              ? "Schedule calls with freelancers before committing to a booking."
+              ? "Schedule calls with freelancers before committing to a booking. Each meeting includes an auto-generated video link and one-click calendar export."
               : "Upcoming and past discovery calls with employers."}
           </p>
         </div>
         {isEmployer && (
-          <Button asChild>
+          <Button asChild className="shadow-sm font-semibold gap-2">
             <Link href="/freelancers">
-              <PlusCircle className="h-4 w-4 mr-2" />Schedule Meeting
+              <PlusCircle className="h-4 w-4 text-gold" />Schedule Meeting
             </Link>
           </Button>
         )}
       </div>
 
       {sorted.length === 0 ? (
-        <Card>
-          <CardContent className="py-16 text-center">
-            <Users className="h-12 w-12 mx-auto text-muted-foreground mb-4 opacity-40" />
-            <p className="text-muted-foreground">No meetings yet.</p>
-            {isEmployer && (
-              <p className="text-sm text-muted-foreground mt-1">
-                Browse the{" "}
-                <Link href="/freelancers" className="text-primary underline-offset-4 hover:underline">
-                  Talent Vault
-                </Link>{" "}
-                and click <strong>Schedule Meeting</strong> on any profile.
-              </p>
-            )}
-          </CardContent>
+        <Card className="flex flex-col items-center justify-center py-24 text-center bg-card shadow-sm border-border border-dashed">
+          <div className="h-16 w-16 bg-muted/50 rounded-full flex items-center justify-center mb-6">
+            <Calendar className="h-8 w-8 text-muted-foreground" />
+          </div>
+          <h3 className="text-xl font-serif font-bold text-foreground mb-2">No meetings yet</h3>
+          <p className="text-muted-foreground font-light max-w-sm mb-8">
+            {isEmployer
+              ? "Browse the Talent Vault and click Schedule Meeting on any profile to start your first discovery call."
+              : "When an employer books a discovery call with you, it'll show up here with a video link and calendar invite."}
+          </p>
+          {isEmployer && (
+            <Button asChild className="font-semibold shadow-sm gap-2 h-11 px-8">
+              <Link href="/freelancers">
+                <Search className="h-4 w-4" /> Browse Talent
+              </Link>
+            </Button>
+          )}
         </Card>
       ) : (
         <div className="space-y-3">
-          {sorted.map((meeting) => (
-            <Card key={meeting.id} className="hover:shadow-md transition-shadow">
+          {sorted.map((meeting, index) => (
+            <Card
+              key={meeting.id}
+              className="group hover:shadow-md transition-all duration-300 border-border bg-card animate-fade-in"
+              style={{ animationDelay: `${index * 50}ms`, animationFillMode: "both" }}
+            >
               <CardContent className="p-5">
                 <div className="flex items-start justify-between gap-4">
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <h3 className="font-semibold text-base truncate">{meeting.title}</h3>
-                      <Badge className={`border capitalize text-xs flex-shrink-0 ${statusColors[meeting.status] ?? "bg-secondary"}`}>
+                    <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                      <h3 className="font-serif font-bold text-base truncate text-foreground">{meeting.title}</h3>
+                      <Badge className={`border capitalize text-[10px] uppercase tracking-widest flex-shrink-0 ${statusColors[meeting.status] ?? "bg-secondary"}`}>
                         {meeting.status}
                       </Badge>
                     </div>
@@ -96,15 +114,15 @@ export default function MeetingsList() {
                       </span>
                       {meeting.meetingLink && (
                         <span className="flex items-center gap-1.5">
-                          <Video className="h-3.5 w-3.5" />
+                          <Video className="h-3.5 w-3.5 text-primary" />
                           <a
                             href={meeting.meetingLink}
                             target="_blank"
                             rel="noreferrer"
-                            className="text-primary hover:underline"
+                            className="text-primary hover:underline font-medium"
                             onClick={(e) => e.stopPropagation()}
                           >
-                            Join link
+                            Join video
                           </a>
                         </span>
                       )}

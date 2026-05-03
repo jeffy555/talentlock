@@ -4,6 +4,7 @@ import { db } from "@workspace/db";
 import { meetingsTable, freelancerProfilesTable, employerProfilesTable } from "@workspace/db";
 import { eq, or, and } from "drizzle-orm";
 import { CreateMeetingBody, UpdateMeetingBody } from "@workspace/api-zod";
+import { randomBytes } from "crypto";
 
 const router = Router();
 
@@ -39,6 +40,13 @@ router.get("/meetings", async (req, res) => {
   }
 });
 
+function generateJitsiLink(): string {
+  // Random room name on a free Jitsi server — no auth required for either party.
+  // Use cryptographically-strong randomness so room URLs cannot be guessed.
+  const slug = randomBytes(12).toString("base64url");
+  return `https://meet.jit.si/TalentLock-${slug}`;
+}
+
 router.post("/meetings", async (req, res) => {
   const { userId: clerkId } = getAuth(req);
   if (!clerkId) { res.status(401).json({ error: "Unauthorized" }); return; }
@@ -47,8 +55,15 @@ router.post("/meetings", async (req, res) => {
   try {
     const [employer] = await db.select().from(employerProfilesTable).where(eq(employerProfilesTable.clerkId, clerkId)).limit(1);
     if (!employer) { res.status(400).json({ error: "Employer profile required to schedule a meeting" }); return; }
+
+    const data = { ...parsed.data } as any;
+    // Auto-provision a Jitsi video link if the employer didn't supply one.
+    if (!data.meetingLink || typeof data.meetingLink !== "string" || !data.meetingLink.trim()) {
+      data.meetingLink = generateJitsiLink();
+    }
+
     const [meeting] = await db.insert(meetingsTable)
-      .values({ ...parsed.data as any, employerId: employer.id, status: "pending" })
+      .values({ ...data, employerId: employer.id, status: "pending" })
       .returning();
     res.status(201).json(await enrichMeeting(meeting));
   } catch (err) {

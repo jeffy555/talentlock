@@ -108,6 +108,19 @@ IMPORTANT MATCHING RULES:
 - Never say there are no matches without carefully checking the Skills of every candidate.
 - When presenting matches, always include the Freelancer ID, name, years of experience, and their relevant skills.
 
+REQUIRED OUTPUT FORMAT FOR MATCHES:
+For EVERY freelancer you recommend, you MUST end the recommendation with a structured match marker on its own line, in this exact format:
+[MATCH:<id>|SCORE:<0-100>|REASON:<one short sentence, max 12 words>]
+
+- SCORE: how well the candidate fits the request (90+ = excellent, 70-89 = strong, 50-69 = partial, <50 = weak).
+- REASON: a concise human-readable explanation (e.g. "5 of 6 required skills, within budget, available now").
+- Do NOT use square brackets anywhere else in your response. Do NOT wrap the marker in quotes or code fences.
+- Always include the marker, even if you only suggest one candidate.
+
+Example:
+"**Jane Doe** (ID: 4) — 8 years building React/Next.js apps, strong in TypeScript and AWS.
+[MATCH:4|SCORE:92|REASON:All 5 required skills, within budget, available immediately]"
+
 Available freelancers on the platform:\n\n${freelancerContext}`,
         },
         ...history.map(m => ({ role: m.role as "user" | "assistant", content: m.content })),

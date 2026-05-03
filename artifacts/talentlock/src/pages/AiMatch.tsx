@@ -15,29 +15,82 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import {
   Bot, MessageSquare, Plus, Send, Trash2, User,
-  Mail, ExternalLink, Calendar, BadgeCheck, Lock,
+  Mail, ExternalLink, Calendar, BadgeCheck, Lock, Sparkles,
 } from "lucide-react";
 import { format } from "date-fns";
 import { Link } from "wouter";
 
-function parseFreelancerIds(text: string): number[] {
-  const matches = text.matchAll(/(?:freelancer\s+)?id[:\s#]+(\d+)/gi);
-  const ids = new Set<number>();
-  for (const m of matches) {
-    const n = parseInt(m[1]);
-    if (!isNaN(n)) ids.add(n);
+type Match = { id: number; score?: number; reason?: string };
+
+const MATCH_MARKER_RE = /\[MATCH:(\d+)\|SCORE:(\d+)\|REASON:([^\]]+)\]/g;
+
+function parseMatches(text: string): Match[] {
+  const map = new Map<number, Match>();
+
+  // Preferred: structured markers from the model
+  for (const m of text.matchAll(MATCH_MARKER_RE)) {
+    const id = parseInt(m[1]);
+    if (isNaN(id)) continue;
+    const rawScore = parseInt(m[2]);
+    const score = isNaN(rawScore) ? undefined : Math.max(0, Math.min(100, rawScore));
+    const reason = m[3].trim();
+    map.set(id, { id, score, reason });
   }
-  return [...ids];
+
+  // Always also collect any "id: N" mentions in case the model partially complied
+  // — this preserves recommendations whose markers were malformed.
+  for (const m of text.matchAll(/(?:freelancer\s+)?id[:\s#]+(\d+)/gi)) {
+    const n = parseInt(m[1]);
+    if (!isNaN(n) && !map.has(n)) map.set(n, { id: n });
+  }
+
+  return [...map.values()];
 }
 
-function FreelancerContactCard({ freelancerId }: { freelancerId: number }) {
-  const { data: freelancer, isLoading } = useGetFreelancerProfile(freelancerId, {
+function stripMatchMarkers(text: string): string {
+  return text.replace(MATCH_MARKER_RE, "").replace(/\n{3,}/g, "\n\n").trim();
+}
+
+function scoreColor(score?: number): string {
+  if (score === undefined) return "bg-secondary text-secondary-foreground border-border";
+  if (score >= 90) return "bg-green-100 text-green-800 border-green-200";
+  if (score >= 70) return "bg-blue-100 text-blue-800 border-blue-200";
+  if (score >= 50) return "bg-yellow-100 text-yellow-800 border-yellow-200";
+  return "bg-red-100 text-red-700 border-red-200";
+}
+
+function scoreLabel(score: number): string {
+  if (score >= 90) return "Excellent match";
+  if (score >= 70) return "Strong match";
+  if (score >= 50) return "Partial match";
+  return "Weak match";
+}
+
+function FreelancerContactCard({ match }: { match: Match }) {
+  const { data: freelancer, isLoading } = useGetFreelancerProfile(match.id, {
     query: { enabled: true } as any,
   });
 
   if (isLoading) {
     return (
-      <div className="border rounded-lg p-3 bg-background animate-pulse h-24" />
+      <div className="border rounded-xl bg-background shadow-sm overflow-hidden">
+        <div className="flex items-start gap-3 p-4">
+          <div className="h-11 w-11 rounded-full bg-muted animate-pulse flex-shrink-0" />
+          <div className="flex-1 space-y-2">
+            <div className="h-4 w-2/3 bg-muted rounded animate-pulse" />
+            <div className="h-3 w-full bg-muted rounded animate-pulse" />
+            <div className="h-3 w-1/3 bg-muted rounded animate-pulse" />
+          </div>
+        </div>
+        <div className="px-4 pb-3 flex gap-1">
+          <div className="h-5 w-14 bg-muted rounded animate-pulse" />
+          <div className="h-5 w-16 bg-muted rounded animate-pulse" />
+          <div className="h-5 w-12 bg-muted rounded animate-pulse" />
+        </div>
+        <div className="border-t px-4 py-3">
+          <div className="h-7 w-full bg-muted rounded animate-pulse" />
+        </div>
+      </div>
     );
   }
   if (!freelancer) return null;
@@ -54,6 +107,15 @@ function FreelancerContactCard({ freelancerId }: { freelancerId: number }) {
 
   return (
     <div className="border rounded-xl bg-background shadow-sm overflow-hidden">
+      {match.score !== undefined && (
+        <div className={`flex items-center justify-between gap-2 px-4 py-2 border-b text-xs ${scoreColor(match.score)}`}>
+          <span className="flex items-center gap-1.5 font-semibold">
+            <Sparkles className="h-3.5 w-3.5" />
+            {scoreLabel(match.score)}
+          </span>
+          <span className="font-bold tabular-nums">{match.score}%</span>
+        </div>
+      )}
       <div className="flex items-start gap-3 p-4">
         <div className="h-11 w-11 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-bold text-sm flex-shrink-0">
           {initials}
@@ -69,6 +131,11 @@ function FreelancerContactCard({ freelancerId }: { freelancerId: number }) {
           </div>
           <p className="text-xs text-muted-foreground mt-0.5 leading-snug">{f.tagline}</p>
           {rate && <p className="text-xs font-medium text-primary mt-1">{rate}</p>}
+          {match.reason && (
+            <p className="text-xs text-foreground/80 mt-2 italic leading-snug border-l-2 border-primary/30 pl-2">
+              "{match.reason}"
+            </p>
+          )}
         </div>
       </div>
 
@@ -123,7 +190,8 @@ function FreelancerContactCard({ freelancerId }: { freelancerId: number }) {
 }
 
 function AiMessageBubble({ msg }: { msg: any }) {
-  const ids = msg.role === "assistant" ? parseFreelancerIds(msg.content) : [];
+  const matches = msg.role === "assistant" ? parseMatches(msg.content) : [];
+  const displayContent = msg.role === "assistant" ? stripMatchMarkers(msg.content) : msg.content;
 
   return (
     <div className="space-y-3">
@@ -134,7 +202,7 @@ function AiMessageBubble({ msg }: { msg: any }) {
           </div>
         )}
         <div className={`max-w-[80%] rounded-lg px-4 py-3 text-sm ${msg.role === "user" ? "bg-primary text-primary-foreground" : "bg-secondary"}`}>
-          <p className="whitespace-pre-wrap leading-relaxed">{msg.content}</p>
+          <p className="whitespace-pre-wrap leading-relaxed">{displayContent}</p>
         </div>
         {msg.role === "user" && (
           <div className="h-8 w-8 rounded-full bg-secondary flex items-center justify-center flex-shrink-0">
@@ -143,12 +211,15 @@ function AiMessageBubble({ msg }: { msg: any }) {
         )}
       </div>
 
-      {ids.length > 0 && (
+      {matches.length > 0 && (
         <div className="ml-11 min-w-0">
-          <p className="text-xs text-muted-foreground mb-2 font-medium">Matched candidates — click to contact or book:</p>
+          <p className="text-xs text-muted-foreground mb-2 font-medium flex items-center gap-1.5">
+            <Sparkles className="h-3 w-3 text-primary" />
+            {matches.length} matched {matches.length === 1 ? "candidate" : "candidates"} — sorted by fit:
+          </p>
           <div className="grid gap-3 grid-cols-1 xl:grid-cols-2 min-w-0">
-            {ids.map(id => (
-              <FreelancerContactCard key={id} freelancerId={id} />
+            {[...matches].sort((a, b) => (b.score ?? 0) - (a.score ?? 0)).map(m => (
+              <FreelancerContactCard key={m.id} match={m} />
             ))}
           </div>
         </div>

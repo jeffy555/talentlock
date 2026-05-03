@@ -10,7 +10,7 @@ import {
 } from "lucide-react";
 import { Link } from "wouter";
 import { format } from "date-fns";
-import { buildGoogleCalendarUrl } from "@/lib/calendarUrl";
+import { buildGoogleCalendarUrl, buildOutlookCalendarUrl, downloadIcsFile } from "@/lib/calendarUrl";
 
 const statusColors: Record<string, string> = {
   pending:   "bg-yellow-100 text-yellow-800 border-yellow-200",
@@ -43,8 +43,19 @@ export default function MeetingDetail() {
 
   if (isLoading) {
     return (
-      <div className="flex h-[50vh] items-center justify-center">
-        <div className="h-8 w-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+      <div className="max-w-2xl mx-auto space-y-6 animate-fade-in">
+        <div className="h-9 w-40 bg-muted rounded animate-pulse" />
+        <Card className="animate-pulse">
+          <CardHeader><div className="h-7 w-2/3 bg-muted rounded" /></CardHeader>
+          <CardContent className="space-y-6">
+            <div className="grid grid-cols-2 gap-5">
+              <div className="h-12 bg-muted rounded" />
+              <div className="h-12 bg-muted rounded" />
+            </div>
+            <div className="h-20 bg-muted rounded" />
+            <div className="h-10 w-1/3 bg-muted rounded" />
+          </CardContent>
+        </Card>
       </div>
     );
   }
@@ -54,6 +65,15 @@ export default function MeetingDetail() {
   const isCompleted = meeting.status === "completed";
   const meetingDate = new Date(meeting.scheduledAt);
   const meetingEndDate = new Date(meetingDate.getTime() + meeting.durationMinutes * 60 * 1000);
+
+  const calendarDetails = `TalentLock Discovery Meeting\n${isEmployer ? `Freelancer: ${meeting.freelancerName}` : `Employer: ${meeting.employerName}`}${meeting.agenda ? `\n\nAgenda:\n${meeting.agenda}` : ""}${meeting.meetingLink ? `\n\nJoin: ${meeting.meetingLink}` : ""}`;
+  const calendarParams = {
+    title: meeting.title,
+    startDate: meeting.scheduledAt,
+    endDate: meetingEndDate.toISOString(),
+    details: calendarDetails,
+    location: meeting.meetingLink ?? undefined,
+  };
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
@@ -139,31 +159,49 @@ export default function MeetingDetail() {
             )}
           </div>
 
-          {/* Actions */}
-          <div className="border-t pt-4 flex flex-wrap gap-3 items-center">
-            {/* Google Calendar button */}
-            {!isCancelled && (
-              <a
-                href={buildGoogleCalendarUrl({
-                  title: meeting.title,
-                  startDate: meeting.scheduledAt,
-                  endDate: meetingEndDate.toISOString(),
-                  details: `TalentLock Discovery Meeting\n${isEmployer ? `Freelancer: ${meeting.freelancerName}` : `Employer: ${meeting.employerName}`}${meeting.agenda ? `\n\nAgenda:\n${meeting.agenda}` : ""}${meeting.meetingLink ? `\n\nJoin: ${meeting.meetingLink}` : ""}`,
-                })}
-                target="_blank"
-                rel="noreferrer"
-              >
-                <Button variant="outline" className="gap-2" style={{ borderColor: "#4285F4", color: "#4285F4" }}>
-                  <svg viewBox="0 0 24 24" className="h-4 w-4" fill="currentColor">
-                    <path d="M19.5 3h-3V1.5h-1.5V3h-6V1.5H7.5V3h-3C3.675 3 3 3.675 3 4.5v15C3 20.325 3.675 21 4.5 21h15c.825 0 1.5-.675 1.5-1.5v-15C21 3.675 20.325 3 19.5 3zm0 16.5h-15V9h15v10.5zM7.5 12H6v-1.5h1.5V12zm3 0H9v-1.5h1.5V12zm3 0H12v-1.5h1.5V12zm3 0H15v-1.5h1.5V12zM7.5 15H6v-1.5h1.5V15zm3 0H9v-1.5h1.5V15zm3 0H12v-1.5h1.5V15zm3 0H15v-1.5h1.5V15zM7.5 18H6v-1.5h1.5V18zm3 0H9v-1.5h1.5V18zm3 0H12v-1.5h1.5V18z"/>
-                  </svg>
-                  Add to Google Calendar
-                  <ExternalLink className="h-3 w-3 opacity-60" />
+          {/* Calendar export — quick access to all major calendar apps */}
+          {!isCancelled && (
+            <div className="border-t pt-4 space-y-2">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                Add to your calendar
+              </p>
+              <div className="flex flex-wrap gap-2">
+                <Button asChild variant="outline" size="sm" className="gap-2">
+                  <a href={buildGoogleCalendarUrl(calendarParams)} target="_blank" rel="noreferrer">
+                    <Calendar className="h-3.5 w-3.5" />Google
+                    <ExternalLink className="h-3 w-3 opacity-60" />
+                  </a>
                 </Button>
-              </a>
+                <Button asChild variant="outline" size="sm" className="gap-2">
+                  <a href={buildOutlookCalendarUrl(calendarParams)} target="_blank" rel="noreferrer">
+                    <Calendar className="h-3.5 w-3.5" />Outlook
+                    <ExternalLink className="h-3 w-3 opacity-60" />
+                  </a>
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-2"
+                  onClick={() => downloadIcsFile(`talentlock-meeting-${meeting.id}`, calendarParams)}
+                >
+                  <Calendar className="h-3.5 w-3.5" />Apple / .ics
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* Status actions */}
+          <div className="border-t pt-4 flex flex-wrap gap-3 items-center">
+            {/* Prominent Join Video Call CTA */}
+            {meeting.meetingLink && !isCancelled && !isCompleted && (
+              <Button asChild className="gap-2 shadow-sm">
+                <a href={meeting.meetingLink} target="_blank" rel="noreferrer">
+                  <Video className="h-4 w-4" />Join Video Call
+                  <ExternalLink className="h-3 w-3 opacity-60" />
+                </a>
+              </Button>
             )}
 
-            {/* Status actions */}
             {meeting.status === "pending" && isEmployer && (
               <Button variant="outline" onClick={() => handleStatus("confirmed")} disabled={updateMeeting.isPending}>
                 <CheckCircle2 className="h-4 w-4 mr-2 text-green-600" />Confirm Meeting
