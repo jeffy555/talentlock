@@ -144,9 +144,9 @@ function AiMessageBubble({ msg }: { msg: any }) {
       </div>
 
       {ids.length > 0 && (
-        <div className="ml-11">
+        <div className="ml-11 min-w-0">
           <p className="text-xs text-muted-foreground mb-2 font-medium">Matched candidates — click to contact or book:</p>
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid gap-3 grid-cols-1 xl:grid-cols-2 min-w-0">
             {ids.map(id => (
               <FreelancerContactCard key={id} freelancerId={id} />
             ))}
