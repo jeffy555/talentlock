@@ -1,9 +1,23 @@
+import { useState } from "react";
 import { useRoute, Link, useLocation } from "wouter";
-import { useGetJobRequirement, useGetMe, useDeleteJobRequirement } from "@workspace/api-client-react";
+import {
+  useGetJobRequirement,
+  useGetMe,
+  useGetMyEmployerProfile,
+  useDeleteJobRequirement,
+  useExpressJobInterest,
+  useGetMyJobInterest,
+  useListJobInterests,
+  getGetMyJobInterestQueryKey,
+  getListJobInterestsQueryKey,
+  getListNotificationsQueryKey,
+} from "@workspace/api-client-react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Calendar, DollarSign, Clock, Trash2, ShieldCheck, Zap } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { ArrowLeft, Calendar, DollarSign, Clock, Trash2, ShieldCheck, Zap, Check, Users, MessageSquare } from "lucide-react";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -17,18 +31,68 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 
 export default function JobDetail() {
   const [, params] = useRoute("/jobs/:id");
   const id = params?.id ? parseInt(params.id, 10) : 0;
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   const { data: user } = useGetMe();
   const { data: job, isLoading } = useGetJobRequirement(id, { query: { enabled: !!id } as any });
   const deleteJob = useDeleteJobRequirement();
 
-  const isOwner = user?.role === "employer" && job?.employerId === user?.id;
+  const isFreelancer = user?.role === "freelancer";
+  const { data: myEmployerProfile } = useGetMyEmployerProfile({
+    query: { enabled: user?.role === "employer" } as any,
+  });
+  const isOwner = user?.role === "employer" && !!myEmployerProfile && job?.employerId === myEmployerProfile.id;
+
+  const { data: myInterest } = useGetMyJobInterest(id, {
+    query: { enabled: !!id && isFreelancer } as any,
+  });
+  const { data: interests } = useListJobInterests(id, {
+    query: { enabled: !!id && !!isOwner } as any,
+  });
+
+  const expressInterest = useExpressJobInterest();
+  const [interestOpen, setInterestOpen] = useState(false);
+  const [interestMessage, setInterestMessage] = useState("");
+
+  const handleExpressInterest = async () => {
+    try {
+      await expressInterest.mutateAsync({
+        id,
+        data: { message: interestMessage.trim() || null },
+      });
+      toast({
+        title: "Interest sent",
+        description: "The employer has been notified of your interest.",
+      });
+      setInterestOpen(false);
+      setInterestMessage("");
+      queryClient.invalidateQueries({ queryKey: getGetMyJobInterestQueryKey(id) });
+      queryClient.invalidateQueries({ queryKey: getListJobInterestsQueryKey(id) });
+      queryClient.invalidateQueries({ queryKey: getListNotificationsQueryKey() });
+    } catch (err: any) {
+      const status = err?.response?.status ?? err?.status;
+      const description =
+        status === 409
+          ? "You've already expressed interest in this role."
+          : err?.response?.data?.error ?? "Could not send interest. Please try again.";
+      toast({ title: "Couldn't send interest", description, variant: "destructive" });
+    }
+  };
 
   if (isLoading) {
     return (
@@ -68,6 +132,8 @@ export default function JobDetail() {
     }
   };
 
+  const alreadyExpressed = !!myInterest?.expressed;
+
   return (
     <div className="max-w-5xl mx-auto space-y-8 animate-fade-in">
       <div className="flex items-center gap-4">
@@ -79,7 +145,7 @@ export default function JobDetail() {
       <div className="flex flex-col md:flex-row md:items-start justify-between gap-6 pb-6 border-b border-border/50">
         <div className="flex-1 space-y-3">
           <div className="flex items-center gap-3">
-            <Badge 
+            <Badge
               className={job.status === "open" ? "bg-green-50 text-green-700 border-green-200 uppercase tracking-widest text-[10px]" : "uppercase tracking-widest text-[10px] border-border"}
               variant={job.status === "open" ? "default" : "secondary"}
             >
@@ -137,7 +203,7 @@ export default function JobDetail() {
               ))}
             </div>
           </section>
-          
+
           {isOwner && job.status === "open" && (
             <div className="rounded-xl border border-gold/30 bg-gold/5 p-6 flex items-start gap-4">
               <div className="h-10 w-10 bg-gold/20 rounded-full flex items-center justify-center flex-shrink-0">
@@ -153,6 +219,67 @@ export default function JobDetail() {
                 </Button>
               </div>
             </div>
+          )}
+
+          {isOwner && (
+            <section className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h2 className="font-serif text-2xl font-bold text-foreground flex items-center gap-2">
+                  <Users className="h-5 w-5 text-primary" />
+                  Interested Talent
+                </h2>
+                <Badge variant="secondary" className="bg-primary/5 text-primary border-primary/20 font-semibold">
+                  {interests?.length ?? 0} {interests?.length === 1 ? "candidate" : "candidates"}
+                </Badge>
+              </div>
+              {!interests || interests.length === 0 ? (
+                <div className="bg-card p-8 rounded-xl border border-dashed border-border text-center">
+                  <div className="h-12 w-12 bg-muted/50 rounded-full flex items-center justify-center mx-auto mb-3">
+                    <Users className="h-6 w-6 text-muted-foreground" />
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    No freelancers have expressed interest yet. The AI matcher is still surfacing this role to qualified talent.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {interests.map((interest) => (
+                    <div
+                      key={interest.id}
+                      className="bg-card p-5 rounded-xl border border-border shadow-sm flex flex-col sm:flex-row gap-4 sm:items-start"
+                    >
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <Link
+                            href={`/freelancers/${interest.freelancerId}`}
+                            className="font-semibold text-foreground hover:text-primary"
+                          >
+                            {interest.freelancerName ?? "Freelancer"}
+                          </Link>
+                          <span className="text-xs text-muted-foreground">
+                            • {format(new Date(interest.createdAt), "MMM d")}
+                          </span>
+                        </div>
+                        {interest.freelancerTagline && (
+                          <p className="text-sm text-muted-foreground mb-2">{interest.freelancerTagline}</p>
+                        )}
+                        {interest.message && (
+                          <div className="mt-2 flex gap-2 text-sm bg-muted/30 rounded-lg p-3 border-l-2 border-gold/40">
+                            <MessageSquare className="h-4 w-4 text-gold flex-shrink-0 mt-0.5" />
+                            <p className="text-muted-foreground italic leading-relaxed">{interest.message}</p>
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex-shrink-0 flex gap-2">
+                        <Button asChild variant="outline" size="sm" className="font-semibold">
+                          <Link href={`/freelancers/${interest.freelancerId}`}>View Profile</Link>
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </section>
           )}
         </div>
 
@@ -173,7 +300,7 @@ export default function JobDetail() {
                     <p className="font-semibold text-foreground">{job.minExperience}+ Years Experience</p>
                   </div>
                 </div>
-                
+
                 <div className="flex gap-4">
                   <div className="h-10 w-10 bg-secondary/50 rounded-lg flex items-center justify-center flex-shrink-0 border border-border">
                     <DollarSign className="h-5 w-5 text-muted-foreground" />
@@ -198,12 +325,66 @@ export default function JobDetail() {
                 </div>
               </div>
             </CardContent>
-            
-            {user?.role === "freelancer" && job.status === "open" && (
+
+            {isFreelancer && job.status === "open" && (
               <CardFooter className="pt-4 border-t border-border/50 bg-muted/10">
-                <Button className="w-full h-11 shadow font-semibold bg-primary text-primary-foreground hover:bg-primary/90">
-                  Express Interest
-                </Button>
+                {alreadyExpressed ? (
+                  <Button
+                    disabled
+                    className="w-full h-11 shadow-sm font-semibold bg-green-50 text-green-700 hover:bg-green-50 border border-green-200"
+                  >
+                    <Check className="h-4 w-4 mr-2" />
+                    Interest Sent
+                  </Button>
+                ) : (
+                  <Dialog open={interestOpen} onOpenChange={setInterestOpen}>
+                    <DialogTrigger asChild>
+                      <Button
+                        className="w-full h-11 shadow font-semibold bg-primary text-primary-foreground hover:bg-primary/90"
+                        data-testid="button-express-interest"
+                      >
+                        Express Interest
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="sm:max-w-[480px]">
+                      <DialogHeader>
+                        <DialogTitle className="font-serif text-2xl">Express Interest</DialogTitle>
+                        <DialogDescription className="pt-1">
+                          Send a quick note to the employer. They'll be notified that you're interested in this role.
+                        </DialogDescription>
+                      </DialogHeader>
+                      <div className="py-2">
+                        <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground mb-2 block">
+                          Message (optional)
+                        </label>
+                        <Textarea
+                          value={interestMessage}
+                          onChange={(e) => setInterestMessage(e.target.value)}
+                          placeholder="Briefly mention why you're a great fit, your availability, or any questions about the role…"
+                          rows={5}
+                          maxLength={1000}
+                          data-testid="textarea-interest-message"
+                        />
+                        <p className="text-[10px] text-muted-foreground mt-1.5 text-right">
+                          {interestMessage.length}/1000
+                        </p>
+                      </div>
+                      <DialogFooter>
+                        <Button variant="ghost" onClick={() => setInterestOpen(false)} className="font-semibold">
+                          Cancel
+                        </Button>
+                        <Button
+                          onClick={handleExpressInterest}
+                          disabled={expressInterest.isPending}
+                          className="bg-primary text-primary-foreground hover:bg-primary/90 font-semibold shadow"
+                          data-testid="button-confirm-interest"
+                        >
+                          {expressInterest.isPending ? "Sending…" : "Send Interest"}
+                        </Button>
+                      </DialogFooter>
+                    </DialogContent>
+                  </Dialog>
+                )}
               </CardFooter>
             )}
           </Card>

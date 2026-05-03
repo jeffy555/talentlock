@@ -388,6 +388,51 @@ export interface UploadUrlRequest {
   contentType: string;
 }
 
+export interface ExpressInterestBody {
+  /** @nullable */
+  message?: string | null;
+}
+
+export interface JobInterest {
+  id: number;
+  jobRequirementId: number;
+  freelancerId: number;
+  /** @nullable */
+  message?: string | null;
+  createdAt: string;
+}
+
+export interface JobInterestWithFreelancer {
+  id: number;
+  jobRequirementId: number;
+  freelancerId: number;
+  /** @nullable */
+  message?: string | null;
+  createdAt: string;
+  /** @nullable */
+  freelancerName?: string | null;
+  /** @nullable */
+  freelancerTagline?: string | null;
+}
+
+export interface MyJobInterest {
+  expressed: boolean;
+  /** @nullable */
+  expressedAt?: string | null;
+}
+
+export interface Notification {
+  id: number;
+  userId: number;
+  type: string;
+  title: string;
+  message: string;
+  /** @nullable */
+  link?: string | null;
+  read: boolean;
+  createdAt: string;
+}
+
 export interface UploadUrlResponse {
   uploadUrl: string;
   objectPath: string;
@@ -421,6 +466,10 @@ export type ListJobRequirementsParams = {
    * Filter by status (open, filled, closed)
    */
   status?: string;
+};
+
+export type MarkAllNotificationsRead200 = {
+  updated: number;
 };
 
 export type ListBookingsParams = {

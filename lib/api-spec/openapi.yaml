@@ -340,6 +340,129 @@ paths:
         "204":
           description: Deleted
 
+  /job-requirements/{id}/interest:
+    post:
+      operationId: expressJobInterest
+      tags: [job-requirements]
+      summary: Freelancer expresses interest in a job
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ExpressInterestBody"
+      responses:
+        "201":
+          description: Interest recorded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JobInterest"
+        "409":
+          description: Already expressed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /job-requirements/{id}/my-interest:
+    get:
+      operationId: getMyJobInterest
+      tags: [job-requirements]
+      summary: Check if the current freelancer expressed interest
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Interest status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MyJobInterest"
+
+  /job-requirements/{id}/interests:
+    get:
+      operationId: listJobInterests
+      tags: [job-requirements]
+      summary: List freelancers who expressed interest (owner employer only)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Interest list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/JobInterestWithFreelancer"
+
+  # ── Notifications ────────────────────────────────────────────────────────────
+  /notifications:
+    get:
+      operationId: listNotifications
+      tags: [users]
+      summary: List the current user's notifications
+      responses:
+        "200":
+          description: Notifications
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Notification"
+
+  /notifications/{id}/read:
+    patch:
+      operationId: markNotificationRead
+      tags: [users]
+      summary: Mark a notification as read
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Updated notification
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Notification"
+
+  /notifications/read-all:
+    post:
+      operationId: markAllNotificationsRead
+      tags: [users]
+      summary: Mark all notifications as read for the current user
+      responses:
+        "200":
+          description: Count of notifications updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  updated:
+                    type: integer
+                required: [updated]
+
   # ── Bookings ─────────────────────────────────────────────────────────────────
   /bookings:
     get:
@@ -1644,6 +1767,96 @@ components:
       required:
         - fileName
         - contentType
+
+    ExpressInterestBody:
+      type: object
+      properties:
+        message:
+          type: ["string", "null"]
+
+    JobInterest:
+      type: object
+      properties:
+        id:
+          type: integer
+        jobRequirementId:
+          type: integer
+        freelancerId:
+          type: integer
+        message:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - jobRequirementId
+        - freelancerId
+        - createdAt
+
+    JobInterestWithFreelancer:
+      type: object
+      properties:
+        id:
+          type: integer
+        jobRequirementId:
+          type: integer
+        freelancerId:
+          type: integer
+        message:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+          format: date-time
+        freelancerName:
+          type: ["string", "null"]
+        freelancerTagline:
+          type: ["string", "null"]
+      required:
+        - id
+        - jobRequirementId
+        - freelancerId
+        - createdAt
+
+    MyJobInterest:
+      type: object
+      properties:
+        expressed:
+          type: boolean
+        expressedAt:
+          type: ["string", "null"]
+          format: date-time
+      required:
+        - expressed
+
+    Notification:
+      type: object
+      properties:
+        id:
+          type: integer
+        userId:
+          type: integer
+        type:
+          type: string
+        title:
+          type: string
+        message:
+          type: string
+        link:
+          type: ["string", "null"]
+        read:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - userId
+        - type
+        - title
+        - message
+        - read
+        - createdAt
 
     UploadUrlResponse:
       type: object

@@ -7,3 +7,5 @@ export * from "./agreements";
 export * from "./conversations";
 export * from "./messages";
 export * from "./meetings";
+export * from "./jobInterests";
+export * from "./notifications";

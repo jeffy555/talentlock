@@ -11,6 +11,8 @@ import openaiChatRouter from "./openaiChat";
 import dashboardRouter from "./dashboard";
 import verifyDocumentsRouter from "./verifyDocuments";
 import meetingsRouter from "./meetings";
+import jobInterestsRouter from "./jobInterests";
+import notificationsRouter from "./notifications";
 import demoRouter from "./demo";
 
 const router: IRouter = Router();
@@ -25,6 +27,8 @@ router.use(jobRequirementsRouter);
 router.use(bookingsRouter);
 router.use(agreementsRouter);
 router.use(meetingsRouter);
+router.use(jobInterestsRouter);
+router.use(notificationsRouter);
 router.use(openaiChatRouter);
 router.use(dashboardRouter);
 router.use(verifyDocumentsRouter);

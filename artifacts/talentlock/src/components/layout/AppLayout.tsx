@@ -1,10 +1,18 @@
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
 import { useUser, useClerk } from "@clerk/react";
-import { useGetMe } from "@workspace/api-client-react";
+import {
+  useGetMe,
+  useListNotifications,
+  useMarkNotificationRead,
+  useMarkAllNotificationsRead,
+  getListNotificationsQueryKey,
+} from "@workspace/api-client-react";
+import { useQueryClient } from "@tanstack/react-query";
+import { formatDistanceToNow } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { Shield, LayoutDashboard, Users, Briefcase, Calendar, FileText, Bot, User as UserIcon, LogOut, Video, Menu, X } from "lucide-react";
+import { Shield, LayoutDashboard, Users, Briefcase, Calendar, FileText, Bot, User as UserIcon, LogOut, Video, Menu, X, Bell, CheckCheck } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -13,15 +21,54 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
-  const [location] = useLocation();
+  const [location, setLocation] = useLocation();
   const { user } = useUser();
   const { signOut } = useClerk();
   const { data: dbUser } = useGetMe({ query: { enabled: !!user } as any });
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const queryClient = useQueryClient();
 
   const isEmployer = dbUser?.role === "employer";
+
+  // Scope the notifications cache to the current user so that switching
+  // accounts inside the same SPA session never displays the previous user's
+  // cached notifications.
+  const { data: notifications } = useListNotifications({
+    query: {
+      enabled: !!dbUser,
+      refetchInterval: 30_000,
+      refetchOnWindowFocus: true,
+      queryKey: [...getListNotificationsQueryKey(), dbUser?.id ?? "anon"],
+    } as any,
+  });
+
+  const handleSignOut = async () => {
+    queryClient.clear();
+    await signOut();
+  };
+  const markRead = useMarkNotificationRead();
+  const markAllRead = useMarkAllNotificationsRead();
+  const unreadCount = notifications?.filter((n) => !n.read).length ?? 0;
+
+  const handleNotificationClick = async (notif: { id: number; read: boolean; link?: string | null }) => {
+    if (!notif.read) {
+      try {
+        await markRead.mutateAsync({ id: notif.id });
+        queryClient.invalidateQueries({ queryKey: getListNotificationsQueryKey() });
+      } catch {}
+    }
+    if (notif.link) setLocation(notif.link);
+  };
+
+  const handleMarkAllRead = async () => {
+    try {
+      await markAllRead.mutateAsync();
+      queryClient.invalidateQueries({ queryKey: getListNotificationsQueryKey() });
+    } catch {}
+  };
 
   const navigation = [
     { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
@@ -96,8 +143,101 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                 )}
               </nav>
 
-              {/* Right side: avatar + mobile hamburger */}
+              {/* Right side: bell + avatar + mobile hamburger */}
               <div className="flex items-center gap-2 flex-shrink-0">
+                {/* Notifications bell */}
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="relative rounded-full h-9 w-9 hover:bg-white/10 text-white ring-offset-primary focus-visible:ring-gold"
+                      aria-label="Notifications"
+                      data-testid="button-notifications"
+                    >
+                      <Bell className="h-5 w-5" />
+                      {unreadCount > 0 && (
+                        <span
+                          className="absolute -top-0.5 -right-0.5 h-4 min-w-4 px-1 rounded-full bg-gold text-primary text-[10px] font-bold flex items-center justify-center shadow-sm"
+                          data-testid="badge-unread-count"
+                        >
+                          {unreadCount > 9 ? "9+" : unreadCount}
+                        </span>
+                      )}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent
+                    align="end"
+                    className="w-[360px] p-0 font-sans"
+                    sideOffset={8}
+                  >
+                    <div className="flex items-center justify-between px-4 py-3 border-b">
+                      <div>
+                        <p className="font-serif text-base font-bold text-foreground">Notifications</p>
+                        <p className="text-[11px] text-muted-foreground">
+                          {unreadCount === 0 ? "You're all caught up" : `${unreadCount} unread`}
+                        </p>
+                      </div>
+                      {unreadCount > 0 && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={handleMarkAllRead}
+                          className="text-xs h-8 text-muted-foreground hover:text-primary"
+                          data-testid="button-mark-all-read"
+                        >
+                          <CheckCheck className="h-3.5 w-3.5 mr-1" />
+                          Mark all read
+                        </Button>
+                      )}
+                    </div>
+                    <div className="max-h-[400px] overflow-y-auto">
+                      {!notifications || notifications.length === 0 ? (
+                        <div className="px-4 py-12 text-center">
+                          <div className="h-10 w-10 bg-muted/50 rounded-full flex items-center justify-center mx-auto mb-3">
+                            <Bell className="h-5 w-5 text-muted-foreground" />
+                          </div>
+                          <p className="text-sm text-muted-foreground">No notifications yet</p>
+                        </div>
+                      ) : (
+                        <ul className="divide-y divide-border/60">
+                          {notifications.map((n) => (
+                            <li key={n.id}>
+                              <button
+                                type="button"
+                                onClick={() => handleNotificationClick(n)}
+                                className={`w-full text-left px-4 py-3 hover:bg-muted/40 transition-colors flex gap-3 ${
+                                  !n.read ? "bg-gold/5" : ""
+                                }`}
+                                data-testid={`notification-item-${n.id}`}
+                              >
+                                <div className="flex-shrink-0 mt-1.5">
+                                  <span
+                                    className={`block h-2 w-2 rounded-full ${
+                                      !n.read ? "bg-gold" : "bg-transparent"
+                                    }`}
+                                  />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <p className={`text-sm leading-snug ${!n.read ? "font-semibold text-foreground" : "text-foreground/80"}`}>
+                                    {n.title}
+                                  </p>
+                                  <p className="text-xs text-muted-foreground mt-0.5 leading-snug">
+                                    {n.message}
+                                  </p>
+                                  <p className="text-[10px] text-muted-foreground/70 mt-1.5 uppercase tracking-wider font-semibold">
+                                    {formatDistanceToNow(new Date(n.createdAt), { addSuffix: true })}
+                                  </p>
+                                </div>
+                              </button>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  </PopoverContent>
+                </Popover>
+
                 {/* Avatar dropdown */}
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
@@ -130,7 +270,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem
-                      onClick={() => signOut()}
+                      onClick={handleSignOut}
                       className="text-destructive focus:text-destructive cursor-pointer"
                     >
                       <LogOut className="mr-2 h-4 w-4" />

@@ -388,6 +388,89 @@ export const DeleteJobRequirementParams = zod.object({
 });
 
 /**
+ * @summary Freelancer expresses interest in a job
+ */
+export const ExpressJobInterestParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const ExpressJobInterestBody = zod.object({
+  message: zod.string().nullish(),
+});
+
+/**
+ * @summary Check if the current freelancer expressed interest
+ */
+export const GetMyJobInterestParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const GetMyJobInterestResponse = zod.object({
+  expressed: zod.boolean(),
+  expressedAt: zod.coerce.date().nullish(),
+});
+
+/**
+ * @summary List freelancers who expressed interest (owner employer only)
+ */
+export const ListJobInterestsParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const ListJobInterestsResponseItem = zod.object({
+  id: zod.number(),
+  jobRequirementId: zod.number(),
+  freelancerId: zod.number(),
+  message: zod.string().nullish(),
+  createdAt: zod.coerce.date(),
+  freelancerName: zod.string().nullish(),
+  freelancerTagline: zod.string().nullish(),
+});
+export const ListJobInterestsResponse = zod.array(ListJobInterestsResponseItem);
+
+/**
+ * @summary List the current user's notifications
+ */
+export const ListNotificationsResponseItem = zod.object({
+  id: zod.number(),
+  userId: zod.number(),
+  type: zod.string(),
+  title: zod.string(),
+  message: zod.string(),
+  link: zod.string().nullish(),
+  read: zod.boolean(),
+  createdAt: zod.coerce.date(),
+});
+export const ListNotificationsResponse = zod.array(
+  ListNotificationsResponseItem,
+);
+
+/**
+ * @summary Mark a notification as read
+ */
+export const MarkNotificationReadParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const MarkNotificationReadResponse = zod.object({
+  id: zod.number(),
+  userId: zod.number(),
+  type: zod.string(),
+  title: zod.string(),
+  message: zod.string(),
+  link: zod.string().nullish(),
+  read: zod.boolean(),
+  createdAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Mark all notifications as read for the current user
+ */
+export const MarkAllNotificationsReadResponse = zod.object({
+  updated: zod.number(),
+});
+
+/**
  * @summary List bookings
  */
 export const ListBookingsQueryParams = zod.object({
