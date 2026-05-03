@@ -135,6 +135,13 @@ export default function Onboarding() {
     }
   }, []);
 
+  // Redirect already-onboarded users away from this page
+  useEffect(() => {
+    if (dbUser && dbUser.role && dbUser.role !== "pending") {
+      setLocation("/dashboard");
+    }
+  }, [dbUser, setLocation]);
+
   if (isLoadingUser && !isMeError) {
     return (
       <div className="flex h-[50vh] items-center justify-center">
@@ -147,7 +154,6 @@ export default function Onboarding() {
   }
 
   if (dbUser && dbUser.role && dbUser.role !== "pending") {
-    setLocation("/dashboard");
     return null;
   }
 
@@ -271,12 +277,71 @@ export default function Onboarding() {
   const docTypes = role === "freelancer" ? FREELANCER_DOC_TYPES : EMPLOYER_DOC_TYPES;
   const uploading = uploadingKeys.size > 0;
 
+  const stepIndex = ["role", "freelancer-details", "employer-details", "docs", "verifying", "result"].indexOf(step);
+  const progressStep = stepIndex <= 0 ? 1 : stepIndex <= 2 ? 2 : stepIndex <= 3 ? 3 : 4;
+
   return (
-    <div className="max-w-2xl mx-auto py-12">
-      <div className="mb-8 text-center">
-        <h1 className="text-3xl font-bold tracking-tight text-foreground">Welcome to TalentLock</h1>
-        <p className="text-muted-foreground mt-2">Let's set up your profile to get started.</p>
+    <div className="max-w-2xl mx-auto py-8">
+      <div className="mb-6 text-center">
+        <h1 className="text-3xl font-bold tracking-tight text-foreground">Complete Your Registration</h1>
+        <p className="text-muted-foreground mt-2">Just a few steps to set up your TalentLock profile.</p>
       </div>
+
+      {/* ── Account info banner ─────────────────────────────────────────── */}
+      {user && step !== "verifying" && step !== "result" && (
+        <div className="mb-6 rounded-lg border bg-card px-4 py-3 flex items-center gap-3">
+          <div className="h-9 w-9 rounded-full overflow-hidden flex-shrink-0 border" style={{ borderColor: "rgba(201,168,76,0.4)" }}>
+            {user.imageUrl ? (
+              <img src={user.imageUrl} alt={user.fullName || ""} className="h-9 w-9 object-cover" />
+            ) : (
+              <div className="h-9 w-9 flex items-center justify-center bg-primary/10 text-primary font-bold text-sm">
+                {(user.fullName || "?")[0].toUpperCase()}
+              </div>
+            )}
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-foreground truncate">{user.fullName || "Your Account"}</p>
+            <p className="text-xs text-muted-foreground truncate">{user.primaryEmailAddress?.emailAddress}</p>
+          </div>
+          <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ backgroundColor: "rgba(201,168,76,0.15)", color: "#c9a84c" }}>
+            Signed in
+          </span>
+        </div>
+      )}
+
+      {/* ── Step indicator ──────────────────────────────────────────────── */}
+      {step !== "verifying" && step !== "result" && (
+        <div className="mb-8 flex items-center gap-2">
+          {[
+            { n: 1, label: "Account type" },
+            { n: 2, label: "Profile details" },
+            { n: 3, label: "Documents" },
+          ].map(({ n, label }, i) => (
+            <div key={n} className="flex items-center gap-2 flex-1">
+              <div className="flex items-center gap-2">
+                <div
+                  className="h-7 w-7 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0"
+                  style={
+                    progressStep > n
+                      ? { backgroundColor: "#c9a84c", color: "#0d1f3c" }
+                      : progressStep === n
+                      ? { backgroundColor: "#0d1f3c", color: "#c9a84c", border: "2px solid #c9a84c" }
+                      : { backgroundColor: "transparent", color: "rgba(255,255,255,0.3)", border: "2px solid rgba(255,255,255,0.15)" }
+                  }
+                >
+                  {progressStep > n ? "✓" : n}
+                </div>
+                <span className={`text-xs font-medium hidden sm:block ${progressStep >= n ? "text-foreground" : "text-muted-foreground"}`}>
+                  {label}
+                </span>
+              </div>
+              {i < 2 && (
+                <div className="flex-1 h-px mx-2" style={{ backgroundColor: progressStep > n ? "#c9a84c" : "rgba(255,255,255,0.1)" }} />
+              )}
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* ── Role selection ──────────────────────────────────────────────── */}
       {step === "role" && (
