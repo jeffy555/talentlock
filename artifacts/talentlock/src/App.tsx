@@ -237,11 +237,15 @@ function DemoLoginPanel() {
   );
 }
 
+// Demo login is only shown in local dev. The published app relies on Google /
+// email sign-in via Clerk so we don't expose shared demo accounts publicly.
+const SHOW_DEMO_LOGIN = import.meta.env.DEV;
+
 function SignInPage() {
   return (
     <AuthPageWrapper>
       <SignIn routing="path" path={`${basePath}/sign-in`} signUpUrl={`${basePath}/sign-up`} />
-      <DemoLoginPanel />
+      {SHOW_DEMO_LOGIN && <DemoLoginPanel />}
     </AuthPageWrapper>
   );
 }
@@ -250,7 +254,7 @@ function SignUpPage() {
   return (
     <AuthPageWrapper>
       <SignUp routing="path" path={`${basePath}/sign-up`} signInUrl={`${basePath}/sign-in`} />
-      <DemoLoginPanel />
+      {SHOW_DEMO_LOGIN && <DemoLoginPanel />}
     </AuthPageWrapper>
   );
 }
