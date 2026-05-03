@@ -11,10 +11,12 @@ import openaiChatRouter from "./openaiChat";
 import dashboardRouter from "./dashboard";
 import verifyDocumentsRouter from "./verifyDocuments";
 import meetingsRouter from "./meetings";
+import demoRouter from "./demo";
 
 const router: IRouter = Router();
 
 router.use(healthRouter);
+router.use(demoRouter);
 router.use(storageRouter);
 router.use(usersRouter);
 router.use(freelancersRouter);

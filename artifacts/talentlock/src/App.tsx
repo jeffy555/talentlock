@@ -98,23 +98,42 @@ function AuthPageWrapper({ children }: { children: React.ReactNode }) {
 
 function DemoLoginPanel() {
   const { signIn, setActive, isLoaded } = useSignIn();
+  const [, setLocation] = useLocation();
   const [loading, setLoading] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const loginAs = async (email: string, password: string, label: string) => {
-    if (!isLoaded || !signIn) return;
+  const loginAs = async (role: string, label: string) => {
+    if (!isLoaded || !signIn) {
+      setError("Auth not ready yet, please try again.");
+      return;
+    }
     setLoading(label);
     setError(null);
     try {
-      const result = await signIn.create({ identifier: email, password });
+      const res = await fetch(`${basePath}/api/demo/sign-in-token`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ role }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error((body as { error?: string }).error ?? `Server error ${res.status}`);
+      }
+      const { token } = await res.json() as { token: string };
+      const result = await signIn.create({ strategy: "ticket", ticket: token });
       if (result.status === "complete") {
         await setActive({ session: result.createdSessionId });
+        setLocation("/dashboard");
+      } else {
+        setError(`Unexpected status: ${result.status}. Try signing in manually above.`);
       }
     } catch (err: unknown) {
-      const msg = err && typeof err === "object" && "errors" in err
-        ? (err as { errors: Array<{ message: string }> }).errors?.[0]?.message
-        : err instanceof Error ? err.message : "Sign-in failed";
-      setError(msg ?? "Sign-in failed");
+      console.error("[DemoLogin] sign-in error:", err);
+      let msg = "Sign-in failed.";
+      if (err && typeof err === "object" && "message" in err) {
+        msg = (err as { message: string }).message;
+      }
+      setError(msg);
     } finally {
       setLoading(null);
     }
@@ -122,16 +141,16 @@ function DemoLoginPanel() {
 
   const accounts = [
     {
+      role: "employer",
       label: "Employer",
       email: "employer@talentlock.com",
-      password: "employer",
       description: "TalentLock Demo Corp",
       color: "#c9a84c",
     },
     {
+      role: "freelancer",
       label: "Freelancer",
       email: "employee@talentlock.com",
-      password: "employee",
       description: "Full-Stack Dev · $95/hr",
       color: "#5b8dee",
     },
@@ -154,7 +173,7 @@ function DemoLoginPanel() {
         {accounts.map((acc) => (
           <button
             key={acc.label}
-            onClick={() => loginAs(acc.email, acc.password, acc.label)}
+            onClick={() => loginAs(acc.role, acc.label)}
             disabled={!!loading}
             className="group flex flex-col gap-2 rounded-xl border p-4 text-left transition-all hover:shadow-md disabled:opacity-60 active:scale-95"
             style={{ borderColor: `${acc.color}44`, backgroundColor: `${acc.color}09` }}
@@ -169,7 +188,6 @@ function DemoLoginPanel() {
             </div>
             <div>
               <p className="text-xs font-medium text-foreground">{acc.email}</p>
-              <p className="text-xs text-muted-foreground">pw: <span className="font-mono">{acc.password}</span></p>
               <p className="text-xs text-muted-foreground mt-0.5">{acc.description}</p>
             </div>
           </button>
