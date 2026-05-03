@@ -40,5 +40,8 @@ externalPort = 3000
 [userenv.shared]
 VITE_CLERK_PUBLISHABLE_KEY = "pk_test_ZGVjZW50LXZlcnZldC02NC5jbGVyay5hY2NvdW50cy5kZXYk"
 
+[userenv.production]
+ENABLE_DEMO_LOGIN = "true"
+
 [nix]
 channel = "stable-25_05"
