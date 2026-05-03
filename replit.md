@@ -35,6 +35,27 @@ A full-stack secure freelancer booking platform with AI-powered talent matching,
 | `conversations` | AI match chat sessions |
 | `messages` | Individual chat messages |
 | `meetings` | Discovery meeting requests between employers and freelancers |
+| `subscriptions` | Per-user billing plan, status, and current period (one row per user, unique on `user_id`) |
+
+## Subscription / Billing System
+
+5 plans defined in `artifacts/api-server/src/lib/plans.ts`:
+- `freelancer_free` ($0), `freelancer_pro` ($19)
+- `employer_starter` ($49), `employer_growth` ($199), `employer_enterprise` (Custom)
+
+Plan gating (`artifacts/api-server/src/lib/subscriptionGating.ts`) enforces limits on:
+- `createBooking` — `activeBookings` (employer)
+- `createJobRequirement` — `monthlyJobPosts` (employer, UTC month)
+- `expressJobInterest` — `monthlyExpressInterests` (freelancer, UTC month)
+
+Each gated route runs the count + insert inside a Drizzle transaction with `SELECT … FOR UPDATE` on the `users` row to prevent TOCTOU limit overruns. Limit hits return HTTP 402 `{ error, code: "PLAN_LIMIT", planNeeded }`. Frontend (`PostJob`, `JobDetail`, `FreelancerDetail`) catches 402 / `PLAN_LIMIT` and redirects to `/pricing`.
+
+Endpoints (`artifacts/api-server/src/routes/subscriptions.ts`):
+- `GET /api/subscriptions/plans?audience=employer|freelancer`
+- `GET /api/subscriptions/me` — current plan + usage snapshot
+- `POST /api/subscriptions/upgrade { planId }` — simulated checkout (atomic upsert via `onConflictDoUpdate` on `subscriptions.userId`, audience-validated, 30-day period). Real Stripe deferred to Phase 3 — endpoint contract is shaped to slot Stripe Checkout in without UI changes.
+
+Frontend pages: `/pricing` (audience-filtered tier grid) and `/billing` (current plan + usage progress bars). Header dropdown contains "Billing & Plan" and "Upgrade" links.
 
 ## Key Features
 

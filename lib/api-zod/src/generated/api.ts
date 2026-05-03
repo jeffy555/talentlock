@@ -471,6 +471,90 @@ export const MarkAllNotificationsReadResponse = zod.object({
 });
 
 /**
+ * @summary List available subscription plans
+ */
+export const ListPlansQueryParams = zod.object({
+  audience: zod.enum(["freelancer", "employer", "any"]).optional(),
+});
+
+export const ListPlansResponseItem = zod.object({
+  id: zod.string(),
+  audience: zod.string(),
+  name: zod.string(),
+  priceMonthly: zod.number(),
+  tagline: zod.string(),
+  features: zod.array(zod.string()),
+  limits: zod.object({
+    monthlyJobPosts: zod.number().nullish(),
+    activeBookings: zod.number().nullish(),
+    monthlyExpressInterests: zod.number().nullish(),
+    teamSeats: zod.number().nullish(),
+  }),
+  priority: zod.number(),
+});
+export const ListPlansResponse = zod.array(ListPlansResponseItem);
+
+/**
+ * @summary Get the current user's subscription, plan, and usage
+ */
+export const GetMySubscriptionResponse = zod.object({
+  plan: zod.object({
+    id: zod.string(),
+    audience: zod.string(),
+    name: zod.string(),
+    priceMonthly: zod.number(),
+    tagline: zod.string(),
+    features: zod.array(zod.string()),
+    limits: zod.object({
+      monthlyJobPosts: zod.number().nullish(),
+      activeBookings: zod.number().nullish(),
+      monthlyExpressInterests: zod.number().nullish(),
+      teamSeats: zod.number().nullish(),
+    }),
+    priority: zod.number(),
+  }),
+  status: zod.string(),
+  currentPeriodEnd: zod.coerce.date().nullish(),
+  usage: zod.object({
+    activeBookings: zod.number(),
+    monthlyJobPosts: zod.number(),
+    monthlyExpressInterests: zod.number(),
+  }),
+});
+
+/**
+ * @summary Upgrade or change the current user's plan (simulated checkout)
+ */
+export const UpgradeSubscriptionBody = zod.object({
+  planId: zod.string(),
+});
+
+export const UpgradeSubscriptionResponse = zod.object({
+  plan: zod.object({
+    id: zod.string(),
+    audience: zod.string(),
+    name: zod.string(),
+    priceMonthly: zod.number(),
+    tagline: zod.string(),
+    features: zod.array(zod.string()),
+    limits: zod.object({
+      monthlyJobPosts: zod.number().nullish(),
+      activeBookings: zod.number().nullish(),
+      monthlyExpressInterests: zod.number().nullish(),
+      teamSeats: zod.number().nullish(),
+    }),
+    priority: zod.number(),
+  }),
+  status: zod.string(),
+  currentPeriodEnd: zod.coerce.date().nullish(),
+  usage: zod.object({
+    activeBookings: zod.number(),
+    monthlyJobPosts: zod.number(),
+    monthlyExpressInterests: zod.number(),
+  }),
+});
+
+/**
  * @summary List bookings
  */
 export const ListBookingsQueryParams = zod.object({

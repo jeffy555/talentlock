@@ -12,7 +12,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { formatDistanceToNow } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { Shield, LayoutDashboard, Users, Briefcase, Calendar, FileText, Bot, User as UserIcon, LogOut, Video, Menu, X, Bell, CheckCheck } from "lucide-react";
+import { Shield, LayoutDashboard, Users, Briefcase, Calendar, FileText, Bot, User as UserIcon, LogOut, Video, Menu, X, Bell, CheckCheck, CreditCard, Sparkles } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -266,6 +266,18 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                       <Link href="/profile" className="w-full cursor-pointer flex items-center">
                         <UserIcon className="mr-2 h-4 w-4 text-muted-foreground" />
                         Profile Settings
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <Link href="/billing" className="w-full cursor-pointer flex items-center">
+                        <CreditCard className="mr-2 h-4 w-4 text-muted-foreground" />
+                        Billing & Plan
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <Link href="/pricing" className="w-full cursor-pointer flex items-center">
+                        <Sparkles className="mr-2 h-4 w-4 text-gold" />
+                        Upgrade
                       </Link>
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />

@@ -54,8 +54,19 @@ export default function FreelancerDetail() {
       });
       await queryClient.invalidateQueries({ queryKey: ["/api/bookings"] });
       setConfirmedBookingId(booking.id);
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Could not create the booking.";
+    } catch (err: any) {
+      const status = err?.response?.status ?? err?.status;
+      const body = err?.response?.data ?? err?.data;
+      if (status === 402 || body?.code === "PLAN_LIMIT") {
+        toast({
+          title: "Plan limit reached",
+          description: (body?.error ?? "Upgrade for more active bookings.") + " Redirecting to pricing…",
+          variant: "destructive",
+        });
+        setTimeout(() => setLocation("/pricing"), 1200);
+        return;
+      }
+      const msg = body?.error ?? (err instanceof Error ? err.message : "Could not create the booking.");
       toast({ title: "Booking failed", description: msg, variant: "destructive" });
     }
   };

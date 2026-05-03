@@ -86,10 +86,21 @@ export default function JobDetail() {
       queryClient.invalidateQueries({ queryKey: getListNotificationsQueryKey() });
     } catch (err: any) {
       const status = err?.response?.status ?? err?.status;
+      const body = err?.response?.data ?? err?.data;
+      if (status === 402 || body?.code === "PLAN_LIMIT") {
+        toast({
+          title: "Plan limit reached",
+          description: (body?.error ?? "Upgrade for unlimited pitches.") + " Redirecting to pricing…",
+          variant: "destructive",
+        });
+        setInterestOpen(false);
+        setTimeout(() => setLocation("/pricing"), 1200);
+        return;
+      }
       const description =
         status === 409
           ? "You've already expressed interest in this role."
-          : err?.response?.data?.error ?? "Could not send interest. Please try again.";
+          : body?.error ?? "Could not send interest. Please try again.";
       toast({ title: "Couldn't send interest", description, variant: "destructive" });
     }
   };

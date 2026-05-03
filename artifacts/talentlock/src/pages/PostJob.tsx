@@ -52,8 +52,18 @@ export default function PostJob() {
 
       toast({ title: "Requirement Posted", description: "Your job requirement is now live. AI matching has begun." });
       setLocation(`/jobs/${job.id}`);
-    } catch (error) {
-      toast({ title: "Error", description: "Could not post requirement. Please check your inputs.", variant: "destructive" });
+    } catch (error: any) {
+      const body = error?.response?.data ?? error?.data;
+      if (error?.response?.status === 402 || body?.code === "PLAN_LIMIT") {
+        toast({
+          title: "Plan limit reached",
+          description: (body?.error ?? "Upgrade to post more roles.") + " Redirecting to pricing…",
+          variant: "destructive",
+        });
+        setTimeout(() => setLocation("/pricing"), 1200);
+        return;
+      }
+      toast({ title: "Error", description: body?.error ?? "Could not post requirement. Please check your inputs.", variant: "destructive" });
     }
   };
 

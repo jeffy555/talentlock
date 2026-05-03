@@ -433,6 +433,59 @@ export interface Notification {
   createdAt: string;
 }
 
+export type PlanLimitErrorCode =
+  (typeof PlanLimitErrorCode)[keyof typeof PlanLimitErrorCode];
+
+export const PlanLimitErrorCode = {
+  PLAN_LIMIT: "PLAN_LIMIT",
+} as const;
+
+export interface PlanLimitError {
+  error: string;
+  code: PlanLimitErrorCode;
+  planNeeded?: string;
+}
+
+export type PlanDefLimits = {
+  /** @nullable */
+  monthlyJobPosts?: number | null;
+  /** @nullable */
+  activeBookings?: number | null;
+  /** @nullable */
+  monthlyExpressInterests?: number | null;
+  /** @nullable */
+  teamSeats?: number | null;
+};
+
+export interface PlanDef {
+  id: string;
+  audience: string;
+  name: string;
+  priceMonthly: number;
+  tagline: string;
+  features: string[];
+  limits: PlanDefLimits;
+  priority: number;
+}
+
+export interface SubscriptionUsage {
+  activeBookings: number;
+  monthlyJobPosts: number;
+  monthlyExpressInterests: number;
+}
+
+export interface SubscriptionSummary {
+  plan: PlanDef;
+  status: string;
+  /** @nullable */
+  currentPeriodEnd?: string | null;
+  usage: SubscriptionUsage;
+}
+
+export interface UpgradeSubscriptionBody {
+  planId: string;
+}
+
 export interface UploadUrlResponse {
   uploadUrl: string;
   objectPath: string;
@@ -471,6 +524,19 @@ export type ListJobRequirementsParams = {
 export type MarkAllNotificationsRead200 = {
   updated: number;
 };
+
+export type ListPlansParams = {
+  audience?: ListPlansAudience;
+};
+
+export type ListPlansAudience =
+  (typeof ListPlansAudience)[keyof typeof ListPlansAudience];
+
+export const ListPlansAudience = {
+  freelancer: "freelancer",
+  employer: "employer",
+  any: "any",
+} as const;
 
 export type ListBookingsParams = {
   /**

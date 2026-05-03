@@ -9,3 +9,4 @@ export * from "./messages";
 export * from "./meetings";
 export * from "./jobInterests";
 export * from "./notifications";
+export * from "./subscriptions";

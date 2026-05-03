@@ -364,6 +364,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/JobInterest"
+        "402":
+          description: Plan limit reached
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlanLimitError"
         "409":
           description: Already expressed
           content:
@@ -462,6 +468,60 @@ paths:
                   updated:
                     type: integer
                 required: [updated]
+
+  # ── Subscriptions ────────────────────────────────────────────────────────────
+  /subscriptions/plans:
+    get:
+      operationId: listPlans
+      tags: [users]
+      summary: List available subscription plans
+      parameters:
+        - name: audience
+          in: query
+          schema:
+            type: string
+            enum: [freelancer, employer, any]
+      responses:
+        "200":
+          description: Plans
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PlanDef"
+
+  /subscriptions/me:
+    get:
+      operationId: getMySubscription
+      tags: [users]
+      summary: Get the current user's subscription, plan, and usage
+      responses:
+        "200":
+          description: Subscription summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SubscriptionSummary"
+
+  /subscriptions/upgrade:
+    post:
+      operationId: upgradeSubscription
+      tags: [users]
+      summary: Upgrade or change the current user's plan (simulated checkout)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpgradeSubscriptionBody"
+      responses:
+        "200":
+          description: Updated subscription
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SubscriptionSummary"
 
   # ── Bookings ─────────────────────────────────────────────────────────────────
   /bookings:
@@ -1857,6 +1917,58 @@ components:
         - message
         - read
         - createdAt
+
+    PlanLimitError:
+      type: object
+      properties:
+        error: { type: string }
+        code: { type: string, enum: [PLAN_LIMIT] }
+        planNeeded: { type: string }
+      required: [error, code]
+
+    PlanDef:
+      type: object
+      properties:
+        id: { type: string }
+        audience: { type: string }
+        name: { type: string }
+        priceMonthly: { type: number }
+        tagline: { type: string }
+        features:
+          type: array
+          items: { type: string }
+        limits:
+          type: object
+          properties:
+            monthlyJobPosts: { type: ["integer", "null"] }
+            activeBookings: { type: ["integer", "null"] }
+            monthlyExpressInterests: { type: ["integer", "null"] }
+            teamSeats: { type: ["integer", "null"] }
+        priority: { type: integer }
+      required: [id, audience, name, priceMonthly, tagline, features, limits, priority]
+
+    SubscriptionUsage:
+      type: object
+      properties:
+        activeBookings: { type: integer }
+        monthlyJobPosts: { type: integer }
+        monthlyExpressInterests: { type: integer }
+      required: [activeBookings, monthlyJobPosts, monthlyExpressInterests]
+
+    SubscriptionSummary:
+      type: object
+      properties:
+        plan: { $ref: "#/components/schemas/PlanDef" }
+        status: { type: string }
+        currentPeriodEnd: { type: ["string", "null"], format: date-time }
+        usage: { $ref: "#/components/schemas/SubscriptionUsage" }
+      required: [plan, status, usage]
+
+    UpgradeSubscriptionBody:
+      type: object
+      properties:
+        planId: { type: string }
+      required: [planId]
 
     UploadUrlResponse:
       type: object

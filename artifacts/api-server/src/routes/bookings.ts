@@ -2,12 +2,13 @@ import { Router } from "express";
 import { getAuth } from "@clerk/express";
 import { db } from "@workspace/db";
 import {
-  bookingsTable, freelancerProfilesTable, employerProfilesTable,
+  bookingsTable, freelancerProfilesTable, employerProfilesTable, usersTable,
 } from "@workspace/db";
-import { eq, or, and, SQL } from "drizzle-orm";
+import { eq, or, and, inArray, sql, SQL } from "drizzle-orm";
 import {
   CreateBookingBody, UpdateBookingBody, ListBookingsQueryParams,
 } from "@workspace/api-zod";
+import { getUserSubscription, checkLimit } from "../lib/subscriptionGating";
 
 const router = Router();
 
@@ -53,13 +54,34 @@ router.post("/bookings", async (req, res) => {
   try {
     const [employer] = await db.select().from(employerProfilesTable).where(eq(employerProfilesTable.clerkId, clerkId)).limit(1);
     if (!employer) { res.status(400).json({ error: "Employer profile not found" }); return; }
-    const [booking] = await db.insert(bookingsTable)
-      .values({ ...parsed.data as any, employerId: employer.id, status: "pending" })
-      .returning();
-    // Lock freelancer
-    await db.update(freelancerProfilesTable)
-      .set({ isAvailable: false, currentBookingId: booking.id, bookingEndDate: parsed.data.endDate as any })
-      .where(eq(freelancerProfilesTable.id, parsed.data.freelancerId));
+    const [user] = await db.select().from(usersTable).where(eq(usersTable.clerkId, clerkId)).limit(1);
+    if (!user) { res.status(401).json({ error: "User account not found" }); return; }
+
+    // Run plan-limit check + booking insert + freelancer lock inside a single
+    // transaction with SELECT FOR UPDATE on the user row to serialize concurrent
+    // booking creations and prevent TOCTOU limit overruns.
+    const result = await db.transaction(async (tx) => {
+      await tx.execute(sql`SELECT id FROM users WHERE id = ${user.id} FOR UPDATE`);
+      const sub = await getUserSubscription(user.id);
+      const activeRows = await tx.select({ id: bookingsTable.id }).from(bookingsTable)
+        .where(and(eq(bookingsTable.employerId, employer.id), inArray(bookingsTable.status, ["pending", "active"])));
+      const gate = checkLimit(sub.plan, "activeBookings", activeRows.length);
+      if (!gate.allowed) return { gate, booking: null };
+
+      const [booking] = await tx.insert(bookingsTable)
+        .values({ ...parsed.data as any, employerId: employer.id, status: "pending" })
+        .returning();
+      await tx.update(freelancerProfilesTable)
+        .set({ isAvailable: false, currentBookingId: booking.id, bookingEndDate: parsed.data.endDate as any })
+        .where(eq(freelancerProfilesTable.id, parsed.data.freelancerId));
+      return { gate: null, booking };
+    });
+
+    if (result.gate) {
+      res.status(402).json({ error: result.gate.reason, planNeeded: result.gate.planNeeded, code: "PLAN_LIMIT" });
+      return;
+    }
+    const booking = result.booking!;
     res.status(201).json({ ...booking, rate: booking.rate ? parseFloat(booking.rate) : null });
   } catch (err) {
     req.log.error({ err }, "Failed to create booking");

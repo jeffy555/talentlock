@@ -9,7 +9,8 @@ import {
   notificationsTable,
   usersTable,
 } from "@workspace/db";
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, gte, sql } from "drizzle-orm";
+import { getUserSubscription, checkLimit } from "../lib/subscriptionGating";
 
 const router = Router();
 
@@ -31,16 +32,35 @@ router.post("/job-requirements/:id/interest", async (req, res) => {
     if (!job) { res.status(404).json({ error: "Job not found" }); return; }
     if (job.status !== "open") { res.status(400).json({ error: "This role is no longer open" }); return; }
 
+    const [user] = await db.select().from(usersTable).where(eq(usersTable.clerkId, clerkId)).limit(1);
+    if (!user) { res.status(401).json({ error: "User account not found" }); return; }
+
+    const monthStart = new Date(Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth(), 1));
+
     let interest;
     try {
-      [interest] = await db.insert(jobInterestsTable).values({
-        jobRequirementId: jobId,
-        freelancerId: freelancer.id,
-        message: message || null,
-      }).returning();
+      const txResult = await db.transaction(async (tx) => {
+        await tx.execute(sql`SELECT id FROM users WHERE id = ${user.id} FOR UPDATE`);
+        const sub = await getUserSubscription(user.id);
+        const monthlyInterests = await tx.select({ id: jobInterestsTable.id }).from(jobInterestsTable)
+          .where(and(eq(jobInterestsTable.freelancerId, freelancer.id), gte(jobInterestsTable.createdAt as any, monthStart)));
+        const gate = checkLimit(sub.plan, "monthlyExpressInterests", monthlyInterests.length);
+        if (!gate.allowed) return { gate, row: null };
+
+        const [row] = await tx.insert(jobInterestsTable).values({
+          jobRequirementId: jobId,
+          freelancerId: freelancer.id,
+          message: message || null,
+        }).returning();
+        return { gate: null, row };
+      });
+
+      if (txResult.gate) {
+        res.status(402).json({ error: txResult.gate.reason, planNeeded: txResult.gate.planNeeded, code: "PLAN_LIMIT" });
+        return;
+      }
+      interest = txResult.row!;
     } catch (insertErr: any) {
-      // Map Postgres unique-violation (23505) to 409 to handle the race where
-      // two concurrent requests both pass the pre-check.
       if (insertErr?.code === "23505") {
         res.status(409).json({ error: "You have already expressed interest in this role" });
         return;

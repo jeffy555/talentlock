@@ -1,13 +1,14 @@
 import { Router } from "express";
 import { getAuth } from "@clerk/express";
 import { db } from "@workspace/db";
-import { jobRequirementsTable, employerProfilesTable } from "@workspace/db";
-import { eq, and, SQL } from "drizzle-orm";
+import { jobRequirementsTable, employerProfilesTable, usersTable } from "@workspace/db";
+import { eq, and, gte, sql, SQL } from "drizzle-orm";
 import {
   CreateJobRequirementBody,
   UpdateJobRequirementBody,
   ListJobRequirementsQueryParams,
 } from "@workspace/api-zod";
+import { getUserSubscription, checkLimit } from "../lib/subscriptionGating";
 
 const router = Router();
 
@@ -40,10 +41,30 @@ router.post("/job-requirements", async (req, res) => {
   try {
     const [employer] = await db.select().from(employerProfilesTable).where(eq(employerProfilesTable.clerkId, clerkId)).limit(1);
     if (!employer) { res.status(400).json({ error: "Employer profile not found" }); return; }
-    const [job] = await db.insert(jobRequirementsTable)
-      .values({ ...parsed.data as any, employerId: employer.id, status: "open" })
-      .returning();
-    res.status(201).json(mapJob(job));
+    const [user] = await db.select().from(usersTable).where(eq(usersTable.clerkId, clerkId)).limit(1);
+    if (!user) { res.status(401).json({ error: "User account not found" }); return; }
+
+    const monthStart = new Date(Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth(), 1));
+
+    const result = await db.transaction(async (tx) => {
+      await tx.execute(sql`SELECT id FROM users WHERE id = ${user.id} FOR UPDATE`);
+      const sub = await getUserSubscription(user.id);
+      const monthlyJobs = await tx.select({ id: jobRequirementsTable.id }).from(jobRequirementsTable)
+        .where(and(eq(jobRequirementsTable.employerId, employer.id), gte(jobRequirementsTable.createdAt as any, monthStart)));
+      const gate = checkLimit(sub.plan, "monthlyJobPosts", monthlyJobs.length);
+      if (!gate.allowed) return { gate, job: null };
+
+      const [job] = await tx.insert(jobRequirementsTable)
+        .values({ ...parsed.data as any, employerId: employer.id, status: "open" })
+        .returning();
+      return { gate: null, job };
+    });
+
+    if (result.gate) {
+      res.status(402).json({ error: result.gate.reason, planNeeded: result.gate.planNeeded, code: "PLAN_LIMIT" });
+      return;
+    }
+    res.status(201).json(mapJob(result.job!));
   } catch (err) {
     req.log.error({ err }, "Failed to create job requirement");
     res.status(500).json({ error: "Internal server error" });
