@@ -9,6 +9,13 @@ const DEMO_USERS: Record<string, string> = {
 };
 
 router.post("/demo/sign-in-token", async (req, res) => {
+  const demoEnabled =
+    process.env.NODE_ENV !== "production" || process.env.ENABLE_DEMO_LOGIN === "true";
+  if (!demoEnabled) {
+    res.status(404).json({ error: "Not found." });
+    return;
+  }
+
   const { role } = req.body as { role?: string };
 
   if (!role || !DEMO_USERS[role]) {

@@ -120,13 +120,13 @@ function AuthPageWrapper({ children }: { children: React.ReactNode }) {
 }
 
 function DemoLoginPanel() {
-  const { signIn, setActive, isLoaded } = useSignIn();
+  const { signIn } = useSignIn();
   const [, setLocation] = useLocation();
   const [loading, setLoading] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const loginAs = async (role: string, label: string) => {
-    if (!isLoaded || !signIn) {
+    if (!signIn) {
       setError("Auth not ready yet, please try again.");
       return;
     }
@@ -142,14 +142,20 @@ function DemoLoginPanel() {
         const body = await res.json().catch(() => ({}));
         throw new Error((body as { error?: string }).error ?? `Server error ${res.status}`);
       }
-      const { token } = await res.json() as { token: string };
-      const result = await signIn.create({ strategy: "ticket", ticket: token });
-      if (result.status === "complete") {
-        await setActive({ session: result.createdSessionId });
-        setLocation("/dashboard");
-      } else {
-        setError(`Unexpected status: ${result.status}. Try signing in manually above.`);
+      const payload = await res.json() as { token?: unknown };
+      const token = typeof payload.token === "string" ? payload.token : "";
+      if (!token) {
+        throw new Error("Demo sign-in token missing or malformed.");
       }
+      const createResult = await signIn.create({ strategy: "ticket", ticket: token });
+      if (createResult.error) {
+        throw new Error(createResult.error.message ?? "Ticket sign-in failed.");
+      }
+      const finalizeResult = await signIn.finalize();
+      if (finalizeResult.error) {
+        throw new Error(finalizeResult.error.message ?? "Failed to activate session.");
+      }
+      setLocation("/dashboard");
     } catch (err: unknown) {
       console.error("[DemoLogin] sign-in error:", err);
       let msg = "Sign-in failed.";
