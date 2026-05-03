@@ -2,16 +2,16 @@ import { useListAgreements, useGetMe } from "@workspace/api-client-react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { FileText, PenLine, CheckCircle2 } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { FileText, PenLine, CheckCircle2, Shield, ArrowRight } from "lucide-react";
 import { format } from "date-fns";
 
-const statusColors: Record<string, string> = {
-  pending_signatures: "bg-yellow-100 text-yellow-800 border-yellow-200",
-  signed: "bg-green-100 text-green-800 border-green-200",
-  active: "bg-blue-100 text-blue-800 border-blue-200",
-  expired: "bg-gray-100 text-gray-700 border-gray-200",
-  terminated: "bg-red-100 text-red-800 border-red-200",
+const statusColors: Record<string, { bg: string, text: string, border: string }> = {
+  pending_signatures: { bg: "bg-yellow-50", text: "text-yellow-700", border: "border-yellow-200" },
+  signed: { bg: "bg-green-50", text: "text-green-700", border: "border-green-200" },
+  active: { bg: "bg-blue-50", text: "text-blue-700", border: "border-blue-200" },
+  expired: { bg: "bg-gray-50", text: "text-gray-600", border: "border-gray-200" },
+  terminated: { bg: "bg-red-50", text: "text-red-700", border: "border-red-200" },
 };
 
 export default function AgreementsList() {
@@ -19,72 +19,118 @@ export default function AgreementsList() {
   const { data: agreements, isLoading } = useListAgreements();
 
   if (isLoading) {
-    return <div className="flex h-[50vh] items-center justify-center"><div className="h-8 w-8 border-4 border-primary border-t-transparent rounded-full animate-spin" /></div>;
+    return (
+      <div className="space-y-8 animate-fade-in">
+        <div className="space-y-2">
+          <div className="h-8 w-64 bg-muted rounded animate-pulse"></div>
+          <div className="h-5 w-96 bg-muted rounded animate-pulse"></div>
+        </div>
+        <div className="grid md:grid-cols-2 gap-6">
+          {[1, 2, 3, 4].map((i) => (
+            <Card key={i} className="animate-pulse shadow-sm border-border bg-card h-[200px]">
+              <CardHeader className="pb-2"><div className="h-6 w-1/2 bg-muted rounded"></div></CardHeader>
+              <CardContent><div className="h-24 w-full bg-muted rounded"></div></CardContent>
+            </Card>
+          ))}
+        </div>
+      </div>
+    );
   }
 
   return (
-    <div className="space-y-8">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Agreements</h1>
-        <p className="text-muted-foreground mt-1">Legal engagement agreements generated and signed on TalentLock.</p>
+    <div className="max-w-5xl mx-auto space-y-8 animate-fade-in">
+      <div className="border-b border-border/50 pb-6">
+        <h1 className="text-3xl font-serif font-bold tracking-tight text-foreground flex items-center gap-3">
+          <Shield className="h-7 w-7 text-primary" /> Legal Agreements
+        </h1>
+        <p className="text-muted-foreground mt-2 font-light max-w-xl">
+          Your binding engagement contracts, AI-drafted and digitally signed via TalentLock.
+        </p>
       </div>
 
       {!agreements || agreements.length === 0 ? (
-        <Card className="flex flex-col items-center justify-center py-16 text-center bg-secondary/10">
-          <FileText className="h-12 w-12 text-muted-foreground mb-4" />
-          <h3 className="text-lg font-semibold mb-2">No agreements yet</h3>
-          <p className="text-muted-foreground text-sm max-w-sm">
-            Agreements are generated automatically from bookings. Create a booking first.
+        <Card className="flex flex-col items-center justify-center py-24 text-center bg-card shadow-sm border-border border-dashed">
+          <div className="h-16 w-16 bg-muted/50 rounded-full flex items-center justify-center mb-6">
+            <FileText className="h-8 w-8 text-muted-foreground" />
+          </div>
+          <h3 className="text-xl font-serif font-bold text-foreground mb-2">No agreements yet</h3>
+          <p className="text-muted-foreground font-light max-w-md mb-8">
+            Agreements are generated automatically from confirmed bookings. They enforce exclusivity and terms.
           </p>
-          <Button asChild className="mt-6"><Link href="/bookings">View Bookings</Link></Button>
+          <Button asChild className="font-semibold shadow-sm">
+            <Link href="/bookings">View Bookings</Link>
+          </Button>
         </Card>
       ) : (
-        <div className="space-y-4">
-          {agreements.map((agreement) => {
+        <div className="grid md:grid-cols-2 gap-6">
+          {agreements.map((agreement, index) => {
             const isFullySigned = !!agreement.freelancerSignedAt && !!agreement.employerSignedAt;
             const mySignature = me?.role === "freelancer" ? agreement.freelancerSignedAt : agreement.employerSignedAt;
             const needsMySignature = !mySignature && agreement.status === "pending_signatures";
+            const colors = statusColors[agreement.status ?? "pending_signatures"] || { bg: "bg-secondary", text: "text-muted-foreground", border: "border-border" };
 
             return (
-              <Card key={agreement.id} className="hover:shadow-sm transition-all">
-                <CardHeader className="pb-3">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <CardTitle className="text-lg flex items-center gap-2">
-                        <FileText className="h-5 w-5 text-muted-foreground" />
-                        Agreement #{agreement.id}
-                        {needsMySignature && <Badge variant="destructive" className="text-xs">Needs Your Signature</Badge>}
-                      </CardTitle>
-                      <CardDescription className="mt-1">
-                        {me?.role === "employer" ? `Freelancer: ${agreement.freelancerName}` : `Employer: ${agreement.employerName}`}
-                        {" · "}Booking #{agreement.bookingId}
-                      </CardDescription>
-                    </div>
-                    <Badge className={`capitalize border ${statusColors[agreement.status ?? "pending_signatures"] ?? "bg-secondary"}`}>
+              <Card 
+                key={agreement.id} 
+                className={`group flex flex-col hover:shadow-lg transition-all duration-300 border-border bg-card relative overflow-hidden animate-fade-in ${needsMySignature ? 'ring-1 ring-gold/50 shadow-md shadow-gold/5' : ''}`}
+                style={{ animationDelay: `${index * 50}ms`, animationFillMode: "both" }}
+              >
+                <div className={`absolute top-0 left-0 w-full h-1.5 ${needsMySignature ? 'bg-gold' : isFullySigned ? 'bg-green-500' : 'bg-primary'} opacity-80`}></div>
+                
+                <CardHeader className="pb-4">
+                  <div className="flex items-start justify-between mb-3">
+                    <Badge className={`uppercase tracking-widest text-[10px] border shadow-sm ${colors.bg} ${colors.text} ${colors.border}`}>
                       {(agreement.status ?? "pending").replace(/_/g, " ")}
                     </Badge>
+                    {needsMySignature && (
+                      <Badge variant="destructive" className="bg-destructive/10 text-destructive border-destructive/20 text-[10px] uppercase tracking-widest shadow-none hover:bg-destructive/10">
+                        Action Required
+                      </Badge>
+                    )}
                   </div>
+                  <CardTitle className="font-serif text-xl leading-tight">
+                    {me?.role === "employer" ? agreement.freelancerName : agreement.employerName}
+                  </CardTitle>
+                  <CardDescription className="text-xs uppercase tracking-widest font-bold text-muted-foreground mt-2">
+                    Contract #{agreement.id} · Booking #{agreement.bookingId}
+                  </CardDescription>
                 </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-2 gap-4 text-sm mb-4">
-                    <div className="flex items-center gap-2">
-                      {agreement.freelancerSignedAt
-                        ? <CheckCircle2 className="h-4 w-4 text-green-600" />
-                        : <PenLine className="h-4 w-4 text-yellow-600" />}
-                      <span className="text-muted-foreground">Freelancer {agreement.freelancerSignedAt ? `signed ${format(new Date(agreement.freelancerSignedAt), "MMM d")}` : "pending signature"}</span>
+                
+                <CardContent className="flex-1 flex flex-col space-y-5">
+                  <div className="grid grid-cols-2 gap-3 p-4 rounded-xl bg-secondary/20 border border-border/50 text-sm">
+                    {/* Freelancer Status */}
+                    <div className="flex flex-col gap-1.5">
+                      <div className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Freelancer</div>
+                      <div className="flex items-center gap-2 font-medium">
+                        {agreement.freelancerSignedAt ? (
+                          <><CheckCircle2 className="h-4 w-4 text-green-600" /> <span className="text-foreground">Signed</span></>
+                        ) : (
+                          <><PenLine className="h-4 w-4 text-yellow-600" /> <span className="text-muted-foreground italic">Pending</span></>
+                        )}
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      {agreement.employerSignedAt
-                        ? <CheckCircle2 className="h-4 w-4 text-green-600" />
-                        : <PenLine className="h-4 w-4 text-yellow-600" />}
-                      <span className="text-muted-foreground">Employer {agreement.employerSignedAt ? `signed ${format(new Date(agreement.employerSignedAt), "MMM d")}` : "pending signature"}</span>
+                    {/* Employer Status */}
+                    <div className="flex flex-col gap-1.5 border-l border-border/50 pl-3">
+                      <div className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Employer</div>
+                      <div className="flex items-center gap-2 font-medium">
+                        {agreement.employerSignedAt ? (
+                          <><CheckCircle2 className="h-4 w-4 text-green-600" /> <span className="text-foreground">Signed</span></>
+                        ) : (
+                          <><PenLine className="h-4 w-4 text-yellow-600" /> <span className="text-muted-foreground italic">Pending</span></>
+                        )}
+                      </div>
                     </div>
                   </div>
-                  <div className="flex justify-end">
-                    <Button variant={needsMySignature ? "default" : "outline"} size="sm" asChild>
-                      <Link href={`/agreements/${agreement.id}`}>{needsMySignature ? "Review & Sign" : "View Agreement"}</Link>
-                    </Button>
-                  </div>
+
+                  <Button 
+                    className={`w-full mt-auto font-semibold shadow-sm justify-between group/btn ${needsMySignature ? 'bg-primary hover:bg-primary/90 text-primary-foreground' : 'bg-secondary text-secondary-foreground hover:bg-primary hover:text-primary-foreground shadow-none'}`} 
+                    asChild
+                  >
+                    <Link href={`/agreements/${agreement.id}`}>
+                      <span>{needsMySignature ? "Review & Sign" : "View Contract"}</span>
+                      <ArrowRight className="h-4 w-4 opacity-50 group-hover/btn:translate-x-1 transition-transform" />
+                    </Link>
+                  </Button>
                 </CardContent>
               </Card>
             );

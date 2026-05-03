@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, CheckCircle2, Clock, FileText, PenLine, Shield, Lock } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Clock, FileText, PenLine, Shield, Lock, Fingerprint } from "lucide-react";
 import { Link } from "wouter";
 import { format } from "date-fns";
 import { useState } from "react";
@@ -48,10 +48,10 @@ export default function AgreementDetail() {
         data: { role: me.role as "freelancer" | "employer", signatureName: signatureName.trim() } as any,
       });
       toast({
-        title: "Agreement signed!",
+        title: "Contract Executed",
         description: fullyExecuted
-          ? "Both parties have signed. The engagement is now active."
-          : "Your signature has been recorded. The other party will be notified.",
+          ? "Both parties have signed. The engagement is now legally active."
+          : "Your signature has been recorded. The other party has been notified.",
       });
       setSignDialogOpen(false);
       setSignatureName("");
@@ -66,210 +66,249 @@ export default function AgreementDetail() {
   };
 
   if (isLoading) {
-    return <div className="flex h-[50vh] items-center justify-center"><div className="h-8 w-8 border-4 border-primary border-t-transparent rounded-full animate-spin" /></div>;
+    return (
+      <div className="max-w-4xl mx-auto space-y-8 animate-fade-in">
+        <div className="h-8 w-32 bg-muted rounded animate-pulse"></div>
+        <div className="h-16 w-3/4 bg-muted rounded animate-pulse"></div>
+        <div className="h-32 w-full bg-muted rounded animate-pulse"></div>
+        <div className="h-96 w-full bg-muted rounded animate-pulse"></div>
+      </div>
+    );
   }
-  if (!ag) return <div className="text-center py-20 text-muted-foreground">Agreement not found.</div>;
+  
+  if (!ag) {
+    return (
+      <div className="flex flex-col items-center justify-center py-24 text-center animate-fade-in">
+        <div className="h-16 w-16 bg-muted/50 rounded-2xl flex items-center justify-center mb-6 border border-dashed border-border">
+          <FileText className="h-8 w-8 text-muted-foreground" />
+        </div>
+        <h2 className="text-2xl font-serif font-bold mb-2 text-foreground">Agreement Not Found</h2>
+        <p className="text-muted-foreground mb-8 max-w-sm font-light">The contract you are looking for does not exist or you lack permission to view it.</p>
+        <Button asChild className="font-semibold shadow-sm">
+          <Link href="/agreements">Back to Agreements</Link>
+        </Button>
+      </div>
+    );
+  }
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
+    <div className="max-w-4xl mx-auto space-y-8 animate-fade-in">
       <div className="flex items-center gap-4">
-        <Button variant="ghost" size="sm" asChild>
-          <Link href="/agreements"><ArrowLeft className="h-4 w-4 mr-2" />Back to Agreements</Link>
+        <Button variant="ghost" size="sm" asChild className="text-muted-foreground hover:text-foreground">
+          <Link href="/agreements"><ArrowLeft className="h-4 w-4 mr-2" />Back to Contracts</Link>
         </Button>
       </div>
 
       {/* Header */}
-      <div className="flex items-start justify-between flex-wrap gap-3">
-        <div>
-          <h1 className="text-3xl font-bold flex items-center gap-3">
-            <FileText className="h-8 w-8 text-muted-foreground" />Agreement #{ag.id}
+      <div className="flex flex-col md:flex-row md:items-start justify-between gap-6 pb-6 border-b border-border/50">
+        <div className="space-y-3">
+          <div className="flex items-center gap-3">
+            <Badge className={`uppercase tracking-widest text-[10px] border shadow-sm ${fullyExecuted ? "bg-green-50 text-green-700 border-green-200" : "bg-yellow-50 text-yellow-700 border-yellow-200"}`}>
+              {fullyExecuted ? "Fully Executed" : (ag.status ?? "pending").replace(/_/g, " ")}
+            </Badge>
+            <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+              Contract #{ag.id} · Booking #{ag.bookingId}
+            </span>
+          </div>
+          <h1 className="text-4xl font-serif font-bold tracking-tight text-foreground leading-tight">
+            Engagement Agreement
           </h1>
-          <p className="text-muted-foreground mt-1">
-            Booking #{ag.bookingId} · {ag.freelancerName} &amp; {ag.employerName}
+          <p className="text-lg text-primary font-medium">
+            {ag.freelancerName} <span className="text-muted-foreground font-normal px-2">&amp;</span> {ag.employerName}
           </p>
         </div>
-        <Badge className={`capitalize border text-sm ${fullyExecuted ? "bg-green-100 text-green-800 border-green-200" : "bg-yellow-100 text-yellow-800 border-yellow-200"}`}>
-          {fullyExecuted ? "Fully Executed" : (ag.status ?? "pending").replace(/_/g, " ")}
-        </Badge>
+        
+        {myTurn && (
+          <div className="flex-shrink-0 pt-2">
+            <Dialog open={signDialogOpen} onOpenChange={setSignDialogOpen}>
+              <DialogTrigger asChild>
+                <Button size="lg" className="h-12 px-8 shadow-md font-semibold bg-primary hover:bg-primary/90 text-primary-foreground animate-pulse [animation-duration:3s]">
+                  <PenLine className="h-5 w-5 mr-2 text-gold" />
+                  Sign Document
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-[450px]">
+                <DialogHeader className="pb-4 border-b border-border/50">
+                  <div className="mx-auto w-12 h-12 bg-primary/10 text-primary rounded-full flex items-center justify-center mb-4 border border-primary/20">
+                    <Fingerprint className="h-6 w-6" />
+                  </div>
+                  <DialogTitle className="font-serif text-2xl text-center">Execute Contract</DialogTitle>
+                  <DialogDescription className="text-center mt-2">
+                    Type your full legal name below. This acts as your binding digital signature.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-6 py-6">
+                  <div className="rounded-xl border bg-secondary/30 px-5 py-4 flex flex-col gap-1 items-center text-center">
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Signing As</span>
+                    <span className="font-serif text-lg font-bold text-foreground capitalize">{me?.role}</span>
+                    <span className="text-sm font-medium">{me?.name}</span>
+                  </div>
+                  <div className="space-y-3">
+                    <Label htmlFor="sig-name" className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Legal Signature</Label>
+                    <Input
+                      id="sig-name"
+                      placeholder="e.g. Jefferson Immanuel"
+                      value={signatureName}
+                      onChange={e => setSignatureName(e.target.value)}
+                      className="font-serif text-2xl italic h-16 text-center border-primary/30 focus-visible:ring-primary shadow-inner bg-secondary/10"
+                      onKeyDown={e => e.key === "Enter" && signatureName.trim() && handleSign()}
+                      autoFocus
+                    />
+                  </div>
+                </div>
+                <DialogFooter className="sm:justify-center border-t border-border/50 pt-4">
+                  <Button variant="ghost" onClick={() => { setSignDialogOpen(false); setSignatureName(""); }}>Cancel</Button>
+                  <Button
+                    onClick={handleSign}
+                    disabled={signAgreement.isPending || !signatureName.trim()}
+                    className="font-semibold shadow-sm px-8"
+                  >
+                    {signAgreement.isPending ? "Executing..." : "Confirm & Sign"}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          </div>
+        )}
       </div>
 
-      {/* Signing Progress Steps */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-sm flex items-center gap-2"><Shield className="h-4 w-4" />Signing Progress</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-center gap-0">
-            {/* Step 1: Employer */}
-            <div className="flex items-center gap-3 flex-1">
-              <div className={`h-9 w-9 rounded-full flex items-center justify-center flex-shrink-0 ${employerSigned ? "bg-green-600" : "bg-primary"}`}>
-                {employerSigned ? <CheckCircle2 className="h-5 w-5 text-white" /> : <span className="text-white text-sm font-bold">1</span>}
-              </div>
-              <div className="min-w-0">
-                <div className="text-sm font-semibold">{ag.employerName}</div>
-                <div className="text-xs text-muted-foreground">Employer signs first</div>
-                {employerSigned && ag.employerSignedAt && (
-                  <div className="text-xs text-green-700 mt-0.5 font-medium">
-                    ✓ {ag.employerSignatureName ?? "Signed"} · {format(new Date(ag.employerSignedAt), "MMM d, yyyy")}
-                  </div>
-                )}
-                {!employerSigned && <div className="text-xs text-yellow-600 mt-0.5">Awaiting signature</div>}
-              </div>
-            </div>
-
-            {/* Connector */}
-            <div className={`h-0.5 w-12 flex-shrink-0 mx-2 ${employerSigned ? "bg-green-400" : "bg-border"}`} />
-
-            {/* Step 2: Freelancer */}
-            <div className="flex items-center gap-3 flex-1">
-              <div className={`h-9 w-9 rounded-full flex items-center justify-center flex-shrink-0 ${freelancerSigned ? "bg-green-600" : employerSigned ? "bg-primary" : "bg-muted"}`}>
-                {freelancerSigned
-                  ? <CheckCircle2 className="h-5 w-5 text-white" />
-                  : employerSigned
-                  ? <span className="text-white text-sm font-bold">2</span>
-                  : <Lock className="h-4 w-4 text-muted-foreground" />}
-              </div>
-              <div className="min-w-0">
-                <div className="text-sm font-semibold">{ag.freelancerName}</div>
-                <div className="text-xs text-muted-foreground">Freelancer signs second</div>
-                {freelancerSigned && ag.freelancerSignedAt && (
-                  <div className="text-xs text-green-700 mt-0.5 font-medium">
-                    ✓ {ag.freelancerSignatureName ?? "Signed"} · {format(new Date(ag.freelancerSignedAt), "MMM d, yyyy")}
-                  </div>
-                )}
-                {!freelancerSigned && !employerSigned && <div className="text-xs text-muted-foreground mt-0.5">Locked until employer signs</div>}
-                {!freelancerSigned && employerSigned && <div className="text-xs text-yellow-600 mt-0.5">Awaiting your signature</div>}
-              </div>
-            </div>
+      {fullyExecuted && (
+        <div className="flex items-start gap-4 rounded-xl border border-green-200 bg-green-50/80 p-6">
+          <div className="h-10 w-10 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
+            <Shield className="h-5 w-5 text-green-700" />
           </div>
-        </CardContent>
-      </Card>
+          <div>
+            <h3 className="font-serif text-xl font-bold text-green-900">Contract Fully Executed</h3>
+            <p className="text-green-800 mt-1.5 leading-relaxed font-medium">Both parties have digitally signed. The engagement terms and exclusivity period are now legally binding and active.</p>
+          </div>
+        </div>
+      )}
 
       {/* Freelancer waiting banner */}
       {isFreelancer && !employerSigned && (
-        <div className="flex items-center gap-3 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">
-          <Clock className="h-5 w-5 flex-shrink-0" />
+        <div className="flex items-start gap-4 rounded-xl border border-blue-200 bg-blue-50/80 p-6">
+          <div className="h-10 w-10 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
+            <Clock className="h-5 w-5 text-blue-700" />
+          </div>
           <div>
-            <p className="font-semibold">Waiting for the employer to sign first</p>
-            <p className="text-blue-700 mt-0.5">Once {ag.employerName} signs, you'll be able to add your signature here.</p>
+            <h3 className="font-serif text-xl font-bold text-blue-900">Awaiting Employer</h3>
+            <p className="text-blue-800 mt-1.5 leading-relaxed font-medium">The employer must sign the agreement first. Once completed, the document will unlock for your signature.</p>
           </div>
         </div>
       )}
 
-      {/* Sign action */}
-      {myTurn && (
-        <Dialog open={signDialogOpen} onOpenChange={setSignDialogOpen}>
-          <DialogTrigger asChild>
-            <Button size="lg" className="w-full gap-2">
-              <PenLine className="h-5 w-5" />
-              {isEmployer ? "Sign as Employer" : "Sign as Freelancer"}
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle className="flex items-center gap-2"><PenLine className="h-5 w-5" />Add Your Signature</DialogTitle>
-              <DialogDescription>
-                Type your full legal name below to sign this agreement. This acts as your digital signature and is legally binding.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4 py-2">
-              <div className="rounded-lg bg-secondary/40 px-4 py-3 text-sm space-y-1">
-                <div className="text-muted-foreground text-xs">Signing as</div>
-                <div className="font-semibold capitalize">{me?.role} — {me?.name}</div>
+      <div className="grid md:grid-cols-3 gap-8">
+        <div className="md:col-span-2">
+          {/* Agreement content - Designed to look like a real document */}
+          <Card className="shadow-xl border-border bg-white rounded-none sm:rounded-xl overflow-hidden">
+            <div className="h-2 w-full bg-primary"></div>
+            <CardHeader className="bg-primary/5 pb-6 border-b border-border/40">
+              <CardTitle className="font-serif text-2xl flex items-center gap-3">
+                <FileText className="h-6 w-6 text-primary" /> Master Services Agreement
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-8 sm:p-12">
+              <div className="prose prose-sm max-w-none prose-headings:font-serif prose-headings:text-foreground prose-p:text-muted-foreground prose-p:leading-loose text-justify">
+                <pre className="whitespace-pre-wrap font-serif text-sm leading-loose text-foreground bg-transparent p-0 border-none">{ag.content}</pre>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="sig-name">Full Name (as signature)</Label>
-                <Input
-                  id="sig-name"
-                  placeholder="e.g. Jefferson Immanuel"
-                  value={signatureName}
-                  onChange={e => setSignatureName(e.target.value)}
-                  className="font-serif text-lg italic"
-                  onKeyDown={e => e.key === "Enter" && signatureName.trim() && handleSign()}
-                  autoFocus
-                />
-                <p className="text-xs text-muted-foreground">Type your name exactly as you want it to appear on the agreement.</p>
-              </div>
-              {signatureName.trim() && (
-                <div className="rounded-lg border border-dashed p-4">
-                  <div className="text-xs text-muted-foreground mb-1">Preview</div>
-                  <div className="font-serif text-2xl italic text-foreground">{signatureName}</div>
-                  <div className="text-xs text-muted-foreground mt-1">{format(new Date(), "MMMM d, yyyy")}</div>
+
+              {/* Rendered signature block at bottom if signed */}
+              {(employerSigned || freelancerSigned) && (
+                <div className="mt-16 pt-10 border-t border-border/60">
+                  <h3 className="font-bold text-xs uppercase tracking-widest text-muted-foreground mb-8 text-center">Executed Signatures</h3>
+                  <div className="grid sm:grid-cols-2 gap-10">
+                    <div className="space-y-4">
+                      <div className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Employer</div>
+                      {employerSigned ? (
+                        <div className="border-b border-border/80 pb-2">
+                          <div className="font-serif text-3xl italic text-primary">{ag.employerSignatureName}</div>
+                        </div>
+                      ) : (
+                        <div className="border-b border-border/40 border-dashed pb-2 h-10 flex items-end">
+                          <span className="text-xs text-muted-foreground italic">Pending signature</span>
+                        </div>
+                      )}
+                      <div>
+                        <div className="text-sm font-bold text-foreground">{ag.employerName}</div>
+                        <div className="text-xs text-muted-foreground font-mono mt-1">{ag.employerSignedAt ? format(new Date(ag.employerSignedAt), "MMM d, yyyy · HH:mm:ss 'UTC'") : ""}</div>
+                      </div>
+                    </div>
+                    
+                    <div className="space-y-4">
+                      <div className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Freelancer</div>
+                      {freelancerSigned ? (
+                        <div className="border-b border-border/80 pb-2">
+                          <div className="font-serif text-3xl italic text-primary">{ag.freelancerSignatureName}</div>
+                        </div>
+                      ) : (
+                        <div className="border-b border-border/40 border-dashed pb-2 h-10 flex items-end">
+                          <span className="text-xs text-muted-foreground italic">Pending signature</span>
+                        </div>
+                      )}
+                      <div>
+                        <div className="text-sm font-bold text-foreground">{ag.freelancerName}</div>
+                        <div className="text-xs text-muted-foreground font-mono mt-1">{ag.freelancerSignedAt ? format(new Date(ag.freelancerSignedAt), "MMM d, yyyy · HH:mm:ss 'UTC'") : ""}</div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               )}
-            </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => { setSignDialogOpen(false); setSignatureName(""); }}>Cancel</Button>
-              <Button
-                onClick={handleSign}
-                disabled={signAgreement.isPending || !signatureName.trim()}
-              >
-                {signAgreement.isPending ? "Signing..." : "Confirm & Sign"}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      )}
-
-      {fullyExecuted && (
-        <div className="flex items-center gap-3 rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-green-800">
-          <CheckCircle2 className="h-5 w-5 flex-shrink-0" />
-          <div>
-            <p className="font-semibold">Agreement fully executed — Engagement is now Active</p>
-            <p className="text-green-700 text-sm mt-0.5">Both parties have signed. The exclusivity period is in effect.</p>
-          </div>
+            </CardContent>
+          </Card>
         </div>
-      )}
 
-      {/* Agreement content */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg flex items-center gap-2">
-            <Shield className="h-5 w-5" />Agreement Content
-          </CardTitle>
-          <CardDescription>AI-generated legal engagement agreement. Review all sections carefully before signing.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="bg-white border rounded-lg p-6 md:p-8 space-y-0">
-            <pre className="whitespace-pre-wrap font-sans text-sm leading-relaxed text-foreground">{ag.content}</pre>
-
-            {/* Rendered signature block at bottom if signed */}
-            {(employerSigned || freelancerSigned) && (
-              <div className="mt-8 pt-6 border-t space-y-6">
-                <h3 className="font-bold text-base">EXECUTED SIGNATURES</h3>
-                <div className="grid md:grid-cols-2 gap-6">
-                  <div className="space-y-2 border rounded-lg p-4">
-                    <div className="text-xs text-muted-foreground uppercase tracking-wide font-medium">Employer</div>
-                    <div className="text-sm font-semibold">{ag.employerName}</div>
+        <div className="space-y-6">
+          {/* Signing Progress Tracker */}
+          <Card className="shadow-sm border-border bg-card sticky top-24">
+            <CardHeader className="pb-4 border-b border-border/30 bg-muted/5">
+              <CardTitle className="font-serif text-xl flex items-center gap-2"><Shield className="h-5 w-5 text-muted-foreground" />Execution Status</CardTitle>
+            </CardHeader>
+            <CardContent className="pt-6">
+              <div className="relative pl-4 space-y-8 before:absolute before:inset-0 before:ml-6 before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-border before:to-transparent">
+                {/* Step 1: Employer */}
+                <div className="relative flex items-start gap-4">
+                  <div className={`absolute -left-6 h-5 w-5 rounded-full flex items-center justify-center border-2 bg-background z-10 ${employerSigned ? "border-green-500 text-green-500" : "border-primary text-primary"}`}>
+                    {employerSigned ? <CheckCircle2 className="h-3 w-3" /> : <div className="h-1.5 w-1.5 rounded-full bg-primary" />}
+                  </div>
+                  <div className="min-w-0 pb-2">
+                    <div className="text-sm font-bold text-foreground">{ag.employerName}</div>
+                    <div className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mt-0.5">Employer signs first</div>
                     {employerSigned ? (
-                      <>
-                        <div className="font-serif text-2xl italic border-b pb-1 text-primary">{ag.employerSignatureName}</div>
-                        <div className="text-xs text-muted-foreground">{ag.employerSignedAt ? format(new Date(ag.employerSignedAt), "MMMM d, yyyy") : ""}</div>
-                        <Badge className="bg-green-100 text-green-800 border-green-200 border text-xs">Signed</Badge>
-                      </>
+                      <div className="text-xs text-green-700 font-medium mt-1.5 bg-green-50 px-2 py-1 rounded w-fit border border-green-100">
+                        Signed on {format(new Date(ag.employerSignedAt!), "MMM d")}
+                      </div>
                     ) : (
-                      <div className="text-xs text-yellow-600 italic">Awaiting signature</div>
+                      <div className="text-xs text-yellow-600 italic mt-1.5">Awaiting signature</div>
                     )}
                   </div>
-                  <div className="space-y-2 border rounded-lg p-4">
-                    <div className="text-xs text-muted-foreground uppercase tracking-wide font-medium">Freelancer</div>
-                    <div className="text-sm font-semibold">{ag.freelancerName}</div>
+                </div>
+
+                {/* Step 2: Freelancer */}
+                <div className="relative flex items-start gap-4">
+                  <div className={`absolute -left-6 h-5 w-5 rounded-full flex items-center justify-center border-2 bg-background z-10 ${freelancerSigned ? "border-green-500 text-green-500" : employerSigned ? "border-primary text-primary" : "border-muted-foreground/30 text-muted-foreground/30"}`}>
+                    {freelancerSigned ? <CheckCircle2 className="h-3 w-3" /> : !employerSigned ? <Lock className="h-2 w-2" /> : <div className="h-1.5 w-1.5 rounded-full bg-primary" />}
+                  </div>
+                  <div className="min-w-0">
+                    <div className={`text-sm font-bold ${employerSigned ? "text-foreground" : "text-muted-foreground"}`}>{ag.freelancerName}</div>
+                    <div className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mt-0.5">Freelancer signs second</div>
                     {freelancerSigned ? (
-                      <>
-                        <div className="font-serif text-2xl italic border-b pb-1 text-primary">{ag.freelancerSignatureName}</div>
-                        <div className="text-xs text-muted-foreground">{ag.freelancerSignedAt ? format(new Date(ag.freelancerSignedAt), "MMMM d, yyyy") : ""}</div>
-                        <Badge className="bg-green-100 text-green-800 border-green-200 border text-xs">Signed</Badge>
-                      </>
+                      <div className="text-xs text-green-700 font-medium mt-1.5 bg-green-50 px-2 py-1 rounded w-fit border border-green-100">
+                        Signed on {format(new Date(ag.freelancerSignedAt!), "MMM d")}
+                      </div>
+                    ) : !employerSigned ? (
+                      <div className="text-xs text-muted-foreground italic mt-1.5 flex items-center gap-1.5">
+                        <Lock className="h-3 w-3" /> Locked
+                      </div>
                     ) : (
-                      <div className="text-xs text-yellow-600 italic">Awaiting signature</div>
+                      <div className="text-xs text-yellow-600 italic mt-1.5">Awaiting signature</div>
                     )}
                   </div>
                 </div>
               </div>
-            )}
-          </div>
-        </CardContent>
-      </Card>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
     </div>
   );
 }

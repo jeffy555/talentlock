@@ -46,30 +46,42 @@ const clerkAppearance = {
     logoLinkUrl: basePath || "/",
   },
   variables: {
-    colorPrimary: "#0d1f3c",
-    colorForeground: "#0d1f3c",
-    colorMutedForeground: "hsl(220 12% 48%)",
-    colorDanger: "hsl(0 84.2% 60.2%)",
+    colorPrimary: "hsl(222, 47%, 11%)",
+    colorForeground: "hsl(222, 47%, 11%)",
+    colorMutedForeground: "hsl(222, 12%, 48%)",
+    colorDanger: "hsl(0, 84.2%, 60.2%)",
     colorBackground: "#ffffff",
     colorInput: "#ffffff",
-    colorInputForeground: "#0d1f3c",
-    colorNeutral: "hsl(38 18% 86%)",
-    fontFamily: "'Inter', sans-serif",
+    colorInputForeground: "hsl(222, 47%, 11%)",
+    colorNeutral: "hsl(40, 10%, 90%)",
+    fontFamily: "'Plus Jakarta Sans', sans-serif",
     borderRadius: "0.375rem",
   },
   elements: {
     rootBox: "w-full flex justify-center",
-    cardBox: "bg-white rounded-md w-[440px] max-w-full overflow-hidden shadow-xl border border-border",
-    card: "!shadow-none !border-0 !bg-transparent !rounded-none",
-    footer: "!shadow-none !border-0 !bg-transparent !rounded-none",
+    cardBox: "bg-white rounded-xl w-[440px] max-w-full overflow-hidden shadow-2xl border border-border",
+    card: "!shadow-none !border-0 !bg-transparent !rounded-none p-8",
+    headerTitle: "font-serif text-2xl text-foreground",
+    headerSubtitle: "text-muted-foreground",
+    socialButtonsBlockButton: "rounded-md border border-border bg-white text-foreground hover:bg-secondary hover:text-secondary-foreground transition-colors",
+    dividerLine: "bg-border",
+    dividerText: "text-muted-foreground bg-white",
+    formFieldLabel: "text-foreground font-medium",
+    formFieldInput: "rounded-md border-border bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring focus-visible:border-primary disabled:cursor-not-allowed disabled:opacity-50",
+    formButtonPrimary: "rounded-md bg-primary text-primary-foreground shadow hover:bg-primary/90 h-10 px-4 py-2 w-full transition-colors",
+    footerActionLink: "text-primary hover:text-primary/90 hover:underline",
+    footer: "!shadow-none !border-0 !bg-secondary/30 !rounded-none p-4",
   },
 };
 
 function AuthPageWrapper({ children }: { children: React.ReactNode }) {
   const [, setLocation] = useLocation();
   return (
-    <div className="relative flex min-h-[100dvh] flex-col bg-background">
-      <header className="flex items-center justify-between px-6 py-4 border-b border-border">
+    <div className="relative flex min-h-[100dvh] flex-col bg-background font-sans">
+      <header
+        className="flex items-center justify-between px-6 py-4"
+        style={{ borderBottom: "1px solid rgba(0,0,0,0.05)" }}
+      >
         <button
           onClick={() => setLocation("/")}
           className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
@@ -89,8 +101,19 @@ function AuthPageWrapper({ children }: { children: React.ReactNode }) {
           </svg>
         </button>
       </header>
-      <div className="flex flex-1 items-center justify-center px-4 py-10">
-        {children}
+      <div className="flex flex-1 items-center justify-center px-4 py-12 animate-fade-in">
+        <div className="w-full max-w-[440px] space-y-6">
+          <div className="text-center space-y-2 mb-6">
+            <div className="flex items-center justify-center gap-2 mb-4">
+              <div className="h-10 w-10 bg-primary rounded-xl flex items-center justify-center shadow-lg">
+                <svg className="h-5 w-5 text-gold" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/></svg>
+              </div>
+            </div>
+            <h1 className="font-serif text-3xl font-bold tracking-tight text-foreground">Welcome to TalentLock</h1>
+            <p className="text-sm text-muted-foreground font-light">Secure access to the premium talent network.</p>
+          </div>
+          {children}
+        </div>
       </div>
     </div>
   );
@@ -145,57 +168,62 @@ function DemoLoginPanel() {
       label: "Employer",
       email: "employer@talentlock.com",
       description: "TalentLock Demo Corp",
-      color: "#c9a84c",
+      color: "hsl(var(--primary))",
+      textColor: "hsl(var(--gold))",
+      bgClass: "bg-primary/5 hover:bg-primary/10 border-primary/20",
     },
     {
       role: "freelancer",
       label: "Freelancer",
       email: "employee@talentlock.com",
       description: "Full-Stack Dev · $95/hr",
-      color: "#5b8dee",
+      color: "hsl(var(--foreground))",
+      textColor: "hsl(var(--foreground))",
+      bgClass: "bg-secondary/50 hover:bg-secondary border-border",
     },
   ];
 
   return (
-    <div className="w-full max-w-[440px] mx-auto mt-5">
-      <div className="relative mb-4">
+    <div className="w-full mt-8 animate-fade-in" style={{ animationDelay: "150ms", animationFillMode: "both" }}>
+      <div className="relative mb-6">
         <div className="absolute inset-0 flex items-center">
           <span className="w-full border-t border-border" />
         </div>
         <div className="relative flex justify-center">
-          <span className="bg-background px-3 text-xs text-muted-foreground font-medium uppercase tracking-wider">
-            Quick Demo Login
+          <span className="bg-background px-4 text-[11px] text-muted-foreground font-semibold uppercase tracking-[0.2em]">
+            Or proceed with demo
           </span>
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-2 gap-4">
         {accounts.map((acc) => (
           <button
             key={acc.label}
             onClick={() => loginAs(acc.role, acc.label)}
             disabled={!!loading}
-            className="group flex flex-col gap-2 rounded-xl border p-4 text-left transition-all hover:shadow-md disabled:opacity-60 active:scale-95"
-            style={{ borderColor: `${acc.color}44`, backgroundColor: `${acc.color}09` }}
+            className={`group flex flex-col gap-3 rounded-xl border p-5 text-left transition-all duration-300 disabled:opacity-50 active:scale-[0.98] ${acc.bgClass}`}
           >
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold uppercase tracking-wider" style={{ color: acc.color }}>
-                {loading === acc.label ? "Signing in…" : acc.label}
+            <div className="flex items-center justify-between w-full">
+              <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: acc.textColor }}>
+                {loading === acc.label ? "Authenticating…" : acc.label}
               </span>
               {loading === acc.label && (
-                <div className="h-3 w-3 border-2 border-current border-t-transparent rounded-full animate-spin" style={{ color: acc.color }} />
+                <div className="h-3.5 w-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" style={{ color: acc.textColor }} />
               )}
             </div>
             <div>
-              <p className="text-xs font-medium text-foreground">{acc.email}</p>
-              <p className="text-xs text-muted-foreground mt-0.5">{acc.description}</p>
+              <p className="text-sm font-medium text-foreground">{acc.email}</p>
+              <p className="text-xs text-muted-foreground mt-1 font-light">{acc.description}</p>
             </div>
           </button>
         ))}
       </div>
 
       {error && (
-        <p className="mt-3 text-xs text-destructive text-center px-2">{error}</p>
+        <div className="mt-4 p-3 rounded-md bg-destructive/10 border border-destructive/20 text-xs text-destructive text-center">
+          {error}
+        </div>
       )}
     </div>
   );
@@ -204,10 +232,8 @@ function DemoLoginPanel() {
 function SignInPage() {
   return (
     <AuthPageWrapper>
-      <div className="w-full flex flex-col items-center">
-        <SignIn routing="path" path={`${basePath}/sign-in`} signUpUrl={`${basePath}/sign-up`} />
-        <DemoLoginPanel />
-      </div>
+      <SignIn routing="path" path={`${basePath}/sign-in`} signUpUrl={`${basePath}/sign-up`} />
+      <DemoLoginPanel />
     </AuthPageWrapper>
   );
 }
@@ -215,10 +241,8 @@ function SignInPage() {
 function SignUpPage() {
   return (
     <AuthPageWrapper>
-      <div className="w-full flex flex-col items-center">
-        <SignUp routing="path" path={`${basePath}/sign-up`} signInUrl={`${basePath}/sign-in`} />
-        <DemoLoginPanel />
-      </div>
+      <SignUp routing="path" path={`${basePath}/sign-up`} signInUrl={`${basePath}/sign-in`} />
+      <DemoLoginPanel />
     </AuthPageWrapper>
   );
 }

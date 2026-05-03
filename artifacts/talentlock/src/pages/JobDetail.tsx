@@ -3,7 +3,7 @@ import { useGetJobRequirement, useGetMe, useDeleteJobRequirement } from "@worksp
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Calendar, DollarSign, Building, Clock, MapPin, Trash2 } from "lucide-react";
+import { ArrowLeft, Calendar, DollarSign, Clock, Trash2, ShieldCheck, Zap } from "lucide-react";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -31,16 +31,28 @@ export default function JobDetail() {
   const isOwner = user?.role === "employer" && job?.employerId === user?.id;
 
   if (isLoading) {
-    return <div className="flex h-[50vh] items-center justify-center"><div className="animate-pulse flex flex-col items-center"><div className="h-8 w-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div><p className="mt-4 text-muted-foreground">Loading job details...</p></div></div>;
+    return (
+      <div className="max-w-4xl mx-auto space-y-8 animate-fade-in">
+        <div className="h-8 w-32 bg-muted rounded animate-pulse"></div>
+        <div className="h-20 w-3/4 bg-muted rounded animate-pulse"></div>
+        <div className="grid md:grid-cols-3 gap-8">
+          <div className="md:col-span-2 space-y-6"><div className="h-64 w-full bg-muted rounded animate-pulse"></div></div>
+          <div className="space-y-6"><div className="h-48 w-full bg-muted rounded animate-pulse"></div></div>
+        </div>
+      </div>
+    );
   }
 
   if (!job) {
     return (
-      <div className="flex flex-col items-center justify-center py-20">
-        <h2 className="text-2xl font-bold mb-2">Requirement Not Found</h2>
-        <p className="text-muted-foreground mb-6">The job you are looking for does not exist or was removed.</p>
-        <Button asChild>
-          <Link href="/jobs">Back to Jobs</Link>
+      <div className="flex flex-col items-center justify-center py-24 text-center animate-fade-in">
+        <div className="h-16 w-16 bg-muted/50 rounded-2xl flex items-center justify-center mb-6 border border-dashed border-border">
+          <Trash2 className="h-8 w-8 text-muted-foreground" />
+        </div>
+        <h2 className="text-2xl font-serif font-bold mb-2 text-foreground">Requirement Not Found</h2>
+        <p className="text-muted-foreground mb-8 max-w-sm font-light">The job you are looking for does not exist or has been removed.</p>
+        <Button asChild className="font-semibold shadow-sm">
+          <Link href="/jobs">Back to Job Board</Link>
         </Button>
       </div>
     );
@@ -49,7 +61,7 @@ export default function JobDetail() {
   const handleDelete = async () => {
     try {
       await deleteJob.mutateAsync({ id });
-      toast({ title: "Requirement Deleted", description: "The job requirement has been removed." });
+      toast({ title: "Requirement Removed", description: "The job requirement has been permanently deleted." });
       setLocation("/jobs");
     } catch (error) {
       toast({ title: "Error", description: "Failed to delete requirement.", variant: "destructive" });
@@ -57,43 +69,48 @@ export default function JobDetail() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" asChild className="rounded-full">
-            <Link href="/jobs">
-              <ArrowLeft className="h-4 w-4" />
-            </Link>
-          </Button>
-          <div>
-            <div className="flex items-center gap-3">
-              <h1 className="text-3xl font-bold tracking-tight">{job.title}</h1>
-              <Badge variant={job.status === "open" ? "default" : "secondary"}>
-                {job.status.charAt(0).toUpperCase() + job.status.slice(1)}
-              </Badge>
-            </div>
-            <p className="text-primary font-medium mt-1">{job.fieldOfWork}</p>
+    <div className="max-w-5xl mx-auto space-y-8 animate-fade-in">
+      <div className="flex items-center gap-4">
+        <Button variant="ghost" size="sm" asChild className="text-muted-foreground hover:text-foreground">
+          <Link href="/jobs"><ArrowLeft className="h-4 w-4 mr-2" />Back to Jobs</Link>
+        </Button>
+      </div>
+
+      <div className="flex flex-col md:flex-row md:items-start justify-between gap-6 pb-6 border-b border-border/50">
+        <div className="flex-1 space-y-3">
+          <div className="flex items-center gap-3">
+            <Badge 
+              className={job.status === "open" ? "bg-green-50 text-green-700 border-green-200 uppercase tracking-widest text-[10px]" : "uppercase tracking-widest text-[10px] border-border"}
+              variant={job.status === "open" ? "default" : "secondary"}
+            >
+              {job.status}
+            </Badge>
+            <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+              Posted {format(new Date(job.createdAt), "MMM d, yyyy")}
+            </span>
           </div>
+          <h1 className="text-4xl font-serif font-bold tracking-tight text-foreground leading-tight">{job.title}</h1>
+          <p className="text-lg text-primary font-medium">{job.fieldOfWork}</p>
         </div>
 
         {isOwner && (
-          <div className="flex items-center gap-2">
+          <div className="flex-shrink-0">
             <AlertDialog>
               <AlertDialogTrigger asChild>
-                <Button variant="destructive" size="sm">
-                  <Trash2 className="mr-2 h-4 w-4" /> Delete
+                <Button variant="outline" className="border-destructive/30 text-destructive hover:bg-destructive/5 hover:text-destructive shadow-sm">
+                  <Trash2 className="mr-2 h-4 w-4" /> Remove Role
                 </Button>
               </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    This action cannot be undone. This will permanently delete the job requirement.
+              <AlertDialogContent className="sm:max-w-[425px]">
+                <AlertDialogHeader className="pb-4 border-b">
+                  <AlertDialogTitle className="font-serif text-2xl text-destructive">Remove Requirement</AlertDialogTitle>
+                  <AlertDialogDescription className="pt-2">
+                    This action cannot be undone. This will permanently delete the job requirement and remove it from the talent pool matching.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground">Delete</AlertDialogAction>
+                <AlertDialogFooter className="pt-4">
+                  <AlertDialogCancel className="font-semibold">Cancel</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90 font-semibold shadow-sm">Delete</AlertDialogAction>
                 </AlertDialogFooter>
               </AlertDialogContent>
             </AlertDialog>
@@ -101,68 +118,92 @@ export default function JobDetail() {
         )}
       </div>
 
-      <div className="grid md:grid-cols-3 gap-6">
-        <div className="md:col-span-2 space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Description</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="prose prose-sm max-w-none dark:prose-invert">
-                <p className="whitespace-pre-wrap">{job.description}</p>
-              </div>
-            </CardContent>
-          </Card>
+      <div className="grid md:grid-cols-3 gap-8">
+        <div className="md:col-span-2 space-y-8">
+          <section className="space-y-4">
+            <h2 className="font-serif text-2xl font-bold text-foreground">Role Description</h2>
+            <div className="prose prose-sm max-w-none text-muted-foreground leading-relaxed bg-card p-6 md:p-8 rounded-xl border border-border shadow-sm">
+              <p className="whitespace-pre-wrap">{job.description}</p>
+            </div>
+          </section>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Required Skills</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex flex-wrap gap-2">
-                {job.requiredSkills.map((skill, idx) => (
-                  <Badge key={idx} variant="secondary" className="px-3 py-1 text-sm">{skill}</Badge>
-                ))}
+          <section className="space-y-4">
+            <h2 className="font-serif text-2xl font-bold text-foreground">Required Expertise</h2>
+            <div className="bg-card p-6 md:p-8 rounded-xl border border-border shadow-sm flex flex-wrap gap-2">
+              {job.requiredSkills.map((skill, idx) => (
+                <Badge key={idx} variant="secondary" className="px-3.5 py-1.5 bg-secondary/50 text-secondary-foreground hover:bg-secondary font-medium border-border/50 text-sm">
+                  {skill}
+                </Badge>
+              ))}
+            </div>
+          </section>
+          
+          {isOwner && job.status === "open" && (
+            <div className="rounded-xl border border-gold/30 bg-gold/5 p-6 flex items-start gap-4">
+              <div className="h-10 w-10 bg-gold/20 rounded-full flex items-center justify-center flex-shrink-0">
+                <Zap className="h-5 w-5 text-gold" />
               </div>
-            </CardContent>
-          </Card>
+              <div>
+                <h3 className="font-bold text-primary mb-1">AI Talent Matching Active</h3>
+                <p className="text-sm text-muted-foreground leading-relaxed mb-4">
+                  TalentLock AI is continuously scanning our verified network to find the best professionals for this role.
+                </p>
+                <Button asChild variant="outline" className="border-gold/30 text-primary hover:bg-gold/10 font-semibold">
+                  <Link href="/ai-match">View AI Matches</Link>
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Engagement Details</CardTitle>
+          <Card className="shadow-lg border-border bg-card sticky top-24 overflow-hidden">
+            <div className="h-1.5 w-full bg-primary"></div>
+            <CardHeader className="pb-4 bg-primary/5">
+              <CardTitle className="font-serif text-xl">Engagement Details</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-start gap-3">
-                <Calendar className="h-5 w-5 text-muted-foreground mt-0.5" />
-                <div>
-                  <p className="text-sm font-medium">Experience</p>
-                  <p className="text-sm text-muted-foreground">{job.minExperience}+ years</p>
+            <CardContent className="space-y-6 pt-6">
+              <div className="flex flex-col gap-5">
+                <div className="flex gap-4">
+                  <div className="h-10 w-10 bg-secondary/50 rounded-lg flex items-center justify-center flex-shrink-0 border border-border">
+                    <ShieldCheck className="h-5 w-5 text-muted-foreground" />
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1">Seniority</p>
+                    <p className="font-semibold text-foreground">{job.minExperience}+ Years Experience</p>
+                  </div>
                 </div>
-              </div>
-              
-              <div className="flex items-start gap-3">
-                <DollarSign className="h-5 w-5 text-muted-foreground mt-0.5" />
-                <div>
-                  <p className="text-sm font-medium">Budget & Type</p>
-                  <p className="text-sm text-muted-foreground capitalize">{job.paymentType} {job.budget ? `— $${job.budget}` : ""}</p>
+                
+                <div className="flex gap-4">
+                  <div className="h-10 w-10 bg-secondary/50 rounded-lg flex items-center justify-center flex-shrink-0 border border-border">
+                    <DollarSign className="h-5 w-5 text-muted-foreground" />
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1">Compensation</p>
+                    <p className="font-semibold text-foreground capitalize">{job.paymentType} {job.budget ? `— $${job.budget}` : ""}</p>
+                  </div>
                 </div>
-              </div>
 
-              <div className="flex items-start gap-3">
-                <Clock className="h-5 w-5 text-muted-foreground mt-0.5" />
-                <div>
-                  <p className="text-sm font-medium">Timeline</p>
-                  <p className="text-sm text-muted-foreground">
-                    {format(new Date(job.startDate), "MMM d, yyyy")} to {format(new Date(job.endDate), "MMM d, yyyy")}
-                  </p>
+                <div className="flex gap-4">
+                  <div className="h-10 w-10 bg-secondary/50 rounded-lg flex items-center justify-center flex-shrink-0 border border-border">
+                    <Clock className="h-5 w-5 text-muted-foreground" />
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1">Timeline</p>
+                    <p className="font-semibold text-foreground text-sm">
+                      {format(new Date(job.startDate), "MMM d, yyyy")}<br/>
+                      <span className="text-muted-foreground font-normal text-xs block mt-0.5">to {format(new Date(job.endDate), "MMM d, yyyy")}</span>
+                    </p>
+                  </div>
                 </div>
               </div>
             </CardContent>
+            
             {user?.role === "freelancer" && job.status === "open" && (
-              <CardFooter className="pt-4 border-t border-border">
-                <Button className="w-full">Express Interest</Button>
+              <CardFooter className="pt-4 border-t border-border/50 bg-muted/10">
+                <Button className="w-full h-11 shadow font-semibold bg-primary text-primary-foreground hover:bg-primary/90">
+                  Express Interest
+                </Button>
               </CardFooter>
             )}
           </Card>
