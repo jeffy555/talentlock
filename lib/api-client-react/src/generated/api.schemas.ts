@@ -58,6 +58,11 @@ export interface FreelancerProfile {
   /** @nullable */
   achievements?: string | null;
   isVerified: boolean;
+  /** unverified | pending | verified | rejected */
+  verificationStatus?: string;
+  /** @nullable */
+  verificationNote?: string | null;
+  documentNames?: string[];
   isAvailable: boolean;
   /** @nullable */
   currentBookingId?: number | null;
@@ -118,6 +123,11 @@ export interface EmployerProfile {
   /** @nullable */
   website?: string | null;
   isVerified: boolean;
+  /** unverified | pending | verified | rejected */
+  verificationStatus?: string;
+  /** @nullable */
+  verificationNote?: string | null;
+  documentNames?: string[];
   subscriptionPlan: string;
   createdAt: string;
 }
@@ -315,6 +325,24 @@ export interface ActivityItem {
   description: string;
   timestamp: string;
   metadata?: ActivityItemMetadata;
+}
+
+export interface VerifyDocumentsBody {
+  documentUrls: string[];
+  documentNames: string[];
+}
+
+export interface VerifyDocumentsResult {
+  /** verified | rejected | pending */
+  status: string;
+  /** AI reviewer note */
+  note: string;
+  emailSent: boolean;
+  /**
+   * Ethereal preview URL (dev only)
+   * @nullable
+   */
+  emailPreviewUrl?: string | null;
 }
 
 export interface UploadUrlRequest {

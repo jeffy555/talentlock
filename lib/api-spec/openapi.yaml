@@ -734,6 +734,38 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
 
+  # ── Verify Documents ──────────────────────────────────────────────────────
+  /verify/documents:
+    post:
+      operationId: verifyDocuments
+      tags: [users]
+      summary: Submit documents for AI verification and send confirmation email
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VerifyDocumentsBody"
+      responses:
+        "200":
+          description: Verification result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VerifyDocumentsResult"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
 components:
   schemas:
     HealthStatus:
@@ -836,6 +868,15 @@ components:
           type: ["string", "null"]
         isVerified:
           type: boolean
+        verificationStatus:
+          type: string
+          description: "unverified | pending | verified | rejected"
+        verificationNote:
+          type: ["string", "null"]
+        documentNames:
+          type: array
+          items:
+            type: string
         isAvailable:
           type: boolean
         currentBookingId:
@@ -948,6 +989,15 @@ components:
           type: ["string", "null"]
         isVerified:
           type: boolean
+        verificationStatus:
+          type: string
+          description: "unverified | pending | verified | rejected"
+        verificationNote:
+          type: ["string", "null"]
+        documentNames:
+          type: array
+          items:
+            type: string
         subscriptionPlan:
           type: string
         createdAt:
@@ -1379,6 +1429,41 @@ components:
         - type
         - description
         - timestamp
+
+    # ── Verify Documents ──────────────────────────────────────────────────────
+    VerifyDocumentsBody:
+      type: object
+      properties:
+        documentUrls:
+          type: array
+          items:
+            type: string
+        documentNames:
+          type: array
+          items:
+            type: string
+      required:
+        - documentUrls
+        - documentNames
+
+    VerifyDocumentsResult:
+      type: object
+      properties:
+        status:
+          type: string
+          description: "verified | rejected | pending"
+        note:
+          type: string
+          description: AI reviewer note
+        emailSent:
+          type: boolean
+        emailPreviewUrl:
+          type: ["string", "null"]
+          description: Ethereal preview URL (dev only)
+      required:
+        - status
+        - note
+        - emailSent
 
     # ── Storage ────────────────────────────────────────────────────────────────
     UploadUrlRequest:

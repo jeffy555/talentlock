@@ -48,6 +48,8 @@ import type {
   UpsertEmployerProfileBody,
   UpsertUserBody,
   User,
+  VerifyDocumentsBody,
+  VerifyDocumentsResult,
 } from "./api.schemas";
 
 import { customFetch } from "../custom-fetch";
@@ -2865,3 +2867,89 @@ export function useGetObject<
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
+
+/**
+ * @summary Submit documents for AI verification and send confirmation email
+ */
+export const getVerifyDocumentsUrl = () => {
+  return `/api/verify/documents`;
+};
+
+export const verifyDocuments = async (
+  verifyDocumentsBody: VerifyDocumentsBody,
+  options?: RequestInit,
+): Promise<VerifyDocumentsResult> => {
+  return customFetch<VerifyDocumentsResult>(getVerifyDocumentsUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(verifyDocumentsBody),
+  });
+};
+
+export const getVerifyDocumentsMutationOptions = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof verifyDocuments>>,
+    TError,
+    { data: BodyType<VerifyDocumentsBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof verifyDocuments>>,
+  TError,
+  { data: BodyType<VerifyDocumentsBody> },
+  TContext
+> => {
+  const mutationKey = ["verifyDocuments"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof verifyDocuments>>,
+    { data: BodyType<VerifyDocumentsBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return verifyDocuments(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type VerifyDocumentsMutationResult = NonNullable<
+  Awaited<ReturnType<typeof verifyDocuments>>
+>;
+export type VerifyDocumentsMutationBody = BodyType<VerifyDocumentsBody>;
+export type VerifyDocumentsMutationError = ErrorType<ErrorEnvelope>;
+
+/**
+ * @summary Submit documents for AI verification and send confirmation email
+ */
+export const useVerifyDocuments = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof verifyDocuments>>,
+    TError,
+    { data: BodyType<VerifyDocumentsBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof verifyDocuments>>,
+  TError,
+  { data: BodyType<VerifyDocumentsBody> },
+  TContext
+> => {
+  return useMutation(getVerifyDocumentsMutationOptions(options));
+};

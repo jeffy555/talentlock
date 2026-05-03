@@ -30,6 +30,11 @@ export interface FreelancerProfile {
   /** @nullable */
   achievements?: string | null;
   isVerified: boolean;
+  /** unverified | pending | verified | rejected */
+  verificationStatus?: string;
+  /** @nullable */
+  verificationNote?: string | null;
+  documentNames?: string[];
   isAvailable: boolean;
   /** @nullable */
   currentBookingId?: number | null;

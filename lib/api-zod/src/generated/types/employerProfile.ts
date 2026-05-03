@@ -19,6 +19,11 @@ export interface EmployerProfile {
   /** @nullable */
   website?: string | null;
   isVerified: boolean;
+  /** unverified | pending | verified | rejected */
+  verificationStatus?: string;
+  /** @nullable */
+  verificationNote?: string | null;
+  documentNames?: string[];
   subscriptionPlan: string;
   createdAt: Date;
 }

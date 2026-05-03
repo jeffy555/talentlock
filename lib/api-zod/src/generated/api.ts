@@ -75,6 +75,12 @@ export const ListFreelancersResponseItem = zod.object({
   dailyRate: zod.number().nullish(),
   achievements: zod.string().nullish(),
   isVerified: zod.boolean(),
+  verificationStatus: zod
+    .string()
+    .optional()
+    .describe("unverified | pending | verified | rejected"),
+  verificationNote: zod.string().nullish(),
+  documentNames: zod.array(zod.string()).optional(),
   isAvailable: zod.boolean(),
   currentBookingId: zod.number().nullish(),
   bookingEndDate: zod.coerce.date().nullish(),
@@ -119,6 +125,12 @@ export const GetMyFreelancerProfileResponse = zod.object({
   dailyRate: zod.number().nullish(),
   achievements: zod.string().nullish(),
   isVerified: zod.boolean(),
+  verificationStatus: zod
+    .string()
+    .optional()
+    .describe("unverified | pending | verified | rejected"),
+  verificationNote: zod.string().nullish(),
+  documentNames: zod.array(zod.string()).optional(),
   isAvailable: zod.boolean(),
   currentBookingId: zod.number().nullish(),
   bookingEndDate: zod.coerce.date().nullish(),
@@ -161,6 +173,12 @@ export const UpdateMyFreelancerProfileResponse = zod.object({
   dailyRate: zod.number().nullish(),
   achievements: zod.string().nullish(),
   isVerified: zod.boolean(),
+  verificationStatus: zod
+    .string()
+    .optional()
+    .describe("unverified | pending | verified | rejected"),
+  verificationNote: zod.string().nullish(),
+  documentNames: zod.array(zod.string()).optional(),
   isAvailable: zod.boolean(),
   currentBookingId: zod.number().nullish(),
   bookingEndDate: zod.coerce.date().nullish(),
@@ -192,6 +210,12 @@ export const GetFreelancerProfileResponse = zod.object({
   dailyRate: zod.number().nullish(),
   achievements: zod.string().nullish(),
   isVerified: zod.boolean(),
+  verificationStatus: zod
+    .string()
+    .optional()
+    .describe("unverified | pending | verified | rejected"),
+  verificationNote: zod.string().nullish(),
+  documentNames: zod.array(zod.string()).optional(),
   isAvailable: zod.boolean(),
   currentBookingId: zod.number().nullish(),
   bookingEndDate: zod.coerce.date().nullish(),
@@ -212,6 +236,12 @@ export const GetMyEmployerProfileResponse = zod.object({
   description: zod.string().nullish(),
   website: zod.string().nullish(),
   isVerified: zod.boolean(),
+  verificationStatus: zod
+    .string()
+    .optional()
+    .describe("unverified | pending | verified | rejected"),
+  verificationNote: zod.string().nullish(),
+  documentNames: zod.array(zod.string()).optional(),
   subscriptionPlan: zod.string(),
   createdAt: zod.coerce.date(),
 });
@@ -238,6 +268,12 @@ export const UpsertMyEmployerProfileResponse = zod.object({
   description: zod.string().nullish(),
   website: zod.string().nullish(),
   isVerified: zod.boolean(),
+  verificationStatus: zod
+    .string()
+    .optional()
+    .describe("unverified | pending | verified | rejected"),
+  verificationNote: zod.string().nullish(),
+  documentNames: zod.array(zod.string()).optional(),
   subscriptionPlan: zod.string(),
   createdAt: zod.coerce.date(),
 });
@@ -672,4 +708,22 @@ export const GetPublicObjectParams = zod.object({
  */
 export const GetObjectParams = zod.object({
   filePath: zod.coerce.string(),
+});
+
+/**
+ * @summary Submit documents for AI verification and send confirmation email
+ */
+export const VerifyDocumentsBody = zod.object({
+  documentUrls: zod.array(zod.string()),
+  documentNames: zod.array(zod.string()),
+});
+
+export const VerifyDocumentsResponse = zod.object({
+  status: zod.string().describe("verified | rejected | pending"),
+  note: zod.string().describe("AI reviewer note"),
+  emailSent: zod.boolean(),
+  emailPreviewUrl: zod
+    .string()
+    .nullish()
+    .describe("Ethereal preview URL (dev only)"),
 });
