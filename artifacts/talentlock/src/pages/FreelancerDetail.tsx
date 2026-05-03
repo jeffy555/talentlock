@@ -53,8 +53,9 @@ export default function FreelancerDetail() {
       });
       await queryClient.invalidateQueries({ queryKey: ["/api/bookings"] });
       setConfirmedBookingId(booking.id);
-    } catch {
-      toast({ title: "Booking failed", description: "Could not create the booking. Make sure you have an employer profile.", variant: "destructive" });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Could not create the booking.";
+      toast({ title: "Booking failed", description: msg, variant: "destructive" });
     }
   };
 
@@ -74,8 +75,9 @@ export default function FreelancerDetail() {
       });
       await queryClient.invalidateQueries({ queryKey: ["/api/meetings"] });
       setConfirmedMeetingId(meeting.id);
-    } catch {
-      toast({ title: "Failed to schedule meeting", description: "Make sure you have an employer profile.", variant: "destructive" });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to schedule meeting.";
+      toast({ title: "Failed to schedule meeting", description: msg, variant: "destructive" });
     }
   };
 

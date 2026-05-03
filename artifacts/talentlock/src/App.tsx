@@ -1,10 +1,11 @@
-import { useEffect, useRef } from "react";
-import { ClerkProvider, SignIn, SignUp, Show, useClerk } from "@clerk/react";
+import { useEffect, useRef, useState } from "react";
+import { ClerkProvider, SignIn, SignUp, Show, useClerk, useSignIn } from "@clerk/react";
 import { Switch, Route, useLocation, Router as WouterRouter, Redirect } from "wouter";
 import { QueryClient, QueryClientProvider, useQueryClient } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AppLayout } from "@/components/layout/AppLayout";
+import { setAuthTokenGetter } from "@workspace/api-client-react";
 
 import Landing from "@/pages/Landing";
 import NotFound from "@/pages/not-found";
@@ -95,10 +96,100 @@ function AuthPageWrapper({ children }: { children: React.ReactNode }) {
   );
 }
 
+function DemoLoginPanel() {
+  const { signIn, setActive, isLoaded } = useSignIn();
+  const [loading, setLoading] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const loginAs = async (email: string, password: string, label: string) => {
+    if (!isLoaded || !signIn) return;
+    setLoading(label);
+    setError(null);
+    try {
+      const result = await signIn.create({ identifier: email, password });
+      if (result.status === "complete") {
+        await setActive({ session: result.createdSessionId });
+      }
+    } catch (err: unknown) {
+      const msg = err && typeof err === "object" && "errors" in err
+        ? (err as { errors: Array<{ message: string }> }).errors?.[0]?.message
+        : err instanceof Error ? err.message : "Sign-in failed";
+      setError(msg ?? "Sign-in failed");
+    } finally {
+      setLoading(null);
+    }
+  };
+
+  const accounts = [
+    {
+      label: "Employer",
+      email: "employer@talentlock.com",
+      password: "employer",
+      description: "TalentLock Demo Corp",
+      color: "#c9a84c",
+    },
+    {
+      label: "Freelancer",
+      email: "employee@talentlock.com",
+      password: "employee",
+      description: "Full-Stack Dev · $95/hr",
+      color: "#5b8dee",
+    },
+  ];
+
+  return (
+    <div className="w-full max-w-[440px] mx-auto mt-5">
+      <div className="relative mb-4">
+        <div className="absolute inset-0 flex items-center">
+          <span className="w-full border-t border-border" />
+        </div>
+        <div className="relative flex justify-center">
+          <span className="bg-background px-3 text-xs text-muted-foreground font-medium uppercase tracking-wider">
+            Quick Demo Login
+          </span>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        {accounts.map((acc) => (
+          <button
+            key={acc.label}
+            onClick={() => loginAs(acc.email, acc.password, acc.label)}
+            disabled={!!loading}
+            className="group flex flex-col gap-2 rounded-xl border p-4 text-left transition-all hover:shadow-md disabled:opacity-60 active:scale-95"
+            style={{ borderColor: `${acc.color}44`, backgroundColor: `${acc.color}09` }}
+          >
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold uppercase tracking-wider" style={{ color: acc.color }}>
+                {loading === acc.label ? "Signing in…" : acc.label}
+              </span>
+              {loading === acc.label && (
+                <div className="h-3 w-3 border-2 border-current border-t-transparent rounded-full animate-spin" style={{ color: acc.color }} />
+              )}
+            </div>
+            <div>
+              <p className="text-xs font-medium text-foreground">{acc.email}</p>
+              <p className="text-xs text-muted-foreground">pw: <span className="font-mono">{acc.password}</span></p>
+              <p className="text-xs text-muted-foreground mt-0.5">{acc.description}</p>
+            </div>
+          </button>
+        ))}
+      </div>
+
+      {error && (
+        <p className="mt-3 text-xs text-destructive text-center px-2">{error}</p>
+      )}
+    </div>
+  );
+}
+
 function SignInPage() {
   return (
     <AuthPageWrapper>
-      <SignIn routing="path" path={`${basePath}/sign-in`} signUpUrl={`${basePath}/sign-up`} />
+      <div className="w-full flex flex-col items-center">
+        <SignIn routing="path" path={`${basePath}/sign-in`} signUpUrl={`${basePath}/sign-up`} />
+        <DemoLoginPanel />
+      </div>
     </AuthPageWrapper>
   );
 }
@@ -106,9 +197,30 @@ function SignInPage() {
 function SignUpPage() {
   return (
     <AuthPageWrapper>
-      <SignUp routing="path" path={`${basePath}/sign-up`} signInUrl={`${basePath}/sign-in`} />
+      <div className="w-full flex flex-col items-center">
+        <SignUp routing="path" path={`${basePath}/sign-up`} signInUrl={`${basePath}/sign-in`} />
+        <DemoLoginPanel />
+      </div>
     </AuthPageWrapper>
   );
+}
+
+function ClerkAuthTokenSetter() {
+  const { session } = useClerk();
+
+  useEffect(() => {
+    setAuthTokenGetter(async () => {
+      if (!session) return null;
+      try {
+        return await session.getToken();
+      } catch {
+        return null;
+      }
+    });
+    return () => setAuthTokenGetter(null);
+  }, [session]);
+
+  return null;
 }
 
 function ClerkQueryClientCacheInvalidator() {
@@ -177,6 +289,7 @@ function ClerkProviderWithRoutes() {
       routerReplace={(to) => setLocation(stripBase(to), { replace: true })}
     >
       <QueryClientProvider client={queryClient}>
+        <ClerkAuthTokenSetter />
         <ClerkQueryClientCacheInvalidator />
         <Switch>
           <Route path="/" component={Landing} />
