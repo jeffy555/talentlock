@@ -27,7 +27,6 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     { name: "Meetings", href: "/meetings", icon: Video },
     { name: "Bookings", href: "/bookings", icon: Calendar },
     { name: "Agreements", href: "/agreements", icon: FileText },
-    ...(isEmployer ? [{ name: "AI Match", href: "/ai-match", icon: Bot }] : []),
   ];
 
   return (
@@ -64,6 +63,26 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                     </Link>
                   );
                 })}
+                {/* AI Match — highlighted gold button for employers */}
+                {isEmployer && (
+                  <Link
+                    href="/ai-match"
+                    className="flex items-center gap-2 px-3 py-2 rounded-md text-sm font-semibold transition-all ml-1"
+                    style={
+                      location.startsWith("/ai-match")
+                        ? { backgroundColor: "#c9a84c", color: "#0d1f3c" }
+                        : {
+                            background: "linear-gradient(135deg, rgba(201,168,76,0.25) 0%, rgba(201,168,76,0.12) 100%)",
+                            color: "#c9a84c",
+                            border: "1px solid rgba(201,168,76,0.45)",
+                            boxShadow: "0 0 10px rgba(201,168,76,0.15)",
+                          }
+                    }
+                  >
+                    <Bot className="h-4 w-4" />
+                    AI Match
+                  </Link>
+                )}
               </nav>
 
               <DropdownMenu>
