@@ -76,8 +76,22 @@ router.post("/freelancers", async (req, res) => {
   try {
     const [user] = await db.select().from(usersTable).where(eq(usersTable.clerkId, clerkId)).limit(1);
     if (!user) { res.status(400).json({ error: "User profile not found" }); return; }
+    const insertData = { ...parsed.data as any, clerkId, userId: user.id, name: user.name, isAvailable: true, isVerified: false };
     const [profile] = await db.insert(freelancerProfilesTable)
-      .values({ ...parsed.data as any, clerkId, userId: user.id, name: user.name, isAvailable: true, isVerified: false })
+      .values(insertData)
+      .onConflictDoUpdate({
+        target: freelancerProfilesTable.clerkId,
+        set: {
+          tagline: insertData.tagline,
+          fieldOfWork: insertData.fieldOfWork,
+          skills: insertData.skills,
+          yearsExperience: insertData.yearsExperience,
+          paymentPreference: insertData.paymentPreference,
+          hourlyRate: insertData.hourlyRate ?? null,
+          subscriptionPlan: insertData.subscriptionPlan,
+          updatedAt: new Date(),
+        },
+      })
       .returning();
     res.status(201).json(mapProfile(profile));
   } catch (err) {
