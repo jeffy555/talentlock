@@ -11,6 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft } from "lucide-react";
 import { Link } from "wouter";
 import { format } from "date-fns";
+import { FIELDS_OF_WORK } from "@/lib/fields";
 
 export default function PostJob() {
   const [, setLocation] = useLocation();
@@ -86,7 +87,16 @@ export default function PostJob() {
             <div className="grid md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="fieldOfWork">Field of Work</Label>
-                <Input id="fieldOfWork" placeholder="e.g. Web3 Security" value={fieldOfWork} onChange={e => setFieldOfWork(e.target.value)} required />
+                <Select value={fieldOfWork} onValueChange={setFieldOfWork} required>
+                  <SelectTrigger id="fieldOfWork">
+                    <SelectValue placeholder="Select field of work" />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-72">
+                    {FIELDS_OF_WORK.map((f) => (
+                      <SelectItem key={f} value={f}>{f}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="minExperience">Min. Years of Experience</Label>

@@ -10,6 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { Briefcase, Building, CheckCircle, FileText, Upload, X, Loader2, ShieldCheck, ShieldX, Mail, ExternalLink, SkipForward } from "lucide-react";
+import { FIELDS_OF_WORK } from "@/lib/fields";
 import { Badge } from "@/components/ui/badge";
 
 const BASE = import.meta.env.BASE_URL ?? "/";
@@ -407,7 +408,16 @@ export default function Onboarding() {
               <div className="grid md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="fieldOfWork">Primary Field</Label>
-                  <Input id="fieldOfWork" placeholder="e.g. Software Engineering" value={fieldOfWork} onChange={(e) => setFieldOfWork(e.target.value)} required />
+                  <Select value={fieldOfWork} onValueChange={setFieldOfWork} required>
+                    <SelectTrigger id="fieldOfWork">
+                      <SelectValue placeholder="Select your primary field" />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-72">
+                      {FIELDS_OF_WORK.map((f) => (
+                        <SelectItem key={f} value={f}>{f}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="yearsExperience">Years of Experience</Label>
