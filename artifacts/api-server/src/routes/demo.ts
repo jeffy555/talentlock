@@ -4,8 +4,8 @@ import { createClerkClient } from "@clerk/express";
 const router: IRouter = Router();
 
 const DEMO_USERS: Record<string, string> = {
-  employer: "user_3DCjDCio53BNo5NfE5Cp1rm2Vo4",
-  freelancer: "user_3DCjDTWarCQhCgJy5n3EjJOck2N",
+  employer: process.env.DEMO_EMPLOYER_CLERK_ID || "user_3DCjDCio53BNo5NfE5Cp1rm2Vo4",
+  freelancer: process.env.DEMO_FREELANCER_CLERK_ID || "user_3DCjDTWarCQhCgJy5n3EjJOck2N",
 };
 
 router.post("/demo/sign-in-token", async (req, res) => {
