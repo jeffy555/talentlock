@@ -22,6 +22,8 @@ tags:
     description: Booking and exclusivity management
   - name: agreements
     description: Legal agreement generation and signing
+  - name: meetings
+    description: Pre-booking discovery meeting scheduling
   - name: openai
     description: AI-powered matching chat
   - name: dashboard
@@ -520,6 +522,93 @@ paths:
                 $ref: "#/components/schemas/Agreement"
         "400":
           description: Already signed or invalid
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  # ── Meetings ─────────────────────────────────────────────────────────────────
+  /meetings:
+    get:
+      operationId: listMeetings
+      tags: [meetings]
+      summary: List meetings for the current user
+      responses:
+        "200":
+          description: List of meetings
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Meeting"
+    post:
+      operationId: createMeeting
+      tags: [meetings]
+      summary: Schedule a discovery meeting with a freelancer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateMeetingBody"
+      responses:
+        "201":
+          description: Created meeting
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Meeting"
+
+  /meetings/{id}:
+    get:
+      operationId: getMeeting
+      tags: [meetings]
+      summary: Get a meeting by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Meeting
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Meeting"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+    patch:
+      operationId: updateMeeting
+      tags: [meetings]
+      summary: Update meeting status or details
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateMeetingBody"
+      responses:
+        "200":
+          description: Updated meeting
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Meeting"
+        "404":
+          description: Not found
           content:
             application/json:
               schema:
@@ -1282,6 +1371,85 @@ components:
       required:
         - role
         - signatureName
+
+    # ── Meetings ───────────────────────────────────────────────────────────────
+    Meeting:
+      type: object
+      properties:
+        id:
+          type: integer
+        freelancerId:
+          type: integer
+        employerId:
+          type: integer
+        title:
+          type: string
+        scheduledAt:
+          type: string
+          format: date-time
+        durationMinutes:
+          type: integer
+        agenda:
+          type: ["string", "null"]
+        status:
+          type: string
+          description: "pending, confirmed, cancelled, completed"
+        meetingLink:
+          type: ["string", "null"]
+        freelancerName:
+          type: ["string", "null"]
+        employerName:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - freelancerId
+        - employerId
+        - title
+        - scheduledAt
+        - durationMinutes
+        - status
+        - createdAt
+
+    CreateMeetingBody:
+      type: object
+      properties:
+        freelancerId:
+          type: integer
+        title:
+          type: string
+        scheduledAt:
+          type: string
+          format: date-time
+        durationMinutes:
+          type: integer
+        agenda:
+          type: string
+        meetingLink:
+          type: string
+      required:
+        - freelancerId
+        - title
+        - scheduledAt
+
+    UpdateMeetingBody:
+      type: object
+      properties:
+        status:
+          type: string
+        title:
+          type: string
+        scheduledAt:
+          type: string
+          format: date-time
+        durationMinutes:
+          type: integer
+        agenda:
+          type: string
+        meetingLink:
+          type: string
 
     # ── OpenAI Conversations ───────────────────────────────────────────────────
     OpenaiConversation:

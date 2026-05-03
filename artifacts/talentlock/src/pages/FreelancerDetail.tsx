@@ -1,5 +1,5 @@
 import { useParams, useLocation } from "wouter";
-import { useGetFreelancerProfile, useGetMe, useCreateBooking } from "@workspace/api-client-react";
+import { useGetFreelancerProfile, useGetMe, useCreateBooking, useCreateMeeting } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, BadgeCheck, Briefcase, Calendar, Clock, DollarSign, Lock, Star, ExternalLink } from "lucide-react";
+import { ArrowLeft, BadgeCheck, Briefcase, Calendar, Clock, DollarSign, Lock, Star, ExternalLink, Video } from "lucide-react";
 import { useState } from "react";
 import { Link } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
@@ -22,12 +22,22 @@ export default function FreelancerDetail() {
   const { data: me } = useGetMe();
   const { data: freelancer, isLoading } = useGetFreelancerProfile(parseInt(id!), { query: { enabled: !!id } as any });
   const createBooking = useCreateBooking();
+  const createMeeting = useCreateMeeting();
 
   const [bookingOpen, setBookingOpen] = useState(false);
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [paymentType, setPaymentType] = useState("hourly");
   const [confirmedBookingId, setConfirmedBookingId] = useState<number | null>(null);
+
+  const [meetingOpen, setMeetingOpen] = useState(false);
+  const [meetingTitle, setMeetingTitle] = useState("");
+  const [meetingDate, setMeetingDate] = useState("");
+  const [meetingTime, setMeetingTime] = useState("09:00");
+  const [meetingDuration, setMeetingDuration] = useState("30");
+  const [meetingAgenda, setMeetingAgenda] = useState("");
+  const [meetingLink, setMeetingLink] = useState("");
+  const [confirmedMeetingId, setConfirmedMeetingId] = useState<number | null>(null);
 
   const handleBook = async () => {
     if (!freelancer || !startDate || !endDate) return;
@@ -45,6 +55,27 @@ export default function FreelancerDetail() {
       setConfirmedBookingId(booking.id);
     } catch {
       toast({ title: "Booking failed", description: "Could not create the booking. Make sure you have an employer profile.", variant: "destructive" });
+    }
+  };
+
+  const handleScheduleMeeting = async () => {
+    if (!freelancer || !meetingTitle || !meetingDate) return;
+    try {
+      const scheduledAt = new Date(`${meetingDate}T${meetingTime}:00`).toISOString();
+      const meeting = await createMeeting.mutateAsync({
+        data: {
+          freelancerId: freelancer.id,
+          title: meetingTitle,
+          scheduledAt,
+          durationMinutes: parseInt(meetingDuration),
+          ...(meetingAgenda ? { agenda: meetingAgenda } : {}),
+          ...(meetingLink ? { meetingLink } : {}),
+        },
+      });
+      await queryClient.invalidateQueries({ queryKey: ["/api/meetings"] });
+      setConfirmedMeetingId(meeting.id);
+    } catch {
+      toast({ title: "Failed to schedule meeting", description: "Make sure you have an employer profile.", variant: "destructive" });
     }
   };
 
@@ -132,6 +163,119 @@ export default function FreelancerDetail() {
 
         {isEmployer && (
           <div className="md:w-64 space-y-4">
+            {/* Schedule Meeting card */}
+            <Card>
+              <CardHeader className="pb-3"><CardTitle className="text-sm">Discovery Meeting</CardTitle></CardHeader>
+              <CardContent>
+                <Dialog open={meetingOpen} onOpenChange={(open) => {
+                  if (!open && confirmedMeetingId) {
+                    setLocation(`/meetings/${confirmedMeetingId}`);
+                  }
+                  setMeetingOpen(open);
+                  if (!open) { setConfirmedMeetingId(null); setMeetingTitle(""); setMeetingDate(""); setMeetingTime("09:00"); setMeetingDuration("30"); setMeetingAgenda(""); setMeetingLink(""); }
+                }}>
+                  <DialogTrigger asChild>
+                    <Button variant="outline" className="w-full"><Video className="h-4 w-4 mr-2" />Schedule Meeting</Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    {confirmedMeetingId ? (
+                      <>
+                        <DialogHeader>
+                          <DialogTitle className="flex items-center gap-2">
+                            <span className="text-green-600">✓</span> Meeting Scheduled!
+                          </DialogTitle>
+                          <DialogDescription>
+                            Your discovery call with {freelancer.name} has been requested.
+                          </DialogDescription>
+                        </DialogHeader>
+                        <div className="py-4 space-y-4">
+                          <div className="rounded-lg border bg-secondary/30 p-4 text-sm space-y-1">
+                            <div className="flex justify-between"><span className="text-muted-foreground">With</span><span className="font-medium">{freelancer.name}</span></div>
+                            <div className="flex justify-between"><span className="text-muted-foreground">Date</span><span className="font-medium">{meetingDate} at {meetingTime}</span></div>
+                            <div className="flex justify-between"><span className="text-muted-foreground">Duration</span><span className="font-medium">{meetingDuration} min</span></div>
+                          </div>
+                          <a
+                            href={buildGoogleCalendarUrl({
+                              title: meetingTitle || `Discovery Call: ${freelancer.name}`,
+                              startDate: new Date(`${meetingDate}T${meetingTime}:00`).toISOString(),
+                              endDate: new Date(new Date(`${meetingDate}T${meetingTime}:00`).getTime() + parseInt(meetingDuration) * 60000).toISOString(),
+                              details: `TalentLock Discovery Meeting with ${freelancer.name}${meetingAgenda ? `\n\nAgenda:\n${meetingAgenda}` : ""}${meetingLink ? `\n\nJoin: ${meetingLink}` : ""}`,
+                            })}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="block"
+                          >
+                            <Button variant="outline" className="w-full gap-2" style={{ borderColor: "#4285F4", color: "#4285F4" }}>
+                              <svg viewBox="0 0 24 24" className="h-4 w-4" fill="currentColor">
+                                <path d="M19.5 3h-3V1.5h-1.5V3h-6V1.5H7.5V3h-3C3.675 3 3 3.675 3 4.5v15C3 20.325 3.675 21 4.5 21h15c.825 0 1.5-.675 1.5-1.5v-15C21 3.675 20.325 3 19.5 3zm0 16.5h-15V9h15v10.5zM7.5 12H6v-1.5h1.5V12zm3 0H9v-1.5h1.5V12zm3 0H12v-1.5h1.5V12zm3 0H15v-1.5h1.5V12zM7.5 15H6v-1.5h1.5V15zm3 0H9v-1.5h1.5V15zm3 0H12v-1.5h1.5V15zm3 0H15v-1.5h1.5V15zM7.5 18H6v-1.5h1.5V18zm3 0H9v-1.5h1.5V18zm3 0H12v-1.5h1.5V18z"/>
+                              </svg>
+                              Add to Google Calendar
+                              <ExternalLink className="h-3 w-3 opacity-60" />
+                            </Button>
+                          </a>
+                        </div>
+                        <DialogFooter>
+                          <Button onClick={() => setLocation(`/meetings/${confirmedMeetingId}`)}>
+                            View Meeting Details →
+                          </Button>
+                        </DialogFooter>
+                      </>
+                    ) : (
+                      <>
+                        <DialogHeader>
+                          <DialogTitle>Schedule a Meeting with {freelancer.name}</DialogTitle>
+                          <DialogDescription>Set up a discovery call before committing to a formal engagement.</DialogDescription>
+                        </DialogHeader>
+                        <div className="space-y-4 py-4">
+                          <div className="space-y-2">
+                            <Label>Meeting Title</Label>
+                            <Input placeholder="e.g. Initial Discovery Call" value={meetingTitle} onChange={e => setMeetingTitle(e.target.value)} />
+                          </div>
+                          <div className="grid grid-cols-2 gap-3">
+                            <div className="space-y-2">
+                              <Label>Date</Label>
+                              <Input type="date" value={meetingDate} onChange={e => setMeetingDate(e.target.value)} />
+                            </div>
+                            <div className="space-y-2">
+                              <Label>Time</Label>
+                              <Input type="time" value={meetingTime} onChange={e => setMeetingTime(e.target.value)} />
+                            </div>
+                          </div>
+                          <div className="space-y-2">
+                            <Label>Duration</Label>
+                            <Select value={meetingDuration} onValueChange={setMeetingDuration}>
+                              <SelectTrigger><SelectValue /></SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="15">15 minutes</SelectItem>
+                                <SelectItem value="30">30 minutes</SelectItem>
+                                <SelectItem value="45">45 minutes</SelectItem>
+                                <SelectItem value="60">1 hour</SelectItem>
+                                <SelectItem value="90">1.5 hours</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="space-y-2">
+                            <Label>Agenda <span className="text-muted-foreground text-xs">(optional)</span></Label>
+                            <Input placeholder="Topics you'd like to cover…" value={meetingAgenda} onChange={e => setMeetingAgenda(e.target.value)} />
+                          </div>
+                          <div className="space-y-2">
+                            <Label>Meeting Link <span className="text-muted-foreground text-xs">(optional)</span></Label>
+                            <Input placeholder="https://meet.google.com/…" value={meetingLink} onChange={e => setMeetingLink(e.target.value)} />
+                          </div>
+                        </div>
+                        <DialogFooter>
+                          <Button variant="outline" onClick={() => setMeetingOpen(false)}>Cancel</Button>
+                          <Button onClick={handleScheduleMeeting} disabled={createMeeting.isPending || !meetingTitle || !meetingDate}>
+                            {createMeeting.isPending ? "Scheduling…" : "Schedule Meeting"}
+                          </Button>
+                        </DialogFooter>
+                      </>
+                    )}
+                  </DialogContent>
+                </Dialog>
+              </CardContent>
+            </Card>
+
             <Card>
               <CardHeader className="pb-3"><CardTitle className="text-sm">Engage This Talent</CardTitle></CardHeader>
               <CardContent>

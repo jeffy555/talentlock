@@ -2,7 +2,7 @@ import { Link, useLocation } from "wouter";
 import { useUser, useClerk } from "@clerk/react";
 import { useGetMe } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
-import { Shield, LayoutDashboard, Users, Briefcase, Calendar, FileText, Bot, User as UserIcon, LogOut } from "lucide-react";
+import { Shield, LayoutDashboard, Users, Briefcase, Calendar, FileText, Bot, User as UserIcon, LogOut, Video } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -24,6 +24,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
     ...(isEmployer ? [{ name: "Freelancers", href: "/freelancers", icon: Users }] : []),
     { name: "Jobs", href: "/jobs", icon: Briefcase },
+    { name: "Meetings", href: "/meetings", icon: Video },
     { name: "Bookings", href: "/bookings", icon: Calendar },
     { name: "Agreements", href: "/agreements", icon: FileText },
     ...(isEmployer ? [{ name: "AI Match", href: "/ai-match", icon: Bot }] : []),

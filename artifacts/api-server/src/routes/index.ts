@@ -10,6 +10,7 @@ import agreementsRouter from "./agreements";
 import openaiChatRouter from "./openaiChat";
 import dashboardRouter from "./dashboard";
 import verifyDocumentsRouter from "./verifyDocuments";
+import meetingsRouter from "./meetings";
 
 const router: IRouter = Router();
 
@@ -21,6 +22,7 @@ router.use(employersRouter);
 router.use(jobRequirementsRouter);
 router.use(bookingsRouter);
 router.use(agreementsRouter);
+router.use(meetingsRouter);
 router.use(openaiChatRouter);
 router.use(dashboardRouter);
 router.use(verifyDocumentsRouter);

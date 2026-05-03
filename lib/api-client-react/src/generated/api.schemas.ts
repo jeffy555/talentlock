@@ -262,6 +262,44 @@ export interface SignAgreementBody {
   signatureName: string;
 }
 
+export interface Meeting {
+  id: number;
+  freelancerId: number;
+  employerId: number;
+  title: string;
+  scheduledAt: string;
+  durationMinutes: number;
+  /** @nullable */
+  agenda?: string | null;
+  /** pending, confirmed, cancelled, completed */
+  status: string;
+  /** @nullable */
+  meetingLink?: string | null;
+  /** @nullable */
+  freelancerName?: string | null;
+  /** @nullable */
+  employerName?: string | null;
+  createdAt: string;
+}
+
+export interface CreateMeetingBody {
+  freelancerId: number;
+  title: string;
+  scheduledAt: string;
+  durationMinutes?: number;
+  agenda?: string;
+  meetingLink?: string;
+}
+
+export interface UpdateMeetingBody {
+  status?: string;
+  title?: string;
+  scheduledAt?: string;
+  durationMinutes?: number;
+  agenda?: string;
+  meetingLink?: string;
+}
+
 export interface OpenaiConversation {
   id: number;
   title: string;

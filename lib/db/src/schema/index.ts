@@ -6,3 +6,4 @@ export * from "./bookings";
 export * from "./agreements";
 export * from "./conversations";
 export * from "./messages";
+export * from "./meetings";

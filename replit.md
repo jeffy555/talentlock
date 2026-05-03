@@ -34,6 +34,7 @@ A full-stack secure freelancer booking platform with AI-powered talent matching,
 | `agreements` | AI-generated legal agreements |
 | `conversations` | AI match chat sessions |
 | `messages` | Individual chat messages |
+| `meetings` | Discovery meeting requests between employers and freelancers |
 
 ## Key Features
 
@@ -54,6 +55,7 @@ A full-stack secure freelancer booking platform with AI-powered talent matching,
 - `GET/POST/PATCH/DELETE /api/job-requirements/:id` — Job postings
 - `GET/POST/PATCH /api/bookings/:id` — Bookings + status management
 - `GET/POST /api/agreements/:id` + `/api/agreements/:id/sign` — Agreements + signing
+- `GET/POST /api/meetings` + `GET/PATCH /api/meetings/:id` — Discovery meetings
 - `GET/POST /api/openai/conversations/:id/messages` — AI chat
 - `GET /api/dashboard/stats` + `/api/dashboard/activity` — Dashboard data
 

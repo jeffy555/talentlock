@@ -577,6 +577,90 @@ export const SignAgreementResponse = zod.object({
 });
 
 /**
+ * @summary List meetings for the current user
+ */
+export const ListMeetingsResponseItem = zod.object({
+  id: zod.number(),
+  freelancerId: zod.number(),
+  employerId: zod.number(),
+  title: zod.string(),
+  scheduledAt: zod.coerce.date(),
+  durationMinutes: zod.number(),
+  agenda: zod.string().nullish(),
+  status: zod.string().describe("pending, confirmed, cancelled, completed"),
+  meetingLink: zod.string().nullish(),
+  freelancerName: zod.string().nullish(),
+  employerName: zod.string().nullish(),
+  createdAt: zod.coerce.date(),
+});
+export const ListMeetingsResponse = zod.array(ListMeetingsResponseItem);
+
+/**
+ * @summary Schedule a discovery meeting with a freelancer
+ */
+export const CreateMeetingBody = zod.object({
+  freelancerId: zod.number(),
+  title: zod.string(),
+  scheduledAt: zod.coerce.date(),
+  durationMinutes: zod.number().optional(),
+  agenda: zod.string().optional(),
+  meetingLink: zod.string().optional(),
+});
+
+/**
+ * @summary Get a meeting by ID
+ */
+export const GetMeetingParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const GetMeetingResponse = zod.object({
+  id: zod.number(),
+  freelancerId: zod.number(),
+  employerId: zod.number(),
+  title: zod.string(),
+  scheduledAt: zod.coerce.date(),
+  durationMinutes: zod.number(),
+  agenda: zod.string().nullish(),
+  status: zod.string().describe("pending, confirmed, cancelled, completed"),
+  meetingLink: zod.string().nullish(),
+  freelancerName: zod.string().nullish(),
+  employerName: zod.string().nullish(),
+  createdAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Update meeting status or details
+ */
+export const UpdateMeetingParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const UpdateMeetingBody = zod.object({
+  status: zod.string().optional(),
+  title: zod.string().optional(),
+  scheduledAt: zod.coerce.date().optional(),
+  durationMinutes: zod.number().optional(),
+  agenda: zod.string().optional(),
+  meetingLink: zod.string().optional(),
+});
+
+export const UpdateMeetingResponse = zod.object({
+  id: zod.number(),
+  freelancerId: zod.number(),
+  employerId: zod.number(),
+  title: zod.string(),
+  scheduledAt: zod.coerce.date(),
+  durationMinutes: zod.number(),
+  agenda: zod.string().nullish(),
+  status: zod.string().describe("pending, confirmed, cancelled, completed"),
+  meetingLink: zod.string().nullish(),
+  freelancerName: zod.string().nullish(),
+  employerName: zod.string().nullish(),
+  createdAt: zod.coerce.date(),
+});
+
+/**
  * @summary List AI matching conversations
  */
 export const ListOpenaiConversationsResponseItem = zod.object({

@@ -21,6 +21,8 @@ import AgreementsList from "@/pages/AgreementsList";
 import AgreementDetail from "@/pages/AgreementDetail";
 import AiMatch from "@/pages/AiMatch";
 import Profile from "@/pages/Profile";
+import MeetingsList from "@/pages/MeetingsList";
+import MeetingDetail from "@/pages/MeetingDetail";
 
 const clerkPubKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY as string;
 const clerkProxyUrl = import.meta.env.VITE_CLERK_PROXY_URL as string | undefined;
@@ -193,6 +195,8 @@ function ClerkProviderWithRoutes() {
           <Route path="/agreements" component={() => <ProtectedRoute component={AgreementsList} />} />
           <Route path="/agreements/:id" component={() => <ProtectedRoute component={AgreementDetail} />} />
           <Route path="/ai-match" component={() => <ProtectedRoute component={AiMatch} />} />
+          <Route path="/meetings" component={() => <ProtectedRoute component={MeetingsList} />} />
+          <Route path="/meetings/:id" component={() => <ProtectedRoute component={MeetingDetail} />} />
           <Route path="/profile" component={() => <ProtectedRoute component={Profile} />} />
 
           <Route component={NotFound} />
