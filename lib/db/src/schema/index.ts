@@ -10,3 +10,4 @@ export * from "./meetings";
 export * from "./jobInterests";
 export * from "./notifications";
 export * from "./subscriptions";
+export * from "./auditLogs";

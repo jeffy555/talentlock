@@ -26,6 +26,8 @@ import MeetingsList from "@/pages/MeetingsList";
 import MeetingDetail from "@/pages/MeetingDetail";
 import Pricing from "@/pages/Pricing";
 import Billing from "@/pages/Billing";
+import AdminLogin from "@/pages/AdminLogin";
+import AdminDashboard from "@/pages/AdminDashboard";
 
 const clerkPubKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY as string;
 const clerkProxyUrl = import.meta.env.VITE_CLERK_PROXY_URL as string | undefined;
@@ -278,23 +280,39 @@ function ClerkAuthTokenSetter() {
 }
 
 function ClerkQueryClientCacheInvalidator() {
-  const { addListener } = useClerk();
+  const { addListener, session } = useClerk();
   const queryClient = useQueryClient();
   const prevUserIdRef = useRef<string | null | undefined>(undefined);
 
   useEffect(() => {
     const unsubscribe = addListener(({ user }) => {
       const userId = user?.id ?? null;
-      if (
-        prevUserIdRef.current !== undefined &&
-        prevUserIdRef.current !== userId
-      ) {
+      if (prevUserIdRef.current !== undefined && prevUserIdRef.current !== userId) {
         queryClient.clear();
+        // Track auth event in audit log. The login fires when userId transitions
+        // from null/undefined to a real id; logout fires on the reverse.
+        const wasSignedIn = !!prevUserIdRef.current;
+        const isSignedIn = !!userId;
+        const path = isSignedIn && !wasSignedIn ? "track-login" : !isSignedIn && wasSignedIn ? "track-logout" : null;
+        if (path) {
+          (async () => {
+            try {
+              const token = isSignedIn ? await session?.getToken() : null;
+              await fetch(`${basePath}/api/auth/${path}`, {
+                method: "POST",
+                credentials: "include",
+                headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+              });
+            } catch {
+              // best-effort; never block UX on audit logging
+            }
+          })();
+        }
       }
       prevUserIdRef.current = userId;
     });
     return unsubscribe;
-  }, [addListener, queryClient]);
+  }, [addListener, queryClient, session]);
 
   return null;
 }
@@ -367,6 +385,9 @@ function ClerkProviderWithRoutes() {
           <Route path="/profile" component={() => <ProtectedRoute component={Profile} />} />
           <Route path="/pricing" component={() => <ProtectedRoute component={Pricing} />} />
           <Route path="/billing" component={() => <ProtectedRoute component={Billing} />} />
+
+          <Route path="/admin/login" component={AdminLogin} />
+          <Route path="/admin" component={AdminDashboard} />
 
           <Route component={NotFound} />
         </Switch>

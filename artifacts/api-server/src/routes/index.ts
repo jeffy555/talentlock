@@ -15,6 +15,8 @@ import jobInterestsRouter from "./jobInterests";
 import notificationsRouter from "./notifications";
 import demoRouter from "./demo";
 import subscriptionsRouter from "./subscriptions";
+import adminRouter from "./admin";
+import authTrackingRouter from "./authTracking";
 
 const router: IRouter = Router();
 
@@ -31,6 +33,8 @@ router.use(meetingsRouter);
 router.use(jobInterestsRouter);
 router.use(notificationsRouter);
 router.use(subscriptionsRouter);
+router.use(adminRouter);
+router.use(authTrackingRouter);
 router.use(openaiChatRouter);
 router.use(dashboardRouter);
 router.use(verifyDocumentsRouter);

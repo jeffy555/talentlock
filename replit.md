@@ -36,6 +36,16 @@ A full-stack secure freelancer booking platform with AI-powered talent matching,
 | `messages` | Individual chat messages |
 | `meetings` | Discovery meeting requests between employers and freelancers |
 | `subscriptions` | Per-user billing plan, status, and current period (one row per user, unique on `user_id`) |
+| `audit_logs` | Authentication + admin activity audit trail (login/logout events with IP, user agent) |
+
+## Admin Console
+
+A separate admin dashboard lives at `/admin` (login at `/admin/login`) **outside** the Clerk-protected route tree. Admin auth is intentionally separate from end-user Clerk auth:
+
+- **Credentials**: `ADMIN_USERNAME` / `ADMIN_PASSWORD` env vars (defaults: `admin` / `TalentLockAdmin123!` — override in production).
+- **Session**: HMAC-signed httpOnly cookie `tl_admin` (8h TTL, signed with `SESSION_SECRET`).
+- **API**: `/api/admin/{login,logout,me,stats,users,audit,bookings,jobs,subscriptions}` — all read endpoints gated by `requireAdmin` middleware.
+- **Audit tracking**: Frontend calls `/api/auth/track-login` and `/api/auth/track-logout` on every Clerk session transition; admin login/logout actions write their own audit rows. All events visible in the dashboard's Activity Log tab.
 
 ## Subscription / Billing System
 
