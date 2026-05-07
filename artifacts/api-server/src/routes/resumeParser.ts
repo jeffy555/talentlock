@@ -1,14 +1,15 @@
 import { Router, type IRouter } from "express";
 import { getAuth } from "@clerk/express";
 import { createRequire } from "node:module";
+import { writeFileSync, unlinkSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import multer from "multer";
 import OpenAI from "openai";
 
 const require = createRequire(import.meta.url);
-// pdf-parse and mammoth are CJS-only — loaded via require to avoid ESM bundling issues
-// esbuild may wrap the default export, so unwrap .default if needed
-const _pdfParseMod = require("pdf-parse");
-const pdfParse = (typeof _pdfParseMod === "function" ? _pdfParseMod : _pdfParseMod.default) as (buf: Buffer) => Promise<{ text: string }>;
+// pdf-parse v2 and mammoth are CJS-only — loaded via require to avoid ESM bundling issues
+const { PDFParse } = require("pdf-parse") as { PDFParse: new (opts: { url: string }) => { getText: () => Promise<{ text: string }> } };
 const _mammothMod = require("mammoth");
 const mammoth = (_mammothMod.default ?? _mammothMod) as { extractRawText: (opts: { buffer: Buffer }) => Promise<{ value: string }> };
 
@@ -60,8 +61,15 @@ const FIELDS_OF_WORK = [
 async function extractText(file: Express.Multer.File): Promise<string> {
   const mime = file.mimetype;
   if (mime === "application/pdf") {
-    const result = await pdfParse(file.buffer);
-    return result.text;
+    const tmp = join(tmpdir(), `resume-${Date.now()}.pdf`);
+    try {
+      writeFileSync(tmp, file.buffer);
+      const parser = new PDFParse({ url: `file://${tmp}` });
+      const result = await parser.getText();
+      return result.text;
+    } finally {
+      try { unlinkSync(tmp); } catch { /* ignore cleanup errors */ }
+    }
   }
   if (
     mime === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ||
