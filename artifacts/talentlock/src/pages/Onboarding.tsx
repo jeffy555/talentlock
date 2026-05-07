@@ -105,6 +105,7 @@ export default function Onboarding() {
 
   const [step, setStep] = useState<"role" | "freelancer-details" | "employer-details" | "docs" | "verifying" | "result">("role");
   const [role, setRole] = useState<"freelancer" | "employer" | null>(null);
+  const [autoCreating, setAutoCreating] = useState(false);
 
   // Freelancer fields
   const [tagline, setTagline] = useState("");
@@ -114,13 +115,45 @@ export default function Onboarding() {
   const [paymentPreference, setPaymentPreference] = useState("hourly");
   const [hourlyRate, setHourlyRate] = useState("");
 
-  const handleResumeParsed = (data: ParsedResume) => {
+  const handleResumeParsed = async (data: ParsedResume) => {
+    // Fill fields for display
     if (data.tagline) setTagline(data.tagline);
     if (data.fieldOfWork && FIELDS_OF_WORK.includes(data.fieldOfWork)) setFieldOfWork(data.fieldOfWork);
     if (data.skills?.length) setSkills(data.skills.join(", "));
     if (data.yearsExperience) setYearsExperience(String(data.yearsExperience));
     if (data.paymentPreference) setPaymentPreference(data.paymentPreference);
     if (data.hourlyRate) setHourlyRate(String(data.hourlyRate));
+
+    // Auto-create the profile immediately using the parsed data directly
+    if (!user) return;
+    setAutoCreating(true);
+    try {
+      await upsertMe.mutateAsync({
+        data: {
+          role: "freelancer",
+          email: user.primaryEmailAddress?.emailAddress || "",
+          name: user.fullName || "",
+          avatarUrl: user.imageUrl,
+        },
+      });
+      await createFreelancerProfile.mutateAsync({
+        data: {
+          tagline: data.tagline || "",
+          fieldOfWork: FIELDS_OF_WORK.includes(data.fieldOfWork) ? data.fieldOfWork : "Other",
+          skills: data.skills?.slice(0, 15) ?? [],
+          yearsExperience: data.yearsExperience ?? 0,
+          paymentPreference: data.paymentPreference || "hourly",
+          hourlyRate: data.hourlyRate ?? null,
+          subscriptionPlan: "basic",
+        },
+      });
+      toast({ title: "Profile created!", description: "Your profile was built from your resume. You can refine it anytime from your profile page." });
+      setStep("docs");
+    } catch {
+      toast({ title: "Could not auto-create profile", description: "Your fields are filled in — review them and click Next.", variant: "destructive" });
+    } finally {
+      setAutoCreating(false);
+    }
   };
 
   // Employer fields
@@ -397,7 +430,14 @@ export default function Onboarding() {
 
       {/* ── Freelancer details ──────────────────────────────────────────── */}
       {step === "freelancer-details" && (
-        <Card>
+        <Card className="relative">
+          {autoCreating && (
+            <div className="absolute inset-0 z-10 rounded-lg flex flex-col items-center justify-center gap-3 backdrop-blur-sm" style={{ backgroundColor: "rgba(13,31,60,0.85)" }}>
+              <Loader2 className="h-10 w-10 animate-spin text-primary" />
+              <p className="text-base font-semibold text-foreground">Creating your profile…</p>
+              <p className="text-sm text-muted-foreground">AI is building your profile from your resume</p>
+            </div>
+          )}
           <CardHeader>
             <div className="flex items-center gap-3 mb-1">
               <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center">
@@ -405,7 +445,7 @@ export default function Onboarding() {
               </div>
               <div>
                 <CardTitle>Freelancer Profile</CardTitle>
-                <CardDescription>Tell us about your expertise and skills.</CardDescription>
+                <CardDescription>Upload your resume to auto-create your profile instantly.</CardDescription>
               </div>
             </div>
           </CardHeader>
@@ -413,10 +453,10 @@ export default function Onboarding() {
             <CardContent className="space-y-4">
               <div className="rounded-lg border border-dashed border-[#c9a84c]/40 bg-[#c9a84c]/5 p-4 space-y-2">
                 <div className="flex items-center gap-2">
-                  <span className="text-sm font-semibold text-foreground">Auto-fill from Resume</span>
+                  <span className="text-sm font-semibold text-foreground">Auto-create Profile from Resume</span>
                   <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ backgroundColor: "rgba(201,168,76,0.15)", color: "#c9a84c" }}>AI</span>
                 </div>
-                <p className="text-xs text-muted-foreground">Upload your resume and AI will fill all fields below automatically. Review and adjust before submitting.</p>
+                <p className="text-xs text-muted-foreground">Upload your resume and AI will instantly create your profile and move you to the next step. Or fill the fields below manually.</p>
                 <ResumeImporter onParsed={handleResumeParsed} />
               </div>
               <div className="space-y-2">
