@@ -17,6 +17,7 @@ import demoRouter from "./demo";
 import subscriptionsRouter from "./subscriptions";
 import adminRouter from "./admin";
 import authTrackingRouter from "./authTracking";
+import resumeParserRouter from "./resumeParser";
 
 const router: IRouter = Router();
 
@@ -35,6 +36,7 @@ router.use(notificationsRouter);
 router.use(subscriptionsRouter);
 router.use(adminRouter);
 router.use(authTrackingRouter);
+router.use(resumeParserRouter);
 router.use(openaiChatRouter);
 router.use(dashboardRouter);
 router.use(verifyDocumentsRouter);

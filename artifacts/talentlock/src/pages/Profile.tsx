@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { BadgeCheck, Building, User, Shield, Upload, FileText, X, Loader2, ShieldCheck, ShieldX, Mail, ExternalLink, RefreshCw } from "lucide-react";
+import { ResumeImporter, type ParsedResume } from "@/components/ResumeImporter";
 
 const BASE = import.meta.env.BASE_URL ?? "/";
 
@@ -266,6 +267,13 @@ export default function Profile() {
   const [description, setDescription] = useState(employerProfile?.description ?? "");
   const [website, setWebsite] = useState(employerProfile?.website ?? "");
 
+  const handleResumeParsed = (data: ParsedResume) => {
+    if (data.tagline) setTagline(data.tagline);
+    if (data.bio) setBio(data.bio);
+    if (data.skills?.length) setSkills(data.skills.join(", "));
+    if (data.hourlyRate) setHourlyRate(String(data.hourlyRate));
+  };
+
   const handleSaveFreelancer = async () => {
     try {
       await updateFreelancer.mutateAsync({
@@ -358,6 +366,13 @@ export default function Profile() {
             <CardDescription>Your public profile visible to employers.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
+            <div className="rounded-lg border border-dashed border-[#c9a84c]/40 bg-[#c9a84c]/5 p-3 flex flex-col sm:flex-row sm:items-center gap-3">
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-foreground">Update profile from Resume</p>
+                <p className="text-xs text-muted-foreground mt-0.5">AI will extract your tagline, bio, skills and rate from your CV.</p>
+              </div>
+              <ResumeImporter onParsed={handleResumeParsed} compact />
+            </div>
             <div className="space-y-2">
               <Label>Professional Tagline</Label>
               <Input value={tagline} onChange={e => setTagline(e.target.value)} placeholder="e.g. Senior React Developer · 8 Years Experience" />

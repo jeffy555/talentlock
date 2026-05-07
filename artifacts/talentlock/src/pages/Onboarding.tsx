@@ -12,6 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Briefcase, Building, CheckCircle, FileText, Upload, X, Loader2, ShieldCheck, ShieldX, Mail, ExternalLink, SkipForward } from "lucide-react";
 import { FIELDS_OF_WORK } from "@/lib/fields";
 import { Badge } from "@/components/ui/badge";
+import { ResumeImporter, type ParsedResume } from "@/components/ResumeImporter";
 
 const BASE = import.meta.env.BASE_URL ?? "/";
 
@@ -112,6 +113,15 @@ export default function Onboarding() {
   const [yearsExperience, setYearsExperience] = useState("");
   const [paymentPreference, setPaymentPreference] = useState("hourly");
   const [hourlyRate, setHourlyRate] = useState("");
+
+  const handleResumeParsed = (data: ParsedResume) => {
+    if (data.tagline) setTagline(data.tagline);
+    if (data.fieldOfWork && FIELDS_OF_WORK.includes(data.fieldOfWork)) setFieldOfWork(data.fieldOfWork);
+    if (data.skills?.length) setSkills(data.skills.join(", "));
+    if (data.yearsExperience) setYearsExperience(String(data.yearsExperience));
+    if (data.paymentPreference) setPaymentPreference(data.paymentPreference);
+    if (data.hourlyRate) setHourlyRate(String(data.hourlyRate));
+  };
 
   // Employer fields
   const [companyName, setCompanyName] = useState("");
@@ -401,6 +411,14 @@ export default function Onboarding() {
           </CardHeader>
           <form onSubmit={handleFreelancerSubmit}>
             <CardContent className="space-y-4">
+              <div className="rounded-lg border border-dashed border-[#c9a84c]/40 bg-[#c9a84c]/5 p-4 space-y-2">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-semibold text-foreground">Auto-fill from Resume</span>
+                  <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ backgroundColor: "rgba(201,168,76,0.15)", color: "#c9a84c" }}>AI</span>
+                </div>
+                <p className="text-xs text-muted-foreground">Upload your resume and AI will fill all fields below automatically. Review and adjust before submitting.</p>
+                <ResumeImporter onParsed={handleResumeParsed} />
+              </div>
               <div className="space-y-2">
                 <Label htmlFor="tagline">Professional Tagline</Label>
                 <Input id="tagline" placeholder="e.g. Senior Full-Stack Engineer" value={tagline} onChange={(e) => setTagline(e.target.value)} required />
