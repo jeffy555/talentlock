@@ -6,8 +6,11 @@ import OpenAI from "openai";
 
 const require = createRequire(import.meta.url);
 // pdf-parse and mammoth are CJS-only — loaded via require to avoid ESM bundling issues
-const pdfParse = require("pdf-parse") as (buf: Buffer) => Promise<{ text: string }>;
-const mammoth = require("mammoth") as { extractRawText: (opts: { buffer: Buffer }) => Promise<{ value: string }> };
+// esbuild may wrap the default export, so unwrap .default if needed
+const _pdfParseMod = require("pdf-parse");
+const pdfParse = (typeof _pdfParseMod === "function" ? _pdfParseMod : _pdfParseMod.default) as (buf: Buffer) => Promise<{ text: string }>;
+const _mammothMod = require("mammoth");
+const mammoth = (_mammothMod.default ?? _mammothMod) as { extractRawText: (opts: { buffer: Buffer }) => Promise<{ value: string }> };
 
 const router: IRouter = Router();
 
