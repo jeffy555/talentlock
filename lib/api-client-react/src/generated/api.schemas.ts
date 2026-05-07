@@ -69,6 +69,10 @@ export interface FreelancerProfile {
   /** @nullable */
   bookingEndDate?: string | null;
   subscriptionPlan: string;
+  /** @nullable */
+  availableFrom?: string | null;
+  /** @nullable */
+  availabilityNote?: string | null;
   createdAt: string;
 }
 
@@ -108,6 +112,11 @@ export interface UpdateFreelancerProfileBody {
   /** @nullable */
   achievements?: string | null;
   subscriptionPlan?: string;
+  isAvailable?: boolean;
+  /** @nullable */
+  availableFrom?: string | null;
+  /** @nullable */
+  availabilityNote?: string | null;
 }
 
 export interface EmployerProfile {
@@ -491,6 +500,171 @@ export interface UploadUrlResponse {
   objectPath: string;
 }
 
+export interface Review {
+  id: number;
+  bookingId: number;
+  reviewerId: number;
+  revieweeId: number;
+  /** employer or freelancer */
+  reviewerRole: string;
+  /**
+   * @minimum 1
+   * @maximum 5
+   */
+  rating: number;
+  /** @nullable */
+  title?: string | null;
+  /** @nullable */
+  content?: string | null;
+  createdAt: string;
+}
+
+export interface CreateReviewBody {
+  bookingId: number;
+  /**
+   * @minimum 1
+   * @maximum 5
+   */
+  rating: number;
+  title?: string;
+  content?: string;
+}
+
+export interface FreelancerReviewsResult {
+  reviews: Review[];
+  /** @nullable */
+  averageRating?: number | null;
+  totalReviews: number;
+}
+
+export interface MyReviewResult {
+  reviewed: boolean;
+  review?: Review | null;
+}
+
+export interface SaveToggleResult {
+  saved: boolean;
+}
+
+export interface PortfolioItem {
+  id: number;
+  freelancerId: number;
+  title: string;
+  /** @nullable */
+  description?: string | null;
+  /** @nullable */
+  url?: string | null;
+  /** @nullable */
+  imageUrl?: string | null;
+  tags: string[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreatePortfolioItemBody {
+  title: string;
+  description?: string;
+  url?: string;
+  imageUrl?: string;
+  tags?: string[];
+}
+
+export interface UpdatePortfolioItemBody {
+  title?: string;
+  description?: string;
+  url?: string;
+  imageUrl?: string;
+  tags?: string[];
+}
+
+export interface Milestone {
+  id: number;
+  bookingId: number;
+  title: string;
+  /** @nullable */
+  description?: string | null;
+  /** @nullable */
+  amount?: number | null;
+  /** @nullable */
+  dueDate?: string | null;
+  /** pending | completed | approved */
+  status: string;
+  /** @nullable */
+  completedAt?: string | null;
+  /** @nullable */
+  approvedAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateMilestoneBody {
+  title: string;
+  description?: string;
+  amount?: number;
+  dueDate?: string;
+}
+
+export type UpdateMilestoneBodyStatus =
+  (typeof UpdateMilestoneBodyStatus)[keyof typeof UpdateMilestoneBodyStatus];
+
+export const UpdateMilestoneBodyStatus = {
+  pending: "pending",
+  completed: "completed",
+  approved: "approved",
+} as const;
+
+export interface UpdateMilestoneBody {
+  status?: UpdateMilestoneBodyStatus;
+  title?: string;
+  description?: string;
+  amount?: number;
+  dueDate?: string;
+}
+
+export interface MonthlyMetric {
+  month: string;
+  bookings: number;
+  earnings?: number;
+  spend?: number;
+}
+
+export type AnalyticsDataTotals = { [key: string]: unknown };
+
+export interface AnalyticsData {
+  role: string;
+  monthly: MonthlyMetric[];
+  totals: AnalyticsDataTotals;
+}
+
+export interface PublicFreelancerProfile {
+  id: number;
+  userId: number;
+  name: string;
+  tagline: string;
+  fieldOfWork: string;
+  skills: string[];
+  yearsExperience: number;
+  /** @nullable */
+  bio?: string | null;
+  /** @nullable */
+  hourlyRate?: number | null;
+  /** @nullable */
+  dailyRate?: number | null;
+  paymentPreference: string;
+  isVerified: boolean;
+  isAvailable: boolean;
+  /** @nullable */
+  availableFrom?: string | null;
+  /** @nullable */
+  availabilityNote?: string | null;
+  portfolio: PortfolioItem[];
+  reviews: Review[];
+  /** @nullable */
+  averageRating?: number | null;
+  totalReviews: number;
+  createdAt: string;
+}
+
 export type ListFreelancersParams = {
   /**
    * Filter by field of work
@@ -554,4 +728,8 @@ export type ListAgreementsParams = {
    * Filter by status (draft, pending_signatures, signed, active, completed)
    */
   status?: string;
+};
+
+export type DeletePortfolioItem200 = {
+  deleted: boolean;
 };

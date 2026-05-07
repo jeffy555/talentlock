@@ -25,4 +25,9 @@ export interface UpdateFreelancerProfileBody {
   /** @nullable */
   achievements?: string | null;
   subscriptionPlan?: string;
+  isAvailable?: boolean;
+  /** @nullable */
+  availableFrom?: Date | null;
+  /** @nullable */
+  availabilityNote?: string | null;
 }

@@ -1,4 +1,4 @@
-import { pgTable, text, serial, timestamp, integer, boolean, numeric } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, timestamp, integer, boolean, numeric, real } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
@@ -27,6 +27,8 @@ export const freelancerProfilesTable = pgTable("freelancer_profiles", {
   currentBookingId: integer("current_booking_id"),
   bookingEndDate: timestamp("booking_end_date", { withTimezone: true }),
   subscriptionPlan: text("subscription_plan").notNull().default("basic"),
+  availableFrom: timestamp("available_from", { withTimezone: true }),
+  availabilityNote: text("availability_note"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });

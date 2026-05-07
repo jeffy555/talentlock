@@ -28,6 +28,7 @@ import Pricing from "@/pages/Pricing";
 import Billing from "@/pages/Billing";
 import AdminLogin from "@/pages/AdminLogin";
 import AdminDashboard from "@/pages/AdminDashboard";
+import PublicProfile from "@/pages/PublicProfile";
 
 const clerkPubKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY as string;
 const clerkProxyUrl = import.meta.env.VITE_CLERK_PROXY_URL as string | undefined;
@@ -385,6 +386,8 @@ function ClerkProviderWithRoutes() {
           <Route path="/profile" component={() => <ProtectedRoute component={Profile} />} />
           <Route path="/pricing" component={() => <ProtectedRoute component={Pricing} />} />
           <Route path="/billing" component={() => <ProtectedRoute component={Billing} />} />
+
+          <Route path="/f/:id" component={PublicProfile} />
 
           <Route path="/admin/login" component={AdminLogin} />
           <Route path="/admin" component={AdminDashboard} />

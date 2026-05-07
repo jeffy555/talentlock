@@ -85,6 +85,8 @@ export const ListFreelancersResponseItem = zod.object({
   currentBookingId: zod.number().nullish(),
   bookingEndDate: zod.coerce.date().nullish(),
   subscriptionPlan: zod.string(),
+  availableFrom: zod.coerce.date().nullish(),
+  availabilityNote: zod.string().nullish(),
   createdAt: zod.coerce.date(),
 });
 export const ListFreelancersResponse = zod.array(ListFreelancersResponseItem);
@@ -135,6 +137,8 @@ export const GetMyFreelancerProfileResponse = zod.object({
   currentBookingId: zod.number().nullish(),
   bookingEndDate: zod.coerce.date().nullish(),
   subscriptionPlan: zod.string(),
+  availableFrom: zod.coerce.date().nullish(),
+  availabilityNote: zod.string().nullish(),
   createdAt: zod.coerce.date(),
 });
 
@@ -154,6 +158,9 @@ export const UpdateMyFreelancerProfileBody = zod.object({
   dailyRate: zod.number().nullish(),
   achievements: zod.string().nullish(),
   subscriptionPlan: zod.string().optional(),
+  isAvailable: zod.boolean().optional(),
+  availableFrom: zod.coerce.date().nullish(),
+  availabilityNote: zod.string().nullish(),
 });
 
 export const UpdateMyFreelancerProfileResponse = zod.object({
@@ -183,6 +190,8 @@ export const UpdateMyFreelancerProfileResponse = zod.object({
   currentBookingId: zod.number().nullish(),
   bookingEndDate: zod.coerce.date().nullish(),
   subscriptionPlan: zod.string(),
+  availableFrom: zod.coerce.date().nullish(),
+  availabilityNote: zod.string().nullish(),
   createdAt: zod.coerce.date(),
 });
 
@@ -220,6 +229,8 @@ export const GetFreelancerProfileResponse = zod.object({
   currentBookingId: zod.number().nullish(),
   bookingEndDate: zod.coerce.date().nullish(),
   subscriptionPlan: zod.string(),
+  availableFrom: zod.coerce.date().nullish(),
+  availabilityNote: zod.string().nullish(),
   createdAt: zod.coerce.date(),
 });
 
@@ -959,6 +970,367 @@ export const GetPublicObjectParams = zod.object({
  */
 export const GetObjectParams = zod.object({
   filePath: zod.coerce.string(),
+});
+
+/**
+ * @summary List reviews for a freelancer (public)
+ */
+export const ListFreelancerReviewsParams = zod.object({
+  freelancerId: zod.coerce.number(),
+});
+
+export const listFreelancerReviewsResponseReviewsItemRatingMax = 5;
+
+export const ListFreelancerReviewsResponse = zod.object({
+  reviews: zod.array(
+    zod.object({
+      id: zod.number(),
+      bookingId: zod.number(),
+      reviewerId: zod.number(),
+      revieweeId: zod.number(),
+      reviewerRole: zod.string().describe("employer or freelancer"),
+      rating: zod
+        .number()
+        .min(1)
+        .max(listFreelancerReviewsResponseReviewsItemRatingMax),
+      title: zod.string().nullish(),
+      content: zod.string().nullish(),
+      createdAt: zod.coerce.date(),
+    }),
+  ),
+  averageRating: zod.number().nullish(),
+  totalReviews: zod.number(),
+});
+
+/**
+ * @summary Check whether current user has reviewed a booking
+ */
+export const GetMyBookingReviewParams = zod.object({
+  bookingId: zod.coerce.number(),
+});
+
+export const getMyBookingReviewResponseReviewOneRatingMax = 5;
+
+export const GetMyBookingReviewResponse = zod.object({
+  reviewed: zod.boolean(),
+  review: zod
+    .union([
+      zod.object({
+        id: zod.number(),
+        bookingId: zod.number(),
+        reviewerId: zod.number(),
+        revieweeId: zod.number(),
+        reviewerRole: zod.string().describe("employer or freelancer"),
+        rating: zod
+          .number()
+          .min(1)
+          .max(getMyBookingReviewResponseReviewOneRatingMax),
+        title: zod.string().nullish(),
+        content: zod.string().nullish(),
+        createdAt: zod.coerce.date(),
+      }),
+      zod.null(),
+    ])
+    .optional(),
+});
+
+/**
+ * @summary Submit a review for a completed booking
+ */
+export const createReviewBodyRatingMax = 5;
+
+export const CreateReviewBody = zod.object({
+  bookingId: zod.number(),
+  rating: zod.number().min(1).max(createReviewBodyRatingMax),
+  title: zod.string().optional(),
+  content: zod.string().optional(),
+});
+
+/**
+ * @summary List saved/shortlisted freelancers (employer only)
+ */
+export const ListSavedFreelancersResponseItem = zod.object({
+  id: zod.number(),
+  userId: zod.number(),
+  clerkId: zod.string(),
+  name: zod.string(),
+  tagline: zod.string(),
+  fieldOfWork: zod.string(),
+  skills: zod.array(zod.string()),
+  yearsExperience: zod.number(),
+  bio: zod.string().nullish(),
+  resumeUrl: zod.string().nullish(),
+  portfolioUrl: zod.string().nullish(),
+  paymentPreference: zod.string().describe("hourly or daily"),
+  hourlyRate: zod.number().nullish(),
+  dailyRate: zod.number().nullish(),
+  achievements: zod.string().nullish(),
+  isVerified: zod.boolean(),
+  verificationStatus: zod
+    .string()
+    .optional()
+    .describe("unverified | pending | verified | rejected"),
+  verificationNote: zod.string().nullish(),
+  documentNames: zod.array(zod.string()).optional(),
+  isAvailable: zod.boolean(),
+  currentBookingId: zod.number().nullish(),
+  bookingEndDate: zod.coerce.date().nullish(),
+  subscriptionPlan: zod.string(),
+  availableFrom: zod.coerce.date().nullish(),
+  availabilityNote: zod.string().nullish(),
+  createdAt: zod.coerce.date(),
+});
+export const ListSavedFreelancersResponse = zod.array(
+  ListSavedFreelancersResponseItem,
+);
+
+/**
+ * @summary Check if the current employer has saved this freelancer
+ */
+export const CheckFreelancerSavedParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const CheckFreelancerSavedResponse = zod.object({
+  saved: zod.boolean(),
+});
+
+/**
+ * @summary Toggle save/unsave a freelancer (employer only)
+ */
+export const ToggleSaveFreelancerParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const ToggleSaveFreelancerResponse = zod.object({
+  saved: zod.boolean(),
+});
+
+/**
+ * @summary List portfolio items for a freelancer (public)
+ */
+export const ListFreelancerPortfolioParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const ListFreelancerPortfolioResponseItem = zod.object({
+  id: zod.number(),
+  freelancerId: zod.number(),
+  title: zod.string(),
+  description: zod.string().nullish(),
+  url: zod.string().nullish(),
+  imageUrl: zod.string().nullish(),
+  tags: zod.array(zod.string()),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+export const ListFreelancerPortfolioResponse = zod.array(
+  ListFreelancerPortfolioResponseItem,
+);
+
+/**
+ * @summary List my portfolio items
+ */
+export const ListMyPortfolioResponseItem = zod.object({
+  id: zod.number(),
+  freelancerId: zod.number(),
+  title: zod.string(),
+  description: zod.string().nullish(),
+  url: zod.string().nullish(),
+  imageUrl: zod.string().nullish(),
+  tags: zod.array(zod.string()),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+export const ListMyPortfolioResponse = zod.array(ListMyPortfolioResponseItem);
+
+/**
+ * @summary Create a portfolio item
+ */
+export const CreatePortfolioItemBody = zod.object({
+  title: zod.string(),
+  description: zod.string().optional(),
+  url: zod.string().optional(),
+  imageUrl: zod.string().optional(),
+  tags: zod.array(zod.string()).optional(),
+});
+
+/**
+ * @summary Update a portfolio item
+ */
+export const UpdatePortfolioItemParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const UpdatePortfolioItemBody = zod.object({
+  title: zod.string().optional(),
+  description: zod.string().optional(),
+  url: zod.string().optional(),
+  imageUrl: zod.string().optional(),
+  tags: zod.array(zod.string()).optional(),
+});
+
+export const UpdatePortfolioItemResponse = zod.object({
+  id: zod.number(),
+  freelancerId: zod.number(),
+  title: zod.string(),
+  description: zod.string().nullish(),
+  url: zod.string().nullish(),
+  imageUrl: zod.string().nullish(),
+  tags: zod.array(zod.string()),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Delete a portfolio item
+ */
+export const DeletePortfolioItemParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const DeletePortfolioItemResponse = zod.object({
+  deleted: zod.boolean(),
+});
+
+/**
+ * @summary List milestones for a booking
+ */
+export const ListMilestonesParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const ListMilestonesResponseItem = zod.object({
+  id: zod.number(),
+  bookingId: zod.number(),
+  title: zod.string(),
+  description: zod.string().nullish(),
+  amount: zod.number().nullish(),
+  dueDate: zod.coerce.date().nullish(),
+  status: zod.string().describe("pending | completed | approved"),
+  completedAt: zod.coerce.date().nullish(),
+  approvedAt: zod.coerce.date().nullish(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+export const ListMilestonesResponse = zod.array(ListMilestonesResponseItem);
+
+/**
+ * @summary Add a milestone to a booking
+ */
+export const CreateMilestoneParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const CreateMilestoneBody = zod.object({
+  title: zod.string(),
+  description: zod.string().optional(),
+  amount: zod.number().optional(),
+  dueDate: zod.coerce.date().optional(),
+});
+
+/**
+ * @summary Update milestone status or details
+ */
+export const UpdateMilestoneParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const UpdateMilestoneBody = zod.object({
+  status: zod.enum(["pending", "completed", "approved"]).optional(),
+  title: zod.string().optional(),
+  description: zod.string().optional(),
+  amount: zod.number().optional(),
+  dueDate: zod.coerce.date().optional(),
+});
+
+export const UpdateMilestoneResponse = zod.object({
+  id: zod.number(),
+  bookingId: zod.number(),
+  title: zod.string(),
+  description: zod.string().nullish(),
+  amount: zod.number().nullish(),
+  dueDate: zod.coerce.date().nullish(),
+  status: zod.string().describe("pending | completed | approved"),
+  completedAt: zod.coerce.date().nullish(),
+  approvedAt: zod.coerce.date().nullish(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Get analytics for the current user (monthly metrics + totals)
+ */
+export const GetMyAnalyticsResponse = zod.object({
+  role: zod.string(),
+  monthly: zod.array(
+    zod.object({
+      month: zod.string(),
+      bookings: zod.number(),
+      earnings: zod.number().optional(),
+      spend: zod.number().optional(),
+    }),
+  ),
+  totals: zod.record(zod.string(), zod.unknown()),
+});
+
+/**
+ * @summary Get a public freelancer profile (no auth required)
+ */
+export const GetPublicFreelancerProfileParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const getPublicFreelancerProfileResponseReviewsItemRatingMax = 5;
+
+export const GetPublicFreelancerProfileResponse = zod.object({
+  id: zod.number(),
+  userId: zod.number(),
+  name: zod.string(),
+  tagline: zod.string(),
+  fieldOfWork: zod.string(),
+  skills: zod.array(zod.string()),
+  yearsExperience: zod.number(),
+  bio: zod.string().nullish(),
+  hourlyRate: zod.number().nullish(),
+  dailyRate: zod.number().nullish(),
+  paymentPreference: zod.string(),
+  isVerified: zod.boolean(),
+  isAvailable: zod.boolean(),
+  availableFrom: zod.coerce.date().nullish(),
+  availabilityNote: zod.string().nullish(),
+  portfolio: zod.array(
+    zod.object({
+      id: zod.number(),
+      freelancerId: zod.number(),
+      title: zod.string(),
+      description: zod.string().nullish(),
+      url: zod.string().nullish(),
+      imageUrl: zod.string().nullish(),
+      tags: zod.array(zod.string()),
+      createdAt: zod.coerce.date(),
+      updatedAt: zod.coerce.date(),
+    }),
+  ),
+  reviews: zod.array(
+    zod.object({
+      id: zod.number(),
+      bookingId: zod.number(),
+      reviewerId: zod.number(),
+      revieweeId: zod.number(),
+      reviewerRole: zod.string().describe("employer or freelancer"),
+      rating: zod
+        .number()
+        .min(1)
+        .max(getPublicFreelancerProfileResponseReviewsItemRatingMax),
+      title: zod.string().nullish(),
+      content: zod.string().nullish(),
+      createdAt: zod.coerce.date(),
+    }),
+  ),
+  averageRating: zod.number().nullish(),
+  totalReviews: zod.number(),
+  createdAt: zod.coerce.date(),
 });
 
 /**

@@ -30,6 +30,14 @@ tags:
     description: Dashboard summary and stats
   - name: Storage
     description: Object storage upload and serving endpoints
+  - name: reviews
+    description: Post-booking reviews and ratings
+  - name: portfolio
+    description: Freelancer portfolio items
+  - name: milestones
+    description: Booking milestone tracking
+  - name: analytics
+    description: User-specific analytics and metrics
 
 paths:
   /healthz:
@@ -1006,6 +1014,335 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorEnvelope'
 
+  # ── Reviews ──────────────────────────────────────────────────────────────
+  /reviews/freelancer/{freelancerId}:
+    get:
+      operationId: listFreelancerReviews
+      tags: [reviews]
+      summary: List reviews for a freelancer (public)
+      parameters:
+        - name: freelancerId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Reviews with aggregate rating
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FreelancerReviewsResult"
+
+  /reviews/my-review/{bookingId}:
+    get:
+      operationId: getMyBookingReview
+      tags: [reviews]
+      summary: Check whether current user has reviewed a booking
+      parameters:
+        - name: bookingId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Review check result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MyReviewResult"
+
+  /reviews:
+    post:
+      operationId: createReview
+      tags: [reviews]
+      summary: Submit a review for a completed booking
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateReviewBody"
+      responses:
+        "201":
+          description: Created review
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Review"
+        "409":
+          description: Already reviewed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  # ── Saved Freelancers ────────────────────────────────────────────────────
+  /freelancers/saved:
+    get:
+      operationId: listSavedFreelancers
+      tags: [freelancers]
+      summary: List saved/shortlisted freelancers (employer only)
+      responses:
+        "200":
+          description: List of saved freelancer profiles
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/FreelancerProfile"
+
+  /freelancers/{id}/saved:
+    get:
+      operationId: checkFreelancerSaved
+      tags: [freelancers]
+      summary: Check if the current employer has saved this freelancer
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Saved status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SaveToggleResult"
+
+  /freelancers/{id}/save:
+    post:
+      operationId: toggleSaveFreelancer
+      tags: [freelancers]
+      summary: Toggle save/unsave a freelancer (employer only)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Updated saved status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SaveToggleResult"
+
+  # ── Portfolio ─────────────────────────────────────────────────────────────
+  /freelancers/{id}/portfolio:
+    get:
+      operationId: listFreelancerPortfolio
+      tags: [portfolio]
+      summary: List portfolio items for a freelancer (public)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Portfolio items
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PortfolioItem"
+
+  /portfolio/me:
+    get:
+      operationId: listMyPortfolio
+      tags: [portfolio]
+      summary: List my portfolio items
+      responses:
+        "200":
+          description: My portfolio items
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PortfolioItem"
+
+  /portfolio:
+    post:
+      operationId: createPortfolioItem
+      tags: [portfolio]
+      summary: Create a portfolio item
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreatePortfolioItemBody"
+      responses:
+        "201":
+          description: Created portfolio item
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PortfolioItem"
+
+  /portfolio/{id}:
+    patch:
+      operationId: updatePortfolioItem
+      tags: [portfolio]
+      summary: Update a portfolio item
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdatePortfolioItemBody"
+      responses:
+        "200":
+          description: Updated portfolio item
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PortfolioItem"
+    delete:
+      operationId: deletePortfolioItem
+      tags: [portfolio]
+      summary: Delete a portfolio item
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  deleted: { type: boolean }
+                required: [deleted]
+
+  # ── Milestones ────────────────────────────────────────────────────────────
+  /bookings/{id}/milestones:
+    get:
+      operationId: listMilestones
+      tags: [milestones]
+      summary: List milestones for a booking
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of milestones
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Milestone"
+    post:
+      operationId: createMilestone
+      tags: [milestones]
+      summary: Add a milestone to a booking
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateMilestoneBody"
+      responses:
+        "201":
+          description: Created milestone
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Milestone"
+
+  /milestones/{id}:
+    patch:
+      operationId: updateMilestone
+      tags: [milestones]
+      summary: Update milestone status or details
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateMilestoneBody"
+      responses:
+        "200":
+          description: Updated milestone
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Milestone"
+
+  # ── Analytics ─────────────────────────────────────────────────────────────
+  /analytics/me:
+    get:
+      operationId: getMyAnalytics
+      tags: [analytics]
+      summary: Get analytics for the current user (monthly metrics + totals)
+      responses:
+        "200":
+          description: Analytics data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AnalyticsData"
+
+  # ── Public Profile ────────────────────────────────────────────────────────
+  /public/freelancers/{id}:
+    get:
+      operationId: getPublicFreelancerProfile
+      tags: [freelancers]
+      summary: Get a public freelancer profile (no auth required)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Public freelancer profile with portfolio and reviews
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PublicFreelancerProfile"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
   # ── Verify Documents ──────────────────────────────────────────────────────
   /verify/documents:
     post:
@@ -1158,6 +1495,11 @@ components:
           format: date-time
         subscriptionPlan:
           type: string
+        availableFrom:
+          type: ["string", "null"]
+          format: date-time
+        availabilityNote:
+          type: ["string", "null"]
         createdAt:
           type: string
           format: date-time
@@ -1238,6 +1580,13 @@ components:
           type: ["string", "null"]
         subscriptionPlan:
           type: string
+        isAvailable:
+          type: boolean
+        availableFrom:
+          type: ["string", "null"]
+          format: date-time
+        availabilityNote:
+          type: ["string", "null"]
 
     # ── Employer Profile ───────────────────────────────────────────────────────
     EmployerProfile:
@@ -1980,3 +2329,330 @@ components:
       required:
         - uploadUrl
         - objectPath
+
+    # ── Reviews ────────────────────────────────────────────────────────────────
+    Review:
+      type: object
+      properties:
+        id:
+          type: integer
+        bookingId:
+          type: integer
+        reviewerId:
+          type: integer
+        revieweeId:
+          type: integer
+        reviewerRole:
+          type: string
+          description: "employer or freelancer"
+        rating:
+          type: integer
+          minimum: 1
+          maximum: 5
+        title:
+          type: ["string", "null"]
+        content:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - bookingId
+        - reviewerId
+        - revieweeId
+        - reviewerRole
+        - rating
+        - createdAt
+
+    CreateReviewBody:
+      type: object
+      properties:
+        bookingId:
+          type: integer
+        rating:
+          type: integer
+          minimum: 1
+          maximum: 5
+        title:
+          type: string
+        content:
+          type: string
+      required:
+        - bookingId
+        - rating
+
+    FreelancerReviewsResult:
+      type: object
+      properties:
+        reviews:
+          type: array
+          items:
+            $ref: "#/components/schemas/Review"
+        averageRating:
+          type: ["number", "null"]
+        totalReviews:
+          type: integer
+      required:
+        - reviews
+        - totalReviews
+
+    MyReviewResult:
+      type: object
+      properties:
+        reviewed:
+          type: boolean
+        review:
+          oneOf:
+            - $ref: "#/components/schemas/Review"
+            - type: "null"
+      required:
+        - reviewed
+
+    SaveToggleResult:
+      type: object
+      properties:
+        saved:
+          type: boolean
+      required:
+        - saved
+
+    # ── Portfolio ──────────────────────────────────────────────────────────────
+    PortfolioItem:
+      type: object
+      properties:
+        id:
+          type: integer
+        freelancerId:
+          type: integer
+        title:
+          type: string
+        description:
+          type: ["string", "null"]
+        url:
+          type: ["string", "null"]
+        imageUrl:
+          type: ["string", "null"]
+        tags:
+          type: array
+          items:
+            type: string
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - freelancerId
+        - title
+        - tags
+        - createdAt
+        - updatedAt
+
+    CreatePortfolioItemBody:
+      type: object
+      properties:
+        title:
+          type: string
+        description:
+          type: string
+        url:
+          type: string
+        imageUrl:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+      required:
+        - title
+
+    UpdatePortfolioItemBody:
+      type: object
+      properties:
+        title:
+          type: string
+        description:
+          type: string
+        url:
+          type: string
+        imageUrl:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+
+    # ── Milestones ─────────────────────────────────────────────────────────────
+    Milestone:
+      type: object
+      properties:
+        id:
+          type: integer
+        bookingId:
+          type: integer
+        title:
+          type: string
+        description:
+          type: ["string", "null"]
+        amount:
+          type: ["number", "null"]
+        dueDate:
+          type: ["string", "null"]
+          format: date-time
+        status:
+          type: string
+          description: "pending | completed | approved"
+        completedAt:
+          type: ["string", "null"]
+          format: date-time
+        approvedAt:
+          type: ["string", "null"]
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - bookingId
+        - title
+        - status
+        - createdAt
+        - updatedAt
+
+    CreateMilestoneBody:
+      type: object
+      properties:
+        title:
+          type: string
+        description:
+          type: string
+        amount:
+          type: number
+        dueDate:
+          type: string
+          format: date-time
+      required:
+        - title
+
+    UpdateMilestoneBody:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [pending, completed, approved]
+        title:
+          type: string
+        description:
+          type: string
+        amount:
+          type: number
+        dueDate:
+          type: string
+          format: date-time
+
+    # ── Analytics ──────────────────────────────────────────────────────────────
+    MonthlyMetric:
+      type: object
+      properties:
+        month:
+          type: string
+        bookings:
+          type: integer
+        earnings:
+          type: number
+        spend:
+          type: number
+      required:
+        - month
+        - bookings
+
+    AnalyticsData:
+      type: object
+      properties:
+        role:
+          type: string
+        monthly:
+          type: array
+          items:
+            $ref: "#/components/schemas/MonthlyMetric"
+        totals:
+          type: object
+          additionalProperties: true
+      required:
+        - role
+        - monthly
+        - totals
+
+    # ── Public Profile ─────────────────────────────────────────────────────────
+    PublicFreelancerProfile:
+      type: object
+      properties:
+        id:
+          type: integer
+        userId:
+          type: integer
+        name:
+          type: string
+        tagline:
+          type: string
+        fieldOfWork:
+          type: string
+        skills:
+          type: array
+          items:
+            type: string
+        yearsExperience:
+          type: integer
+        bio:
+          type: ["string", "null"]
+        hourlyRate:
+          type: ["number", "null"]
+        dailyRate:
+          type: ["number", "null"]
+        paymentPreference:
+          type: string
+        isVerified:
+          type: boolean
+        isAvailable:
+          type: boolean
+        availableFrom:
+          type: ["string", "null"]
+          format: date-time
+        availabilityNote:
+          type: ["string", "null"]
+        portfolio:
+          type: array
+          items:
+            $ref: "#/components/schemas/PortfolioItem"
+        reviews:
+          type: array
+          items:
+            $ref: "#/components/schemas/Review"
+        averageRating:
+          type: ["number", "null"]
+        totalReviews:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - userId
+        - name
+        - tagline
+        - fieldOfWork
+        - skills
+        - yearsExperience
+        - paymentPreference
+        - isVerified
+        - isAvailable
+        - portfolio
+        - reviews
+        - totalReviews
+        - createdAt

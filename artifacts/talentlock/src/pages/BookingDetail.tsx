@@ -1,13 +1,23 @@
 import { useParams, useLocation } from "wouter";
-import { useGetBooking, useUpdateBooking, useCreateAgreement, useGetMe, useListAgreements } from "@workspace/api-client-react";
+import {
+  useGetBooking, useUpdateBooking, useCreateAgreement, useGetMe, useListAgreements,
+  useListMilestones, useCreateMilestone, useUpdateMilestone,
+  useGetMyBookingReview, useCreateReview,
+} from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Calendar, CheckCircle2, FileText, XCircle, Sparkles, ExternalLink, ShieldCheck, Clock, DollarSign, Lock } from "lucide-react";
+import { ArrowLeft, Calendar, CheckCircle2, FileText, XCircle, Sparkles, ShieldCheck, Clock, DollarSign, Lock, Flag, Plus, Check, Star } from "lucide-react";
 import { Link } from "wouter";
 import { format } from "date-fns";
 import { buildGoogleCalendarUrl } from "@/lib/calendarUrl";
+import { useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 
 const statusColors: Record<string, { bg: string, text: string, border: string }> = {
   pending: { bg: "bg-yellow-50", text: "text-yellow-700", border: "border-yellow-200" },
@@ -16,21 +26,66 @@ const statusColors: Record<string, { bg: string, text: string, border: string }>
   cancelled: { bg: "bg-red-50", text: "text-red-700", border: "border-red-200" },
 };
 
+const milestoneColors: Record<string, { bg: string, text: string, border: string }> = {
+  pending: { bg: "bg-yellow-50", text: "text-yellow-700", border: "border-yellow-200" },
+  completed: { bg: "bg-blue-50", text: "text-blue-700", border: "border-blue-200" },
+  approved: { bg: "bg-green-50", text: "text-green-700", border: "border-green-200" },
+};
+
+function StarPicker({ value, onChange }: { value: number; onChange: (v: number) => void }) {
+  const [hover, setHover] = useState(0);
+  return (
+    <div className="flex gap-1">
+      {[1, 2, 3, 4, 5].map(i => (
+        <button
+          key={i}
+          type="button"
+          onMouseEnter={() => setHover(i)}
+          onMouseLeave={() => setHover(0)}
+          onClick={() => onChange(i)}
+          className="transition-transform hover:scale-110"
+        >
+          <Star className={`h-7 w-7 ${(hover || value) >= i ? "text-gold fill-gold" : "text-muted-foreground/30"}`} />
+        </button>
+      ))}
+    </div>
+  );
+}
+
 export default function BookingDetail() {
   const { id } = useParams<{ id: string }>();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+  const qc = useQueryClient();
   const { data: me } = useGetMe();
-  const { data: booking, isLoading, refetch } = useGetBooking(parseInt(id!), { query: { enabled: !!id } as any });
-  const { data: agreements, refetch: refetchAgreements } = useListAgreements({ status: undefined }, { query: { enabled: !!booking } as any });
+  const { data: booking, isLoading, refetch } = useGetBooking(parseInt(id!), { query: { enabled: !!id } } as any);
+  const { data: agreements, refetch: refetchAgreements } = useListAgreements({ status: undefined }, { query: { enabled: !!booking } } as any);
   const updateBooking = useUpdateBooking();
   const createAgreement = useCreateAgreement();
 
-  const bookingAgreements = agreements?.filter(a => a.bookingId === parseInt(id!)) ?? [];
+  const bookingId = parseInt(id!);
+  const { data: milestones, refetch: refetchMilestones } = useListMilestones(bookingId, { query: { enabled: !!booking } } as any);
+  const createMilestone = useCreateMilestone();
+  const updateMilestone = useUpdateMilestone();
+  const { data: reviewData, refetch: refetchReview } = useGetMyBookingReview(bookingId, { query: { enabled: !!booking } } as any);
+  const createReview = useCreateReview();
+
+  const [milestoneOpen, setMilestoneOpen] = useState(false);
+  const [msTitle, setMsTitle] = useState("");
+  const [msDesc, setMsDesc] = useState("");
+  const [msAmount, setMsAmount] = useState("");
+  const [msDueDate, setMsDueDate] = useState("");
+
+  const [reviewOpen, setReviewOpen] = useState(false);
+  const [reviewRating, setReviewRating] = useState(0);
+  const [reviewTitle, setReviewTitle] = useState("");
+  const [reviewContent, setReviewContent] = useState("");
+
+  const bookingAgreements = agreements?.filter(a => a.bookingId === bookingId) ?? [];
 
   const handleStatusUpdate = async (status: "completed" | "cancelled") => {
     try {
-      await updateBooking.mutateAsync({ id: parseInt(id!), data: { status } });
+      await updateBooking.mutateAsync({ id: bookingId, data: { status } });
       toast({ title: `Booking ${status}`, description: `The booking has been marked as ${status}.` });
       refetch();
     } catch {
@@ -40,12 +95,62 @@ export default function BookingDetail() {
 
   const handleGenerateAgreement = async () => {
     try {
-      const agreement = await createAgreement.mutateAsync({ data: { bookingId: parseInt(id!) } });
+      const agreement = await createAgreement.mutateAsync({ data: { bookingId } });
       toast({ title: "Agreement generated", description: "AI has drafted a legal agreement. Review and sign to activate the engagement." });
       refetchAgreements();
       setLocation(`/agreements/${agreement.id}`);
     } catch {
       toast({ title: "Failed to generate agreement", description: "Please try again.", variant: "destructive" });
+    }
+  };
+
+  const handleAddMilestone = async () => {
+    if (!msTitle.trim()) return;
+    try {
+      await createMilestone.mutateAsync({
+        id: bookingId,
+        data: {
+          title: msTitle,
+          ...(msDesc ? { description: msDesc } : {}),
+          ...(msAmount ? { amount: parseFloat(msAmount) } : {}),
+          ...(msDueDate ? { dueDate: new Date(msDueDate).toISOString() } : {}),
+        },
+      });
+      toast({ title: "Milestone added" });
+      refetchMilestones();
+      setMilestoneOpen(false);
+      setMsTitle(""); setMsDesc(""); setMsAmount(""); setMsDueDate("");
+    } catch {
+      toast({ title: "Failed to add milestone", variant: "destructive" });
+    }
+  };
+
+  const handleMilestoneStatusUpdate = async (msId: number, status: "completed" | "approved") => {
+    try {
+      await updateMilestone.mutateAsync({ id: msId, data: { status } });
+      toast({ title: `Milestone ${status}` });
+      refetchMilestones();
+    } catch {
+      toast({ title: "Failed to update milestone", variant: "destructive" });
+    }
+  };
+
+  const handleSubmitReview = async () => {
+    if (reviewRating === 0) { toast({ title: "Please select a rating", variant: "destructive" }); return; }
+    try {
+      await createReview.mutateAsync({
+        data: {
+          bookingId,
+          rating: reviewRating,
+          ...(reviewTitle ? { title: reviewTitle } : {}),
+          ...(reviewContent ? { content: reviewContent } : {}),
+        },
+      });
+      toast({ title: "Review submitted", description: "Thank you for your feedback." });
+      setReviewOpen(false);
+      refetchReview();
+    } catch {
+      toast({ title: "Failed to submit review", variant: "destructive" });
     }
   };
 
@@ -61,7 +166,7 @@ export default function BookingDetail() {
       </div>
     );
   }
-  
+
   if (!booking) {
     return (
       <div className="flex flex-col items-center justify-center py-24 text-center animate-fade-in">
@@ -70,18 +175,17 @@ export default function BookingDetail() {
         </div>
         <h2 className="text-2xl font-serif font-bold mb-2 text-foreground">Booking Not Found</h2>
         <p className="text-muted-foreground mb-8 max-w-sm font-light">The booking record you are looking for does not exist.</p>
-        <Button asChild className="font-semibold shadow-sm">
-          <Link href="/bookings">Back to Bookings</Link>
-        </Button>
+        <Button asChild className="font-semibold shadow-sm"><Link href="/bookings">Back to Bookings</Link></Button>
       </div>
     );
   }
 
   const isEmployer = me?.role === "employer";
   const isCancelled = booking.status === "cancelled";
+  const isCompleted = booking.status === "completed";
   const hasAgreement = bookingAgreements.length > 0;
-  const canGenerateAgreement = isEmployer && !isCancelled && !hasAgreement;
   const colors = statusColors[booking.status] || { bg: "bg-secondary", text: "text-muted-foreground", border: "border-border" };
+  const canReview = isCompleted && !reviewData?.reviewed;
 
   return (
     <div className="max-w-5xl mx-auto space-y-8 animate-fade-in">
@@ -97,9 +201,7 @@ export default function BookingDetail() {
             <Badge className={`uppercase tracking-widest text-[10px] border shadow-sm ${colors.bg} ${colors.text} ${colors.border}`}>
               {booking.status}
             </Badge>
-            <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
-              Booking #{booking.id}
-            </span>
+            <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Booking #{booking.id}</span>
           </div>
           <h1 className="text-4xl font-serif font-bold tracking-tight text-foreground leading-tight">
             {isEmployer ? booking.freelancerName : booking.employerName}
@@ -109,29 +211,27 @@ export default function BookingDetail() {
               <><ShieldCheck className="h-5 w-5" /> Exclusivity Locked</>
             ) : booking.status === 'cancelled' ? (
               <><XCircle className="h-5 w-5" /> Engagement Cancelled</>
+            ) : booking.status === 'completed' ? (
+              <><CheckCircle2 className="h-5 w-5" /> Engagement Complete</>
             ) : (
               <><Lock className="h-5 w-5" /> Pending Exclusivity</>
             )}
           </p>
         </div>
-        
+
         <div className="flex gap-3 flex-wrap md:flex-col md:items-end md:gap-2">
-          {/* Actions */}
           {!isCancelled && (
             <a
               href={buildGoogleCalendarUrl({
                 title: `TalentLock: ${isEmployer ? booking.freelancerName : booking.employerName}`,
                 startDate: booking.startDate,
                 endDate: booking.endDate,
-                details: `TalentLock Booking #${booking.id}\n${isEmployer ? `Freelancer: ${booking.freelancerName}` : `Employer: ${booking.employerName}`}\nPayment: ${booking.paymentType}${booking.rate ? ` · $${booking.rate}` : ""}\n\nManage at: ${window.location.href}`,
+                details: `TalentLock Booking #${booking.id}\nPayment: ${booking.paymentType}${booking.rate ? ` · $${booking.rate}` : ""}\n\n${window.location.href}`,
               })}
-              target="_blank"
-              rel="noreferrer"
+              target="_blank" rel="noreferrer"
             >
               <Button variant="outline" size="sm" className="h-9 gap-2 shadow-sm border-border hover:bg-secondary font-medium w-full" style={{ color: "#4285F4" }}>
-                <svg viewBox="0 0 24 24" className="h-4 w-4" fill="currentColor">
-                  <path d="M19.5 3h-3V1.5h-1.5V3h-6V1.5H7.5V3h-3C3.675 3 3 3.675 3 4.5v15C3 20.325 3.675 21 4.5 21h15c.825 0 1.5-.675 1.5-1.5v-15C21 3.675 20.325 3 19.5 3zm0 16.5h-15V9h15v10.5zM7.5 12H6v-1.5h1.5V12zm3 0H9v-1.5h1.5V12zm3 0H12v-1.5h1.5V12zm3 0H15v-1.5h1.5V12zM7.5 15H6v-1.5h1.5V15zm3 0H9v-1.5h1.5V15zm3 0H12v-1.5h1.5V15zm3 0H15v-1.5h1.5V15zM7.5 18H6v-1.5h1.5V18zm3 0H9v-1.5h1.5V18zm3 0H12v-1.5h1.5V18z"/>
-                </svg>
+                <svg viewBox="0 0 24 24" className="h-4 w-4" fill="currentColor"><path d="M19.5 3h-3V1.5h-1.5V3h-6V1.5H7.5V3h-3C3.675 3 3 3.675 3 4.5v15C3 20.325 3.675 21 4.5 21h15c.825 0 1.5-.675 1.5-1.5v-15C21 3.675 20.325 3 19.5 3zm0 16.5h-15V9h15v10.5zM7.5 12H6v-1.5h1.5V12zm3 0H9v-1.5h1.5V12zm3 0H12v-1.5h1.5V12zm3 0H15v-1.5h1.5V12zM7.5 15H6v-1.5h1.5V15zm3 0H9v-1.5h1.5V15zm3 0H12v-1.5h1.5V15zm3 0H15v-1.5h1.5V15zM7.5 18H6v-1.5h1.5V18zm3 0H9v-1.5h1.5V18zm3 0H12v-1.5h1.5V18z"/></svg>
                 Calendar
               </Button>
             </a>
@@ -145,6 +245,16 @@ export default function BookingDetail() {
             <Button variant="outline" size="sm" className="h-9 font-medium shadow-sm border-destructive/30 text-destructive hover:bg-destructive/5 hover:text-destructive w-full" onClick={() => handleStatusUpdate("cancelled")}>
               <XCircle className="h-4 w-4 mr-2" />Cancel Booking
             </Button>
+          )}
+          {canReview && (
+            <Button size="sm" className="h-9 font-medium shadow-sm w-full gap-2" onClick={() => setReviewOpen(true)}>
+              <Star className="h-4 w-4" />Leave Review
+            </Button>
+          )}
+          {reviewData?.reviewed && (
+            <div className="flex items-center gap-1 text-xs text-muted-foreground font-medium">
+              <Check className="h-3 w-3 text-green-600" /> Reviewed
+            </div>
           )}
         </div>
       </div>
@@ -168,6 +278,71 @@ export default function BookingDetail() {
 
       <div className="grid md:grid-cols-3 gap-8">
         <div className="md:col-span-2 space-y-8">
+          {/* Milestones */}
+          <Card className="shadow-sm border-border bg-card">
+            <CardHeader className="pb-4 border-b border-border/30 bg-muted/5">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <Flag className="h-5 w-5 text-muted-foreground" />
+                  <div>
+                    <CardTitle className="font-serif text-xl">Milestones</CardTitle>
+                    <CardDescription className="text-xs mt-0.5">Track deliverables and progress</CardDescription>
+                  </div>
+                </div>
+                {!isCancelled && (
+                  <Button variant="outline" size="sm" className="gap-1.5 h-8 text-xs" onClick={() => setMilestoneOpen(true)}>
+                    <Plus className="h-3.5 w-3.5" />Add
+                  </Button>
+                )}
+              </div>
+            </CardHeader>
+            <CardContent className="pt-5">
+              {milestones && milestones.length > 0 ? (
+                <div className="space-y-3">
+                  {milestones.map((ms) => {
+                    const c = milestoneColors[ms.status] || { bg: "bg-secondary", text: "text-muted-foreground", border: "border-border" };
+                    return (
+                      <div key={ms.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-xl border border-border bg-secondary/20 gap-3 hover:border-primary/20 transition-colors">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="font-semibold text-sm text-foreground truncate">{ms.title}</span>
+                            <Badge className={`text-[10px] uppercase tracking-widest border ${c.bg} ${c.text} ${c.border} shrink-0`}>{ms.status}</Badge>
+                          </div>
+                          {ms.description && <p className="text-xs text-muted-foreground">{ms.description}</p>}
+                          <div className="flex items-center gap-4 mt-1.5 text-xs text-muted-foreground">
+                            {ms.amount != null && <span className="font-medium text-foreground">${Number(ms.amount).toLocaleString()}</span>}
+                            {ms.dueDate && <span>Due {format(new Date(ms.dueDate), "MMM d, yyyy")}</span>}
+                          </div>
+                        </div>
+                        <div className="flex gap-2 shrink-0">
+                          {ms.status === "pending" && !isEmployer && (
+                            <Button variant="outline" size="sm" className="h-7 text-xs gap-1 border-blue-200 text-blue-700 hover:bg-blue-50"
+                              onClick={() => handleMilestoneStatusUpdate(ms.id, "completed")}>
+                              <Check className="h-3 w-3" />Complete
+                            </Button>
+                          )}
+                          {ms.status === "completed" && isEmployer && (
+                            <Button variant="outline" size="sm" className="h-7 text-xs gap-1 border-green-200 text-green-700 hover:bg-green-50"
+                              onClick={() => handleMilestoneStatusUpdate(ms.id, "approved")}>
+                              <CheckCircle2 className="h-3 w-3" />Approve
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="py-10 text-center flex flex-col items-center">
+                  <Flag className="h-8 w-8 text-muted-foreground/30 mb-3" />
+                  <p className="text-sm font-medium text-foreground mb-1">No milestones yet</p>
+                  <p className="text-xs text-muted-foreground">Add milestones to track deliverables and payments.</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Legal Agreements */}
           <Card className="shadow-sm border-border bg-card">
             <CardHeader className="pb-4 border-b border-border/30 bg-muted/5">
               <div className="flex items-center gap-3">
@@ -206,15 +381,13 @@ export default function BookingDetail() {
                   <FileText className="h-10 w-10 text-muted-foreground/40 mb-3" />
                   <h3 className="font-semibold text-foreground mb-1">No Agreements Yet</h3>
                   <p className="text-sm text-muted-foreground max-w-sm">
-                    {isCancelled
-                      ? "This booking was cancelled. No contracts can be generated."
-                      : "A formal agreement must be signed by both parties to activate this engagement."}
+                    {isCancelled ? "This booking was cancelled. No contracts can be generated." : "A formal agreement must be signed by both parties to activate this engagement."}
                   </p>
                 </div>
               )}
             </CardContent>
           </Card>
-          
+
           {booking.notes && (
             <Card className="shadow-sm border-border bg-card">
               <CardHeader className="pb-4 border-b border-border/30 bg-muted/5">
@@ -242,12 +415,11 @@ export default function BookingDetail() {
                   <div>
                     <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1">Timeline</p>
                     <p className="font-semibold text-foreground text-sm">
-                      {format(new Date(booking.startDate), "MMM d, yyyy")}<br/>
+                      {format(new Date(booking.startDate), "MMM d, yyyy")}<br />
                       <span className="text-muted-foreground font-normal text-xs block mt-0.5">to {format(new Date(booking.endDate), "MMM d, yyyy")}</span>
                     </p>
                   </div>
                 </div>
-                
                 <div className="flex gap-4">
                   <div className="h-10 w-10 bg-secondary/50 rounded-lg flex items-center justify-center flex-shrink-0 border border-border">
                     <DollarSign className="h-5 w-5 text-muted-foreground" />
@@ -255,7 +427,7 @@ export default function BookingDetail() {
                   <div>
                     <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1">Compensation</p>
                     <p className="font-semibold text-foreground capitalize">
-                      {booking.paymentType} 
+                      {booking.paymentType}
                       {booking.rate && <span className="text-muted-foreground font-normal text-sm ml-1">· ${booking.rate}</span>}
                     </p>
                   </div>
@@ -265,6 +437,72 @@ export default function BookingDetail() {
           </Card>
         </div>
       </div>
+
+      {/* Add Milestone Dialog */}
+      <Dialog open={milestoneOpen} onOpenChange={setMilestoneOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader className="pb-4 border-b">
+            <DialogTitle className="font-serif text-xl">Add Milestone</DialogTitle>
+            <DialogDescription>Track a deliverable or payment checkpoint.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Title *</Label>
+              <Input placeholder="e.g. Design mockups delivered" value={msTitle} onChange={e => setMsTitle(e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground flex justify-between">Description <span className="font-normal opacity-60 lowercase">optional</span></Label>
+              <Textarea placeholder="Describe the deliverable..." value={msDesc} onChange={e => setMsDesc(e.target.value)} className="resize-none h-20" />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground flex justify-between">Amount ($) <span className="font-normal opacity-60 lowercase">optional</span></Label>
+                <Input type="number" placeholder="0.00" value={msAmount} onChange={e => setMsAmount(e.target.value)} />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground flex justify-between">Due Date <span className="font-normal opacity-60 lowercase">optional</span></Label>
+                <Input type="date" value={msDueDate} onChange={e => setMsDueDate(e.target.value)} />
+              </div>
+            </div>
+          </div>
+          <DialogFooter className="border-t pt-4">
+            <Button variant="ghost" onClick={() => setMilestoneOpen(false)}>Cancel</Button>
+            <Button onClick={handleAddMilestone} disabled={createMilestone.isPending || !msTitle.trim()}>
+              {createMilestone.isPending ? "Adding..." : "Add Milestone"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Review Dialog */}
+      <Dialog open={reviewOpen} onOpenChange={setReviewOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader className="pb-4 border-b">
+            <DialogTitle className="font-serif text-xl">Leave a Review</DialogTitle>
+            <DialogDescription>Share your experience with this engagement.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Rating *</Label>
+              <StarPicker value={reviewRating} onChange={setReviewRating} />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground flex justify-between">Title <span className="font-normal opacity-60 lowercase">optional</span></Label>
+              <Input placeholder="Summary of your experience" value={reviewTitle} onChange={e => setReviewTitle(e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground flex justify-between">Review <span className="font-normal opacity-60 lowercase">optional</span></Label>
+              <Textarea placeholder="Share your experience in detail..." value={reviewContent} onChange={e => setReviewContent(e.target.value)} className="resize-none h-24" />
+            </div>
+          </div>
+          <DialogFooter className="border-t pt-4">
+            <Button variant="ghost" onClick={() => setReviewOpen(false)}>Cancel</Button>
+            <Button onClick={handleSubmitReview} disabled={createReview.isPending || reviewRating === 0}>
+              {createReview.isPending ? "Submitting..." : "Submit Review"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

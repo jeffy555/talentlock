@@ -2,6 +2,7 @@ import { useState, useRef } from "react";
 import {
   useGetMe, useUpsertMe, useGetMyFreelancerProfile, useUpdateMyFreelancerProfile,
   useGetMyEmployerProfile, useUpsertMyEmployerProfile,
+  useListMyPortfolio, useCreatePortfolioItem, useUpdatePortfolioItem, useDeletePortfolioItem,
 } from "@workspace/api-client-react";
 import { useUser } from "@clerk/react";
 import { Button } from "@/components/ui/button";
@@ -11,9 +12,12 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { BadgeCheck, Building, User, Shield, Upload, FileText, X, Loader2, ShieldCheck, ShieldX, Mail, ExternalLink, RefreshCw } from "lucide-react";
+import { BadgeCheck, Building, User, Shield, Upload, FileText, X, Loader2, ShieldCheck, ShieldX, Mail, ExternalLink, RefreshCw, Plus, Pencil, Trash2, Globe, Calendar, Image } from "lucide-react";
 import { ResumeImporter, type ParsedResume } from "@/components/ResumeImporter";
+import { useQueryClient } from "@tanstack/react-query";
 
 const BASE = import.meta.env.BASE_URL ?? "/";
 
@@ -120,8 +124,6 @@ function VerificationPanel({ role, verificationStatus, verificationNote, documen
     }
   };
 
-  const displayResult = verifyResult;
-
   return (
     <Card>
       <CardHeader>
@@ -145,7 +147,6 @@ function VerificationPanel({ role, verificationStatus, verificationNote, documen
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        {/* Existing docs summary */}
         {documentNames && documentNames.length > 0 && !showUploadPanel && (
           <div className="space-y-1">
             <div className="text-xs text-muted-foreground uppercase tracking-wide font-medium mb-2">Submitted Documents</div>
@@ -157,28 +158,24 @@ function VerificationPanel({ role, verificationStatus, verificationNote, documen
             ))}
           </div>
         )}
-
-        {/* Reviewer note */}
         {verificationNote && !showUploadPanel && (
           <div className="rounded-lg bg-secondary/40 border p-3 text-sm">
             <div className="text-xs text-muted-foreground uppercase tracking-wide font-medium mb-1">AI Reviewer Notes</div>
             <p className="text-foreground">{verificationNote}</p>
           </div>
         )}
-
-        {/* Post-verification result */}
-        {displayResult && (
-          <div className={`flex items-start gap-3 rounded-lg border px-4 py-3 text-sm ${displayResult.status === "verified" ? "border-green-200 bg-green-50 text-green-800" : "border-red-200 bg-red-50 text-red-800"}`}>
-            {displayResult.status === "verified" ? <ShieldCheck className="h-4 w-4 mt-0.5 flex-shrink-0" /> : <ShieldX className="h-4 w-4 mt-0.5 flex-shrink-0" />}
+        {verifyResult && (
+          <div className={`flex items-start gap-3 rounded-lg border px-4 py-3 text-sm ${verifyResult.status === "verified" ? "border-green-200 bg-green-50 text-green-800" : "border-red-200 bg-red-50 text-red-800"}`}>
+            {verifyResult.status === "verified" ? <ShieldCheck className="h-4 w-4 mt-0.5 flex-shrink-0" /> : <ShieldX className="h-4 w-4 mt-0.5 flex-shrink-0" />}
             <div className="flex-1">
-              <p className="font-semibold">{displayResult.status === "verified" ? "Documents verified!" : "Verification unsuccessful"}</p>
-              <p className="mt-0.5">{displayResult.note}</p>
-              {displayResult.emailSent && (
+              <p className="font-semibold">{verifyResult.status === "verified" ? "Documents verified!" : "Verification unsuccessful"}</p>
+              <p className="mt-0.5">{verifyResult.note}</p>
+              {verifyResult.emailSent && (
                 <div className="flex items-center gap-1.5 mt-1.5">
                   <Mail className="h-3.5 w-3.5" />
                   <span className="text-xs">Confirmation email sent</span>
-                  {displayResult.emailPreviewUrl && (
-                    <a href={displayResult.emailPreviewUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-0.5 underline text-xs">
+                  {verifyResult.emailPreviewUrl && (
+                    <a href={verifyResult.emailPreviewUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-0.5 underline text-xs">
                       <ExternalLink className="h-3 w-3" />Preview
                     </a>
                   )}
@@ -187,8 +184,6 @@ function VerificationPanel({ role, verificationStatus, verificationNote, documen
             </div>
           </div>
         )}
-
-        {/* Upload panel */}
         {showUploadPanel && (
           <div className="space-y-3 border rounded-lg p-4">
             <div className="text-sm font-medium">Upload Documents</div>
@@ -225,7 +220,6 @@ function VerificationPanel({ role, verificationStatus, verificationNote, documen
             </div>
           </div>
         )}
-
         {!showUploadPanel && (
           <Button variant="outline" size="sm" className="gap-2" onClick={() => { setShowUploadPanel(true); setVerifyResult(null); }}>
             <RefreshCw className="h-4 w-4" />
@@ -237,11 +231,177 @@ function VerificationPanel({ role, verificationStatus, verificationNote, documen
   );
 }
 
+interface PortfolioFormState {
+  title: string;
+  description: string;
+  url: string;
+  imageUrl: string;
+  tags: string;
+}
+
+function PortfolioSection() {
+  const qc = useQueryClient();
+  const { toast } = useToast();
+  const { data: items, refetch } = useListMyPortfolio();
+  const createItem = useCreatePortfolioItem();
+  const updateItem = useUpdatePortfolioItem();
+  const deleteItem = useDeletePortfolioItem();
+
+  const emptyForm: PortfolioFormState = { title: "", description: "", url: "", imageUrl: "", tags: "" };
+  const [open, setOpen] = useState(false);
+  const [editId, setEditId] = useState<number | null>(null);
+  const [form, setForm] = useState<PortfolioFormState>(emptyForm);
+  const [deleting, setDeleting] = useState<number | null>(null);
+
+  const openCreate = () => { setEditId(null); setForm(emptyForm); setOpen(true); };
+  const openEdit = (item: any) => {
+    setEditId(item.id);
+    setForm({ title: item.title, description: item.description ?? "", url: item.url ?? "", imageUrl: item.imageUrl ?? "", tags: item.tags?.join(", ") ?? "" });
+    setOpen(true);
+  };
+
+  const handleSave = async () => {
+    if (!form.title.trim()) return;
+    const payload = {
+      title: form.title,
+      ...(form.description ? { description: form.description } : {}),
+      ...(form.url ? { url: form.url } : {}),
+      ...(form.imageUrl ? { imageUrl: form.imageUrl } : {}),
+      tags: form.tags ? form.tags.split(",").map(t => t.trim()).filter(Boolean) : [],
+    };
+    try {
+      if (editId != null) {
+        await updateItem.mutateAsync({ id: editId, data: payload });
+        toast({ title: "Portfolio item updated" });
+      } else {
+        await createItem.mutateAsync({ data: payload });
+        toast({ title: "Portfolio item added" });
+      }
+      refetch();
+      setOpen(false);
+    } catch {
+      toast({ title: "Failed to save", variant: "destructive" });
+    }
+  };
+
+  const handleDelete = async (id: number) => {
+    setDeleting(id);
+    try {
+      await deleteItem.mutateAsync({ id });
+      toast({ title: "Item removed" });
+      refetch();
+    } catch {
+      toast({ title: "Failed to delete", variant: "destructive" });
+    } finally {
+      setDeleting(null);
+    }
+  };
+
+  const isPending = createItem.isPending || updateItem.isPending;
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle className="flex items-center gap-2 text-base"><Image className="h-4 w-4" />Portfolio</CardTitle>
+            <CardDescription className="mt-1">Showcase your work samples and past projects.</CardDescription>
+          </div>
+          <Button variant="outline" size="sm" className="gap-1.5 h-8" onClick={openCreate}>
+            <Plus className="h-3.5 w-3.5" />Add
+          </Button>
+        </div>
+      </CardHeader>
+      <CardContent>
+        {items && items.length > 0 ? (
+          <div className="space-y-3">
+            {items.map((item: any) => (
+              <div key={item.id} className="flex items-start gap-3 p-4 rounded-xl border border-border bg-secondary/10 hover:border-primary/20 transition-colors group">
+                {item.imageUrl ? (
+                  <img src={item.imageUrl} alt={item.title} className="w-14 h-14 rounded-lg object-cover border border-border flex-shrink-0" />
+                ) : (
+                  <div className="w-14 h-14 rounded-lg bg-secondary flex items-center justify-center flex-shrink-0 border border-border">
+                    <Image className="h-5 w-5 text-muted-foreground" />
+                  </div>
+                )}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold text-sm text-foreground truncate">{item.title}</span>
+                    {item.url && <a href={item.url} target="_blank" rel="noreferrer" className="text-muted-foreground hover:text-primary"><ExternalLink className="h-3.5 w-3.5" /></a>}
+                  </div>
+                  {item.description && <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{item.description}</p>}
+                  {item.tags?.length > 0 && (
+                    <div className="flex flex-wrap gap-1 mt-1.5">
+                      {item.tags.map((t: string, i: number) => <Badge key={i} variant="outline" className="text-[10px] px-1.5 py-0">{t}</Badge>)}
+                    </div>
+                  )}
+                </div>
+                <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
+                  <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-foreground" onClick={() => openEdit(item)}>
+                    <Pencil className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive" onClick={() => handleDelete(item.id)} disabled={deleting === item.id}>
+                    {deleting === item.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="py-10 text-center border border-dashed border-border rounded-xl">
+            <Image className="h-8 w-8 text-muted-foreground/30 mx-auto mb-3" />
+            <p className="text-sm font-medium text-foreground">No portfolio items yet</p>
+            <p className="text-xs text-muted-foreground mt-1">Add projects to showcase your work to employers.</p>
+          </div>
+        )}
+      </CardContent>
+
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="sm:max-w-[480px]">
+          <DialogHeader className="pb-4 border-b">
+            <DialogTitle className="font-serif text-xl">{editId ? "Edit Portfolio Item" : "Add Portfolio Item"}</DialogTitle>
+            <DialogDescription>Share a project or work sample with employers.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Title *</Label>
+              <Input placeholder="e.g. E-commerce Platform Redesign" value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground flex justify-between">Description <span className="font-normal opacity-60 lowercase">optional</span></Label>
+              <Textarea className="resize-none h-20" placeholder="What did you build and what was the outcome?" value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-1"><Globe className="h-3 w-3" />Project URL <span className="font-normal opacity-60 lowercase">opt.</span></Label>
+                <Input type="url" placeholder="https://..." value={form.url} onChange={e => setForm(f => ({ ...f, url: e.target.value }))} />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-1"><Image className="h-3 w-3" />Image URL <span className="font-normal opacity-60 lowercase">opt.</span></Label>
+                <Input type="url" placeholder="https://..." value={form.imageUrl} onChange={e => setForm(f => ({ ...f, imageUrl: e.target.value }))} />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground flex justify-between">Tags <span className="font-normal opacity-60 lowercase">comma-separated, optional</span></Label>
+              <Input placeholder="React, TypeScript, Figma" value={form.tags} onChange={e => setForm(f => ({ ...f, tags: e.target.value }))} />
+            </div>
+          </div>
+          <DialogFooter className="border-t pt-4">
+            <Button variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
+            <Button onClick={handleSave} disabled={isPending || !form.title.trim()}>
+              {isPending ? "Saving..." : editId ? "Update Item" : "Add Item"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </Card>
+  );
+}
+
 export default function Profile() {
   const { user: clerkUser } = useUser();
   const { toast } = useToast();
   const { data: dbUser, refetch: refetchUser } = useGetMe();
-  const upsertMe = useUpsertMe();
 
   const isFreelancer = dbUser?.role === "freelancer";
   const isEmployer = dbUser?.role === "employer";
@@ -252,7 +412,7 @@ export default function Profile() {
   const updateFreelancer = useUpdateMyFreelancerProfile();
   const upsertEmployer = useUpsertMyEmployerProfile();
 
-  const fp = freelancerProfile as typeof freelancerProfile & { verificationStatus?: string; verificationNote?: string; documentNames?: string[] };
+  const fp = freelancerProfile as typeof freelancerProfile & { verificationStatus?: string; verificationNote?: string; documentNames?: string[]; availableFrom?: string | null; availabilityNote?: string | null; };
   const ep = employerProfile as typeof employerProfile & { verificationStatus?: string; verificationNote?: string; documentNames?: string[] };
 
   const [bio, setBio] = useState(freelancerProfile?.bio ?? "");
@@ -260,6 +420,9 @@ export default function Profile() {
   const [portfolioUrl, setPortfolioUrl] = useState(freelancerProfile?.portfolioUrl ?? "");
   const [hourlyRate, setHourlyRate] = useState(String(freelancerProfile?.hourlyRate ?? ""));
   const [skills, setSkills] = useState(freelancerProfile?.skills?.join(", ") ?? "");
+  const [isAvailable, setIsAvailable] = useState(freelancerProfile?.isAvailable ?? true);
+  const [availableFrom, setAvailableFrom] = useState(fp?.availableFrom ? fp.availableFrom.substring(0, 10) : "");
+  const [availabilityNote, setAvailabilityNote] = useState(fp?.availabilityNote ?? "");
 
   const [companyName, setCompanyName] = useState(employerProfile?.companyName ?? "");
   const [industry, setIndustry] = useState(employerProfile?.industry ?? "");
@@ -282,6 +445,9 @@ export default function Profile() {
           portfolioUrl: portfolioUrl || undefined,
           hourlyRate: hourlyRate ? parseFloat(hourlyRate) : undefined,
           skills: skills ? skills.split(",").map(s => s.trim()).filter(Boolean) : undefined,
+          isAvailable,
+          availableFrom: availableFrom ? new Date(availableFrom).toISOString() : undefined,
+          availabilityNote: availabilityNote || undefined,
         },
       });
       toast({ title: "Profile updated", description: "Your freelancer profile has been saved." });
@@ -330,13 +496,17 @@ export default function Profile() {
                     <BadgeCheck className="h-3 w-3" />Verified
                   </Badge>
                 )}
+                {isFreelancer && freelancerProfile && (
+                  <a href={`/f/${(freelancerProfile as any).id}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors border border-border rounded-full px-2 py-0.5">
+                    <ExternalLink className="h-3 w-3" />Public Profile
+                  </a>
+                )}
               </div>
             </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* Verification panel */}
       {isFreelancer && freelancerProfile && (
         <VerificationPanel
           role="freelancer"
@@ -395,12 +565,49 @@ export default function Profile() {
                 <Input type="url" value={portfolioUrl} onChange={e => setPortfolioUrl(e.target.value)} placeholder="https://yourportfolio.com" />
               </div>
             </div>
+
+            {/* Availability section */}
+            <div className="pt-4 border-t border-border/50 space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-semibold text-foreground flex items-center gap-2"><Calendar className="h-4 w-4 text-muted-foreground" />Availability</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">Let employers know when you're open to new engagements.</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Switch id="available-toggle" checked={isAvailable} onCheckedChange={setIsAvailable} />
+                  <Label htmlFor="available-toggle" className="text-sm font-medium cursor-pointer">
+                    {isAvailable ? <span className="text-green-700">Available</span> : <span className="text-muted-foreground">Unavailable</span>}
+                  </Label>
+                </div>
+              </div>
+              {!isAvailable && (
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground flex justify-between">Available From <span className="font-normal opacity-60 lowercase">optional</span></Label>
+                    <Input type="date" value={availableFrom} onChange={e => setAvailableFrom(e.target.value)} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground flex justify-between">Availability Note <span className="font-normal opacity-60 lowercase">optional</span></Label>
+                    <Input placeholder="e.g. Available for remote work only" value={availabilityNote} onChange={e => setAvailabilityNote(e.target.value)} />
+                  </div>
+                </div>
+              )}
+              {isAvailable && (
+                <div className="space-y-2">
+                  <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground flex justify-between">Availability Note <span className="font-normal opacity-60 lowercase">optional</span></Label>
+                  <Input placeholder="e.g. Available for projects starting next month, remote preferred" value={availabilityNote} onChange={e => setAvailabilityNote(e.target.value)} />
+                </div>
+              )}
+            </div>
+
             <Button onClick={handleSaveFreelancer} disabled={updateFreelancer.isPending}>
               {updateFreelancer.isPending ? "Saving..." : "Save Changes"}
             </Button>
           </CardContent>
         </Card>
       )}
+
+      {isFreelancer && freelancerProfile && <PortfolioSection />}
 
       {isEmployer && employerProfile && (
         <Card>

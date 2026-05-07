@@ -19,18 +19,24 @@ import type {
 import type {
   ActivityItem,
   Agreement,
+  AnalyticsData,
   Booking,
   CreateAgreementBody,
   CreateBookingBody,
   CreateFreelancerProfileBody,
   CreateJobRequirementBody,
   CreateMeetingBody,
+  CreateMilestoneBody,
   CreateOpenaiConversationBody,
+  CreatePortfolioItemBody,
+  CreateReviewBody,
   DashboardStats,
+  DeletePortfolioItem200,
   EmployerProfile,
   ErrorEnvelope,
   ExpressInterestBody,
   FreelancerProfile,
+  FreelancerReviewsResult,
   HealthStatus,
   JobInterest,
   JobInterestWithFreelancer,
@@ -42,13 +48,19 @@ import type {
   ListPlansParams,
   MarkAllNotificationsRead200,
   Meeting,
+  Milestone,
   MyJobInterest,
+  MyReviewResult,
   Notification,
   OpenaiConversation,
   OpenaiConversationWithMessages,
   OpenaiMessage,
   PlanDef,
   PlanLimitError,
+  PortfolioItem,
+  PublicFreelancerProfile,
+  Review,
+  SaveToggleResult,
   SendOpenaiMessageBody,
   SignAgreementBody,
   SubscriptionSummary,
@@ -56,6 +68,8 @@ import type {
   UpdateFreelancerProfileBody,
   UpdateJobRequirementBody,
   UpdateMeetingBody,
+  UpdateMilestoneBody,
+  UpdatePortfolioItemBody,
   UpgradeSubscriptionBody,
   UploadUrlRequest,
   UploadUrlResponse,
@@ -3970,6 +3984,1372 @@ export function useGetObject<
   },
 ): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
   const queryOptions = getGetObjectQueryOptions(filePath, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary List reviews for a freelancer (public)
+ */
+export const getListFreelancerReviewsUrl = (freelancerId: number) => {
+  return `/api/reviews/freelancer/${freelancerId}`;
+};
+
+export const listFreelancerReviews = async (
+  freelancerId: number,
+  options?: RequestInit,
+): Promise<FreelancerReviewsResult> => {
+  return customFetch<FreelancerReviewsResult>(
+    getListFreelancerReviewsUrl(freelancerId),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getListFreelancerReviewsQueryKey = (freelancerId: number) => {
+  return [`/api/reviews/freelancer/${freelancerId}`] as const;
+};
+
+export const getListFreelancerReviewsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listFreelancerReviews>>,
+  TError = ErrorType<unknown>,
+>(
+  freelancerId: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listFreelancerReviews>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getListFreelancerReviewsQueryKey(freelancerId);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listFreelancerReviews>>
+  > = ({ signal }) =>
+    listFreelancerReviews(freelancerId, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!freelancerId,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof listFreelancerReviews>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListFreelancerReviewsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listFreelancerReviews>>
+>;
+export type ListFreelancerReviewsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List reviews for a freelancer (public)
+ */
+
+export function useListFreelancerReviews<
+  TData = Awaited<ReturnType<typeof listFreelancerReviews>>,
+  TError = ErrorType<unknown>,
+>(
+  freelancerId: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listFreelancerReviews>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListFreelancerReviewsQueryOptions(
+    freelancerId,
+    options,
+  );
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Check whether current user has reviewed a booking
+ */
+export const getGetMyBookingReviewUrl = (bookingId: number) => {
+  return `/api/reviews/my-review/${bookingId}`;
+};
+
+export const getMyBookingReview = async (
+  bookingId: number,
+  options?: RequestInit,
+): Promise<MyReviewResult> => {
+  return customFetch<MyReviewResult>(getGetMyBookingReviewUrl(bookingId), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetMyBookingReviewQueryKey = (bookingId: number) => {
+  return [`/api/reviews/my-review/${bookingId}`] as const;
+};
+
+export const getGetMyBookingReviewQueryOptions = <
+  TData = Awaited<ReturnType<typeof getMyBookingReview>>,
+  TError = ErrorType<unknown>,
+>(
+  bookingId: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getMyBookingReview>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetMyBookingReviewQueryKey(bookingId);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getMyBookingReview>>
+  > = ({ signal }) =>
+    getMyBookingReview(bookingId, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!bookingId,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getMyBookingReview>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetMyBookingReviewQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getMyBookingReview>>
+>;
+export type GetMyBookingReviewQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Check whether current user has reviewed a booking
+ */
+
+export function useGetMyBookingReview<
+  TData = Awaited<ReturnType<typeof getMyBookingReview>>,
+  TError = ErrorType<unknown>,
+>(
+  bookingId: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getMyBookingReview>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetMyBookingReviewQueryOptions(bookingId, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Submit a review for a completed booking
+ */
+export const getCreateReviewUrl = () => {
+  return `/api/reviews`;
+};
+
+export const createReview = async (
+  createReviewBody: CreateReviewBody,
+  options?: RequestInit,
+): Promise<Review> => {
+  return customFetch<Review>(getCreateReviewUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createReviewBody),
+  });
+};
+
+export const getCreateReviewMutationOptions = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createReview>>,
+    TError,
+    { data: BodyType<CreateReviewBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createReview>>,
+  TError,
+  { data: BodyType<CreateReviewBody> },
+  TContext
+> => {
+  const mutationKey = ["createReview"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createReview>>,
+    { data: BodyType<CreateReviewBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return createReview(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateReviewMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createReview>>
+>;
+export type CreateReviewMutationBody = BodyType<CreateReviewBody>;
+export type CreateReviewMutationError = ErrorType<ErrorEnvelope>;
+
+/**
+ * @summary Submit a review for a completed booking
+ */
+export const useCreateReview = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createReview>>,
+    TError,
+    { data: BodyType<CreateReviewBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createReview>>,
+  TError,
+  { data: BodyType<CreateReviewBody> },
+  TContext
+> => {
+  return useMutation(getCreateReviewMutationOptions(options));
+};
+
+/**
+ * @summary List saved/shortlisted freelancers (employer only)
+ */
+export const getListSavedFreelancersUrl = () => {
+  return `/api/freelancers/saved`;
+};
+
+export const listSavedFreelancers = async (
+  options?: RequestInit,
+): Promise<FreelancerProfile[]> => {
+  return customFetch<FreelancerProfile[]>(getListSavedFreelancersUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListSavedFreelancersQueryKey = () => {
+  return [`/api/freelancers/saved`] as const;
+};
+
+export const getListSavedFreelancersQueryOptions = <
+  TData = Awaited<ReturnType<typeof listSavedFreelancers>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listSavedFreelancers>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListSavedFreelancersQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listSavedFreelancers>>
+  > = ({ signal }) => listSavedFreelancers({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listSavedFreelancers>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListSavedFreelancersQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listSavedFreelancers>>
+>;
+export type ListSavedFreelancersQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List saved/shortlisted freelancers (employer only)
+ */
+
+export function useListSavedFreelancers<
+  TData = Awaited<ReturnType<typeof listSavedFreelancers>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listSavedFreelancers>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListSavedFreelancersQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Check if the current employer has saved this freelancer
+ */
+export const getCheckFreelancerSavedUrl = (id: number) => {
+  return `/api/freelancers/${id}/saved`;
+};
+
+export const checkFreelancerSaved = async (
+  id: number,
+  options?: RequestInit,
+): Promise<SaveToggleResult> => {
+  return customFetch<SaveToggleResult>(getCheckFreelancerSavedUrl(id), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getCheckFreelancerSavedQueryKey = (id: number) => {
+  return [`/api/freelancers/${id}/saved`] as const;
+};
+
+export const getCheckFreelancerSavedQueryOptions = <
+  TData = Awaited<ReturnType<typeof checkFreelancerSaved>>,
+  TError = ErrorType<unknown>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof checkFreelancerSaved>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getCheckFreelancerSavedQueryKey(id);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof checkFreelancerSaved>>
+  > = ({ signal }) => checkFreelancerSaved(id, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!id,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof checkFreelancerSaved>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type CheckFreelancerSavedQueryResult = NonNullable<
+  Awaited<ReturnType<typeof checkFreelancerSaved>>
+>;
+export type CheckFreelancerSavedQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Check if the current employer has saved this freelancer
+ */
+
+export function useCheckFreelancerSaved<
+  TData = Awaited<ReturnType<typeof checkFreelancerSaved>>,
+  TError = ErrorType<unknown>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof checkFreelancerSaved>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getCheckFreelancerSavedQueryOptions(id, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Toggle save/unsave a freelancer (employer only)
+ */
+export const getToggleSaveFreelancerUrl = (id: number) => {
+  return `/api/freelancers/${id}/save`;
+};
+
+export const toggleSaveFreelancer = async (
+  id: number,
+  options?: RequestInit,
+): Promise<SaveToggleResult> => {
+  return customFetch<SaveToggleResult>(getToggleSaveFreelancerUrl(id), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getToggleSaveFreelancerMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof toggleSaveFreelancer>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof toggleSaveFreelancer>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  const mutationKey = ["toggleSaveFreelancer"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof toggleSaveFreelancer>>,
+    { id: number }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return toggleSaveFreelancer(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ToggleSaveFreelancerMutationResult = NonNullable<
+  Awaited<ReturnType<typeof toggleSaveFreelancer>>
+>;
+
+export type ToggleSaveFreelancerMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Toggle save/unsave a freelancer (employer only)
+ */
+export const useToggleSaveFreelancer = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof toggleSaveFreelancer>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof toggleSaveFreelancer>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  return useMutation(getToggleSaveFreelancerMutationOptions(options));
+};
+
+/**
+ * @summary List portfolio items for a freelancer (public)
+ */
+export const getListFreelancerPortfolioUrl = (id: number) => {
+  return `/api/freelancers/${id}/portfolio`;
+};
+
+export const listFreelancerPortfolio = async (
+  id: number,
+  options?: RequestInit,
+): Promise<PortfolioItem[]> => {
+  return customFetch<PortfolioItem[]>(getListFreelancerPortfolioUrl(id), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListFreelancerPortfolioQueryKey = (id: number) => {
+  return [`/api/freelancers/${id}/portfolio`] as const;
+};
+
+export const getListFreelancerPortfolioQueryOptions = <
+  TData = Awaited<ReturnType<typeof listFreelancerPortfolio>>,
+  TError = ErrorType<unknown>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listFreelancerPortfolio>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getListFreelancerPortfolioQueryKey(id);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listFreelancerPortfolio>>
+  > = ({ signal }) =>
+    listFreelancerPortfolio(id, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!id,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof listFreelancerPortfolio>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListFreelancerPortfolioQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listFreelancerPortfolio>>
+>;
+export type ListFreelancerPortfolioQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List portfolio items for a freelancer (public)
+ */
+
+export function useListFreelancerPortfolio<
+  TData = Awaited<ReturnType<typeof listFreelancerPortfolio>>,
+  TError = ErrorType<unknown>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listFreelancerPortfolio>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListFreelancerPortfolioQueryOptions(id, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary List my portfolio items
+ */
+export const getListMyPortfolioUrl = () => {
+  return `/api/portfolio/me`;
+};
+
+export const listMyPortfolio = async (
+  options?: RequestInit,
+): Promise<PortfolioItem[]> => {
+  return customFetch<PortfolioItem[]>(getListMyPortfolioUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListMyPortfolioQueryKey = () => {
+  return [`/api/portfolio/me`] as const;
+};
+
+export const getListMyPortfolioQueryOptions = <
+  TData = Awaited<ReturnType<typeof listMyPortfolio>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listMyPortfolio>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListMyPortfolioQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listMyPortfolio>>> = ({
+    signal,
+  }) => listMyPortfolio({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listMyPortfolio>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListMyPortfolioQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listMyPortfolio>>
+>;
+export type ListMyPortfolioQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List my portfolio items
+ */
+
+export function useListMyPortfolio<
+  TData = Awaited<ReturnType<typeof listMyPortfolio>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listMyPortfolio>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListMyPortfolioQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Create a portfolio item
+ */
+export const getCreatePortfolioItemUrl = () => {
+  return `/api/portfolio`;
+};
+
+export const createPortfolioItem = async (
+  createPortfolioItemBody: CreatePortfolioItemBody,
+  options?: RequestInit,
+): Promise<PortfolioItem> => {
+  return customFetch<PortfolioItem>(getCreatePortfolioItemUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createPortfolioItemBody),
+  });
+};
+
+export const getCreatePortfolioItemMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createPortfolioItem>>,
+    TError,
+    { data: BodyType<CreatePortfolioItemBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createPortfolioItem>>,
+  TError,
+  { data: BodyType<CreatePortfolioItemBody> },
+  TContext
+> => {
+  const mutationKey = ["createPortfolioItem"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createPortfolioItem>>,
+    { data: BodyType<CreatePortfolioItemBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return createPortfolioItem(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreatePortfolioItemMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createPortfolioItem>>
+>;
+export type CreatePortfolioItemMutationBody = BodyType<CreatePortfolioItemBody>;
+export type CreatePortfolioItemMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Create a portfolio item
+ */
+export const useCreatePortfolioItem = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createPortfolioItem>>,
+    TError,
+    { data: BodyType<CreatePortfolioItemBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createPortfolioItem>>,
+  TError,
+  { data: BodyType<CreatePortfolioItemBody> },
+  TContext
+> => {
+  return useMutation(getCreatePortfolioItemMutationOptions(options));
+};
+
+/**
+ * @summary Update a portfolio item
+ */
+export const getUpdatePortfolioItemUrl = (id: number) => {
+  return `/api/portfolio/${id}`;
+};
+
+export const updatePortfolioItem = async (
+  id: number,
+  updatePortfolioItemBody: UpdatePortfolioItemBody,
+  options?: RequestInit,
+): Promise<PortfolioItem> => {
+  return customFetch<PortfolioItem>(getUpdatePortfolioItemUrl(id), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(updatePortfolioItemBody),
+  });
+};
+
+export const getUpdatePortfolioItemMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updatePortfolioItem>>,
+    TError,
+    { id: number; data: BodyType<UpdatePortfolioItemBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updatePortfolioItem>>,
+  TError,
+  { id: number; data: BodyType<UpdatePortfolioItemBody> },
+  TContext
+> => {
+  const mutationKey = ["updatePortfolioItem"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updatePortfolioItem>>,
+    { id: number; data: BodyType<UpdatePortfolioItemBody> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return updatePortfolioItem(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdatePortfolioItemMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updatePortfolioItem>>
+>;
+export type UpdatePortfolioItemMutationBody = BodyType<UpdatePortfolioItemBody>;
+export type UpdatePortfolioItemMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Update a portfolio item
+ */
+export const useUpdatePortfolioItem = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updatePortfolioItem>>,
+    TError,
+    { id: number; data: BodyType<UpdatePortfolioItemBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updatePortfolioItem>>,
+  TError,
+  { id: number; data: BodyType<UpdatePortfolioItemBody> },
+  TContext
+> => {
+  return useMutation(getUpdatePortfolioItemMutationOptions(options));
+};
+
+/**
+ * @summary Delete a portfolio item
+ */
+export const getDeletePortfolioItemUrl = (id: number) => {
+  return `/api/portfolio/${id}`;
+};
+
+export const deletePortfolioItem = async (
+  id: number,
+  options?: RequestInit,
+): Promise<DeletePortfolioItem200> => {
+  return customFetch<DeletePortfolioItem200>(getDeletePortfolioItemUrl(id), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeletePortfolioItemMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deletePortfolioItem>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deletePortfolioItem>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  const mutationKey = ["deletePortfolioItem"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deletePortfolioItem>>,
+    { id: number }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return deletePortfolioItem(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeletePortfolioItemMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deletePortfolioItem>>
+>;
+
+export type DeletePortfolioItemMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Delete a portfolio item
+ */
+export const useDeletePortfolioItem = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deletePortfolioItem>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deletePortfolioItem>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  return useMutation(getDeletePortfolioItemMutationOptions(options));
+};
+
+/**
+ * @summary List milestones for a booking
+ */
+export const getListMilestonesUrl = (id: number) => {
+  return `/api/bookings/${id}/milestones`;
+};
+
+export const listMilestones = async (
+  id: number,
+  options?: RequestInit,
+): Promise<Milestone[]> => {
+  return customFetch<Milestone[]>(getListMilestonesUrl(id), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListMilestonesQueryKey = (id: number) => {
+  return [`/api/bookings/${id}/milestones`] as const;
+};
+
+export const getListMilestonesQueryOptions = <
+  TData = Awaited<ReturnType<typeof listMilestones>>,
+  TError = ErrorType<unknown>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listMilestones>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListMilestonesQueryKey(id);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listMilestones>>> = ({
+    signal,
+  }) => listMilestones(id, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!id,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof listMilestones>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListMilestonesQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listMilestones>>
+>;
+export type ListMilestonesQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List milestones for a booking
+ */
+
+export function useListMilestones<
+  TData = Awaited<ReturnType<typeof listMilestones>>,
+  TError = ErrorType<unknown>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listMilestones>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListMilestonesQueryOptions(id, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Add a milestone to a booking
+ */
+export const getCreateMilestoneUrl = (id: number) => {
+  return `/api/bookings/${id}/milestones`;
+};
+
+export const createMilestone = async (
+  id: number,
+  createMilestoneBody: CreateMilestoneBody,
+  options?: RequestInit,
+): Promise<Milestone> => {
+  return customFetch<Milestone>(getCreateMilestoneUrl(id), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createMilestoneBody),
+  });
+};
+
+export const getCreateMilestoneMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createMilestone>>,
+    TError,
+    { id: number; data: BodyType<CreateMilestoneBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createMilestone>>,
+  TError,
+  { id: number; data: BodyType<CreateMilestoneBody> },
+  TContext
+> => {
+  const mutationKey = ["createMilestone"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createMilestone>>,
+    { id: number; data: BodyType<CreateMilestoneBody> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return createMilestone(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateMilestoneMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createMilestone>>
+>;
+export type CreateMilestoneMutationBody = BodyType<CreateMilestoneBody>;
+export type CreateMilestoneMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Add a milestone to a booking
+ */
+export const useCreateMilestone = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createMilestone>>,
+    TError,
+    { id: number; data: BodyType<CreateMilestoneBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createMilestone>>,
+  TError,
+  { id: number; data: BodyType<CreateMilestoneBody> },
+  TContext
+> => {
+  return useMutation(getCreateMilestoneMutationOptions(options));
+};
+
+/**
+ * @summary Update milestone status or details
+ */
+export const getUpdateMilestoneUrl = (id: number) => {
+  return `/api/milestones/${id}`;
+};
+
+export const updateMilestone = async (
+  id: number,
+  updateMilestoneBody: UpdateMilestoneBody,
+  options?: RequestInit,
+): Promise<Milestone> => {
+  return customFetch<Milestone>(getUpdateMilestoneUrl(id), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(updateMilestoneBody),
+  });
+};
+
+export const getUpdateMilestoneMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateMilestone>>,
+    TError,
+    { id: number; data: BodyType<UpdateMilestoneBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateMilestone>>,
+  TError,
+  { id: number; data: BodyType<UpdateMilestoneBody> },
+  TContext
+> => {
+  const mutationKey = ["updateMilestone"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateMilestone>>,
+    { id: number; data: BodyType<UpdateMilestoneBody> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return updateMilestone(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateMilestoneMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateMilestone>>
+>;
+export type UpdateMilestoneMutationBody = BodyType<UpdateMilestoneBody>;
+export type UpdateMilestoneMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Update milestone status or details
+ */
+export const useUpdateMilestone = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateMilestone>>,
+    TError,
+    { id: number; data: BodyType<UpdateMilestoneBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateMilestone>>,
+  TError,
+  { id: number; data: BodyType<UpdateMilestoneBody> },
+  TContext
+> => {
+  return useMutation(getUpdateMilestoneMutationOptions(options));
+};
+
+/**
+ * @summary Get analytics for the current user (monthly metrics + totals)
+ */
+export const getGetMyAnalyticsUrl = () => {
+  return `/api/analytics/me`;
+};
+
+export const getMyAnalytics = async (
+  options?: RequestInit,
+): Promise<AnalyticsData> => {
+  return customFetch<AnalyticsData>(getGetMyAnalyticsUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetMyAnalyticsQueryKey = () => {
+  return [`/api/analytics/me`] as const;
+};
+
+export const getGetMyAnalyticsQueryOptions = <
+  TData = Awaited<ReturnType<typeof getMyAnalytics>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getMyAnalytics>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetMyAnalyticsQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getMyAnalytics>>> = ({
+    signal,
+  }) => getMyAnalytics({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getMyAnalytics>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetMyAnalyticsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getMyAnalytics>>
+>;
+export type GetMyAnalyticsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Get analytics for the current user (monthly metrics + totals)
+ */
+
+export function useGetMyAnalytics<
+  TData = Awaited<ReturnType<typeof getMyAnalytics>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getMyAnalytics>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetMyAnalyticsQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Get a public freelancer profile (no auth required)
+ */
+export const getGetPublicFreelancerProfileUrl = (id: number) => {
+  return `/api/public/freelancers/${id}`;
+};
+
+export const getPublicFreelancerProfile = async (
+  id: number,
+  options?: RequestInit,
+): Promise<PublicFreelancerProfile> => {
+  return customFetch<PublicFreelancerProfile>(
+    getGetPublicFreelancerProfileUrl(id),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getGetPublicFreelancerProfileQueryKey = (id: number) => {
+  return [`/api/public/freelancers/${id}`] as const;
+};
+
+export const getGetPublicFreelancerProfileQueryOptions = <
+  TData = Awaited<ReturnType<typeof getPublicFreelancerProfile>>,
+  TError = ErrorType<ErrorEnvelope>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getPublicFreelancerProfile>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetPublicFreelancerProfileQueryKey(id);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getPublicFreelancerProfile>>
+  > = ({ signal }) =>
+    getPublicFreelancerProfile(id, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!id,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getPublicFreelancerProfile>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetPublicFreelancerProfileQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getPublicFreelancerProfile>>
+>;
+export type GetPublicFreelancerProfileQueryError = ErrorType<ErrorEnvelope>;
+
+/**
+ * @summary Get a public freelancer profile (no auth required)
+ */
+
+export function useGetPublicFreelancerProfile<
+  TData = Awaited<ReturnType<typeof getPublicFreelancerProfile>>,
+  TError = ErrorType<ErrorEnvelope>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getPublicFreelancerProfile>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetPublicFreelancerProfileQueryOptions(id, options);
 
   const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
     queryKey: QueryKey;

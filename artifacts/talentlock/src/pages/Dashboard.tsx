@@ -1,7 +1,8 @@
-import { useGetMe, useGetDashboardStats, useGetDashboardActivity } from "@workspace/api-client-react";
+import { useGetMe, useGetDashboardStats, useGetDashboardActivity, useGetMyAnalytics } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Activity, Briefcase, Calendar, CheckCircle2, Clock, FileText, User } from "lucide-react";
+import { Activity, Briefcase, Calendar, CheckCircle2, Clock, FileText, User, TrendingUp, Star } from "lucide-react";
 import { format } from "date-fns";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 
 function StatCardSkeleton() {
   return (
@@ -30,36 +31,42 @@ function ActivitySkeleton() {
   );
 }
 
+const CustomTooltip = ({ active, payload, label, valueKey, prefix }: any) => {
+  if (active && payload && payload.length) {
+    return (
+      <div className="bg-card border border-border rounded-lg shadow-lg p-3 text-sm">
+        <p className="font-semibold text-foreground mb-1">{label}</p>
+        <p className="text-muted-foreground">Bookings: <span className="font-bold text-foreground">{payload.find((p: any) => p.dataKey === "bookings")?.value ?? 0}</span></p>
+        {payload.find((p: any) => p.dataKey === valueKey) && (
+          <p className="text-muted-foreground capitalize">{valueKey}: <span className="font-bold text-foreground">{prefix}{payload.find((p: any) => p.dataKey === valueKey)?.value?.toFixed(0) ?? 0}</span></p>
+        )}
+      </div>
+    );
+  }
+  return null;
+};
+
 export default function Dashboard() {
   const { data: user } = useGetMe();
   const { data: stats, isLoading: isLoadingStats } = useGetDashboardStats();
   const { data: activity, isLoading: isLoadingActivity } = useGetDashboardActivity();
+  const { data: analytics } = useGetMyAnalytics();
 
   const isEmployer = user?.role === "employer";
+  const monthly = analytics?.monthly ?? [];
+  const totals = analytics?.totals as Record<string, number | null | undefined> | undefined;
+  const valueKey = isEmployer ? "spend" : "earnings";
 
   if (isLoadingStats || isLoadingActivity) {
     return (
       <div className="space-y-8 animate-fade-in">
-        <div>
-          <div className="h-9 w-48 bg-muted rounded mb-2"></div>
-          <div className="h-5 w-64 bg-muted rounded"></div>
-        </div>
+        <div><div className="h-9 w-48 bg-muted rounded mb-2"></div><div className="h-5 w-64 bg-muted rounded"></div></div>
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          <StatCardSkeleton />
-          <StatCardSkeleton />
-          <StatCardSkeleton />
-          <StatCardSkeleton />
+          <StatCardSkeleton /><StatCardSkeleton /><StatCardSkeleton /><StatCardSkeleton />
         </div>
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-          <Card className="col-span-4 p-6">
-            <ActivitySkeleton />
-            <ActivitySkeleton />
-            <ActivitySkeleton />
-          </Card>
-          <Card className="col-span-3 p-6">
-            <ActivitySkeleton />
-            <ActivitySkeleton />
-          </Card>
+          <Card className="col-span-4 p-6"><ActivitySkeleton /><ActivitySkeleton /><ActivitySkeleton /></Card>
+          <Card className="col-span-3 p-6"><ActivitySkeleton /><ActivitySkeleton /></Card>
         </div>
       </div>
     );
@@ -69,9 +76,7 @@ export default function Dashboard() {
     <div className="space-y-8 animate-fade-in">
       <div>
         <h1 className="text-3xl font-serif font-bold tracking-tight text-foreground">Dashboard</h1>
-        <p className="text-muted-foreground mt-1 font-light">
-          Welcome back, {user?.name}. Here is your overview.
-        </p>
+        <p className="text-muted-foreground mt-1 font-light">Welcome back, {user?.name}. Here is your overview.</p>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -85,7 +90,7 @@ export default function Dashboard() {
             <p className="text-xs text-muted-foreground mt-1">Currently ongoing engagements</p>
           </CardContent>
         </Card>
-        
+
         <Card className="bg-card shadow-sm border-border hover:shadow-md transition-shadow">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Completed Bookings</CardTitle>
@@ -134,17 +139,60 @@ export default function Dashboard() {
             </Card>
             <Card className="bg-card shadow-sm border-border hover:shadow-md transition-shadow">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">Pending Agreements</CardTitle>
-                <FileText className="h-4 w-4 text-gold" />
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  {totals?.averageRating ? "Avg Rating" : "Pending Agreements"}
+                </CardTitle>
+                {totals?.averageRating ? <Star className="h-4 w-4 text-gold" /> : <FileText className="h-4 w-4 text-gold" />}
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-serif font-bold text-foreground">{stats?.pendingAgreements || 0}</div>
-                <p className="text-xs text-muted-foreground mt-1">Awaiting your signature</p>
+                {totals?.averageRating ? (
+                  <>
+                    <div className="text-3xl font-serif font-bold text-foreground">{Number(totals.averageRating).toFixed(1)}</div>
+                    <p className="text-xs text-muted-foreground mt-1">From {totals.totalReviews ?? 0} review{totals.totalReviews !== 1 ? "s" : ""}</p>
+                  </>
+                ) : (
+                  <>
+                    <div className="text-3xl font-serif font-bold text-foreground">{stats?.pendingAgreements || 0}</div>
+                    <p className="text-xs text-muted-foreground mt-1">Awaiting your signature</p>
+                  </>
+                )}
               </CardContent>
             </Card>
           </>
         )}
       </div>
+
+      {/* Analytics Chart */}
+      {monthly.length > 0 && (
+        <Card className="shadow-sm border-border">
+          <CardHeader>
+            <div className="flex items-center gap-3">
+              <TrendingUp className="h-5 w-5 text-gold" />
+              <div>
+                <CardTitle className="font-serif">Activity Over Time</CardTitle>
+                <CardDescription>Monthly bookings and {isEmployer ? "spend" : "earnings"} over the past 6 months.</CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={220}>
+              <BarChart data={monthly} margin={{ top: 4, right: 16, left: 0, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                <XAxis dataKey="month" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
+                <YAxis yAxisId="left" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
+                <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} tickFormatter={(v) => `$${v}`} />
+                <Tooltip content={<CustomTooltip valueKey={valueKey} prefix="$" />} />
+                <Bar yAxisId="left" dataKey="bookings" fill="hsl(var(--primary))" radius={[3,3,0,0]} maxBarSize={32} name="Bookings" />
+                <Bar yAxisId="right" dataKey={valueKey} fill="hsl(var(--gold))" radius={[3,3,0,0]} maxBarSize={32} name={isEmployer ? "Spend" : "Earnings"} />
+              </BarChart>
+            </ResponsiveContainer>
+            <div className="flex items-center justify-center gap-6 mt-3 text-xs text-muted-foreground">
+              <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-primary inline-block"></span> Bookings</span>
+              <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-[hsl(var(--gold))] inline-block"></span> {isEmployer ? "Spend ($)" : "Earnings ($)"}</span>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
         <Card className="col-span-4 shadow-sm border-border">
@@ -162,13 +210,11 @@ export default function Dashboard() {
                       {item.type === "agreement_signed" && <FileText className="h-4 w-4 text-gold" />}
                       {item.type === "job_posted" && <Briefcase className="h-4 w-4 text-gold" />}
                       {item.type === "booking_completed" && <CheckCircle2 className="h-4 w-4 text-gold" />}
-                      {(!["booking_created", "agreement_signed", "job_posted", "booking_completed"].includes(item.type)) && <Clock className="h-4 w-4 text-gold" />}
+                      {!["booking_created", "agreement_signed", "job_posted", "booking_completed"].includes(item.type) && <Clock className="h-4 w-4 text-gold" />}
                     </div>
                     <div className="flex-1 space-y-1 mt-1">
                       <p className="text-sm font-medium leading-none text-foreground">{item.description}</p>
-                      <p className="text-xs text-muted-foreground font-light">
-                        {format(new Date(item.timestamp), "MMM d, yyyy h:mm a")}
-                      </p>
+                      <p className="text-xs text-muted-foreground font-light">{format(new Date(item.timestamp), "MMM d, yyyy h:mm a")}</p>
                     </div>
                   </div>
                 ))}
@@ -210,6 +256,18 @@ export default function Dashboard() {
                 </div>
                 <div className="font-serif font-bold text-lg text-foreground">{stats?.openJobRequirements || 0}</div>
               </div>
+              {isEmployer && totals?.uniqueFreelancers != null && (
+                <div className="flex items-center">
+                  <div className="bg-secondary/50 p-2.5 rounded-xl mr-4 border border-border">
+                    <User className="h-4 w-4 text-primary" />
+                  </div>
+                  <div className="flex-1 space-y-1">
+                    <p className="text-sm font-medium leading-none">Freelancers Hired</p>
+                    <p className="text-xs text-muted-foreground font-light">Unique professionals</p>
+                  </div>
+                  <div className="font-serif font-bold text-lg text-foreground">{totals.uniqueFreelancers}</div>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>

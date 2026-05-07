@@ -70,12 +70,19 @@ Frontend pages: `/pricing` (audience-filtered tier grid) and `/billing` (current
 ## Key Features
 
 1. **Dual Role System** — Users register as either freelancers or employers via onboarding
-2. **Talent Vault** — Employers browse vetted freelancers with availability/booking status
+2. **Talent Vault** — Employers browse vetted freelancers with filters (field of work, rate, availability) + shortlist/heart button
 3. **Exclusive Bookings** — When booked, freelancers are marked unavailable (Lock badge)
 4. **AI Talent Matching** — GPT-powered chat that analyzes job requirements and recommends matching freelancers
 5. **AI Agreement Generation** — GPT-4 generates comprehensive legal engagement contracts from booking details
 6. **Digital Signatures** — Both parties sign agreements within the platform
-7. **Dashboards** — Role-specific metrics (earnings/spend, booking count, agreement status)
+7. **Dashboards** — Role-specific metrics (earnings/spend, booking count, agreement status) + analytics bar chart (recharts)
+8. **Reviews & Ratings** — Employers leave star reviews on completed bookings; average rating shown on freelancer profiles
+9. **Freelancer Shortlist** — Employers save/unsave freelancers via heart icon; shortlist filter on Talent Vault
+10. **Availability Calendar** — Freelancers set isAvailable, availableFrom date, and availability note on profile
+11. **Portfolio / Work Samples** — Freelancers manage portfolio items (title, description, URL, image, tags) on Profile page
+12. **Milestone-based Bookings** — Bookings track milestones with title, amount, due date, status (pending → completed → approved)
+13. **Platform Analytics** — Monthly booking + earnings/spend bar charts on Dashboard; totals with review averages
+14. **Shareable Public Profiles** — Unauthenticated `/f/:id` pages show full profile, portfolio, reviews + CTA to sign in
 
 ## Routes
 

@@ -5,11 +5,12 @@
  * TalentLock API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { PortfolioItem } from "./portfolioItem";
+import type { Review } from "./review";
 
-export interface FreelancerProfile {
+export interface PublicFreelancerProfile {
   id: number;
   userId: number;
-  clerkId: string;
   name: string;
   tagline: string;
   fieldOfWork: string;
@@ -18,32 +19,20 @@ export interface FreelancerProfile {
   /** @nullable */
   bio?: string | null;
   /** @nullable */
-  resumeUrl?: string | null;
-  /** @nullable */
-  portfolioUrl?: string | null;
-  /** hourly or daily */
-  paymentPreference: string;
-  /** @nullable */
   hourlyRate?: number | null;
   /** @nullable */
   dailyRate?: number | null;
-  /** @nullable */
-  achievements?: string | null;
+  paymentPreference: string;
   isVerified: boolean;
-  /** unverified | pending | verified | rejected */
-  verificationStatus?: string;
-  /** @nullable */
-  verificationNote?: string | null;
-  documentNames?: string[];
   isAvailable: boolean;
-  /** @nullable */
-  currentBookingId?: number | null;
-  /** @nullable */
-  bookingEndDate?: Date | null;
-  subscriptionPlan: string;
   /** @nullable */
   availableFrom?: Date | null;
   /** @nullable */
   availabilityNote?: string | null;
+  portfolio: PortfolioItem[];
+  reviews: Review[];
+  /** @nullable */
+  averageRating?: number | null;
+  totalReviews: number;
   createdAt: Date;
 }
