@@ -145,6 +145,7 @@ export default function Onboarding() {
           paymentPreference: data.paymentPreference || "hourly",
           hourlyRate: data.hourlyRate ?? null,
           subscriptionPlan: "basic",
+          resumeAnalysis: data.resumeAnalysis as any ?? null,
         },
       });
       toast({ title: "Profile created!", description: "Your profile was built from your resume. You can refine it anytime from your profile page." });

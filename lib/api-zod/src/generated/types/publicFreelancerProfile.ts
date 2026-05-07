@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { PortfolioItem } from "./portfolioItem";
+import type { ResumeAnalysis } from "./resumeAnalysis";
 import type { Review } from "./review";
 
 export interface PublicFreelancerProfile {
@@ -29,6 +30,7 @@ export interface PublicFreelancerProfile {
   availableFrom?: Date | null;
   /** @nullable */
   availabilityNote?: string | null;
+  resumeAnalysis?: ResumeAnalysis | null;
   portfolio: PortfolioItem[];
   reviews: Review[];
   /** @nullable */

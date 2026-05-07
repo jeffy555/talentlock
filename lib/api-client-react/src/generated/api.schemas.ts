@@ -76,6 +76,27 @@ export interface FreelancerProfile {
   createdAt: string;
 }
 
+export interface ResumeWorkExperience {
+  company: string;
+  role: string;
+  startDate: string;
+  endDate: string;
+  highlights: string[];
+}
+
+export interface ResumeEducation {
+  institution: string;
+  degree: string;
+  year: string;
+}
+
+export interface ResumeAnalysis {
+  workExperience: ResumeWorkExperience[];
+  education: ResumeEducation[];
+  certifications: string[];
+  languages: string[];
+}
+
 export interface CreateFreelancerProfileBody {
   tagline: string;
   fieldOfWork: string;
@@ -91,6 +112,7 @@ export interface CreateFreelancerProfileBody {
   /** @nullable */
   achievements?: string | null;
   subscriptionPlan: string;
+  resumeAnalysis?: ResumeAnalysis | null;
 }
 
 export interface UpdateFreelancerProfileBody {
@@ -657,6 +679,7 @@ export interface PublicFreelancerProfile {
   availableFrom?: string | null;
   /** @nullable */
   availabilityNote?: string | null;
+  resumeAnalysis?: ResumeAnalysis | null;
   portfolio: PortfolioItem[];
   reviews: Review[];
   /** @nullable */

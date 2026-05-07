@@ -105,6 +105,28 @@ export const CreateFreelancerProfileBody = zod.object({
   dailyRate: zod.number().nullish(),
   achievements: zod.string().nullish(),
   subscriptionPlan: zod.string(),
+  resumeAnalysis: zod
+    .object({
+      workExperience: zod.array(
+        zod.object({
+          company: zod.string(),
+          role: zod.string(),
+          startDate: zod.string(),
+          endDate: zod.string(),
+          highlights: zod.array(zod.string()),
+        }),
+      ),
+      education: zod.array(
+        zod.object({
+          institution: zod.string(),
+          degree: zod.string(),
+          year: zod.string(),
+        }),
+      ),
+      certifications: zod.array(zod.string()),
+      languages: zod.array(zod.string()),
+    })
+    .nullish(),
 });
 
 /**
@@ -1299,6 +1321,28 @@ export const GetPublicFreelancerProfileResponse = zod.object({
   isAvailable: zod.boolean(),
   availableFrom: zod.coerce.date().nullish(),
   availabilityNote: zod.string().nullish(),
+  resumeAnalysis: zod
+    .object({
+      workExperience: zod.array(
+        zod.object({
+          company: zod.string(),
+          role: zod.string(),
+          startDate: zod.string(),
+          endDate: zod.string(),
+          highlights: zod.array(zod.string()),
+        }),
+      ),
+      education: zod.array(
+        zod.object({
+          institution: zod.string(),
+          degree: zod.string(),
+          year: zod.string(),
+        }),
+      ),
+      certifications: zod.array(zod.string()),
+      languages: zod.array(zod.string()),
+    })
+    .nullish(),
   portfolio: zod.array(
     zod.object({
       id: zod.number(),

@@ -2,7 +2,7 @@ import { useParams } from "wouter";
 import { useGetPublicFreelancerProfile } from "@workspace/api-client-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { BadgeCheck, Briefcase, DollarSign, ExternalLink, Lock, Star } from "lucide-react";
+import { BadgeCheck, Briefcase, Building2, DollarSign, ExternalLink, GraduationCap, Globe, Lock, Star, Award, Calendar } from "lucide-react";
 import { format } from "date-fns";
 
 function StarDisplay({ rating, max = 5 }: { rating: number; max?: number }) {
@@ -14,6 +14,17 @@ function StarDisplay({ rating, max = 5 }: { rating: number; max?: number }) {
           className={`h-4 w-4 ${i < Math.round(rating) ? "text-gold fill-gold" : "text-muted-foreground/30"}`}
         />
       ))}
+    </div>
+  );
+}
+
+function TimelineDot({ isFirst }: { isFirst?: boolean }) {
+  return (
+    <div className="flex flex-col items-center">
+      <div
+        className="h-3 w-3 rounded-full border-2 flex-shrink-0 mt-1"
+        style={{ borderColor: "#c9a84c", backgroundColor: isFirst ? "#c9a84c" : "transparent" }}
+      />
     </div>
   );
 }
@@ -52,6 +63,19 @@ export default function PublicProfile() {
     );
   }
 
+  const ra = (profile as any).resumeAnalysis as {
+    workExperience: { company: string; role: string; startDate: string; endDate: string; highlights: string[] }[];
+    education: { institution: string; degree: string; year: string }[];
+    certifications: string[];
+    languages: string[];
+  } | null | undefined;
+
+  const hasWorkExp = ra?.workExperience && ra.workExperience.length > 0;
+  const hasEducation = ra?.education && ra.education.length > 0;
+  const hasCerts = ra?.certifications && ra.certifications.length > 0;
+  const hasLanguages = ra?.languages && ra.languages.length > 0;
+  const hasResumeData = hasWorkExp || hasEducation || hasCerts || hasLanguages;
+
   return (
     <div className="min-h-screen bg-background">
       {/* Header bar */}
@@ -65,10 +89,7 @@ export default function PublicProfile() {
             </div>
             <span className="font-serif font-bold text-foreground text-sm">TalentLock</span>
           </div>
-          <a
-            href="/sign-in"
-            className="text-sm font-medium text-primary hover:underline"
-          >
+          <a href="/sign-in" className="text-sm font-medium text-primary hover:underline">
             Sign in to book →
           </a>
         </div>
@@ -130,11 +151,108 @@ export default function PublicProfile() {
 
         <div className="grid md:grid-cols-3 gap-10">
           <div className="md:col-span-2 space-y-10">
+
             {profile.bio && (
               <section className="space-y-3">
                 <h2 className="font-serif text-2xl font-semibold text-foreground">About</h2>
                 <p className="text-muted-foreground leading-relaxed whitespace-pre-wrap">{profile.bio}</p>
               </section>
+            )}
+
+            {/* ── Work Experience (from resume AI scan) ── */}
+            {hasWorkExp && (
+              <section className="space-y-4">
+                <div className="flex items-center gap-2">
+                  <Building2 className="h-5 w-5 text-primary" />
+                  <h2 className="font-serif text-2xl font-semibold text-foreground">Work Experience</h2>
+                </div>
+                <div className="relative pl-6 space-y-8">
+                  {/* Vertical timeline line */}
+                  <div className="absolute left-[5px] top-2 bottom-2 w-px bg-border" />
+                  {ra!.workExperience.map((job, i) => (
+                    <div key={i} className="relative flex gap-4">
+                      <TimelineDot isFirst={i === 0} />
+                      <div className="flex-1 pb-2">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 mb-1">
+                          <h3 className="font-semibold text-foreground text-base">{job.role}</h3>
+                          <div className="flex items-center gap-1.5 text-xs text-muted-foreground flex-shrink-0">
+                            <Calendar className="h-3 w-3" />
+                            <span>{job.startDate} – {job.endDate}</span>
+                          </div>
+                        </div>
+                        <p className="text-sm font-medium text-primary mb-2">{job.company}</p>
+                        {job.highlights.length > 0 && (
+                          <ul className="space-y-1">
+                            {job.highlights.map((h, j) => (
+                              <li key={j} className="flex gap-2 text-sm text-muted-foreground">
+                                <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-primary/50 flex-shrink-0" />
+                                <span>{h}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {/* ── Education ── */}
+            {hasEducation && (
+              <section className="space-y-4">
+                <div className="flex items-center gap-2">
+                  <GraduationCap className="h-5 w-5 text-primary" />
+                  <h2 className="font-serif text-2xl font-semibold text-foreground">Education</h2>
+                </div>
+                <div className="space-y-3">
+                  {ra!.education.map((edu, i) => (
+                    <div key={i} className="flex items-start justify-between gap-4 p-4 rounded-xl border border-border bg-card">
+                      <div>
+                        <p className="font-semibold text-foreground">{edu.degree}</p>
+                        <p className="text-sm text-primary mt-0.5">{edu.institution}</p>
+                      </div>
+                      {edu.year && (
+                        <span className="text-xs text-muted-foreground bg-secondary/50 px-2.5 py-1 rounded-full flex-shrink-0">{edu.year}</span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {/* ── Certifications & Languages row ── */}
+            {(hasCerts || hasLanguages) && (
+              <div className="grid sm:grid-cols-2 gap-6">
+                {hasCerts && (
+                  <section className="space-y-3">
+                    <div className="flex items-center gap-2">
+                      <Award className="h-5 w-5 text-primary" />
+                      <h2 className="font-serif text-xl font-semibold text-foreground">Certifications</h2>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {ra!.certifications.map((cert, i) => (
+                        <Badge key={i} className="text-xs font-medium" style={{ backgroundColor: "rgba(201,168,76,0.15)", color: "#c9a84c", border: "1px solid rgba(201,168,76,0.3)" }}>
+                          {cert}
+                        </Badge>
+                      ))}
+                    </div>
+                  </section>
+                )}
+                {hasLanguages && (
+                  <section className="space-y-3">
+                    <div className="flex items-center gap-2">
+                      <Globe className="h-5 w-5 text-primary" />
+                      <h2 className="font-serif text-xl font-semibold text-foreground">Languages</h2>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {ra!.languages.map((lang, i) => (
+                        <Badge key={i} variant="secondary" className="text-xs font-medium">{lang}</Badge>
+                      ))}
+                    </div>
+                  </section>
+                )}
+              </div>
             )}
 
             <section className="space-y-3">
@@ -239,7 +357,35 @@ export default function PublicProfile() {
                       {profile.isAvailable ? "Available" : "Booked"}
                     </span>
                   </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-muted-foreground">Experience</span>
+                    <span className="font-bold text-foreground">{profile.yearsExperience} yrs</span>
+                  </div>
                 </div>
+
+                {hasResumeData && (
+                  <div className="pt-2 border-t border-border space-y-1.5 text-xs text-muted-foreground">
+                    {hasWorkExp && (
+                      <div className="flex items-center gap-2">
+                        <Building2 className="h-3.5 w-3.5 text-primary flex-shrink-0" />
+                        <span>{ra!.workExperience.length} position{ra!.workExperience.length > 1 ? "s" : ""} verified from resume</span>
+                      </div>
+                    )}
+                    {hasEducation && (
+                      <div className="flex items-center gap-2">
+                        <GraduationCap className="h-3.5 w-3.5 text-primary flex-shrink-0" />
+                        <span>{ra!.education[0].degree}, {ra!.education[0].institution}</span>
+                      </div>
+                    )}
+                    {hasCerts && (
+                      <div className="flex items-center gap-2">
+                        <Award className="h-3.5 w-3.5 text-primary flex-shrink-0" />
+                        <span>{ra!.certifications.length} certification{ra!.certifications.length > 1 ? "s" : ""}</span>
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 <a
                   href="/sign-in"
                   className="block w-full text-center bg-primary text-primary-foreground font-semibold py-2.5 rounded-lg shadow hover:bg-primary/90 transition-colors text-sm"

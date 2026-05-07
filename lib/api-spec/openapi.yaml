@@ -1543,6 +1543,9 @@ components:
           type: ["string", "null"]
         subscriptionPlan:
           type: string
+        resumeAnalysis:
+          $ref: "#/components/schemas/ResumeAnalysis"
+          nullable: true
       required:
         - tagline
         - fieldOfWork
@@ -2590,6 +2593,55 @@ components:
         - totals
 
     # ── Public Profile ─────────────────────────────────────────────────────────
+    ResumeWorkExperience:
+      type: object
+      properties:
+        company:
+          type: string
+        role:
+          type: string
+        startDate:
+          type: string
+        endDate:
+          type: string
+        highlights:
+          type: array
+          items:
+            type: string
+      required: [company, role, startDate, endDate, highlights]
+
+    ResumeEducation:
+      type: object
+      properties:
+        institution:
+          type: string
+        degree:
+          type: string
+        year:
+          type: string
+      required: [institution, degree, year]
+
+    ResumeAnalysis:
+      type: object
+      properties:
+        workExperience:
+          type: array
+          items:
+            $ref: "#/components/schemas/ResumeWorkExperience"
+        education:
+          type: array
+          items:
+            $ref: "#/components/schemas/ResumeEducation"
+        certifications:
+          type: array
+          items:
+            type: string
+        languages:
+          type: array
+          items:
+            type: string
+      required: [workExperience, education, certifications, languages]
+
     PublicFreelancerProfile:
       type: object
       properties:
@@ -2626,6 +2678,9 @@ components:
           format: date-time
         availabilityNote:
           type: ["string", "null"]
+        resumeAnalysis:
+          $ref: "#/components/schemas/ResumeAnalysis"
+          nullable: true
         portfolio:
           type: array
           items:

@@ -5,6 +5,7 @@
  * TalentLock API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { ResumeAnalysis } from "./resumeAnalysis";
 
 export interface CreateFreelancerProfileBody {
   tagline: string;
@@ -21,4 +22,5 @@ export interface CreateFreelancerProfileBody {
   /** @nullable */
   achievements?: string | null;
   subscriptionPlan: string;
+  resumeAnalysis?: ResumeAnalysis | null;
 }

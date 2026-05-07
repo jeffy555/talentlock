@@ -118,23 +118,47 @@ router.post(
     const systemPrompt = `You are an expert resume parser. Extract structured professional profile information from the resume text provided.
 Return a valid JSON object with EXACTLY these fields:
 {
-  "isValidResume": boolean,          // true only if this is clearly a professional resume/CV
-  "invalidReason": string | null,    // if isValidResume is false, explain why; otherwise null
-  "tagline": string,                 // 4-8 word professional title/tagline (e.g. "Senior Full-Stack Software Engineer")
-  "fieldOfWork": string,             // must be EXACTLY one value from the provided list
-  "skills": string[],                // array of 5-15 specific technical or professional skills mentioned
-  "yearsExperience": number,         // estimated total years of professional experience (integer 0-50)
-  "paymentPreference": "hourly" | "daily",  // infer from context; default "hourly"
-  "hourlyRate": number | null,       // suggested market rate in USD per hour based on skills/experience; null if cannot determine
-  "bio": string                      // 2-3 sentence professional summary in first person
+  "isValidResume": boolean,
+  "invalidReason": string | null,
+  "tagline": string,
+  "fieldOfWork": string,
+  "skills": string[],
+  "yearsExperience": number,
+  "paymentPreference": "hourly" | "daily",
+  "hourlyRate": number | null,
+  "bio": string,
+  "resumeAnalysis": {
+    "workExperience": [
+      {
+        "company": string,
+        "role": string,
+        "startDate": string,
+        "endDate": string,
+        "highlights": string[]
+      }
+    ],
+    "education": [
+      {
+        "institution": string,
+        "degree": string,
+        "year": string
+      }
+    ],
+    "certifications": string[],
+    "languages": string[]
+  }
 }
 
 Valid fieldOfWork values (pick the single best match):
 ${FIELDS_OF_WORK.join(", ")}
 
 Rules:
-- If the document is NOT a professional resume/CV (e.g. it is a random document, invoice, image text, etc.), set isValidResume to false.
+- If the document is NOT a professional resume/CV, set isValidResume to false.
 - Skills must be concrete (e.g. "React", "Python", "Project Management") — not vague adjectives.
+- workExperience: extract ALL jobs, ordered most recent first. highlights should be 2-4 key bullet points per role.
+- education: extract ALL degrees/diplomas.
+- certifications: list any professional certifications or courses mentioned.
+- languages: list any human languages mentioned (e.g. "English", "French").
 - Return ONLY the JSON object, no markdown, no explanation.`;
 
     let parsed: any;
@@ -170,6 +194,14 @@ Rules:
       return;
     }
 
+    const ra = parsed.resumeAnalysis;
+    const resumeAnalysis = {
+      workExperience: Array.isArray(ra?.workExperience) ? ra.workExperience : [],
+      education: Array.isArray(ra?.education) ? ra.education : [],
+      certifications: Array.isArray(ra?.certifications) ? ra.certifications : [],
+      languages: Array.isArray(ra?.languages) ? ra.languages : [],
+    };
+
     res.json({
       tagline: parsed.tagline ?? "",
       fieldOfWork: FIELDS_OF_WORK.includes(parsed.fieldOfWork) ? parsed.fieldOfWork : "Other",
@@ -178,6 +210,7 @@ Rules:
       paymentPreference: parsed.paymentPreference === "daily" ? "daily" : "hourly",
       hourlyRate: typeof parsed.hourlyRate === "number" ? parsed.hourlyRate : null,
       bio: parsed.bio ?? "",
+      resumeAnalysis,
     });
   },
 );

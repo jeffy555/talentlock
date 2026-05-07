@@ -89,6 +89,7 @@ router.post("/freelancers", async (req, res) => {
           paymentPreference: insertData.paymentPreference,
           hourlyRate: insertData.hourlyRate ?? null,
           subscriptionPlan: insertData.subscriptionPlan,
+          resumeAnalysis: insertData.resumeAnalysis ?? null,
           updatedAt: new Date(),
         },
       })
