@@ -218,4 +218,21 @@ router.get("/admin/subscriptions", requireAdmin, async (_req, res) => {
   res.json(rows);
 });
 
+router.post("/admin/wipe-all-data", requireAdmin, async (req, res) => {
+  try {
+    await db.execute(sql`
+      TRUNCATE TABLE
+        audit_logs, messages, conversations, agreements, meetings,
+        bookings, job_requirements, subscriptions,
+        freelancer_profiles, employer_profiles, users
+      RESTART IDENTITY CASCADE
+    `);
+    req.log.warn({ ip: req.ip }, "Admin wiped all data");
+    res.json({ ok: true, message: "All data wiped and sequences reset." });
+  } catch (err) {
+    req.log.error({ err }, "Failed to wipe data");
+    res.status(500).json({ error: "Wipe failed" });
+  }
+});
+
 export default router;
