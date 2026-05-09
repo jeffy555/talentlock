@@ -57,6 +57,59 @@ router.post("/agreements", async (req, res) => {
       ? `${booking.paymentType === "hourly" ? `USD ${booking.rate} per hour` : booking.paymentType === "daily" ? `USD ${booking.rate} per day` : `USD ${booking.rate} fixed price`}`
       : "as mutually agreed in writing";
 
+    // ── Duration-based clause parameters ────────────────────────────────────
+    const durationDays = Math.max(1, Math.round(
+      (booking.endDate.getTime() - booking.startDate.getTime()) / (1000 * 60 * 60 * 24)
+    ));
+    const durationWeeks = durationDays / 7;
+    const durationMonths = durationDays / 30.44;
+
+    // Human-readable duration label
+    const durationLabel = durationDays < 14
+      ? `${durationDays} day${durationDays > 1 ? "s" : ""}`
+      : durationDays < 60
+      ? `${Math.round(durationWeeks)} week${Math.round(durationWeeks) > 1 ? "s" : ""}`
+      : `${Math.round(durationMonths)} month${Math.round(durationMonths) > 1 ? "s" : ""}`;
+
+    // Termination notice: min of 25% of engagement or 14 days, but at least 3 days
+    const noticeDays = Math.max(3, Math.min(14, Math.round(durationDays * 0.25)));
+    const noticeLabel = noticeDays === 1 ? "one (1) calendar day" : `${noticeDays} calendar day${noticeDays > 1 ? "s" : ""}`;
+
+    // Invoicing cadence
+    const invoicingCadence = durationDays <= 14
+      ? "at the completion of the engagement"
+      : durationDays <= 31
+      ? "weekly, submitted each Friday for work performed that week"
+      : durationDays <= 90
+      ? "bi-weekly (every two weeks), submitted on the 1st and 15th of each month or nearest business day"
+      : "monthly, submitted on the last business day of each calendar month";
+
+    // Late payment dispute notice window
+    const disputeNoticeLabel = durationDays <= 14 ? "two (2) business days" : "five (5) business days";
+
+    // Non-solicitation post-engagement period
+    const nonSolicitMonths = durationMonths < 1 ? 1
+      : durationMonths < 3 ? 3
+      : durationMonths < 6 ? 6
+      : durationMonths < 12 ? 9
+      : 12;
+    const nonSolicitLabel = nonSolicitMonths === 1 ? "one (1) month" : `${nonSolicitMonths} months`;
+
+    // Liability cap: expressed as equivalent period of fees
+    const liabilityCapMonths = durationMonths < 1 ? "the total Fees paid or payable under this Agreement"
+      : durationMonths < 2 ? "the total Fees paid or payable under this Agreement"
+      : durationMonths < 4 ? "the total Fees paid or payable in the two (2) months preceding the event giving rise to the claim"
+      : "the total Fees paid or payable in the three (3) months preceding the event giving rise to the claim";
+
+    // Force majeure termination trigger
+    const fmDays = durationDays < 14 ? 5 : durationDays < 30 ? 10 : 30;
+    const fmLabel = `${fmDays} consecutive calendar day${fmDays > 1 ? "s" : ""}`;
+
+    // Confidentiality survival
+    const confSurvivalYears = durationMonths < 3 ? 2 : durationMonths < 12 ? 3 : 5;
+    const confSurvivalLabel = `${confSurvivalYears} year${confSurvivalYears > 1 ? "s" : ""}`;
+    // ── End duration parameters ──────────────────────────────────────────────
+
     const completion = await openai.chat.completions.create({
       model: "gpt-4o",
       messages: [
@@ -71,14 +124,24 @@ router.post("/agreements", async (req, res) => {
 ═══════════════════════════════════════════════
 ENGAGEMENT PARTICULARS
 ═══════════════════════════════════════════════
-Client / Employer : ${employer?.companyName ?? "The Client"} (${employer?.industry ?? "General"} industry)
-Service Provider  : ${freelancer?.name ?? "The Freelancer"}, ${freelancer?.fieldOfWork ?? "Professional Services"}
-Core Competencies : ${freelancer?.skills?.join(", ") ?? "as described in Schedule A"}
-Engagement Start  : ${startDate}
-Engagement End    : ${endDate}
-Compensation Type : ${booking.paymentType}
-Compensation Rate : ${rateDisplay}
-Platform          : TalentLock (talentlock.app)
+Client / Employer     : ${employer?.companyName ?? "The Client"} (${employer?.industry ?? "General"} industry)
+Service Provider      : ${freelancer?.name ?? "The Freelancer"}, ${freelancer?.fieldOfWork ?? "Professional Services"}
+Core Competencies     : ${freelancer?.skills?.join(", ") ?? "as described in Schedule A"}
+Engagement Start      : ${startDate}
+Engagement End        : ${endDate}
+Engagement Duration   : ${durationLabel} (${durationDays} calendar days)
+Compensation Type     : ${booking.paymentType}
+Compensation Rate     : ${rateDisplay}
+Platform              : TalentLock (talentlock.app)
+─────────────────────────────────────────────
+PRE-COMPUTED CLAUSE PARAMETERS (use these exact values — do not substitute your own):
+Invoicing cadence     : ${invoicingCadence}
+Termination notice    : ${noticeLabel}
+Dispute hold notice   : ${disputeNoticeLabel} of invoice receipt
+Liability cap         : ${liabilityCapMonths}
+Non-solicitation      : ${nonSolicitLabel} post-engagement
+Force majeure trigger : ${fmLabel}
+Confidentiality survival: ${confSurvivalLabel} post-termination
 ═══════════════════════════════════════════════
 
 Generate the agreement using EXACTLY this structure. Every sub-clause must contain complete substantive legal text — no placeholders, no bullets in place of prose:
@@ -104,12 +167,12 @@ FREELANCE SERVICES AGREEMENT
    3.4 Service Provider's authority: no authority to bind the Client contractually.
 
 4. COMPENSATION AND PAYMENT TERMS
-   4.1 The Client shall pay the Service Provider ${rateDisplay} for the Services rendered.
-   4.2 Invoicing cadence: Service Provider shall submit invoices [weekly / upon milestone completion / at end of engagement as appropriate to the rate type], containing invoice number, description of services, period covered, and bank details.
-   4.3 Payment due within fourteen (14) calendar days of a valid invoice.
+   4.1 The Client shall pay the Service Provider ${rateDisplay} for the Services rendered during the ${durationLabel} engagement.
+   4.2 Invoicing cadence: Service Provider shall submit invoices ${invoicingCadence}, each invoice containing invoice number, description of services performed, period covered, and bank or payment details.
+   4.3 Payment due within fourteen (14) calendar days of receipt of a valid, undisputed invoice.
    4.4 Late payment interest at the rate of 1.5% per month (or the maximum rate permitted by applicable law, whichever is lower) shall accrue on overdue amounts from the due date until payment in full.
-   4.5 Expense reimbursement: pre-approved, documented out-of-pocket expenses only.
-   4.6 Withholding: Client may withhold payment only for documented, good-faith disputes; must notify in writing within five (5) business days of invoice receipt.
+   4.5 Expense reimbursement: pre-approved, documented out-of-pocket expenses only, submitted with receipts alongside the relevant invoice.
+   4.6 Withholding: Client may withhold payment only for documented, good-faith disputes notified in writing within ${disputeNoticeLabel} of invoice receipt.
 
 5. INTELLECTUAL PROPERTY AND WORK PRODUCT
    5.1 Work-for-hire: All Work Product created by the Service Provider in the course of performing the Services shall, to the maximum extent permitted by law, be deemed a "work made for hire" for the Client under applicable copyright law.
@@ -131,7 +194,7 @@ FREELANCE SERVICES AGREEMENT
    7.5 Carve-outs: information that is publicly known (not through breach), independently developed, received from a third party without restriction, or required to be disclosed by law (with prompt prior written notice to the Client where legally permissible).
    7.6 Data protection compliance: Each party shall comply with all applicable data protection and privacy laws (including, where applicable, GDPR, CCPA, and equivalent legislation) with respect to any personal data processed in connection with this Agreement.
    7.7 Return or destruction of Confidential Information upon termination or request.
-   7.8 Survival: This clause shall survive termination for a period of five (5) years.
+   7.8 Survival: This clause shall survive termination for a period of ${confSurvivalLabel}.
 
 8. REPRESENTATIONS AND WARRANTIES
    8.1 Each party represents and warrants that: (a) it has full legal capacity and authority to enter into this Agreement; (b) this Agreement constitutes a legal, valid, and binding obligation; (c) entering into this Agreement does not violate any other agreement or obligation.
@@ -144,23 +207,23 @@ FREELANCE SERVICES AGREEMENT
 
 10. LIMITATION OF LIABILITY
     10.1 Neither party shall be liable for any indirect, incidental, special, consequential, punitive, or exemplary damages, including loss of profits, loss of revenue, loss of data, or loss of goodwill, even if advised of the possibility of such damages.
-    10.2 Each party's total cumulative liability under or in connection with this Agreement shall not exceed the total Fees paid or payable in the three (3) months preceding the event giving rise to the claim.
+    10.2 Each party's total cumulative liability under or in connection with this Agreement shall not exceed ${liabilityCapMonths}.
     10.3 The foregoing limitations shall not apply to: (a) either party's fraud or fraudulent misrepresentation; (b) death or personal injury caused by negligence; (c) a party's wilful misconduct; or (d) the Service Provider's obligations under Clause 6 (Exclusivity) or Clause 7 (Confidentiality).
 
 11. TERM AND TERMINATION
     11.1 This Agreement shall commence on ${startDate} and, unless earlier terminated pursuant to this Clause, shall expire on ${endDate}.
-    11.2 Termination for convenience: Either party may terminate this Agreement upon not less than fourteen (14) calendar days' prior written notice to the other party.
-    11.3 Termination for cause: Either party may terminate this Agreement immediately upon written notice if the other party: (a) commits a material breach that is incapable of remedy, or that remains unremedied for ten (10) business days after written notice; (b) becomes insolvent or makes an assignment for the benefit of creditors; (c) is the subject of bankruptcy, administration, or liquidation proceedings.
+    11.2 Termination for convenience: Either party may terminate this Agreement upon not less than ${noticeLabel}' prior written notice to the other party.
+    11.3 Termination for cause: Either party may terminate this Agreement immediately upon written notice if the other party: (a) commits a material breach that is incapable of remedy, or that remains unremedied for ${noticeLabel} after written notice; (b) becomes insolvent or makes an assignment for the benefit of creditors; (c) is the subject of bankruptcy, administration, or liquidation proceedings.
     11.4 Consequences of termination: (a) Client shall pay all Fees due for Services properly rendered up to the termination date; (b) Service Provider shall promptly deliver all Work Product and Deliverables in their current state; (c) each party shall return or destroy the other party's Confidential Information; (d) the Service Provider's exclusivity obligation shall cease.
     11.5 Survival: Clauses 5 (IP), 7 (Confidentiality), 8 (Representations), 9 (Indemnification), 10 (Limitation of Liability), 12 (Non-Solicitation), 14 (Dispute Resolution), and 15 (General Provisions) shall survive termination.
 
 12. NON-SOLICITATION
-    12.1 During the Engagement Period and for twelve (12) months thereafter, the Service Provider shall not, directly or indirectly, solicit or induce any employee, contractor, or consultant of the Client to terminate their relationship with the Client.
-    12.2 During the Engagement Period and for six (6) months thereafter, neither party shall solicit the other party's clients or customers introduced through TalentLock without the prior written consent of the other party.
+    12.1 During the Engagement Period and for ${nonSolicitLabel} thereafter, the Service Provider shall not, directly or indirectly, solicit or induce any employee, contractor, or consultant of the Client to terminate their relationship with the Client.
+    12.2 During the Engagement Period and for ${nonSolicitLabel} thereafter, neither party shall solicit the other party's clients or customers introduced through TalentLock without the prior written consent of the other party.
 
 13. FORCE MAJEURE
     13.1 Neither party shall be in breach of or liable under this Agreement for any failure or delay in performance caused by a Force Majeure Event (including acts of God, war, terrorism, pandemic, government action, natural disaster, or failure of third-party infrastructure) provided the affected party: (a) gives prompt written notice to the other party; (b) takes all reasonable steps to mitigate the effects; and (c) resumes performance as soon as reasonably practicable.
-    13.2 If a Force Majeure Event continues for more than thirty (30) consecutive days, either party may terminate this Agreement on written notice without liability (other than for Fees due for work already performed).
+    13.2 If a Force Majeure Event continues for more than ${fmLabel}, either party may terminate this Agreement on written notice without liability (other than for Fees due for work already performed).
 
 14. DISPUTE RESOLUTION AND GOVERNING LAW
     14.1 Good-faith negotiation: In the event of any dispute, the parties shall first attempt to resolve the matter through good-faith negotiations for a period of twenty-one (21) days from the date of written notice of the dispute.
