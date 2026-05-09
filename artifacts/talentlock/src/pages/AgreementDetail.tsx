@@ -2,7 +2,7 @@ import { useParams } from "wouter";
 import { useGetAgreement, useSignAgreement, useGetMe } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,6 +11,101 @@ import { ArrowLeft, CheckCircle2, Clock, FileText, PenLine, Shield, Lock, Finger
 import { Link } from "wouter";
 import { format } from "date-fns";
 import { useState } from "react";
+
+function LegalDocument({ content }: { content: string }) {
+  const lines = content.split("\n");
+  const elements: React.ReactNode[] = [];
+  let key = 0;
+
+  for (let i = 0; i < lines.length; i++) {
+    const raw = lines[i];
+    const trimmed = raw.trim();
+
+    if (!trimmed) {
+      elements.push(<div key={key++} className="h-3" />);
+      continue;
+    }
+
+    // Decorative dividers like ═══
+    if (/^[═─]{10,}/.test(trimmed)) {
+      elements.push(<hr key={key++} className="border-border/60 my-4" />);
+      continue;
+    }
+
+    // Top-level section number heading: "1. DEFINITIONS" or "15. GENERAL"
+    if (/^\d{1,2}\.\s+[A-Z]/.test(trimmed)) {
+      elements.push(
+        <h2 key={key++} className="font-serif text-base font-bold text-foreground mt-8 mb-2 pb-1 border-b border-border/40 tracking-tight">
+          {trimmed}
+        </h2>
+      );
+      continue;
+    }
+
+    // Sub-clause: "1.1", "15.3" etc.
+    if (/^\d{1,2}\.\d{1,2}/.test(trimmed)) {
+      elements.push(
+        <p key={key++} className="text-sm text-foreground leading-relaxed pl-5 mb-2 text-justify">
+          {trimmed}
+        </p>
+      );
+      continue;
+    }
+
+    // ALL CAPS section label (e.g. "FREELANCE SERVICES AGREEMENT", "EXECUTION", section titles inside preamble)
+    if (/^[A-Z][A-Z\s&/,()–-]{8,}$/.test(trimmed) && trimmed === trimmed.toUpperCase()) {
+      elements.push(
+        <h1 key={key++} className="font-serif text-xl font-bold text-foreground text-center mt-6 mb-4 tracking-wide uppercase">
+          {trimmed}
+        </h1>
+      );
+      continue;
+    }
+
+    // Signature field lines: "Name: ___", "Signature: ___", "Date: ___"
+    if (/^(Name|Signature|Printed Name|Title|Date|Company|Authorised Signatory)\s*:/.test(trimmed)) {
+      elements.push(
+        <p key={key++} className="text-sm font-mono text-foreground leading-loose pl-4">
+          {trimmed}
+        </p>
+      );
+      continue;
+    }
+
+    // "FOR AND ON BEHALF OF" / "IN WITNESS WHEREOF" lines
+    if (/^(FOR AND ON BEHALF|IN WITNESS WHEREOF|This agreement was)/.test(trimmed)) {
+      elements.push(
+        <p key={key++} className="text-sm font-semibold text-foreground mt-4 mb-1">
+          {trimmed}
+        </p>
+      );
+      continue;
+    }
+
+    // Indented engagement particulars lines (key: value pairs in preamble block)
+    if (/^(Client|Service Provider|Core Competencies|Engagement Start|Engagement End|Compensation|Platform)\s*:/.test(trimmed)) {
+      const colonIdx = trimmed.indexOf(":");
+      const label = trimmed.slice(0, colonIdx);
+      const value = trimmed.slice(colonIdx + 1).trim();
+      elements.push(
+        <div key={key++} className="flex gap-3 text-sm pl-4 mb-1">
+          <span className="font-semibold text-foreground min-w-[160px] flex-shrink-0">{label}</span>
+          <span className="text-muted-foreground">{value}</span>
+        </div>
+      );
+      continue;
+    }
+
+    // Default: normal paragraph
+    elements.push(
+      <p key={key++} className="text-sm text-foreground leading-relaxed mb-2 text-justify">
+        {trimmed}
+      </p>
+    );
+  }
+
+  return <div className="space-y-0.5">{elements}</div>;
+}
 
 export default function AgreementDetail() {
   const { id } = useParams<{ id: string }>();
@@ -208,9 +303,7 @@ export default function AgreementDetail() {
               </CardTitle>
             </CardHeader>
             <CardContent className="p-8 sm:p-12">
-              <div className="prose prose-sm max-w-none prose-headings:font-serif prose-headings:text-foreground prose-p:text-muted-foreground prose-p:leading-loose text-justify">
-                <pre className="whitespace-pre-wrap font-serif text-sm leading-loose text-foreground bg-transparent p-0 border-none">{ag.content}</pre>
-              </div>
+              <LegalDocument content={ag.content ?? ""} />
 
               {/* Rendered signature block at bottom if signed */}
               {(employerSigned || freelancerSigned) && (
