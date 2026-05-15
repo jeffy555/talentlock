@@ -174,10 +174,14 @@ Rules:
           },
         ],
         temperature: 0.2,
-        max_tokens: 1000,
+        max_tokens: 3000,
       });
 
-      const raw = completion.choices[0]?.message?.content ?? "{}";
+      const choice = completion.choices[0];
+      if (choice?.finish_reason === "length") {
+        throw new Error("Response truncated — resume too large to parse in one pass.");
+      }
+      const raw = choice?.message?.content ?? "{}";
       parsed = JSON.parse(raw);
     } catch (err) {
       req.log.error({ err }, "OpenAI resume parse failed");
