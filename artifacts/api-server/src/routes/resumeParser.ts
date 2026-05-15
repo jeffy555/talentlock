@@ -5,7 +5,9 @@ import { writeFileSync, unlinkSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import multer from "multer";
-import { openai } from "@workspace/integrations-openai-ai-server";
+import OpenAI from "openai";
+
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY_TALENTLOCK });
 
 const require = createRequire(import.meta.url);
 // pdf-parse v2 and mammoth are CJS-only — loaded via require to avoid ESM bundling issues
