@@ -218,6 +218,23 @@ router.get("/admin/subscriptions", requireAdmin, async (_req, res) => {
   res.json(rows);
 });
 
+router.post("/admin/migrate", requireAdmin, async (req, res) => {
+  try {
+    await db.execute(sql`
+      ALTER TABLE bookings ADD COLUMN IF NOT EXISTS proposed_rate NUMERIC(10,2);
+      ALTER TABLE bookings ADD COLUMN IF NOT EXISTS last_proposed_by TEXT;
+      ALTER TABLE bookings ADD COLUMN IF NOT EXISTS negotiation_status TEXT NOT NULL DEFAULT 'agreed';
+      ALTER TABLE agreements ADD COLUMN IF NOT EXISTS freelancer_downloaded_at TIMESTAMPTZ;
+      ALTER TABLE agreements ADD COLUMN IF NOT EXISTS employer_downloaded_at TIMESTAMPTZ;
+    `);
+    req.log.info("Admin ran production migration for negotiation + vault columns");
+    res.json({ ok: true, message: "Migration applied (idempotent)." });
+  } catch (err) {
+    req.log.error({ err }, "Migration failed");
+    res.status(500).json({ error: "Migration failed" });
+  }
+});
+
 router.post("/admin/seed-demo", requireAdmin, async (req, res) => {
   const demoFreelancers = [
     { clerkId: "demo_teacher_01", name: "Sarah Mitchell", email: "sarah.mitchell@demo.talentlock.io", tagline: "Experienced High School Teacher · 11 Years", bio: "Passionate educator with 11 years in secondary education, specialising in English Literature and creative writing. Skilled at differentiated instruction, curriculum design, and motivating students of all learning styles.", fieldOfWork: "Teaching & Education", skills: ["Curriculum Design","Differentiated Instruction","Classroom Management","English Literature","Creative Writing","GCSE/A-Level Teaching"], yearsExperience: 11, paymentPreference: "hourly", hourlyRate: "65", dailyRate: null },

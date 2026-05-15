@@ -13,6 +13,9 @@ export const bookingsTable = pgTable("bookings", {
   paymentType: text("payment_type").notNull().default("hourly"),
   rate: numeric("rate", { precision: 10, scale: 2 }),
   notes: text("notes"),
+  proposedRate: numeric("proposed_rate", { precision: 10, scale: 2 }),
+  lastProposedBy: text("last_proposed_by"),
+  negotiationStatus: text("negotiation_status").notNull().default("agreed"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });

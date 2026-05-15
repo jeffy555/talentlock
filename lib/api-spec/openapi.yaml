@@ -623,6 +623,37 @@ paths:
               schema:
                 $ref: "#/components/schemas/Booking"
 
+  /bookings/{id}/negotiate:
+    post:
+      operationId: negotiateBooking
+      tags: [bookings]
+      summary: Accept or counter-propose the booking rate
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NegotiateBookingBody"
+      responses:
+        "200":
+          description: Updated booking after negotiation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Booking"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
   # ── Agreements ───────────────────────────────────────────────────────────────
   /agreements:
     get:
@@ -680,6 +711,37 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Agreement"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /agreements/{id}/download:
+    get:
+      operationId: downloadAgreement
+      tags: [agreements]
+      summary: Download a signed agreement (one-time per side)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Agreement document as a downloadable text file
+          content:
+            text/plain:
+              schema:
+                type: string
+        "403":
+          description: Already downloaded or not fully signed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
         "404":
           description: Not found
           content:
@@ -1794,6 +1856,15 @@ components:
           type: ["number", "null"]
         notes:
           type: ["string", "null"]
+        proposedRate:
+          type: ["number", "null"]
+          description: Current outstanding rate proposal
+        lastProposedBy:
+          type: ["string", "null"]
+          description: "'employer' or 'freelancer'"
+        negotiationStatus:
+          type: string
+          description: "'negotiating' or 'agreed'"
         freelancerName:
           type: ["string", "null"]
         employerName:
@@ -1809,6 +1880,7 @@ components:
         - endDate
         - status
         - paymentType
+        - negotiationStatus
         - createdAt
 
     CreateBookingBody:
@@ -1840,6 +1912,18 @@ components:
         status:
           type: string
 
+    NegotiateBookingBody:
+      type: object
+      properties:
+        action:
+          type: string
+          description: "'accept' to agree to the current proposed rate, 'counter' to propose a new rate"
+        counterRate:
+          type: number
+          description: Required when action is 'counter'
+      required:
+        - action
+
     # ── Agreement ──────────────────────────────────────────────────────────────
     Agreement:
       type: object
@@ -1870,6 +1954,12 @@ components:
           type: ["string", "null"]
         documentUrl:
           type: ["string", "null"]
+        freelancerDownloadedAt:
+          type: ["string", "null"]
+          format: date-time
+        employerDownloadedAt:
+          type: ["string", "null"]
+          format: date-time
         freelancerName:
           type: ["string", "null"]
         employerName:

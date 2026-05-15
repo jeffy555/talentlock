@@ -14,6 +14,8 @@ export const agreementsTable = pgTable("agreements", {
   freelancerSignatureName: text("freelancer_signature_name"),
   employerSignatureName: text("employer_signature_name"),
   documentUrl: text("document_url"),
+  freelancerDownloadedAt: timestamp("freelancer_downloaded_at", { withTimezone: true }),
+  employerDownloadedAt: timestamp("employer_downloaded_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });

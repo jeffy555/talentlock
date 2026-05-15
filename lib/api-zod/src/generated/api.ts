@@ -612,6 +612,12 @@ export const ListBookingsResponseItem = zod.object({
   paymentType: zod.string(),
   rate: zod.number().nullish(),
   notes: zod.string().nullish(),
+  proposedRate: zod
+    .number()
+    .nullish()
+    .describe("Current outstanding rate proposal"),
+  lastProposedBy: zod.string().nullish().describe("'employer' or 'freelancer'"),
+  negotiationStatus: zod.string().describe("'negotiating' or 'agreed'"),
   freelancerName: zod.string().nullish(),
   employerName: zod.string().nullish(),
   createdAt: zod.coerce.date(),
@@ -648,6 +654,12 @@ export const GetBookingResponse = zod.object({
   paymentType: zod.string(),
   rate: zod.number().nullish(),
   notes: zod.string().nullish(),
+  proposedRate: zod
+    .number()
+    .nullish()
+    .describe("Current outstanding rate proposal"),
+  lastProposedBy: zod.string().nullish().describe("'employer' or 'freelancer'"),
+  negotiationStatus: zod.string().describe("'negotiating' or 'agreed'"),
   freelancerName: zod.string().nullish(),
   employerName: zod.string().nullish(),
   createdAt: zod.coerce.date(),
@@ -675,6 +687,53 @@ export const UpdateBookingResponse = zod.object({
   paymentType: zod.string(),
   rate: zod.number().nullish(),
   notes: zod.string().nullish(),
+  proposedRate: zod
+    .number()
+    .nullish()
+    .describe("Current outstanding rate proposal"),
+  lastProposedBy: zod.string().nullish().describe("'employer' or 'freelancer'"),
+  negotiationStatus: zod.string().describe("'negotiating' or 'agreed'"),
+  freelancerName: zod.string().nullish(),
+  employerName: zod.string().nullish(),
+  createdAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Accept or counter-propose the booking rate
+ */
+export const NegotiateBookingParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const NegotiateBookingBody = zod.object({
+  action: zod
+    .string()
+    .describe(
+      "'accept' to agree to the current proposed rate, 'counter' to propose a new rate",
+    ),
+  counterRate: zod
+    .number()
+    .optional()
+    .describe("Required when action is 'counter'"),
+});
+
+export const NegotiateBookingResponse = zod.object({
+  id: zod.number(),
+  freelancerId: zod.number(),
+  employerId: zod.number(),
+  jobRequirementId: zod.number().nullish(),
+  startDate: zod.coerce.date(),
+  endDate: zod.coerce.date(),
+  status: zod.string().describe("pending, active, completed, cancelled"),
+  paymentType: zod.string(),
+  rate: zod.number().nullish(),
+  notes: zod.string().nullish(),
+  proposedRate: zod
+    .number()
+    .nullish()
+    .describe("Current outstanding rate proposal"),
+  lastProposedBy: zod.string().nullish().describe("'employer' or 'freelancer'"),
+  negotiationStatus: zod.string().describe("'negotiating' or 'agreed'"),
   freelancerName: zod.string().nullish(),
   employerName: zod.string().nullish(),
   createdAt: zod.coerce.date(),
@@ -706,6 +765,8 @@ export const ListAgreementsResponseItem = zod.object({
   freelancerSignatureName: zod.string().nullish(),
   employerSignatureName: zod.string().nullish(),
   documentUrl: zod.string().nullish(),
+  freelancerDownloadedAt: zod.coerce.date().nullish(),
+  employerDownloadedAt: zod.coerce.date().nullish(),
   freelancerName: zod.string().nullish(),
   employerName: zod.string().nullish(),
   createdAt: zod.coerce.date(),
@@ -740,9 +801,18 @@ export const GetAgreementResponse = zod.object({
   freelancerSignatureName: zod.string().nullish(),
   employerSignatureName: zod.string().nullish(),
   documentUrl: zod.string().nullish(),
+  freelancerDownloadedAt: zod.coerce.date().nullish(),
+  employerDownloadedAt: zod.coerce.date().nullish(),
   freelancerName: zod.string().nullish(),
   employerName: zod.string().nullish(),
   createdAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Download a signed agreement (one-time per side)
+ */
+export const DownloadAgreementParams = zod.object({
+  id: zod.coerce.number(),
 });
 
 /**
@@ -771,6 +841,8 @@ export const SignAgreementResponse = zod.object({
   freelancerSignatureName: zod.string().nullish(),
   employerSignatureName: zod.string().nullish(),
   documentUrl: zod.string().nullish(),
+  freelancerDownloadedAt: zod.coerce.date().nullish(),
+  employerDownloadedAt: zod.coerce.date().nullish(),
   freelancerName: zod.string().nullish(),
   employerName: zod.string().nullish(),
   createdAt: zod.coerce.date(),

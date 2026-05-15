@@ -51,6 +51,7 @@ export default function FreelancerDetail() {
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [paymentType, setPaymentType] = useState("hourly");
+  const [proposedRate, setProposedRate] = useState("");
   const [confirmedBookingId, setConfirmedBookingId] = useState<number | null>(null);
 
   const [meetingOpen, setMeetingOpen] = useState(false);
@@ -74,6 +75,7 @@ export default function FreelancerDetail() {
 
   const handleBook = async () => {
     if (!freelancer || !startDate || !endDate) return;
+    const rateNum = parseFloat(proposedRate);
     try {
       const booking = await createBooking.mutateAsync({
         data: {
@@ -81,7 +83,7 @@ export default function FreelancerDetail() {
           startDate,
           endDate,
           paymentType: paymentType as "hourly" | "daily" | "fixed",
-          rate: freelancer.hourlyRate ?? freelancer.dailyRate ?? 0,
+          rate: isNaN(rateNum) ? undefined : rateNum,
         },
       });
       await queryClient.invalidateQueries({ queryKey: ["/api/bookings"] });
@@ -373,7 +375,12 @@ export default function FreelancerDetail() {
                             </div>
                             <div className="space-y-2.5">
                               <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Payment Structure</Label>
-                              <Select value={paymentType} onValueChange={setPaymentType}>
+                              <Select value={paymentType} onValueChange={(v) => {
+                                setPaymentType(v);
+                                if (v === "hourly" && freelancer.hourlyRate) setProposedRate(String(freelancer.hourlyRate));
+                                else if (v === "daily" && freelancer.dailyRate) setProposedRate(String(freelancer.dailyRate));
+                                else setProposedRate("");
+                              }}>
                                 <SelectTrigger className="h-11 bg-secondary/20"><SelectValue /></SelectTrigger>
                                 <SelectContent>
                                   <SelectItem value="hourly">Hourly Rate</SelectItem>
@@ -382,11 +389,28 @@ export default function FreelancerDetail() {
                                 </SelectContent>
                               </Select>
                             </div>
-                            <div className="rounded-xl bg-primary/5 border border-primary/10 p-4 flex items-center justify-between">
-                              <p className="font-medium text-primary text-sm">Estimated Rate</p>
-                              <p className="font-bold text-lg text-foreground font-serif">
-                                {paymentType === "hourly" && freelancer.hourlyRate ? `$${freelancer.hourlyRate}/hr` : paymentType === "daily" && freelancer.dailyRate ? `$${freelancer.dailyRate}/day` : "Fixed (Negotiable)"}
-                              </p>
+                            <div className="space-y-2.5">
+                              <div className="flex items-center justify-between">
+                                <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Your Proposed Rate</Label>
+                                {((paymentType === "hourly" && freelancer.hourlyRate) || (paymentType === "daily" && freelancer.dailyRate)) && (
+                                  <span className="text-[10px] text-muted-foreground">
+                                    Listed: ${paymentType === "hourly" ? freelancer.hourlyRate : freelancer.dailyRate}/{paymentType === "hourly" ? "hr" : "day"}
+                                  </span>
+                                )}
+                              </div>
+                              <div className="relative">
+                                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground font-semibold text-sm">$</span>
+                                <Input
+                                  type="number"
+                                  min="1"
+                                  step="0.01"
+                                  placeholder={paymentType === "hourly" && freelancer.hourlyRate ? String(freelancer.hourlyRate) : paymentType === "daily" && freelancer.dailyRate ? String(freelancer.dailyRate) : "0.00"}
+                                  value={proposedRate}
+                                  onChange={e => setProposedRate(e.target.value)}
+                                  className="h-11 pl-7 bg-secondary/20"
+                                />
+                              </div>
+                              <p className="text-[11px] text-muted-foreground">The freelancer will see this and can accept or counter-propose before the agreement is signed.</p>
                             </div>
                           </div>
                           <DialogFooter className="border-t pt-4">

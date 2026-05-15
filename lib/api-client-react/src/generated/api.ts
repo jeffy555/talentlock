@@ -51,6 +51,7 @@ import type {
   Milestone,
   MyJobInterest,
   MyReviewResult,
+  NegotiateBookingBody,
   Notification,
   OpenaiConversation,
   OpenaiConversationWithMessages,
@@ -2470,6 +2471,93 @@ export const useUpdateBooking = <
 };
 
 /**
+ * @summary Accept or counter-propose the booking rate
+ */
+export const getNegotiateBookingUrl = (id: number) => {
+  return `/api/bookings/${id}/negotiate`;
+};
+
+export const negotiateBooking = async (
+  id: number,
+  negotiateBookingBody: NegotiateBookingBody,
+  options?: RequestInit,
+): Promise<Booking> => {
+  return customFetch<Booking>(getNegotiateBookingUrl(id), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(negotiateBookingBody),
+  });
+};
+
+export const getNegotiateBookingMutationOptions = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof negotiateBooking>>,
+    TError,
+    { id: number; data: BodyType<NegotiateBookingBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof negotiateBooking>>,
+  TError,
+  { id: number; data: BodyType<NegotiateBookingBody> },
+  TContext
+> => {
+  const mutationKey = ["negotiateBooking"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof negotiateBooking>>,
+    { id: number; data: BodyType<NegotiateBookingBody> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return negotiateBooking(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type NegotiateBookingMutationResult = NonNullable<
+  Awaited<ReturnType<typeof negotiateBooking>>
+>;
+export type NegotiateBookingMutationBody = BodyType<NegotiateBookingBody>;
+export type NegotiateBookingMutationError = ErrorType<ErrorEnvelope>;
+
+/**
+ * @summary Accept or counter-propose the booking rate
+ */
+export const useNegotiateBooking = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof negotiateBooking>>,
+    TError,
+    { id: number; data: BodyType<NegotiateBookingBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof negotiateBooking>>,
+  TError,
+  { id: number; data: BodyType<NegotiateBookingBody> },
+  TContext
+> => {
+  return useMutation(getNegotiateBookingMutationOptions(options));
+};
+
+/**
  * @summary List agreements
  */
 export const getListAgreementsUrl = (params?: ListAgreementsParams) => {
@@ -2728,6 +2816,93 @@ export function useGetAgreement<
   },
 ): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
   const queryOptions = getGetAgreementQueryOptions(id, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Download a signed agreement (one-time per side)
+ */
+export const getDownloadAgreementUrl = (id: number) => {
+  return `/api/agreements/${id}/download`;
+};
+
+export const downloadAgreement = async (
+  id: number,
+  options?: RequestInit,
+): Promise<string> => {
+  return customFetch<string>(getDownloadAgreementUrl(id), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getDownloadAgreementQueryKey = (id: number) => {
+  return [`/api/agreements/${id}/download`] as const;
+};
+
+export const getDownloadAgreementQueryOptions = <
+  TData = Awaited<ReturnType<typeof downloadAgreement>>,
+  TError = ErrorType<ErrorEnvelope>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof downloadAgreement>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getDownloadAgreementQueryKey(id);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof downloadAgreement>>
+  > = ({ signal }) => downloadAgreement(id, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!id,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof downloadAgreement>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type DownloadAgreementQueryResult = NonNullable<
+  Awaited<ReturnType<typeof downloadAgreement>>
+>;
+export type DownloadAgreementQueryError = ErrorType<ErrorEnvelope>;
+
+/**
+ * @summary Download a signed agreement (one-time per side)
+ */
+
+export function useDownloadAgreement<
+  TData = Awaited<ReturnType<typeof downloadAgreement>>,
+  TError = ErrorType<ErrorEnvelope>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof downloadAgreement>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getDownloadAgreementQueryOptions(id, options);
 
   const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
     queryKey: QueryKey;

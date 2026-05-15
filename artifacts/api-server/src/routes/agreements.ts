@@ -48,6 +48,11 @@ router.post("/agreements", async (req, res) => {
   try {
     const [booking] = await db.select().from(bookingsTable).where(eq(bookingsTable.id, parsed.data.bookingId)).limit(1);
     if (!booking) { res.status(404).json({ error: "Booking not found" }); return; }
+
+    // Block agreement generation until rate negotiation is complete
+    if (booking.negotiationStatus === "negotiating") {
+      res.status(400).json({ error: "Rate negotiation must be completed before generating an agreement.", code: "NEGOTIATION_PENDING" }); return;
+    }
     const [freelancer] = await db.select().from(freelancerProfilesTable).where(eq(freelancerProfilesTable.id, booking.freelancerId)).limit(1);
     const [employer] = await db.select().from(employerProfilesTable).where(eq(employerProfilesTable.id, booking.employerId)).limit(1);
 
@@ -357,6 +362,86 @@ router.post("/agreements/:id/sign", async (req, res) => {
     }
   } catch (err) {
     req.log.error({ err }, "Failed to sign agreement");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.get("/agreements/:id/download", async (req, res) => {
+  const id = parseInt(req.params.id);
+  if (isNaN(id)) { res.status(400).json({ error: "Invalid ID" }); return; }
+  const { userId: clerkId } = getAuth(req);
+  if (!clerkId) { res.status(401).json({ error: "Unauthorized" }); return; }
+
+  try {
+    const [agreement] = await db.select().from(agreementsTable).where(eq(agreementsTable.id, id)).limit(1);
+    if (!agreement) { res.status(404).json({ error: "Agreement not found" }); return; }
+
+    if (!agreement.freelancerSignedAt || !agreement.employerSignedAt) {
+      res.status(403).json({ error: "Agreement must be fully signed before it can be downloaded" }); return;
+    }
+
+    const [freelancer] = await db.select().from(freelancerProfilesTable).where(eq(freelancerProfilesTable.id, agreement.freelancerId)).limit(1);
+    const [employer] = await db.select().from(employerProfilesTable).where(eq(employerProfilesTable.id, agreement.employerId)).limit(1);
+
+    const isFreelancer = freelancer?.clerkId === clerkId;
+    const isEmployer = employer?.clerkId === clerkId;
+    if (!isFreelancer && !isEmployer) {
+      res.status(403).json({ error: "Access denied" }); return;
+    }
+
+    const downloadedField = isFreelancer ? agreement.freelancerDownloadedAt : agreement.employerDownloadedAt;
+    if (downloadedField) {
+      res.status(403).json({
+        error: "Document already downloaded",
+        downloadedAt: downloadedField,
+        code: "ALREADY_DOWNLOADED",
+      }); return;
+    }
+
+    // Mark as downloaded
+    if (isFreelancer) {
+      await db.update(agreementsTable).set({ freelancerDownloadedAt: new Date() }).where(eq(agreementsTable.id, id));
+    } else {
+      await db.update(agreementsTable).set({ employerDownloadedAt: new Date() }).where(eq(agreementsTable.id, id));
+    }
+
+    // Format document text
+    const ts = (d: Date | null) => d ? new Date(d).toUTCString() : "—";
+    const document = [
+      "═══════════════════════════════════════════════════════",
+      "          TALENTLOCK — EXECUTED LEGAL AGREEMENT",
+      "═══════════════════════════════════════════════════════",
+      `  Agreement ID   : #${agreement.id}`,
+      `  Booking ID     : #${agreement.bookingId}`,
+      `  Status         : ${agreement.status?.toUpperCase()}`,
+      `  Generated      : ${ts(agreement.createdAt)}`,
+      "───────────────────────────────────────────────────────",
+      "",
+      agreement.content,
+      "",
+      "═══════════════════════════════════════════════════════",
+      "                  EXECUTION RECORD",
+      "═══════════════════════════════════════════════════════",
+      `  Employer       : ${employer?.companyName ?? "—"}`,
+      `  Employer Sig   : ${agreement.employerSignatureName ?? "—"}`,
+      `  Employer Signed: ${ts(agreement.employerSignedAt)}`,
+      "",
+      `  Freelancer     : ${freelancer?.name ?? "—"}`,
+      `  Freelancer Sig : ${agreement.freelancerSignatureName ?? "—"}`,
+      `  Freelancer Sgnd: ${ts(agreement.freelancerSignedAt)}`,
+      "",
+      "───────────────────────────────────────────────────────",
+      "  This document was generated and cryptographically",
+      "  timestamped by TalentLock (talentlock.app).",
+      "  Digital signatures applied under E-SIGN / UETA.",
+      "═══════════════════════════════════════════════════════",
+    ].join("\n");
+
+    res.setHeader("Content-Type", "text/plain; charset=utf-8");
+    res.setHeader("Content-Disposition", `attachment; filename="TalentLock-Agreement-${id}.txt"`);
+    res.send(document);
+  } catch (err) {
+    req.log.error({ err }, "Failed to download agreement");
     res.status(500).json({ error: "Internal server error" });
   }
 });

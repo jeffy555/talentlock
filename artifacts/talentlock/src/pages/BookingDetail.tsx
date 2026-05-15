@@ -2,7 +2,7 @@ import { useParams, useLocation } from "wouter";
 import {
   useGetBooking, useUpdateBooking, useCreateAgreement, useGetMe, useListAgreements,
   useListMilestones, useCreateMilestone, useUpdateMilestone,
-  useGetMyBookingReview, useCreateReview,
+  useGetMyBookingReview, useCreateReview, useNegotiateBooking,
 } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Calendar, CheckCircle2, FileText, XCircle, Sparkles, ShieldCheck, Clock, DollarSign, Lock, Flag, Plus, Check, Star } from "lucide-react";
+import { ArrowLeft, Calendar, CheckCircle2, FileText, XCircle, Sparkles, ShieldCheck, Clock, DollarSign, Lock, Flag, Plus, Check, Star, ArrowLeftRight, RefreshCw } from "lucide-react";
 import { Link } from "wouter";
 import { format } from "date-fns";
 import { buildGoogleCalendarUrl } from "@/lib/calendarUrl";
@@ -70,6 +70,10 @@ export default function BookingDetail() {
   const { data: reviewData, refetch: refetchReview } = useGetMyBookingReview(bookingId, { query: { enabled: !!booking } } as any);
   const createReview = useCreateReview();
 
+  const negotiateBooking = useNegotiateBooking();
+  const [counterOpen, setCounterOpen] = useState(false);
+  const [counterRate, setCounterRate] = useState("");
+
   const [milestoneOpen, setMilestoneOpen] = useState(false);
   const [msTitle, setMsTitle] = useState("");
   const [msDesc, setMsDesc] = useState("");
@@ -82,6 +86,30 @@ export default function BookingDetail() {
   const [reviewContent, setReviewContent] = useState("");
 
   const bookingAgreements = agreements?.filter(a => a.bookingId === bookingId) ?? [];
+
+  const handleAcceptRate = async () => {
+    try {
+      await negotiateBooking.mutateAsync({ id: bookingId, data: { action: "accept" } });
+      toast({ title: "Rate accepted!", description: "You've agreed on the rate. You can now generate the agreement." });
+      refetch();
+    } catch (err: any) {
+      toast({ title: "Failed", description: err?.response?.data?.error ?? "Could not accept rate.", variant: "destructive" });
+    }
+  };
+
+  const handleCounterRate = async () => {
+    const rate = parseFloat(counterRate);
+    if (isNaN(rate) || rate <= 0) { toast({ title: "Enter a valid rate", variant: "destructive" }); return; }
+    try {
+      await negotiateBooking.mutateAsync({ id: bookingId, data: { action: "counter", counterRate: rate } });
+      toast({ title: "Counter-proposal sent", description: `You've proposed $${rate}. Awaiting the other party's response.` });
+      setCounterOpen(false);
+      setCounterRate("");
+      refetch();
+    } catch (err: any) {
+      toast({ title: "Failed", description: err?.response?.data?.error ?? "Could not send counter.", variant: "destructive" });
+    }
+  };
 
   const handleStatusUpdate = async (status: "completed" | "cancelled") => {
     try {
@@ -181,9 +209,15 @@ export default function BookingDetail() {
   }
 
   const isEmployer = me?.role === "employer";
+  const isFreelancer = me?.role === "freelancer";
   const isCancelled = booking.status === "cancelled";
   const isCompleted = booking.status === "completed";
   const hasAgreement = bookingAgreements.length > 0;
+  const isNegotiating = (booking as any).negotiationStatus === "negotiating";
+  const proposedRate = (booking as any).proposedRate as number | null;
+  const lastProposedBy = (booking as any).lastProposedBy as string | null;
+  const myRole = isEmployer ? "employer" : "freelancer";
+  const isMyTurn = lastProposedBy !== myRole && (isEmployer || isFreelancer);
   const colors = statusColors[booking.status] || { bg: "bg-secondary", text: "text-muted-foreground", border: "border-border" };
   const canReview = isCompleted && !reviewData?.reviewed;
 
@@ -259,7 +293,62 @@ export default function BookingDetail() {
         </div>
       </div>
 
-      {isEmployer && !hasAgreement && !isCancelled && (
+      {/* Rate Negotiation Panel */}
+      {!isCancelled && isNegotiating && (
+        <div className="rounded-xl border border-blue-200 bg-blue-50/60 p-6 flex items-start gap-4">
+          <div className="h-10 w-10 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
+            <ArrowLeftRight className="h-5 w-5 text-blue-700" />
+          </div>
+          <div className="flex-1">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-3">
+              <div>
+                <h3 className="font-bold text-blue-900 text-lg">Rate Negotiation in Progress</h3>
+                <p className="text-sm text-blue-700 mt-0.5">
+                  {lastProposedBy === "employer" ? "Employer" : "Freelancer"} proposes:{" "}
+                  <span className="font-bold text-blue-900 text-base">
+                    ${proposedRate?.toLocaleString()}/{booking.paymentType === "hourly" ? "hr" : booking.paymentType === "daily" ? "day" : "fixed"}
+                  </span>
+                </p>
+              </div>
+              {isMyTurn ? (
+                <div className="flex gap-2 flex-wrap">
+                  <Button
+                    size="sm" onClick={handleAcceptRate}
+                    disabled={negotiateBooking.isPending}
+                    className="bg-green-600 hover:bg-green-700 text-white font-semibold shadow-sm gap-1.5 h-9"
+                  >
+                    <Check className="h-4 w-4" />Accept Rate
+                  </Button>
+                  <Button
+                    variant="outline" size="sm"
+                    onClick={() => { setCounterRate(String(proposedRate ?? "")); setCounterOpen(true); }}
+                    className="border-blue-300 text-blue-700 hover:bg-blue-100 font-semibold h-9 gap-1.5"
+                  >
+                    <RefreshCw className="h-3.5 w-3.5" />Counter
+                  </Button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 text-sm text-blue-700 font-medium bg-blue-100 px-3 py-1.5 rounded-lg border border-blue-200">
+                  <Clock className="h-4 w-4" />Awaiting their response…
+                </div>
+              )}
+            </div>
+            <p className="text-xs text-blue-700/70">The agreement can only be generated once both parties agree on the rate.</p>
+          </div>
+        </div>
+      )}
+
+      {/* Rate Agreed Banner */}
+      {!isCancelled && !isNegotiating && booking.rate && !hasAgreement && (
+        <div className="rounded-xl border border-green-200 bg-green-50/60 p-4 flex items-center gap-3">
+          <CheckCircle2 className="h-5 w-5 text-green-600 flex-shrink-0" />
+          <p className="text-sm font-medium text-green-800">
+            Rate agreed: <span className="font-bold">${Number(booking.rate).toLocaleString()}/{booking.paymentType === "hourly" ? "hr" : booking.paymentType === "daily" ? "day" : "fixed"}</span>. You can now generate the legal agreement.
+          </p>
+        </div>
+      )}
+
+      {isEmployer && !hasAgreement && !isCancelled && !isNegotiating && (
         <div className="rounded-xl border border-gold/30 bg-gold/5 p-6 flex items-start gap-4">
           <div className="h-10 w-10 bg-gold/20 rounded-full flex items-center justify-center flex-shrink-0">
             <Sparkles className="h-5 w-5 text-gold" />
@@ -267,7 +356,7 @@ export default function BookingDetail() {
           <div className="flex-1">
             <h3 className="font-bold text-primary mb-1">Generate Legal Agreement</h3>
             <p className="text-sm text-muted-foreground leading-relaxed mb-4 max-w-2xl">
-              Your booking terms are set. TalentLock AI can now generate a binding legal agreement encompassing exclusivity, scope, and payment terms ready for signature.
+              Rate agreed. TalentLock AI can now generate a binding legal agreement encompassing exclusivity, scope, and payment terms ready for signature.
             </p>
             <Button onClick={handleGenerateAgreement} disabled={createAgreement.isPending} className="font-semibold shadow-sm bg-primary text-primary-foreground hover:bg-primary/90">
               {createAgreement.isPending ? "Drafting Agreement..." : "Generate AI Agreement"}
@@ -275,6 +364,38 @@ export default function BookingDetail() {
           </div>
         </div>
       )}
+
+      {/* Counter-proposal Dialog */}
+      <Dialog open={counterOpen} onOpenChange={setCounterOpen}>
+        <DialogContent className="sm:max-w-[380px]">
+          <DialogHeader className="pb-4 border-b">
+            <DialogTitle className="font-serif text-xl">Counter-Propose Rate</DialogTitle>
+            <DialogDescription>Enter your proposed rate. The other party will be notified.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-5">
+            <div className="space-y-2">
+              <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Your Proposed Rate</Label>
+              <div className="relative">
+                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground font-semibold text-sm">$</span>
+                <Input
+                  type="number" min="1" step="0.01" autoFocus
+                  value={counterRate} onChange={e => setCounterRate(e.target.value)}
+                  onKeyDown={e => e.key === "Enter" && handleCounterRate()}
+                  className="pl-7 h-11 text-lg font-semibold"
+                  placeholder="0.00"
+                />
+              </div>
+              <p className="text-xs text-muted-foreground">Payment type: <span className="font-medium capitalize">{booking.paymentType}</span></p>
+            </div>
+          </div>
+          <DialogFooter className="border-t pt-4">
+            <Button variant="ghost" onClick={() => setCounterOpen(false)}>Cancel</Button>
+            <Button onClick={handleCounterRate} disabled={negotiateBooking.isPending || !counterRate} className="font-semibold">
+              {negotiateBooking.isPending ? "Sending…" : "Send Counter-Proposal"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <div className="grid md:grid-cols-3 gap-8">
         <div className="md:col-span-2 space-y-8">

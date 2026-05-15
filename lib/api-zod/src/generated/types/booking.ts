@@ -21,6 +21,18 @@ export interface Booking {
   rate?: number | null;
   /** @nullable */
   notes?: string | null;
+  /**
+   * Current outstanding rate proposal
+   * @nullable
+   */
+  proposedRate?: number | null;
+  /**
+   * 'employer' or 'freelancer'
+   * @nullable
+   */
+  lastProposedBy?: string | null;
+  /** 'negotiating' or 'agreed' */
+  negotiationStatus: string;
   /** @nullable */
   freelancerName?: string | null;
   /** @nullable */

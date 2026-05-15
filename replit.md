@@ -38,6 +38,15 @@ A full-stack secure freelancer booking platform with AI-powered talent matching,
 | `subscriptions` | Per-user billing plan, status, and current period (one row per user, unique on `user_id`) |
 | `audit_logs` | Authentication + admin activity audit trail (login/logout events with IP, user agent) |
 
+### Negotiation columns (on `bookings`)
+- `proposedRate` NUMERIC(10,2) — current proposed rate in negotiation
+- `lastProposedBy` TEXT — `'employer'` or `'freelancer'`, who made the last proposal
+- `negotiationStatus` TEXT DEFAULT `'agreed'` — `'negotiating'` or `'agreed'`. Legacy bookings default to `'agreed'`
+
+### Vault columns (on `agreements`)
+- `freelancerDownloadedAt` TIMESTAMPTZ — timestamp of the freelancer's one-time download
+- `employerDownloadedAt` TIMESTAMPTZ — timestamp of the employer's one-time download
+
 ## Admin Console
 
 A separate admin dashboard lives at `/admin` (login at `/admin/login`) **outside** the Clerk-protected route tree. Admin auth is intentionally separate from end-user Clerk auth:
@@ -83,6 +92,8 @@ Frontend pages: `/pricing` (audience-filtered tier grid) and `/billing` (current
 12. **Milestone-based Bookings** — Bookings track milestones with title, amount, due date, status (pending → completed → approved)
 13. **Platform Analytics** — Monthly booking + earnings/spend bar charts on Dashboard; totals with review averages
 14. **Shareable Public Profiles** — Unauthenticated `/f/:id` pages show full profile, portfolio, reviews + CTA to sign in
+15. **Rate Negotiation** — Employer proposes a rate when creating a booking; freelancer can Accept or Counter-propose; agreement generation is gated until both parties agree (`negotiationStatus='agreed'`). Back-and-forth counter-proposals supported.
+16. **Agreement Safe Locker** — Fully executed (both signed) agreements expose a TalentLock Vault card. Each party gets exactly one download of their certified `.txt` copy. After downloading, the button is permanently locked with timestamp shown.
 
 ## Routes
 

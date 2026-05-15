@@ -234,6 +234,18 @@ export interface Booking {
   rate?: number | null;
   /** @nullable */
   notes?: string | null;
+  /**
+   * Current outstanding rate proposal
+   * @nullable
+   */
+  proposedRate?: number | null;
+  /**
+   * 'employer' or 'freelancer'
+   * @nullable
+   */
+  lastProposedBy?: string | null;
+  /** 'negotiating' or 'agreed' */
+  negotiationStatus: string;
   /** @nullable */
   freelancerName?: string | null;
   /** @nullable */
@@ -256,6 +268,13 @@ export interface UpdateBookingBody {
   status?: string;
 }
 
+export interface NegotiateBookingBody {
+  /** 'accept' to agree to the current proposed rate, 'counter' to propose a new rate */
+  action: string;
+  /** Required when action is 'counter' */
+  counterRate?: number;
+}
+
 export interface Agreement {
   id: number;
   bookingId: number;
@@ -275,6 +294,10 @@ export interface Agreement {
   employerSignatureName?: string | null;
   /** @nullable */
   documentUrl?: string | null;
+  /** @nullable */
+  freelancerDownloadedAt?: string | null;
+  /** @nullable */
+  employerDownloadedAt?: string | null;
   /** @nullable */
   freelancerName?: string | null;
   /** @nullable */
