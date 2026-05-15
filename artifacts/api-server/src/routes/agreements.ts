@@ -6,9 +6,7 @@ import {
 } from "@workspace/db";
 import { eq, or, and, SQL } from "drizzle-orm";
 import { CreateAgreementBody, SignAgreementBody, ListAgreementsQueryParams } from "@workspace/api-zod";
-import OpenAI from "openai";
-
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY_TALENTLOCK });
+import { openai } from "@workspace/integrations-openai-ai-server";
 
 const router = Router();
 

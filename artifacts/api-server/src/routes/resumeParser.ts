@@ -5,7 +5,7 @@ import { writeFileSync, unlinkSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import multer from "multer";
-import OpenAI from "openai";
+import { openai } from "@workspace/integrations-openai-ai-server";
 
 const require = createRequire(import.meta.url);
 // pdf-parse v2 and mammoth are CJS-only — loaded via require to avoid ESM bundling issues
@@ -14,8 +14,6 @@ const _mammothMod = require("mammoth");
 const mammoth = (_mammothMod.default ?? _mammothMod) as { extractRawText: (opts: { buffer: Buffer }) => Promise<{ value: string }> };
 
 const router: IRouter = Router();
-
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY_TALENTLOCK });
 
 const upload = multer({
   storage: multer.memoryStorage(),

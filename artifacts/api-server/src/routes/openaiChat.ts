@@ -4,9 +4,7 @@ import { db } from "@workspace/db";
 import { conversations, messages, usersTable, freelancerProfilesTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { CreateOpenaiConversationBody, SendOpenaiMessageBody } from "@workspace/api-zod";
-import OpenAI from "openai";
-
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY_TALENTLOCK });
+import { openai } from "@workspace/integrations-openai-ai-server";
 
 const router = Router();
 
