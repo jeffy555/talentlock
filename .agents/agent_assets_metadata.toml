@@ -1,0 +1,8 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "j67_2q3Vgta3bBuYtFDZg"
+uri = "file://TalentLock_Pitch.docx"
+type = "word_document"
+title = "TalentLock Pitch Document"
