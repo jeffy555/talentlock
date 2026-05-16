@@ -227,7 +227,27 @@ router.post("/admin/migrate", requireAdmin, async (req, res) => {
       ALTER TABLE agreements ADD COLUMN IF NOT EXISTS freelancer_downloaded_at TIMESTAMPTZ;
       ALTER TABLE agreements ADD COLUMN IF NOT EXISTS employer_downloaded_at TIMESTAMPTZ;
     `);
-    req.log.info("Admin ran production migration for negotiation + vault columns");
+    await db.execute(sql`
+      UPDATE agreements a
+      SET
+        freelancer_signed_at      = NOW(),
+        freelancer_signature_name = fp.name,
+        status                    = 'signed'
+      FROM freelancer_profiles fp
+      WHERE a.freelancer_id        = fp.id
+        AND fp.clerk_id            LIKE 'demo_%'
+        AND a.employer_signed_at   IS NOT NULL
+        AND a.freelancer_signed_at IS NULL
+    `);
+    await db.execute(sql`
+      UPDATE bookings b
+      SET status = 'active'
+      FROM agreements a
+      WHERE a.booking_id = b.id
+        AND a.status     = 'signed'
+        AND b.status    != 'active'
+    `);
+    req.log.info("Admin ran production migration for negotiation + vault columns + demo-freelancer auto-sign fix");
     res.json({ ok: true, message: "Migration applied (idempotent)." });
   } catch (err) {
     req.log.error({ err }, "Migration failed");

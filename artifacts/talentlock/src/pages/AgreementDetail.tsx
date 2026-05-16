@@ -310,7 +310,7 @@ export default function AgreementDetail() {
         </div>
       )}
 
-      {/* Freelancer waiting banner */}
+      {/* Freelancer waiting banner — employer hasn't signed yet */}
       {isFreelancer && !employerSigned && (
         <div className="flex items-start gap-4 rounded-xl border border-blue-200 bg-blue-50/80 p-6">
           <div className="h-10 w-10 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
@@ -319,6 +319,19 @@ export default function AgreementDetail() {
           <div>
             <h3 className="font-serif text-xl font-bold text-blue-900">Awaiting Employer</h3>
             <p className="text-blue-800 mt-1.5 leading-relaxed font-medium">The employer must sign the agreement first. Once completed, the document will unlock for your signature.</p>
+          </div>
+        </div>
+      )}
+
+      {/* Employer waiting banner — employer signed but freelancer hasn't yet */}
+      {isEmployer && employerSigned && !freelancerSigned && (
+        <div className="flex items-start gap-4 rounded-xl border border-amber-200 bg-amber-50/80 p-6">
+          <div className="h-10 w-10 bg-amber-100 rounded-full flex items-center justify-center flex-shrink-0">
+            <Clock className="h-5 w-5 text-amber-700" />
+          </div>
+          <div>
+            <h3 className="font-serif text-xl font-bold text-amber-900">Awaiting Freelancer's Signature</h3>
+            <p className="text-amber-800 mt-1.5 leading-relaxed font-medium">You have signed. The freelancer needs to review and countersign before the agreement is fully executed and the download unlocks.</p>
           </div>
         </div>
       )}

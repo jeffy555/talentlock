@@ -350,6 +350,31 @@ router.post("/agreements/:id/sign", async (req, res) => {
       .where(eq(agreementsTable.id, id))
       .returning();
 
+    // Auto-sign on behalf of demo freelancers — they use fake clerkIds and cannot
+    // log in to sign themselves, so we complete the agreement automatically.
+    if (parsed.data.role === "employer" && !updated.freelancerSignedAt) {
+      const [freelancerProfile] = await db
+        .select({ name: freelancerProfilesTable.name, clerkId: freelancerProfilesTable.clerkId })
+        .from(freelancerProfilesTable)
+        .where(eq(freelancerProfilesTable.id, updated.freelancerId))
+        .limit(1);
+
+      if (freelancerProfile?.clerkId?.startsWith("demo_")) {
+        const [autoSigned] = await db.update(agreementsTable)
+          .set({
+            freelancerSignedAt: new Date(),
+            freelancerSignatureName: freelancerProfile.name,
+            status: "signed",
+          })
+          .where(eq(agreementsTable.id, id))
+          .returning();
+        await db.update(bookingsTable).set({ status: "active" }).where(eq(bookingsTable.id, updated.bookingId));
+        req.log.info({ agreementId: id, freelancerClerkId: freelancerProfile.clerkId }, "Auto-signed agreement on behalf of demo freelancer");
+        res.json(await enrichAgreement(autoSigned));
+        return;
+      }
+    }
+
     if (updated.freelancerSignedAt && updated.employerSignedAt) {
       const [fullySignedAgreement] = await db.update(agreementsTable)
         .set({ status: "signed" })
