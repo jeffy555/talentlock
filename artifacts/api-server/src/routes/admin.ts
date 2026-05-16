@@ -218,6 +218,24 @@ router.get("/admin/subscriptions", requireAdmin, async (_req, res) => {
   res.json(rows);
 });
 
+router.post("/admin/reset-freelancer-availability", requireAdmin, async (req, res) => {
+  const { email } = req.body as { email?: string };
+  if (!email) return res.status(400).json({ error: "email required" });
+  try {
+    const result = await db.execute(sql`
+      UPDATE freelancer_profiles fp
+      SET is_available = true, available_from = null, availability_note = null
+      FROM users u
+      WHERE fp.user_id = u.id AND u.email = ${email}
+    `);
+    req.log.info({ email }, "Admin reset freelancer availability");
+    res.json({ ok: true, message: `Availability reset for ${email}`, rows: result.rowCount });
+  } catch (err) {
+    req.log.error({ err }, "Reset freelancer availability failed");
+    res.status(500).json({ error: "Reset failed" });
+  }
+});
+
 router.post("/admin/clear-transactions", requireAdmin, async (req, res) => {
   try {
     await db.execute(sql`DELETE FROM messages`);
