@@ -66,6 +66,10 @@ export default function MeetingDetail() {
   const meetingDate = new Date(meeting.scheduledAt);
   const meetingEndDate = new Date(meetingDate.getTime() + meeting.durationMinutes * 60 * 1000);
 
+  const freelancerEmail = (meeting as any).freelancerEmail as string | null | undefined;
+  const employerEmail = (meeting as any).employerEmail as string | null | undefined;
+  const guests = [freelancerEmail, employerEmail].filter((e): e is string => !!e);
+
   const calendarDetails = `TalentLock Discovery Meeting\n${isEmployer ? `Freelancer: ${meeting.freelancerName}` : `Employer: ${meeting.employerName}`}${meeting.agenda ? `\n\nAgenda:\n${meeting.agenda}` : ""}${meeting.meetingLink ? `\n\nJoin: ${meeting.meetingLink}` : ""}`;
   const calendarParams = {
     title: meeting.title,
@@ -73,6 +77,7 @@ export default function MeetingDetail() {
     endDate: meetingEndDate.toISOString(),
     details: calendarDetails,
     location: meeting.meetingLink ?? undefined,
+    guests,
   };
 
   return (

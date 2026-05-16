@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { getAuth } from "@clerk/express";
 import { db } from "@workspace/db";
-import { meetingsTable, freelancerProfilesTable, employerProfilesTable } from "@workspace/db";
+import { meetingsTable, freelancerProfilesTable, employerProfilesTable, usersTable } from "@workspace/db";
 import { eq, or, and } from "drizzle-orm";
 import { CreateMeetingBody, UpdateMeetingBody } from "@workspace/api-zod";
 import { randomBytes } from "crypto";
@@ -9,9 +9,33 @@ import { randomBytes } from "crypto";
 const router = Router();
 
 async function enrichMeeting(m: typeof meetingsTable.$inferSelect) {
-  const [f] = await db.select({ name: freelancerProfilesTable.name }).from(freelancerProfilesTable).where(eq(freelancerProfilesTable.id, m.freelancerId)).limit(1);
-  const [e] = await db.select({ name: employerProfilesTable.companyName }).from(employerProfilesTable).where(eq(employerProfilesTable.id, m.employerId)).limit(1);
-  return { ...m, freelancerName: f?.name ?? null, employerName: e?.name ?? null };
+  const [f] = await db
+    .select({ name: freelancerProfilesTable.name, clerkId: freelancerProfilesTable.clerkId })
+    .from(freelancerProfilesTable)
+    .where(eq(freelancerProfilesTable.id, m.freelancerId))
+    .limit(1);
+  const [e] = await db
+    .select({ name: employerProfilesTable.companyName, clerkId: employerProfilesTable.clerkId })
+    .from(employerProfilesTable)
+    .where(eq(employerProfilesTable.id, m.employerId))
+    .limit(1);
+
+  const [[fu], [eu]] = await Promise.all([
+    f?.clerkId
+      ? db.select({ email: usersTable.email }).from(usersTable).where(eq(usersTable.clerkId, f.clerkId)).limit(1)
+      : Promise.resolve([undefined]),
+    e?.clerkId
+      ? db.select({ email: usersTable.email }).from(usersTable).where(eq(usersTable.clerkId, e.clerkId)).limit(1)
+      : Promise.resolve([undefined]),
+  ]);
+
+  return {
+    ...m,
+    freelancerName: f?.name ?? null,
+    employerName: e?.name ?? null,
+    freelancerEmail: fu?.email ?? null,
+    employerEmail: eu?.email ?? null,
+  };
 }
 
 router.get("/meetings", async (req, res) => {
