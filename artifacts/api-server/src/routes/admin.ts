@@ -218,6 +218,21 @@ router.get("/admin/subscriptions", requireAdmin, async (_req, res) => {
   res.json(rows);
 });
 
+router.post("/admin/clear-transactions", requireAdmin, async (req, res) => {
+  try {
+    await db.execute(sql`DELETE FROM messages`);
+    await db.execute(sql`DELETE FROM conversations`);
+    await db.execute(sql`DELETE FROM agreements`);
+    await db.execute(sql`DELETE FROM meetings`);
+    await db.execute(sql`DELETE FROM bookings`);
+    req.log.info("Admin cleared all bookings, agreements, meetings, conversations and messages");
+    res.json({ ok: true, message: "Bookings, agreements, meetings, conversations and messages cleared. Jobs and profiles are intact." });
+  } catch (err) {
+    req.log.error({ err }, "Clear transactions failed");
+    res.status(500).json({ error: "Clear failed" });
+  }
+});
+
 router.post("/admin/reset-test-data", requireAdmin, async (req, res) => {
   try {
     await db.execute(sql`DELETE FROM messages`);
