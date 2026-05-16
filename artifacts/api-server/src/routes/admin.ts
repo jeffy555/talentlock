@@ -279,6 +279,151 @@ router.post("/admin/seed-demo", requireAdmin, async (req, res) => {
   }
 });
 
+router.post("/admin/seed-jobs", requireAdmin, async (req, res) => {
+  const now = new Date();
+  const d = (offsetDays: number) => new Date(now.getTime() + offsetDays * 86_400_000);
+
+  const demoJobs = [
+    {
+      title: "Senior Frontend Engineer (React / TypeScript)",
+      fieldOfWork: "Web Development",
+      description: "We're a fast-growing B2B SaaS company looking for a senior frontend engineer to lead our design-system overhaul and own our customer-facing dashboard. You'll work closely with product and design to ship high-quality, accessible UI at pace. The role is fully remote with optional quarterly on-site meetups in London.\n\nYou'll be responsible for architecting reusable component libraries, mentoring two mid-level engineers, and driving our move from class components to React hooks. TypeScript strict mode is non-negotiable — we care deeply about type safety.",
+      requiredSkills: ["React","TypeScript","Tailwind CSS","React Query","Vite","Storybook","Accessibility (WCAG)","Figma handoff"],
+      minExperience: 5, paymentType: "daily", budget: "900", startDate: d(14), endDate: d(104),
+    },
+    {
+      title: "Data Scientist — Marketing Analytics",
+      fieldOfWork: "Data Science & Analytics",
+      description: "Our growth team needs a data scientist to build and maintain our marketing mix models, attribution pipelines, and customer lifetime value forecasts. You'll own the analytics layer end-to-end — from raw event data in BigQuery through to executive dashboards in Looker.\n\nThe ideal candidate has hands-on experience with incrementality testing, is comfortable writing production-quality Python, and can communicate statistical findings clearly to non-technical stakeholders.",
+      requiredSkills: ["Python","SQL","BigQuery","Looker","Marketing Mix Modelling","A/B Testing","pandas","scikit-learn"],
+      minExperience: 4, paymentType: "daily", budget: "850", startDate: d(7), endDate: d(97),
+    },
+    {
+      title: "Curriculum Designer — Corporate eLearning",
+      fieldOfWork: "Teaching & Education",
+      description: "We are redesigning our entire onboarding and compliance training suite (12 modules) for a workforce of 3 000 employees across five countries. We need an experienced instructional designer to lead content architecture, write scripts, and produce SCORM-compliant courses in Articulate 360.\n\nYou'll collaborate with subject-matter experts across HR, Legal, and Finance to ensure accuracy while keeping learner engagement high. Experience with microlearning formats and knowledge-check design is essential.",
+      requiredSkills: ["Instructional Design","Articulate 360","SCORM","Storyboarding","Adult Learning Theory","LMS Administration","Script Writing","Microlearning"],
+      minExperience: 5, paymentType: "daily", budget: "650", startDate: d(21), endDate: d(111),
+    },
+    {
+      title: "Brand Identity Designer — Startup Rebrand",
+      fieldOfWork: "Graphic Design",
+      description: "We're a Series-A fintech pivoting from B2C to B2B and need a brand identity designer to craft a new visual system from scratch — logo, colour palette, typography, iconography, and a full brand-guidelines document. The deliverable is a production-ready Figma file and a PDF brand book.\n\nWe want something that conveys trust, clarity, and quiet confidence. Think less flashy fintech, more considered consultancy. You'll present three distinct directions before refining to one.",
+      requiredSkills: ["Brand Identity","Logo Design","Figma","Adobe Illustrator","Typography","Colour Theory","Brand Guidelines","Presentation Design"],
+      minExperience: 6, paymentType: "fixed", budget: "7500", startDate: d(10), endDate: d(55),
+    },
+    {
+      title: "Technical Content Writer — Developer Documentation",
+      fieldOfWork: "Content Writing & Copywriting",
+      description: "Our API platform currently has patchy, inconsistent docs that are costing us developer adoption. We need a technical writer who can audit what we have, rewrite the getting-started guides, create code-snippet tutorials in Python and JavaScript, and establish a style guide for future contributors.\n\nThe ideal candidate has shipped documentation for a developer-facing product before and is comfortable reading source code to verify accuracy.",
+      requiredSkills: ["Technical Writing","API Documentation","Markdown","OpenAPI / Swagger","Python","JavaScript","Developer Portals","Style Guides"],
+      minExperience: 4, paymentType: "hourly", budget: "90", startDate: d(5), endDate: d(65),
+    },
+    {
+      title: "EV Charging Infrastructure Electrician",
+      fieldOfWork: "Engineering (Civil/Mechanical/Electrical)",
+      description: "We are rolling out a network of 150 EV chargers across retail car parks in the South East of England over six months. We need licensed electricians with specific experience in OZEV-approved EV charger installation (both AC 7kW and DC 50kW+ rapid chargers), DNO liaison, and on-site commissioning.\n\nWork is site-based and will involve occasional overnight stays. White-van supply and full indemnity insurance required.",
+      requiredSkills: ["EV Charger Installation","18th Edition Wiring","OZEV Approved Installer","DNO Liaison","Three-Phase Power","Commissioning","Site Management","PAT Testing"],
+      minExperience: 5, paymentType: "daily", budget: "600", startDate: d(28), endDate: d(208),
+    },
+    {
+      title: "Academic Researcher — Behavioural Economics",
+      fieldOfWork: "Research & Academia",
+      description: "A think-tank focused on consumer financial wellbeing is seeking a behavioural economics researcher for a 3-month project examining how choice architecture in banking apps affects saving behaviour. Deliverables include a literature review, an experimental design proposal, and a 10 000-word policy report.\n\nThe researcher will work independently with fortnightly check-ins. Access to participant panels and survey tools will be provided.",
+      requiredSkills: ["Behavioural Economics","Experimental Design","Quantitative Research","Qualitative Research","Academic Writing","Policy Analysis","SPSS or R","Literature Review"],
+      minExperience: 7, paymentType: "fixed", budget: "18000", startDate: d(14), endDate: d(104),
+    },
+    {
+      title: "Corporate Video Producer — Product Launch Campaign",
+      fieldOfWork: "Video Production & Editing",
+      description: "We're launching a new hardware product in Q3 and need a videographer/director to plan and shoot a suite of launch assets: a 90-second hero film, three 15-second social cutdowns, and a 4-minute explainer for our website. Shooting takes place over two days at our HQ in Manchester.\n\nPost-production including colour grade, motion graphics, and music licensing is included in scope. We'll provide a brand brief and mood board.",
+      requiredSkills: ["Video Direction","Sony FX Series / RED","Adobe Premiere Pro","DaVinci Resolve","Motion Graphics (After Effects)","Colour Grading","Music Licensing","Storyboarding"],
+      minExperience: 6, paymentType: "fixed", budget: "12000", startDate: d(30), endDate: d(65),
+    },
+    {
+      title: "Private Mathematics Tutor — A-Level & IB",
+      fieldOfWork: "Teaching & Education",
+      description: "A family is seeking a specialist mathematics tutor for a Year 13 student preparing for both A-Level Further Mathematics and IB HL Mathematics examinations in May. Sessions are two hours, twice per week, delivered online via Zoom with a shared digital whiteboard.\n\nThe student is predicted A*/7 but needs to solidify proof by induction, complex numbers, and differential equations. Previous exam-coaching experience is essential.",
+      requiredSkills: ["A-Level Mathematics","IB HL Mathematics","Further Mathematics","Proof by Induction","Complex Numbers","Differential Equations","Exam Technique","Zoom / Online Teaching"],
+      minExperience: 3, paymentType: "hourly", budget: "75", startDate: d(3), endDate: d(63),
+    },
+    {
+      title: "Bespoke Kitchen & Joinery Installer",
+      fieldOfWork: "Engineering (Civil/Mechanical/Electrical)",
+      description: "A residential developer completing a 6-unit luxury apartment scheme in Edinburgh requires a skilled carpenter/joiner to install bespoke fitted kitchens, wardrobes, and bathroom vanity units supplied by a specialist manufacturer. All units are pre-assembled flat-pack requiring precise site fitting, scribing, and finishing.\n\nWork is five days per week on-site. The developer will provide a site induction and all relevant health & safety documentation.",
+      requiredSkills: ["Kitchen Installation","Bespoke Joinery","Scribing & Fitting","Floating Floors","Silicone Finishing","Reading Technical Drawings","CSCS Card","Site Safety"],
+      minExperience: 8, paymentType: "daily", budget: "500", startDate: d(21), endDate: d(91),
+    },
+    {
+      title: "Ghostwriter — Business Memoir & Leadership Book",
+      fieldOfWork: "Content Writing & Copywriting",
+      description: "A FTSE 250 CEO is looking for an experienced ghostwriter to co-author a 60 000-word business memoir and leadership guide. The project begins with a series of recorded interview sessions (approx. 20 hours) before moving into structured drafting. The author has a clear vision for the narrative arc; the ghostwriter's role is to bring it to life in a compelling, publishable voice.\n\nStrict NDA required. Expected delivery in 8 months.",
+      requiredSkills: ["Ghostwriting","Long-Form Non-Fiction","Interviewing","Narrative Structure","Business Writing","Publishing Process","NDA-Comfortable","Voice Matching"],
+      minExperience: 8, paymentType: "fixed", budget: "35000", startDate: d(10), endDate: d(250),
+    },
+    {
+      title: "DevOps Engineer — AWS Migration & CI/CD",
+      fieldOfWork: "DevOps & Cloud Infrastructure",
+      description: "We are migrating a legacy monolith (Node.js / PostgreSQL) from a managed VPS to AWS (ECS Fargate + RDS Aurora). We need a senior DevOps engineer to design the target architecture, write Terraform modules, configure GitHub Actions pipelines, and oversee a zero-downtime cutover.\n\nThe engagement is approximately 10 weeks. You'll work alongside our two backend engineers and report directly to our CTO. Must have hands-on experience with ECS, RDS, and Terraform.",
+      requiredSkills: ["AWS ECS Fargate","Terraform","GitHub Actions","RDS Aurora","Docker","Networking (VPC / ALB)","Secrets Manager","Zero-Downtime Deployments"],
+      minExperience: 6, paymentType: "daily", budget: "950", startDate: d(14), endDate: d(84),
+    },
+  ];
+
+  try {
+    // Find or create a demo employer
+    const EMPLOYER_CLERK_ID = "demo_employer_jobs_01";
+    let [existingUser] = await db.select().from(usersTable).where(eq(usersTable.clerkId, EMPLOYER_CLERK_ID)).limit(1);
+
+    if (!existingUser) {
+      const [newUser] = await db.insert(usersTable).values({
+        clerkId: EMPLOYER_CLERK_ID, role: "employer",
+        email: "demo.employer@demo.talentlock.io",
+        name: "TalentLock Demo Corp",
+      }).returning();
+      existingUser = newUser;
+    }
+
+    let [employerProfile] = await db.select().from(employerProfilesTable)
+      .where(eq(employerProfilesTable.clerkId, EMPLOYER_CLERK_ID)).limit(1);
+
+    if (!employerProfile) {
+      [employerProfile] = await db.insert(employerProfilesTable).values({
+        clerkId: EMPLOYER_CLERK_ID, userId: existingUser.id,
+        companyName: "TalentLock Demo Corp",
+        industry: "Professional Services",
+        companySize: "50-250",
+        description: "A demonstration employer account showcasing the TalentLock platform with diverse hiring requirements across multiple industries.",
+        isVerified: true, verificationStatus: "verified",
+      }).returning();
+    }
+
+    let seeded = 0;
+    for (const j of demoJobs) {
+      await db.insert(jobRequirementsTable).values({
+        employerId: employerProfile.id,
+        title: j.title,
+        fieldOfWork: j.fieldOfWork,
+        description: j.description,
+        requiredSkills: j.requiredSkills,
+        minExperience: j.minExperience,
+        paymentType: j.paymentType as "hourly" | "daily" | "fixed",
+        budget: j.budget,
+        startDate: j.startDate,
+        endDate: j.endDate,
+        status: "open",
+      });
+      seeded++;
+    }
+
+    req.log.info({ seeded }, "Admin seeded demo job listings");
+    res.json({ ok: true, seeded, message: `${seeded} demo job listings seeded.` });
+  } catch (err) {
+    req.log.error({ err }, "Failed to seed demo jobs");
+    res.status(500).json({ error: "Seed failed" });
+  }
+});
+
 router.post("/admin/wipe-all-data", requireAdmin, async (req, res) => {
   try {
     await db.execute(sql`
