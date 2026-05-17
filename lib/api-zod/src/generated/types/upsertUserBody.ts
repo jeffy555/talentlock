@@ -13,4 +13,6 @@ export interface UpsertUserBody {
   name: string;
   /** @nullable */
   avatarUrl?: string | null;
+  /** @nullable */
+  signatureImageUrl?: string | null;
 }

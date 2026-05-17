@@ -26,6 +26,10 @@ export interface Agreement {
   /** @nullable */
   documentUrl?: string | null;
   /** @nullable */
+  freelancerSignatureImageUrl?: string | null;
+  /** @nullable */
+  employerSignatureImageUrl?: string | null;
+  /** @nullable */
   freelancerDownloadedAt?: Date | null;
   /** @nullable */
   employerDownloadedAt?: Date | null;

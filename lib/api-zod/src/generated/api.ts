@@ -25,6 +25,10 @@ export const GetMeResponse = zod.object({
   email: zod.string(),
   name: zod.string(),
   avatarUrl: zod.string().nullish(),
+  signatureImageUrl: zod
+    .string()
+    .nullish()
+    .describe("Stored signature image path (object storage)"),
   createdAt: zod.coerce.date(),
 });
 
@@ -36,6 +40,7 @@ export const UpsertMeBody = zod.object({
   email: zod.string(),
   name: zod.string(),
   avatarUrl: zod.string().nullish(),
+  signatureImageUrl: zod.string().nullish(),
 });
 
 export const UpsertMeResponse = zod.object({
@@ -45,6 +50,10 @@ export const UpsertMeResponse = zod.object({
   email: zod.string(),
   name: zod.string(),
   avatarUrl: zod.string().nullish(),
+  signatureImageUrl: zod
+    .string()
+    .nullish()
+    .describe("Stored signature image path (object storage)"),
   createdAt: zod.coerce.date(),
 });
 
@@ -765,6 +774,8 @@ export const ListAgreementsResponseItem = zod.object({
   freelancerSignatureName: zod.string().nullish(),
   employerSignatureName: zod.string().nullish(),
   documentUrl: zod.string().nullish(),
+  freelancerSignatureImageUrl: zod.string().nullish(),
+  employerSignatureImageUrl: zod.string().nullish(),
   freelancerDownloadedAt: zod.coerce.date().nullish(),
   employerDownloadedAt: zod.coerce.date().nullish(),
   freelancerName: zod.string().nullish(),
@@ -801,6 +812,8 @@ export const GetAgreementResponse = zod.object({
   freelancerSignatureName: zod.string().nullish(),
   employerSignatureName: zod.string().nullish(),
   documentUrl: zod.string().nullish(),
+  freelancerSignatureImageUrl: zod.string().nullish(),
+  employerSignatureImageUrl: zod.string().nullish(),
   freelancerDownloadedAt: zod.coerce.date().nullish(),
   employerDownloadedAt: zod.coerce.date().nullish(),
   freelancerName: zod.string().nullish(),
@@ -824,7 +837,16 @@ export const SignAgreementParams = zod.object({
 
 export const SignAgreementBody = zod.object({
   role: zod.string().describe("freelancer or employer"),
-  signatureName: zod.string().describe("Full name typed as signature"),
+  signatureName: zod
+    .string()
+    .optional()
+    .describe(
+      "Full name as legal signature (required if no signatureImageUrl)",
+    ),
+  signatureImageUrl: zod
+    .string()
+    .optional()
+    .describe("Object-storage path of uploaded signature image"),
 });
 
 export const SignAgreementResponse = zod.object({
@@ -841,6 +863,8 @@ export const SignAgreementResponse = zod.object({
   freelancerSignatureName: zod.string().nullish(),
   employerSignatureName: zod.string().nullish(),
   documentUrl: zod.string().nullish(),
+  freelancerSignatureImageUrl: zod.string().nullish(),
+  employerSignatureImageUrl: zod.string().nullish(),
   freelancerDownloadedAt: zod.coerce.date().nullish(),
   employerDownloadedAt: zod.coerce.date().nullish(),
   freelancerName: zod.string().nullish(),

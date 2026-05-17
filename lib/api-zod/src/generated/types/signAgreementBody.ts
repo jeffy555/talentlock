@@ -9,6 +9,8 @@
 export interface SignAgreementBody {
   /** freelancer or employer */
   role: string;
-  /** Full name typed as signature */
-  signatureName: string;
+  /** Full name as legal signature (required if no signatureImageUrl) */
+  signatureName?: string;
+  /** Object-storage path of uploaded signature image */
+  signatureImageUrl?: string;
 }

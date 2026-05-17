@@ -1472,6 +1472,9 @@ components:
           type: string
         avatarUrl:
           type: ["string", "null"]
+        signatureImageUrl:
+          type: ["string", "null"]
+          description: "Stored signature image path (object storage)"
         createdAt:
           type: string
           format: date-time
@@ -1494,6 +1497,8 @@ components:
         name:
           type: string
         avatarUrl:
+          type: ["string", "null"]
+        signatureImageUrl:
           type: ["string", "null"]
       required:
         - role
@@ -1954,6 +1959,10 @@ components:
           type: ["string", "null"]
         documentUrl:
           type: ["string", "null"]
+        freelancerSignatureImageUrl:
+          type: ["string", "null"]
+        employerSignatureImageUrl:
+          type: ["string", "null"]
         freelancerDownloadedAt:
           type: ["string", "null"]
           format: date-time
@@ -1992,10 +2001,12 @@ components:
           description: "freelancer or employer"
         signatureName:
           type: string
-          description: "Full name typed as signature"
+          description: "Full name as legal signature (required if no signatureImageUrl)"
+        signatureImageUrl:
+          type: string
+          description: "Object-storage path of uploaded signature image"
       required:
         - role
-        - signatureName
 
     # ── Meetings ───────────────────────────────────────────────────────────────
     Meeting:

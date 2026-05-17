@@ -318,8 +318,9 @@ router.post("/agreements/:id/sign", async (req, res) => {
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
 
   const signatureName = (parsed.data as any).signatureName as string | undefined;
-  if (!signatureName?.trim()) {
-    res.status(400).json({ error: "Signature name is required" }); return;
+  const signatureImageUrl = (parsed.data as any).signatureImageUrl as string | undefined;
+  if (!signatureName?.trim() && !signatureImageUrl?.trim()) {
+    res.status(400).json({ error: "Either a signature name or a signature image is required" }); return;
   }
 
   try {
@@ -332,15 +333,16 @@ router.post("/agreements/:id/sign", async (req, res) => {
     if (parsed.data.role === "employer") {
       if (agreement.employerSignedAt) { res.status(400).json({ error: "Employer has already signed" }); return; }
       updates.employerSignedAt = now;
-      updates.employerSignatureName = signatureName.trim();
+      updates.employerSignatureName = signatureName?.trim() ?? null;
+      updates.employerSignatureImageUrl = signatureImageUrl?.trim() ?? null;
     } else if (parsed.data.role === "freelancer") {
-      // Freelancer can only sign AFTER employer has signed
       if (!agreement.employerSignedAt) {
         res.status(400).json({ error: "Employer must sign first before the freelancer can sign" }); return;
       }
       if (agreement.freelancerSignedAt) { res.status(400).json({ error: "Freelancer has already signed" }); return; }
       updates.freelancerSignedAt = now;
-      updates.freelancerSignatureName = signatureName.trim();
+      updates.freelancerSignatureName = signatureName?.trim() ?? null;
+      updates.freelancerSignatureImageUrl = signatureImageUrl?.trim() ?? null;
     } else {
       res.status(400).json({ error: "Invalid role" }); return;
     }

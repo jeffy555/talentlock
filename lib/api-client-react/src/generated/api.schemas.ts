@@ -22,6 +22,11 @@ export interface User {
   name: string;
   /** @nullable */
   avatarUrl?: string | null;
+  /**
+   * Stored signature image path (object storage)
+   * @nullable
+   */
+  signatureImageUrl?: string | null;
   createdAt: string;
 }
 
@@ -32,6 +37,8 @@ export interface UpsertUserBody {
   name: string;
   /** @nullable */
   avatarUrl?: string | null;
+  /** @nullable */
+  signatureImageUrl?: string | null;
 }
 
 export interface FreelancerProfile {
@@ -295,6 +302,10 @@ export interface Agreement {
   /** @nullable */
   documentUrl?: string | null;
   /** @nullable */
+  freelancerSignatureImageUrl?: string | null;
+  /** @nullable */
+  employerSignatureImageUrl?: string | null;
+  /** @nullable */
   freelancerDownloadedAt?: string | null;
   /** @nullable */
   employerDownloadedAt?: string | null;
@@ -312,8 +323,10 @@ export interface CreateAgreementBody {
 export interface SignAgreementBody {
   /** freelancer or employer */
   role: string;
-  /** Full name typed as signature */
-  signatureName: string;
+  /** Full name as legal signature (required if no signatureImageUrl) */
+  signatureName?: string;
+  /** Object-storage path of uploaded signature image */
+  signatureImageUrl?: string;
 }
 
 export interface Meeting {

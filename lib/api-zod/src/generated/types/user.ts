@@ -15,5 +15,10 @@ export interface User {
   name: string;
   /** @nullable */
   avatarUrl?: string | null;
+  /**
+   * Stored signature image path (object storage)
+   * @nullable
+   */
+  signatureImageUrl?: string | null;
   createdAt: Date;
 }

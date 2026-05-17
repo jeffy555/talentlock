@@ -15,7 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { BadgeCheck, Building, User, Shield, Upload, FileText, X, Loader2, ShieldCheck, ShieldX, Mail, ExternalLink, RefreshCw, Plus, Pencil, Trash2, Globe, Calendar, Image } from "lucide-react";
+import { BadgeCheck, Building, User, Shield, Upload, FileText, X, Loader2, ShieldCheck, ShieldX, Mail, ExternalLink, RefreshCw, Plus, Pencil, Trash2, Globe, Calendar, Image, PenLine, CheckCircle2 } from "lucide-react";
 import { ResumeImporter, type ParsedResume } from "@/components/ResumeImporter";
 import { useQueryClient } from "@tanstack/react-query";
 
@@ -398,6 +398,114 @@ function PortfolioSection() {
   );
 }
 
+function SignatureCard() {
+  const { data: me, refetch } = useGetMe();
+  const { toast } = useToast();
+  const [uploading, setUploading] = useState(false);
+  const [clearing, setClearing] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  const storedPath = (me as any)?.signatureImageUrl as string | null | undefined;
+  const storedSigUrl = storedPath ? `${BASE}api/storage${storedPath}` : null;
+
+  const handleUpload = async (file: File) => {
+    if (!file.type.startsWith("image/")) {
+      toast({ title: "Please upload an image file (PNG or JPG)", variant: "destructive" }); return;
+    }
+    setUploading(true);
+    try {
+      const { uploadURL, objectPath } = await requestPresignedUrl(file.name, file.type);
+      const put = await fetch(uploadURL, { method: "PUT", headers: { "Content-Type": file.type }, body: file });
+      if (!put.ok) throw new Error("Upload failed");
+      await fetch(`${BASE}api/users/me/signature`, {
+        method: "PUT", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ signatureImageUrl: objectPath }),
+      });
+      toast({ title: "Signature saved", description: "Your signature is ready to use on agreements." });
+      refetch();
+    } catch {
+      toast({ title: "Upload failed", variant: "destructive" });
+    } finally {
+      setUploading(false);
+      if (fileRef.current) fileRef.current.value = "";
+    }
+  };
+
+  const handleClear = async () => {
+    setClearing(true);
+    try {
+      await fetch(`${BASE}api/users/me/signature`, {
+        method: "PUT", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ signatureImageUrl: null }),
+      });
+      toast({ title: "Signature removed" });
+      refetch();
+    } catch {
+      toast({ title: "Failed to remove signature", variant: "destructive" });
+    } finally {
+      setClearing(false);
+    }
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-base">
+          <PenLine className="h-4 w-4" />My Signature
+        </CardTitle>
+        <CardDescription>
+          Upload your handwritten signature. It will appear on agreements you sign and can be reused across all engagements.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {storedSigUrl ? (
+          <div className="space-y-3">
+            <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-green-700 mb-1">
+              <CheckCircle2 className="h-3.5 w-3.5" />Signature stored
+            </div>
+            <div className="border rounded-xl p-4 bg-white flex items-center justify-center min-h-[100px]">
+              <img src={storedSigUrl} alt="Your stored signature" className="max-h-20 max-w-full object-contain" />
+            </div>
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" onClick={() => fileRef.current?.click()} disabled={uploading || clearing}>
+                {uploading ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> : <Upload className="h-3.5 w-3.5 mr-1.5" />}
+                Replace
+              </Button>
+              <Button variant="ghost" size="sm" onClick={handleClear} disabled={clearing || uploading} className="text-destructive hover:text-destructive">
+                {clearing ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> : <X className="h-3.5 w-3.5 mr-1.5" />}
+                Remove
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <div
+            className="border-2 border-dashed rounded-xl p-8 text-center cursor-pointer hover:bg-secondary/20 transition-colors"
+            onClick={() => fileRef.current?.click()}
+          >
+            {uploading ? (
+              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground mx-auto mb-3" />
+            ) : (
+              <Upload className="h-8 w-8 text-muted-foreground/50 mx-auto mb-3" />
+            )}
+            <p className="text-sm font-semibold text-foreground">{uploading ? "Uploading…" : "Upload Signature Image"}</p>
+            <p className="text-xs text-muted-foreground mt-1">PNG or JPG · White background recommended · Max 5 MB</p>
+          </div>
+        )}
+        <input
+          ref={fileRef}
+          type="file"
+          accept="image/png,image/jpeg,image/jpg"
+          className="hidden"
+          onChange={(e) => { const f = e.target.files?.[0]; if (f) handleUpload(f); }}
+        />
+        <p className="text-xs text-muted-foreground">
+          Sign on white paper, photograph or scan it, then upload. Your signature will appear on all agreements you execute on TalentLock.
+        </p>
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function Profile() {
   const { user: clerkUser } = useUser();
   const { toast } = useToast();
@@ -608,6 +716,8 @@ export default function Profile() {
       )}
 
       {isFreelancer && freelancerProfile && <PortfolioSection />}
+
+      <SignatureCard />
 
       {isEmployer && employerProfile && (
         <Card>

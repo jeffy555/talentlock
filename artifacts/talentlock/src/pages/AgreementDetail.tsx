@@ -7,10 +7,10 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, CheckCircle2, Clock, FileText, PenLine, Shield, Lock, Fingerprint, Download, ShieldCheck } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Clock, FileText, PenLine, Shield, Lock, Fingerprint, Download, ShieldCheck, Upload, Loader2 } from "lucide-react";
 import { Link } from "wouter";
 import { format } from "date-fns";
-import { useState } from "react";
+import { useState, useRef } from "react";
 
 function LegalDocument({ content }: { content: string }) {
   const lines = content.split("\n");
@@ -107,6 +107,17 @@ function LegalDocument({ content }: { content: string }) {
   return <div className="space-y-0.5">{elements}</div>;
 }
 
+const BASE = import.meta.env.BASE_URL ?? "/";
+
+async function requestSigUrl(fileName: string, contentType: string) {
+  const res = await fetch(`${BASE}api/storage/uploads/request-url`, {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ fileName, contentType }),
+  });
+  if (!res.ok) throw new Error("Failed to get upload URL");
+  return res.json() as Promise<{ uploadURL: string; objectPath: string }>;
+}
+
 export default function AgreementDetail() {
   const { id } = useParams<{ id: string }>();
   const { toast } = useToast();
@@ -114,11 +125,43 @@ export default function AgreementDetail() {
   const { data: agreement, isLoading, refetch } = useGetAgreement(parseInt(id!), { query: { enabled: !!id } as any });
   const signAgreement = useSignAgreement();
   const [signDialogOpen, setSignDialogOpen] = useState(false);
-  const [signatureName, setSignatureName] = useState("");
+  const [sigMode, setSigMode] = useState<"stored" | "upload" | "text">("stored");
+  const [uploadedSigPath, setUploadedSigPath] = useState<string | null>(null);
+  const [uploadedSigPreview, setUploadedSigPreview] = useState<string | null>(null);
+  const [typedName, setTypedName] = useState("");
+  const [uploadingSig, setUploadingSig] = useState(false);
+  const sigFileRef = useRef<HTMLInputElement>(null);
+
+  const storedSigPath = (me as any)?.signatureImageUrl as string | null | undefined;
+  const storedSigUrl = storedSigPath ? `${BASE}api/storage${storedSigPath}` : null;
 
   const ag = agreement as typeof agreement & {
     employerSignatureName?: string | null;
     freelancerSignatureName?: string | null;
+    employerSignatureImageUrl?: string | null;
+    freelancerSignatureImageUrl?: string | null;
+  };
+
+  const handleSigUpload = async (file: File) => {
+    if (!file.type.startsWith("image/")) {
+      toast({ title: "Please upload an image file", variant: "destructive" }); return;
+    }
+    setUploadingSig(true);
+    try {
+      const { uploadURL, objectPath } = await requestSigUrl(file.name, file.type);
+      const put = await fetch(uploadURL, { method: "PUT", headers: { "Content-Type": file.type }, body: file });
+      if (!put.ok) throw new Error("Upload failed");
+      setUploadedSigPath(objectPath);
+      const reader = new FileReader();
+      reader.onload = e => setUploadedSigPreview(e.target?.result as string);
+      reader.readAsDataURL(file);
+      setSigMode("upload");
+    } catch {
+      toast({ title: "Upload failed", variant: "destructive" });
+    } finally {
+      setUploadingSig(false);
+      if (sigFileRef.current) sigFileRef.current.value = "";
+    }
   };
 
   const isEmployer = me?.role === "employer";
@@ -166,12 +209,27 @@ export default function AgreementDetail() {
     ? employerSigned && !freelancerSigned   // freelancer can only sign after employer
     : false;
 
+  const canSign = (sigMode === "stored" && !!storedSigPath) ||
+    (sigMode === "upload" && !!uploadedSigPath) ||
+    (sigMode === "text" && !!typedName.trim());
+
   const handleSign = async () => {
-    if (!me?.role || me.role === "pending" || !signatureName.trim()) return;
+    if (!me?.role || me.role === "pending" || !canSign) return;
+    let finalSigImageUrl: string | undefined;
+    let finalSigName: string | undefined;
+    if (sigMode === "stored" && storedSigPath) {
+      finalSigImageUrl = storedSigPath;
+      finalSigName = me.name;
+    } else if (sigMode === "upload" && uploadedSigPath) {
+      finalSigImageUrl = uploadedSigPath;
+      finalSigName = me.name;
+    } else if (sigMode === "text" && typedName.trim()) {
+      finalSigName = typedName.trim();
+    }
     try {
       await signAgreement.mutateAsync({
         id: parseInt(id!),
-        data: { role: me.role as "freelancer" | "employer", signatureName: signatureName.trim() } as any,
+        data: { role: me.role as "freelancer" | "employer", signatureName: finalSigName, signatureImageUrl: finalSigImageUrl } as any,
       });
       toast({
         title: "Contract Executed",
@@ -180,7 +238,10 @@ export default function AgreementDetail() {
           : "Your signature has been recorded. The other party has been notified.",
       });
       setSignDialogOpen(false);
-      setSignatureName("");
+      setUploadedSigPath(null);
+      setUploadedSigPreview(null);
+      setTypedName("");
+      setSigMode("stored");
       refetch();
     } catch (err: any) {
       toast({
@@ -253,40 +314,107 @@ export default function AgreementDetail() {
                   Sign Document
                 </Button>
               </DialogTrigger>
-              <DialogContent className="sm:max-w-[450px]">
+              <DialogContent className="sm:max-w-[500px]">
                 <DialogHeader className="pb-4 border-b border-border/50">
                   <div className="mx-auto w-12 h-12 bg-primary/10 text-primary rounded-full flex items-center justify-center mb-4 border border-primary/20">
                     <Fingerprint className="h-6 w-6" />
                   </div>
                   <DialogTitle className="font-serif text-2xl text-center">Execute Contract</DialogTitle>
                   <DialogDescription className="text-center mt-2">
-                    Type your full legal name below. This acts as your binding digital signature.
+                    Choose how you'd like to sign this agreement.
                   </DialogDescription>
                 </DialogHeader>
-                <div className="space-y-6 py-6">
-                  <div className="rounded-xl border bg-secondary/30 px-5 py-4 flex flex-col gap-1 items-center text-center">
+
+                <div className="space-y-4 py-5">
+                  {/* Signing As */}
+                  <div className="rounded-xl border bg-secondary/30 px-5 py-3 flex flex-col gap-0.5 items-center text-center">
                     <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Signing As</span>
-                    <span className="font-serif text-lg font-bold text-foreground capitalize">{me?.role}</span>
-                    <span className="text-sm font-medium">{me?.name}</span>
+                    <span className="font-serif text-base font-bold text-foreground capitalize">{me?.role}</span>
+                    <span className="text-sm text-muted-foreground">{me?.name}</span>
                   </div>
-                  <div className="space-y-3">
-                    <Label htmlFor="sig-name" className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Legal Signature</Label>
+
+                  {/* Option 1 — stored signature */}
+                  <button
+                    type="button"
+                    onClick={() => storedSigPath && setSigMode("stored")}
+                    className={`w-full text-left rounded-xl border-2 p-4 transition-all ${sigMode === "stored" ? "border-primary bg-primary/5" : "border-border hover:border-primary/40"} ${!storedSigPath ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
+                    disabled={!storedSigPath}
+                  >
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${sigMode === "stored" ? "border-primary bg-primary" : "border-muted-foreground"}`}>
+                        {sigMode === "stored" && <div className="w-2 h-2 rounded-full bg-white" />}
+                      </div>
+                      <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Use Stored Signature</span>
+                    </div>
+                    {storedSigUrl ? (
+                      <div className="bg-white rounded-lg border p-3 flex items-center justify-center min-h-[72px]">
+                        <img src={storedSigUrl} alt="Your stored signature" className="max-h-16 max-w-full object-contain" />
+                      </div>
+                    ) : (
+                      <p className="text-xs text-muted-foreground pl-6">No signature saved. Go to your Profile to upload one.</p>
+                    )}
+                  </button>
+
+                  {/* Option 2 — upload new */}
+                  <button
+                    type="button"
+                    onClick={() => { setSigMode("upload"); sigFileRef.current?.click(); }}
+                    className={`w-full text-left rounded-xl border-2 p-4 transition-all cursor-pointer ${sigMode === "upload" ? "border-primary bg-primary/5" : "border-border hover:border-primary/40"}`}
+                  >
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${sigMode === "upload" ? "border-primary bg-primary" : "border-muted-foreground"}`}>
+                        {sigMode === "upload" && <div className="w-2 h-2 rounded-full bg-white" />}
+                      </div>
+                      <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Upload Signature Image</span>
+                    </div>
+                    {uploadingSig ? (
+                      <div className="flex items-center gap-2 pl-6 text-sm text-muted-foreground">
+                        <Loader2 className="h-4 w-4 animate-spin" />Uploading…
+                      </div>
+                    ) : uploadedSigPreview ? (
+                      <div className="bg-white rounded-lg border p-3 flex items-center justify-center min-h-[72px]">
+                        <img src={uploadedSigPreview} alt="Uploaded signature preview" className="max-h-16 max-w-full object-contain" />
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2 pl-6 text-sm text-muted-foreground">
+                        <Upload className="h-4 w-4" />Click to upload PNG or JPG
+                      </div>
+                    )}
+                  </button>
+                  <input
+                    ref={sigFileRef}
+                    type="file"
+                    accept="image/png,image/jpeg,image/jpg"
+                    className="hidden"
+                    onChange={(e) => { const f = e.target.files?.[0]; if (f) handleSigUpload(f); }}
+                  />
+
+                  {/* Option 3 — type name */}
+                  <div
+                    className={`rounded-xl border-2 p-4 transition-all ${sigMode === "text" ? "border-primary bg-primary/5" : "border-border"}`}
+                    onClick={() => setSigMode("text")}
+                  >
+                    <div className="flex items-center gap-2 mb-3 cursor-pointer">
+                      <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${sigMode === "text" ? "border-primary bg-primary" : "border-muted-foreground"}`}>
+                        {sigMode === "text" && <div className="w-2 h-2 rounded-full bg-white" />}
+                      </div>
+                      <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Type Your Name</span>
+                    </div>
                     <Input
-                      id="sig-name"
                       placeholder="e.g. Jefferson Immanuel"
-                      value={signatureName}
-                      onChange={e => setSignatureName(e.target.value)}
-                      className="font-serif text-2xl italic h-16 text-center border-primary/30 focus-visible:ring-primary shadow-inner bg-secondary/10"
-                      onKeyDown={e => e.key === "Enter" && signatureName.trim() && handleSign()}
-                      autoFocus
+                      value={typedName}
+                      onChange={e => { setTypedName(e.target.value); setSigMode("text"); }}
+                      className="font-serif text-xl italic h-12 text-center border-primary/20 bg-white"
+                      onKeyDown={e => e.key === "Enter" && canSign && handleSign()}
                     />
                   </div>
                 </div>
+
                 <DialogFooter className="sm:justify-center border-t border-border/50 pt-4">
-                  <Button variant="ghost" onClick={() => { setSignDialogOpen(false); setSignatureName(""); }}>Cancel</Button>
+                  <Button variant="ghost" onClick={() => { setSignDialogOpen(false); setUploadedSigPath(null); setUploadedSigPreview(null); setTypedName(""); setSigMode("stored"); }}>Cancel</Button>
                   <Button
                     onClick={handleSign}
-                    disabled={signAgreement.isPending || !signatureName.trim()}
+                    disabled={signAgreement.isPending || !canSign}
                     className="font-semibold shadow-sm px-8"
                   >
                     {signAgreement.isPending ? "Executing..." : "Confirm & Sign"}
@@ -357,11 +485,19 @@ export default function AgreementDetail() {
                     <div className="space-y-4">
                       <div className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Employer</div>
                       {employerSigned ? (
-                        <div className="border-b border-border/80 pb-2">
-                          <div className="font-serif text-3xl italic text-primary">{ag.employerSignatureName}</div>
+                        <div className="border-b border-border/80 pb-3 min-h-[72px] flex items-end">
+                          {ag.employerSignatureImageUrl ? (
+                            <img
+                              src={`${BASE}api/storage${ag.employerSignatureImageUrl}`}
+                              alt="Employer signature"
+                              className="max-h-16 max-w-full object-contain"
+                            />
+                          ) : (
+                            <div className="font-serif text-3xl italic text-primary">{ag.employerSignatureName}</div>
+                          )}
                         </div>
                       ) : (
-                        <div className="border-b border-border/40 border-dashed pb-2 h-10 flex items-end">
+                        <div className="border-b border-border/40 border-dashed pb-2 h-16 flex items-end">
                           <span className="text-xs text-muted-foreground italic">Pending signature</span>
                         </div>
                       )}
@@ -374,11 +510,19 @@ export default function AgreementDetail() {
                     <div className="space-y-4">
                       <div className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Freelancer</div>
                       {freelancerSigned ? (
-                        <div className="border-b border-border/80 pb-2">
-                          <div className="font-serif text-3xl italic text-primary">{ag.freelancerSignatureName}</div>
+                        <div className="border-b border-border/80 pb-3 min-h-[72px] flex items-end">
+                          {ag.freelancerSignatureImageUrl ? (
+                            <img
+                              src={`${BASE}api/storage${ag.freelancerSignatureImageUrl}`}
+                              alt="Freelancer signature"
+                              className="max-h-16 max-w-full object-contain"
+                            />
+                          ) : (
+                            <div className="font-serif text-3xl italic text-primary">{ag.freelancerSignatureName}</div>
+                          )}
                         </div>
                       ) : (
-                        <div className="border-b border-border/40 border-dashed pb-2 h-10 flex items-end">
+                        <div className="border-b border-border/40 border-dashed pb-2 h-16 flex items-end">
                           <span className="text-xs text-muted-foreground italic">Pending signature</span>
                         </div>
                       )}

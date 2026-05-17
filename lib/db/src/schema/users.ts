@@ -9,6 +9,7 @@ export const usersTable = pgTable("users", {
   email: text("email").notNull(),
   name: text("name").notNull(),
   avatarUrl: text("avatar_url"),
+  signatureImageUrl: text("signature_image_url"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });
