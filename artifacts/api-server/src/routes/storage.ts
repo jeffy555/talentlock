@@ -1,14 +1,71 @@
 import { Router, type IRouter, type Request, type Response } from "express";
+import express from "express";
 import { Readable } from "stream";
 import {
   RequestUploadUrlBody,
   RequestUploadUrlResponse,
 } from "@workspace/api-zod";
 import { ObjectStorageService, ObjectNotFoundError } from "../lib/objectStorage";
-import { ObjectPermission } from "../lib/objectAcl";
+import { isAdminRequest } from "../lib/adminAuth";
+import {
+  guessContentType,
+  readLocalObject,
+  usesLocalObjectStorage,
+  verifyLocalSignedUrl,
+  writeLocalObject,
+} from "../lib/localObjectStorage";
 
 const router: IRouter = Router();
 const objectStorageService = new ObjectStorageService();
+
+router.put(
+  "/storage/local-upload",
+  express.raw({ type: () => true, limit: "11mb" }),
+  async (req: Request, res: Response) => {
+    const key = String(req.query.key ?? "");
+    const expires = Number(req.query.expires);
+    const sig = String(req.query.sig ?? "");
+
+    if (!key || !verifyLocalSignedUrl("PUT", key, expires, sig)) {
+      res.status(403).json({ error: "Invalid or expired upload URL" });
+      return;
+    }
+
+    try {
+      const body = req.body;
+      if (!Buffer.isBuffer(body) || body.length === 0) {
+        res.status(400).json({ error: "Empty upload body" });
+        return;
+      }
+      await writeLocalObject(key, body);
+      res.status(200).end();
+    } catch (error) {
+      req.log.error({ err: error, key }, "Local object upload failed");
+      res.status(500).json({ error: "Upload failed" });
+    }
+  },
+);
+
+router.get("/storage/local-read", async (req: Request, res: Response) => {
+  const key = String(req.query.key ?? "");
+  const expires = Number(req.query.expires);
+  const sig = String(req.query.sig ?? "");
+
+  if (!key || !verifyLocalSignedUrl("GET", key, expires, sig)) {
+    res.status(403).json({ error: "Invalid or expired read URL" });
+    return;
+  }
+
+  try {
+    const buffer = await readLocalObject(key);
+    res.setHeader("Content-Type", guessContentType(key));
+    res.setHeader("Cache-Control", "private, max-age=900");
+    res.send(buffer);
+  } catch (error) {
+    req.log.error({ err: error, key }, "Local object read failed");
+    res.status(404).json({ error: "Object not found" });
+  }
+});
 
 /**
  * POST /storage/uploads/request-url
@@ -88,6 +145,27 @@ router.get("/storage/objects/*path", async (req: Request, res: Response) => {
   try {
     const raw = req.params.path;
     const wildcardPath = Array.isArray(raw) ? raw.join("/") : raw;
+
+    if (wildcardPath.startsWith("documents/")) {
+      if (!isAdminRequest(req)) {
+        res.status(403).json({ error: "Forbidden" });
+        return;
+      }
+    }
+
+    if (usesLocalObjectStorage()) {
+      try {
+        const buffer = await readLocalObject(wildcardPath);
+        res.setHeader("Content-Type", guessContentType(wildcardPath));
+        res.setHeader("Cache-Control", "private, max-age=3600");
+        res.send(buffer);
+        return;
+      } catch {
+        res.status(404).json({ error: "Object not found" });
+        return;
+      }
+    }
+
     const objectPath = `/objects/${wildcardPath}`;
     const objectFile = await objectStorageService.getObjectEntityFile(objectPath);
 

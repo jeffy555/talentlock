@@ -15,4 +15,10 @@ export interface CreateBookingBody {
   paymentType: string;
   /** @nullable */
   rate?: number | null;
+  /**
+   * Optional message to the freelancer (max 500 chars)
+   * @maxLength 500
+   * @nullable
+   */
+  message?: string | null;
 }

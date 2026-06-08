@@ -38,6 +38,10 @@ tags:
     description: Booking milestone tracking
   - name: analytics
     description: User-specific analytics and metrics
+  - name: availability
+    description: Freelancer availability calendar blocks
+  - name: team
+    description: Enterprise team accounts and member management
 
 paths:
   /healthz:
@@ -91,6 +95,25 @@ paths:
               schema:
                 $ref: "#/components/schemas/User"
 
+  /users/me/notification-preferences:
+    patch:
+      operationId: patchNotificationPreferences
+      tags: [users]
+      summary: Update email notification preferences
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PatchNotificationPreferencesBody"
+      responses:
+        "200":
+          description: Preferences updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NotificationPreferencesResult"
+
   # ── Freelancers ─────────────────────────────────────────────────────────────
   /freelancers:
     get:
@@ -108,6 +131,11 @@ paths:
           schema:
             type: boolean
           description: Filter by availability
+        - name: verified
+          in: query
+          schema:
+            type: boolean
+          description: When true, only freelancers with at least one verified document
         - name: limit
           in: query
           schema:
@@ -118,6 +146,17 @@ paths:
           schema:
             type: integer
           description: Pagination offset
+        - name: availableFrom
+          in: query
+          schema:
+            type: string
+            format: date
+          description: Only return freelancers available on or before this date
+        - name: q
+          in: query
+          schema:
+            type: string
+          description: Full-text keyword search across bio and skills
       responses:
         "200":
           description: List of freelancers
@@ -198,9 +237,149 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/FreelancerProfile"
+                $ref: "#/components/schemas/FreelancerProfileDetail"
         "404":
           description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /availability/me:
+    get:
+      operationId: getMyAvailability
+      tags: [availability]
+      summary: Get my availability blocks (freelancer only)
+      responses:
+        "200":
+          description: Freelancer availability with full block detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AvailabilityMeResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "403":
+          description: Forbidden — employers cannot access
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "404":
+          description: Freelancer profile not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+    post:
+      operationId: createAvailabilityBlock
+      tags: [availability]
+      summary: Create a manual availability block (freelancer only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateAvailabilityBlockBody"
+      responses:
+        "201":
+          description: Created availability block
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AvailabilityMeBlock"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "403":
+          description: Forbidden — employers cannot access
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /availability/me/{id}:
+    delete:
+      operationId: deleteAvailabilityBlock
+      tags: [availability]
+      summary: Delete a manual availability block (freelancer only)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Block deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeleteAvailabilityBlockResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "404":
+          description: Block not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "409":
+          description: Cannot delete auto-created booking block
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /availability/{freelancerId}:
+    get:
+      operationId: getFreelancerAvailability
+      tags: [availability]
+      summary: Get public availability blocks for a freelancer
+      parameters:
+        - name: freelancerId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Public availability (no label or bookingId)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AvailabilityPublicResponse"
+        "400":
+          description: Invalid ID
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "404":
+          description: Freelancer not found
           content:
             application/json:
               schema:
@@ -426,20 +605,58 @@ paths:
                   $ref: "#/components/schemas/JobInterestWithFreelancer"
 
   # ── Notifications ────────────────────────────────────────────────────────────
+  /notifications/unread-count:
+    get:
+      operationId: getNotificationsUnreadCount
+      tags: [users]
+      summary: Unread notification count for the current user
+      responses:
+        "200":
+          description: Unread count
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NotificationsUnreadCount"
+
   /notifications:
     get:
       operationId: listNotifications
       tags: [users]
-      summary: List the current user's notifications
+      summary: Paginated notifications for the current user
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: pageSize
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 20
       responses:
         "200":
-          description: Notifications
+          description: Paginated notifications
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/Notification"
+                $ref: "#/components/schemas/NotificationsListResult"
+
+  /notifications/read-all:
+    patch:
+      operationId: markAllNotificationsRead
+      tags: [users]
+      summary: Mark all notifications as read for the current user
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NotificationMarkSuccess"
 
   /notifications/{id}/read:
     patch:
@@ -454,28 +671,11 @@ paths:
             type: integer
       responses:
         "200":
-          description: Updated notification
+          description: Success
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Notification"
-
-  /notifications/read-all:
-    post:
-      operationId: markAllNotificationsRead
-      tags: [users]
-      summary: Mark all notifications as read for the current user
-      responses:
-        "200":
-          description: Count of notifications updated
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  updated:
-                    type: integer
-                required: [updated]
+                $ref: "#/components/schemas/NotificationMarkSuccess"
 
   # ── Subscriptions ────────────────────────────────────────────────────────────
   /subscriptions/plans:
@@ -531,6 +731,80 @@ paths:
               schema:
                 $ref: "#/components/schemas/SubscriptionSummary"
 
+  /token-usage/me:
+    get:
+      operationId: getTokenUsageMe
+      tags: [users]
+      summary: Get the current employer's AI token usage for the UTC calendar month
+      responses:
+        "200":
+          description: Token usage summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TokenUsageSummary"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "403":
+          description: Not an employer account
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /token-usage/conversation/{conversationId}:
+    get:
+      operationId: getTokenUsageConversationId
+      tags: [users]
+      summary: Get per-conversation AI token breakdown (Growth/Enterprise employers)
+      parameters:
+        - name: conversationId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Conversation token breakdown
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConversationTokenBreakdown"
+        "400":
+          description: Invalid conversation ID
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "402":
+          description: Starter plan — feature requires Growth
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlanLimitError"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "404":
+          description: Conversation not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
   # ── Bookings ─────────────────────────────────────────────────────────────────
   /bookings:
     get:
@@ -548,15 +822,23 @@ paths:
           schema:
             type: string
           description: Filter by role (freelancer, employer)
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: pageSize
+          in: query
+          schema:
+            type: integer
+            default: 20
       responses:
         "200":
-          description: List of bookings
+          description: Paginated list of bookings
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/Booking"
+                $ref: "#/components/schemas/PaginatedBookingsResult"
     post:
       operationId: createBooking
       tags: [bookings]
@@ -665,16 +947,24 @@ paths:
           in: query
           schema:
             type: string
-          description: Filter by status (draft, pending_signatures, signed, active, completed)
+          description: Filter by status (draft, redlined, partially_signed, fully_signed)
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: pageSize
+          in: query
+          schema:
+            type: integer
+            default: 20
       responses:
         "200":
-          description: List of agreements
+          description: Paginated list of agreements
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/Agreement"
+                $ref: "#/components/schemas/PaginatedAgreementsResult"
     post:
       operationId: createAgreement
       tags: [agreements]
@@ -780,21 +1070,130 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorEnvelope"
 
+  /agreements/{id}/redline:
+    post:
+      operationId: postAgreementsIdRedline
+      tags: [agreements]
+      summary: Get AI contract redlining suggestions (employer, Growth+)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Redline suggestions
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RedlineResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "402":
+          description: Plan or token limit
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/PlanLimitError"
+                  - $ref: "#/components/schemas/TokenLimitError"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "409":
+          description: Agreement already signed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AgreementSignedError"
+
+  /agreements/{id}/accept-redline:
+    patch:
+      operationId: patchAgreementsIdAcceptRedline
+      tags: [agreements]
+      summary: Accept a redline suggestion and update agreement content (employer)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AcceptRedlineBody"
+      responses:
+        "200":
+          description: Agreement updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AcceptRedlineResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "409":
+          description: Agreement already signed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AgreementSignedError"
+
   # ── Meetings ─────────────────────────────────────────────────────────────────
   /meetings:
     get:
       operationId: listMeetings
       tags: [meetings]
       summary: List meetings for the current user
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: pageSize
+          in: query
+          schema:
+            type: integer
+            default: 20
       responses:
         "200":
-          description: List of meetings
+          description: Paginated list of meetings
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/Meeting"
+                $ref: "#/components/schemas/PaginatedMeetingsResult"
     post:
       operationId: createMeeting
       tags: [meetings]
@@ -963,6 +1362,178 @@ paths:
               schema:
                 $ref: "#/components/schemas/OpenaiMessage"
 
+  /ai/job-description:
+    post:
+      operationId: postAiJobDescription
+      tags: [openai]
+      summary: AI job description assistant (generate, improve, or check)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PostAiJobDescriptionBody"
+      responses:
+        "200":
+          description: Job description assistant result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JobDescriptionResponse"
+        "400":
+          description: Invalid request or content too short
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ContentTooShortError"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "402":
+          description: Monthly AI token limit reached
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TokenLimitError"
+        "403":
+          description: Employers only
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /ai/proposal:
+    post:
+      operationId: postAiProposal
+      tags: [openai]
+      summary: AI proposal generator for freelancer booking responses
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PostAiProposalBody"
+      responses:
+        "200":
+          description: Generated proposal text
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AiProposalResponse"
+        "400":
+          description: Booking not in pending status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BookingNotPendingError"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "403":
+          description: Freelancers only or booking access denied
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "404":
+          description: Booking not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /ai/match-explanation:
+    post:
+      operationId: postAiMatchExplanation
+      tags: [openai]
+      summary: Generate a structured match explanation for a freelancer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PostAiMatchExplanationBody"
+      responses:
+        "200":
+          description: Match explanation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MatchExplanation"
+        "402":
+          description: Monthly AI token limit reached
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TokenLimitError"
+        "403":
+          description: Employers only
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "404":
+          description: Freelancer or job requirement not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /ai/rate-suggestion:
+    post:
+      operationId: postAiRateSuggestion
+      tags: [openai]
+      summary: Rate context and AI rate suggestion for employers
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PostAiRateSuggestionBody"
+      responses:
+        "200":
+          description: Rate suggestion result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RateSuggestionResponse"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "402":
+          description: Monthly AI token limit reached
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TokenLimitError"
+        "403":
+          description: Employers only
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "404":
+          description: Freelancer, booking, or job requirement not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
   # ── Dashboard ────────────────────────────────────────────────────────────────
   /dashboard/stats:
     get:
@@ -991,6 +1562,65 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/ActivityItem"
+
+  /dashboard/earnings-intelligence:
+    get:
+      operationId: getDashboardEarningsIntelligence
+      tags: [dashboard]
+      summary: Freelancer earnings intelligence (trend, benchmark, projection, top skills)
+      responses:
+        "200":
+          description: Earnings intelligence data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EarningsIntelligence"
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden — freelancers only
+
+  /dashboard/spend-analytics:
+    get:
+      operationId: getDashboardSpendAnalytics
+      tags: [dashboard]
+      summary: Employer spend analytics (trend, field breakdown, top freelancers, committed spend, rate benchmark)
+      responses:
+        "200":
+          description: Spend analytics data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SpendAnalytics"
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden — employers only
+
+  /dashboard/hiring-analytics:
+    get:
+      operationId: getDashboardHiringAnalytics
+      tags: [dashboard]
+      summary: Employer hiring analytics (funnel, skills gap, retention, lifecycle, outcomes)
+      parameters:
+        - name: window
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [30d, 90d, 12m]
+            default: 90d
+      responses:
+        "200":
+          description: Hiring analytics data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HiringAnalytics"
+        "401":
+          description: Unauthorized
+        "403":
+          description: Forbidden — employers only
 
   # ── Storage ───────────────────────────────────────────────────────────────────
   /storage/uploads/request-url:
@@ -1081,45 +1711,45 @@ paths:
     get:
       operationId: listFreelancerReviews
       tags: [reviews]
-      summary: List reviews for a freelancer (public)
+      summary: List reviews for a freelancer (public, paginated)
       parameters:
         - name: freelancerId
           in: path
           required: true
           schema:
             type: integer
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: pageSize
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 10
       responses:
         "200":
-          description: Reviews with aggregate rating
+          description: Paginated review list
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/FreelancerReviewsResult"
-
-  /reviews/my-review/{bookingId}:
-    get:
-      operationId: getMyBookingReview
-      tags: [reviews]
-      summary: Check whether current user has reviewed a booking
-      parameters:
-        - name: bookingId
-          in: path
-          required: true
-          schema:
-            type: integer
-      responses:
-        "200":
-          description: Review check result
+        "404":
+          description: Freelancer not found
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/MyReviewResult"
+                $ref: "#/components/schemas/ErrorEnvelope"
 
   /reviews:
     post:
       operationId: createReview
       tags: [reviews]
-      summary: Submit a review for a completed booking
+      summary: Submit a review for a completed booking (employer only)
       requestBody:
         required: true
         content:
@@ -1132,9 +1762,70 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Review"
+                $ref: "#/components/schemas/PublicReview"
+        "400":
+          description: Invalid rating or booking not completed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
         "409":
           description: Already reviewed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /reviews/{id}/reply:
+    post:
+      operationId: replyToReview
+      tags: [reviews]
+      summary: Freelancer reply to a review (one reply per review)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReplyReviewBody"
+      responses:
+        "200":
+          description: Updated review with reply
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PublicReview"
+        "400":
+          description: Invalid reply
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "404":
+          description: Review not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "409":
+          description: Reply already exists
           content:
             application/json:
               schema:
@@ -1405,33 +2096,499 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorEnvelope"
 
-  # ── Verify Documents ──────────────────────────────────────────────────────
-  /verify/documents:
+  # ── Document Verification ─────────────────────────────────────────────────
+  /documents/upload-url:
     post:
-      operationId: verifyDocuments
-      tags: [users]
-      summary: Submit documents for AI verification and send confirmation email
+      operationId: postDocumentsUploadUrl
+      tags: [documents]
+      summary: Request a presigned upload URL for a verification document
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/VerifyDocumentsBody"
+              $ref: "#/components/schemas/DocumentsUploadUrlBody"
       responses:
         "200":
-          description: Verification result
+          description: Presigned upload URL
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/VerifyDocumentsResult"
+                $ref: "#/components/schemas/DocumentsUploadUrlResponse"
         "400":
-          description: Bad request
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DocumentErrorEnvelope"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "403":
+          description: Freelancer profile required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /documents/confirm:
+    post:
+      operationId: postDocumentsConfirm
+      tags: [documents]
+      summary: Confirm document upload and queue AI review
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DocumentsConfirmBody"
+      responses:
+        "201":
+          description: Upload confirmed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DocumentsConfirmResponse"
+        "400":
+          description: Validation error
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorEnvelope"
         "401":
           description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "403":
+          description: Freelancer profile required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /documents/me:
+    get:
+      operationId: getDocumentsMe
+      tags: [documents]
+      summary: Get my document verification status
+      responses:
+        "200":
+          description: Verification status for the authenticated freelancer
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DocumentsMeResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "403":
+          description: Freelancer profile required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  # ── Team (Enterprise) ─────────────────────────────────────────────────────
+  /team:
+    get:
+      operationId: getTeam
+      tags: [team]
+      summary: Get team details and member list
+      responses:
+        "200":
+          description: Team details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TeamDetails"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "402":
+          description: Enterprise plan required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlanLimitError"
+        "403":
+          description: Not a team member
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+    post:
+      operationId: createTeam
+      tags: [team]
+      summary: Create a team (enterprise employer, once)
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateTeamBody"
+      responses:
+        "201":
+          description: Team created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TeamDetails"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "402":
+          description: Enterprise plan required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlanLimitError"
+        "409":
+          description: Team already exists
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+    put:
+      operationId: updateTeam
+      tags: [team]
+      summary: Update team name (admin only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateTeamBody"
+      responses:
+        "200":
+          description: Updated team
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TeamDetails"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "402":
+          description: Enterprise plan required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlanLimitError"
+        "403":
+          description: Admin only
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /team/invite:
+    post:
+      operationId: inviteTeamMember
+      tags: [team]
+      summary: Invite a team member (admin only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/InviteTeamMemberBody"
+      responses:
+        "201":
+          description: Invitation sent
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TeamInviteResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "402":
+          description: Enterprise plan required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlanLimitError"
+        "403":
+          description: Admin only
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "409":
+          description: Duplicate invite
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /team/accept-invite:
+    get:
+      operationId: acceptTeamInvite
+      tags: [team]
+      summary: Accept a team invitation via token
+      parameters:
+        - name: token
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Invitation accepted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AcceptTeamInviteResponse"
+        "401":
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AcceptTeamInviteAuthRequired"
+        "403":
+          description: Email mismatch
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "404":
+          description: Invalid token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "409":
+          description: Already accepted or already on a team
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InviteUsedError"
+        "410":
+          description: Invite expired
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /team/shortlist:
+    get:
+      operationId: listTeamShortlist
+      tags: [team]
+      summary: List shared team shortlist (active team members)
+      responses:
+        "200":
+          description: Team shortlist entries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/TeamShortlistItem"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "402":
+          description: Enterprise plan required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlanLimitError"
+        "403":
+          description: Not a team member
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+    post:
+      operationId: addTeamShortlist
+      tags: [team]
+      summary: Add a freelancer to the shared team shortlist
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AddTeamShortlistBody"
+      responses:
+        "200":
+          description: Already shortlisted (idempotent)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TeamShortlistItem"
+        "201":
+          description: Added to shortlist
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TeamShortlistItem"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "402":
+          description: Enterprise plan required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlanLimitError"
+        "403":
+          description: Not a team member
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "404":
+          description: Freelancer not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /team/shortlist/{freelancerId}:
+    delete:
+      operationId: removeTeamShortlist
+      tags: [team]
+      summary: Remove a freelancer from the shared team shortlist
+      parameters:
+        - name: freelancerId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Removed from shortlist
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RemoveTeamShortlistResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "402":
+          description: Enterprise plan required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlanLimitError"
+        "403":
+          description: Not a team member
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "404":
+          description: Shortlist entry not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /team/analytics:
+    get:
+      operationId: getTeamAnalytics
+      tags: [team]
+      summary: Team-wide hiring analytics (admin only)
+      parameters:
+        - name: window
+          in: query
+          schema:
+            type: string
+            enum: [30d, 90d, 12m]
+            default: 90d
+      responses:
+        "200":
+          description: Team analytics
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TeamAnalytics"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "402":
+          description: Enterprise plan required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlanLimitError"
+        "403":
+          description: Admin only
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /team/members/{memberId}:
+    delete:
+      operationId: removeTeamMember
+      tags: [team]
+      summary: Remove or deactivate a team member (admin only)
+      parameters:
+        - name: memberId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Member removed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RemoveTeamMemberResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "402":
+          description: Enterprise plan required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlanLimitError"
+        "403":
+          description: Admin only or cannot remove owner
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "404":
+          description: Member not found
           content:
             application/json:
               schema:
@@ -1475,6 +2632,9 @@ components:
         signatureImageUrl:
           type: ["string", "null"]
           description: "Stored signature image path (object storage)"
+        emailNotificationsEnabled:
+          type: boolean
+          description: Whether the user receives email alerts for platform activity
         createdAt:
           type: string
           format: date-time
@@ -1482,6 +2642,7 @@ components:
         - id
         - clerkId
         - role
+        - emailNotificationsEnabled
         - email
         - name
         - createdAt
@@ -1549,6 +2710,9 @@ components:
           description: "unverified | pending | verified | rejected"
         verificationNote:
           type: ["string", "null"]
+        verificationLevel:
+          type: string
+          description: "unverified | partially_verified | fully_verified"
         documentNames:
           type: array
           items:
@@ -1565,8 +2729,19 @@ components:
         availableFrom:
           type: ["string", "null"]
           format: date-time
+        nextAvailableDate:
+          type: ["string", "null"]
+          format: date
+          description: Cached next available date (null when not available)
         availabilityNote:
           type: ["string", "null"]
+        averageRating:
+          type: ["number", "null"]
+        reviewCount:
+          type: integer
+        completenessScore:
+          type: integer
+          description: Profile completeness score 0–100 (Talent Vault requires ≥ 60)
         createdAt:
           type: string
           format: date-time
@@ -1583,7 +2758,53 @@ components:
         - isVerified
         - isAvailable
         - subscriptionPlan
+        - verificationLevel
+        - reviewCount
+        - completenessScore
         - createdAt
+
+    PatchNotificationPreferencesBody:
+      type: object
+      properties:
+        emailNotificationsEnabled:
+          type: boolean
+      required:
+        - emailNotificationsEnabled
+
+    NotificationPreferencesResult:
+      type: object
+      properties:
+        success:
+          type: boolean
+        emailNotificationsEnabled:
+          type: boolean
+      required:
+        - success
+        - emailNotificationsEnabled
+
+    FreelancerVerification:
+      type: object
+      properties:
+        level:
+          type: string
+          description: "unverified | partially_verified | fully_verified"
+        verifiedDocumentCount:
+          type: integer
+      required:
+        - level
+        - verifiedDocumentCount
+
+    FreelancerProfileDetail:
+      allOf:
+        - $ref: "#/components/schemas/FreelancerProfile"
+        - type: object
+          properties:
+            email:
+              type: ["string", "null"]
+            verification:
+              $ref: "#/components/schemas/FreelancerVerification"
+          required:
+            - verification
 
     CreateFreelancerProfileBody:
       type: object
@@ -1620,6 +2841,118 @@ components:
         - yearsExperience
         - paymentPreference
         - subscriptionPlan
+
+    AvailabilityBlockReason:
+      type: string
+      enum: [booked, holiday, unavailable]
+
+    AvailabilityPublicBlock:
+      type: object
+      properties:
+        id:
+          type: integer
+        startDate:
+          type: string
+          format: date
+        endDate:
+          type: string
+          format: date
+        reason:
+          $ref: "#/components/schemas/AvailabilityBlockReason"
+      required:
+        - id
+        - startDate
+        - endDate
+        - reason
+
+    AvailabilityMeBlock:
+      type: object
+      properties:
+        id:
+          type: integer
+        startDate:
+          type: string
+          format: date
+        endDate:
+          type: string
+          format: date
+        reason:
+          $ref: "#/components/schemas/AvailabilityBlockReason"
+        label:
+          type: ["string", "null"]
+        bookingId:
+          type: ["string", "null"]
+          description: Non-null when auto-created from a booking
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - startDate
+        - endDate
+        - reason
+        - label
+        - bookingId
+        - createdAt
+
+    AvailabilityPublicResponse:
+      type: object
+      properties:
+        freelancerId:
+          type: string
+        nextAvailableDate:
+          type: ["string", "null"]
+          format: date
+        blocks:
+          type: array
+          items:
+            $ref: "#/components/schemas/AvailabilityPublicBlock"
+      required:
+        - freelancerId
+        - nextAvailableDate
+        - blocks
+
+    AvailabilityMeResponse:
+      type: object
+      properties:
+        nextAvailableDate:
+          type: ["string", "null"]
+          format: date
+        blocks:
+          type: array
+          items:
+            $ref: "#/components/schemas/AvailabilityMeBlock"
+      required:
+        - nextAvailableDate
+        - blocks
+
+    CreateAvailabilityBlockBody:
+      type: object
+      properties:
+        startDate:
+          type: string
+          format: date
+        endDate:
+          type: string
+          format: date
+        reason:
+          type: string
+          enum: [holiday, unavailable]
+        label:
+          type: string
+          maxLength: 100
+      required:
+        - startDate
+        - endDate
+        - reason
+
+    DeleteAvailabilityBlockResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+      required:
+        - success
 
     UpdateFreelancerProfileBody:
       type: object
@@ -1861,6 +3194,9 @@ components:
           type: ["number", "null"]
         notes:
           type: ["string", "null"]
+        message:
+          type: ["string", "null"]
+          description: Optional message from employer when creating the booking
         proposedRate:
           type: ["number", "null"]
           description: Current outstanding rate proposal
@@ -1874,6 +3210,10 @@ components:
           type: ["string", "null"]
         employerName:
           type: ["string", "null"]
+        review:
+          oneOf:
+            - $ref: "#/components/schemas/PublicReview"
+            - type: "null"
         createdAt:
           type: string
           format: date-time
@@ -1887,6 +3227,7 @@ components:
         - paymentType
         - negotiationStatus
         - createdAt
+        - review
 
     CreateBookingBody:
       type: object
@@ -1905,6 +3246,10 @@ components:
           type: string
         rate:
           type: ["number", "null"]
+        message:
+          type: ["string", "null"]
+          maxLength: 500
+          description: Optional message to the freelancer (max 500 chars)
       required:
         - freelancerId
         - startDate
@@ -1930,6 +3275,76 @@ components:
         - action
 
     # ── Agreement ──────────────────────────────────────────────────────────────
+    AgreementIndustry:
+      type: string
+      enum:
+        - general
+        - software_development
+        - design_creative
+        - marketing_content
+        - consulting_strategy
+        - data_analytics
+
+    RedlineSuggestion:
+      type: object
+      properties:
+        clauseNumber:
+          type: string
+        originalText:
+          type: string
+        suggestedText:
+          type: string
+        reason:
+          type: string
+      required:
+        - clauseNumber
+        - originalText
+        - suggestedText
+        - reason
+
+    RedlineResponse:
+      type: object
+      properties:
+        suggestions:
+          type: array
+          items:
+            $ref: "#/components/schemas/RedlineSuggestion"
+        parseError:
+          type: boolean
+      required:
+        - suggestions
+
+    AcceptRedlineBody:
+      type: object
+      properties:
+        newContent:
+          type: string
+      required:
+        - newContent
+
+    AcceptRedlineResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        status:
+          type: string
+      required:
+        - success
+        - status
+
+    AgreementSignedError:
+      type: object
+      properties:
+        error:
+          type: string
+        code:
+          type: string
+          enum: [AGREEMENT_SIGNED]
+      required:
+        - error
+        - code
+
     Agreement:
       type: object
       properties:
@@ -1946,7 +3361,10 @@ components:
           description: AI-generated legal agreement text
         status:
           type: string
-          description: "draft, pending_signatures, signed, active, completed"
+          description: "draft, redlined, partially_signed, fully_signed"
+        estimatedRedlineTokens:
+          type: integer
+          description: Approximate tokens for a redline request (~content/4 + 500)
         freelancerSignedAt:
           type: ["string", "null"]
           format: date-time
@@ -1990,6 +3408,14 @@ components:
       properties:
         bookingId:
           type: integer
+        industry:
+          $ref: "#/components/schemas/AgreementIndustry"
+        customClauses:
+          type: array
+          items:
+            type: string
+          maxItems: 5
+          description: Enterprise only — up to 5 custom clauses (20–500 chars each)
       required:
         - bookingId
 
@@ -2181,6 +3607,220 @@ components:
       required:
         - content
 
+    PostAiJobDescriptionBody:
+      type: object
+      properties:
+        mode:
+          type: string
+          enum: [generate, improve, check]
+        content:
+          type: string
+        jobTitle:
+          type: string
+      required:
+        - mode
+        - content
+
+    JobDescriptionResponse:
+      type: object
+      properties:
+        mode:
+          type: string
+          enum: [generate, improve, check]
+        output:
+          type: string
+        score:
+          type: integer
+          minimum: 0
+          maximum: 100
+        missing:
+          type: array
+          items:
+            type: string
+      required:
+        - mode
+
+    PostAiProposalBody:
+      type: object
+      properties:
+        bookingId:
+          type: string
+        tone:
+          type: string
+          enum: [professional, friendly, concise]
+      required:
+        - bookingId
+        - tone
+
+    AiProposalResponse:
+      type: object
+      properties:
+        proposal:
+          type: string
+        error:
+          type: string
+      required:
+        - proposal
+
+    BookingNotPendingError:
+      type: object
+      properties:
+        error:
+          type: string
+        code:
+          type: string
+          enum: [BOOKING_NOT_PENDING]
+      required:
+        - error
+        - code
+
+    ContentTooShortError:
+      type: object
+      properties:
+        error:
+          type: string
+        code:
+          type: string
+          enum: [CONTENT_TOO_SHORT]
+      required:
+        - error
+        - code
+
+    PostAiMatchExplanationBody:
+      type: object
+      properties:
+        freelancerId:
+          type: integer
+        jobRequirementId:
+          type: ["integer", "null"]
+        conversationId:
+          type: string
+          description: "Active conversation id, or 'direct-view' for freelancer detail page"
+      required:
+        - freelancerId
+        - conversationId
+
+    MatchExplanationSkillsAlignment:
+      type: object
+      properties:
+        matched:
+          type: array
+          items:
+            type: string
+        gaps:
+          type: array
+          items:
+            type: string
+      required:
+        - matched
+        - gaps
+
+    MatchExplanationRateFit:
+      type: object
+      properties:
+        freelancerRate:
+          type: ["number", "null"]
+        budgetMin:
+          type: ["number", "null"]
+        budgetMax:
+          type: ["number", "null"]
+        assessment:
+          type: string
+          enum: [within_budget, above_budget, below_budget, unknown]
+      required:
+        - freelancerRate
+        - budgetMin
+        - budgetMax
+        - assessment
+
+    MatchExplanationAvailabilityFit:
+      type: object
+      properties:
+        freelancerAvailableFrom:
+          type: ["string", "null"]
+        requiredStartDate:
+          type: ["string", "null"]
+        assessment:
+          type: string
+          enum: [available, unavailable, unknown]
+      required:
+        - freelancerAvailableFrom
+        - requiredStartDate
+        - assessment
+
+    MatchExplanation:
+      type: object
+      properties:
+        skillsAlignment:
+          $ref: "#/components/schemas/MatchExplanationSkillsAlignment"
+        rateFit:
+          oneOf:
+            - $ref: "#/components/schemas/MatchExplanationRateFit"
+            - type: "null"
+        availabilityFit:
+          $ref: "#/components/schemas/MatchExplanationAvailabilityFit"
+        overallSummary:
+          type: string
+        parseError:
+          type: boolean
+        rawContent:
+          type: string
+
+    PostAiRateSuggestionBody:
+      type: object
+      properties:
+        freelancerId:
+          type: integer
+        proposedRate:
+          type: number
+        jobRequirementId:
+          type: integer
+        bookingId:
+          type: integer
+        paymentType:
+          type: string
+          enum: [hourly, daily, fixed]
+        includeAi:
+          type: boolean
+          default: false
+      required:
+        - freelancerId
+
+    RateSuggestionResponse:
+      type: object
+      properties:
+        freelancerRate:
+          type: number
+        marketMedian:
+          type: ["number", "null"]
+        yourHistoricalAvg:
+          type: ["number", "null"]
+        suggestedRate:
+          type: number
+        explanation:
+          type: string
+        confidence:
+          type: string
+          enum: [high, medium, low]
+        isAiSuggestion:
+          type: boolean
+      required:
+        - freelancerRate
+        - marketMedian
+        - yourHistoricalAvg
+        - suggestedRate
+        - explanation
+        - confidence
+        - isAiSuggestion
+
+    TokenLimitError:
+      type: object
+      properties:
+        error: { type: string }
+        code: { type: string, enum: [TOKEN_LIMIT] }
+        planNeeded: { type: string }
+      required: [error, code]
+
     # ── Dashboard ──────────────────────────────────────────────────────────────
     DashboardStats:
       type: object
@@ -2234,40 +3874,554 @@ components:
         - description
         - timestamp
 
-    # ── Verify Documents ──────────────────────────────────────────────────────
-    VerifyDocumentsBody:
+    EarningsIntelligenceSummary:
       type: object
       properties:
-        documentUrls:
+        thisMonth:
+          type: number
+        lastMonth:
+          type: number
+        allTime:
+          type: number
+        monthOverMonthChange:
+          type: ["number", "null"]
+      required:
+        - thisMonth
+        - lastMonth
+        - allTime
+        - monthOverMonthChange
+
+    EarningsIntelligenceTrend:
+      type: object
+      properties:
+        months:
           type: array
           items:
             type: string
-        documentNames:
+        freelancerEarnings:
+          type: array
+          items:
+            type: number
+        platformAverage:
+          type: array
+          items:
+            type: ["number", "null"]
+      required:
+        - months
+        - freelancerEarnings
+        - platformAverage
+
+    EarningsIntelligenceRateBenchmark:
+      type: object
+      properties:
+        myRate:
+          type: number
+        fieldOfWork:
+          type: string
+        percentile:
+          type: number
+        fieldMin:
+          type: number
+        fieldMedian:
+          type: number
+        fieldMax:
+          type: number
+        freelancerCount:
+          type: integer
+      required:
+        - myRate
+        - fieldOfWork
+        - percentile
+        - fieldMin
+        - fieldMedian
+        - fieldMax
+        - freelancerCount
+
+    EarningsIntelligenceProjection:
+      type: object
+      properties:
+        projectedAmount:
+          type: number
+        milestoneCount:
+          type: integer
+        currency:
+          type: string
+          enum: [USD]
+      required:
+        - projectedAmount
+        - milestoneCount
+        - currency
+
+    EarningsIntelligenceTopSkill:
+      type: object
+      properties:
+        skill:
+          type: string
+        totalEarned:
+          type: number
+        bookingCount:
+          type: integer
+      required:
+        - skill
+        - totalEarned
+        - bookingCount
+
+    EarningsIntelligence:
+      type: object
+      properties:
+        summary:
+          $ref: "#/components/schemas/EarningsIntelligenceSummary"
+        trend:
+          $ref: "#/components/schemas/EarningsIntelligenceTrend"
+        rateBenchmark:
+          oneOf:
+            - $ref: "#/components/schemas/EarningsIntelligenceRateBenchmark"
+            - type: "null"
+        projection:
+          $ref: "#/components/schemas/EarningsIntelligenceProjection"
+        topSkills:
+          type: array
+          items:
+            $ref: "#/components/schemas/EarningsIntelligenceTopSkill"
+      required:
+        - summary
+        - trend
+        - projection
+        - topSkills
+
+    SpendAnalyticsSummary:
+      type: object
+      properties:
+        thisMonth:
+          type: number
+        lastMonth:
+          type: number
+        allTime:
+          type: number
+        monthOverMonthChange:
+          type: ["number", "null"]
+      required:
+        - thisMonth
+        - lastMonth
+        - allTime
+        - monthOverMonthChange
+
+    SpendAnalyticsTrend:
+      type: object
+      properties:
+        months:
+          type: array
+          items:
+            type: string
+        spend:
+          type: array
+          items:
+            type: number
+      required:
+        - months
+        - spend
+
+    SpendAnalyticsFieldSpend:
+      type: object
+      properties:
+        field:
+          type: string
+        totalSpend:
+          type: number
+        percentageOfTotal:
+          type: number
+      required:
+        - field
+        - totalSpend
+        - percentageOfTotal
+
+    SpendAnalyticsTopFreelancer:
+      type: object
+      properties:
+        freelancerId:
+          type: string
+        name:
+          type: string
+        fieldOfWork:
+          type: string
+        totalPaid:
+          type: number
+        bookingCount:
+          type: integer
+        averageRatingGiven:
+          type: ["number", "null"]
+      required:
+        - freelancerId
+        - name
+        - fieldOfWork
+        - totalPaid
+        - bookingCount
+        - averageRatingGiven
+
+    SpendAnalyticsCommitted:
+      type: object
+      properties:
+        committedAmount:
+          type: number
+        milestoneCount:
+          type: integer
+      required:
+        - committedAmount
+        - milestoneCount
+
+    SpendAnalyticsRateBenchmarkField:
+      type: object
+      properties:
+        field:
+          type: string
+        avgPaid:
+          type: number
+        marketMedian:
+          type: number
+        differencePercent:
+          type: integer
+      required:
+        - field
+        - avgPaid
+        - marketMedian
+        - differencePercent
+
+    SpendAnalyticsRateBenchmark:
+      type: object
+      properties:
+        averageRatePaid:
+          type: number
+        marketMedian:
+          type: number
+        fields:
+          type: array
+          items:
+            $ref: "#/components/schemas/SpendAnalyticsRateBenchmarkField"
+      required:
+        - averageRatePaid
+        - marketMedian
+        - fields
+
+    SpendAnalytics:
+      type: object
+      properties:
+        summary:
+          $ref: "#/components/schemas/SpendAnalyticsSummary"
+        trend:
+          $ref: "#/components/schemas/SpendAnalyticsTrend"
+        spendByField:
+          type: array
+          items:
+            $ref: "#/components/schemas/SpendAnalyticsFieldSpend"
+        topFreelancers:
+          type: array
+          items:
+            $ref: "#/components/schemas/SpendAnalyticsTopFreelancer"
+        committed:
+          $ref: "#/components/schemas/SpendAnalyticsCommitted"
+        rateBenchmark:
+          oneOf:
+            - $ref: "#/components/schemas/SpendAnalyticsRateBenchmark"
+            - type: "null"
+      required:
+        - summary
+        - trend
+        - spendByField
+        - topFreelancers
+        - committed
+
+    HiringAnalyticsFunnel:
+      type: object
+      properties:
+        window:
+          type: string
+          enum: [30d, 90d, 12m]
+        jobsPosted:
+          type: integer
+        bookingsCreated:
+          type: integer
+        agreementsSigned:
+          type: integer
+        completed:
+          type: integer
+        conversionRates:
+          $ref: "#/components/schemas/HiringAnalyticsConversionRates"
+      required:
+        - window
+        - jobsPosted
+        - bookingsCreated
+        - agreementsSigned
+        - completed
+        - conversionRates
+
+    HiringAnalyticsConversionRates:
+      type: object
+      properties:
+        jobToBooking:
+          type: ["integer", "null"]
+        bookingToSigned:
+          type: ["integer", "null"]
+        signedToCompleted:
+          type: ["integer", "null"]
+      required:
+        - jobToBooking
+        - bookingToSigned
+        - signedToCompleted
+
+    HiringAnalyticsSkillCount:
+      type: object
+      properties:
+        skill:
+          type: string
+        count:
+          type: integer
+      required:
+        - skill
+        - count
+
+    HiringAnalyticsSkillsGap:
+      type: object
+      properties:
+        demand:
+          type: array
+          items:
+            $ref: "#/components/schemas/HiringAnalyticsSkillCount"
+        supply:
+          type: array
+          items:
+            $ref: "#/components/schemas/HiringAnalyticsSkillCount"
+        gaps:
           type: array
           items:
             type: string
       required:
-        - documentUrls
-        - documentNames
+        - demand
+        - supply
+        - gaps
 
-    VerifyDocumentsResult:
+    HiringAnalyticsRepeatFreelancer:
+      type: object
+      properties:
+        freelancerId:
+          type: string
+        name:
+          type: string
+        fieldOfWork:
+          type: string
+        bookingCount:
+          type: integer
+      required:
+        - freelancerId
+        - name
+        - fieldOfWork
+        - bookingCount
+
+    HiringAnalyticsRetention:
+      type: object
+      properties:
+        repeatRate:
+          type: integer
+        newRate:
+          type: integer
+        totalBookings:
+          type: integer
+        repeatFreelancers:
+          type: array
+          items:
+            $ref: "#/components/schemas/HiringAnalyticsRepeatFreelancer"
+      required:
+        - repeatRate
+        - newRate
+        - totalBookings
+        - repeatFreelancers
+
+    HiringAnalyticsLifecycleTrends:
+      type: object
+      properties:
+        jobToFirstBooking:
+          type: ["string", "null"]
+          enum: [faster, slower, same, null]
+        bookingToSigned:
+          type: ["string", "null"]
+          enum: [faster, slower, same, null]
+        signedToCompleted:
+          type: ["string", "null"]
+          enum: [faster, slower, same, null]
+      required:
+        - jobToFirstBooking
+        - bookingToSigned
+        - signedToCompleted
+
+    HiringAnalyticsLifecycle:
+      type: object
+      properties:
+        window:
+          type: string
+          enum: [30d, 90d, 12m]
+        jobToFirstBooking:
+          type: ["number", "null"]
+        bookingToSigned:
+          type: ["number", "null"]
+        signedToCompleted:
+          type: ["number", "null"]
+        totalDuration:
+          type: ["number", "null"]
+        trends:
+          $ref: "#/components/schemas/HiringAnalyticsLifecycleTrends"
+      required:
+        - window
+        - jobToFirstBooking
+        - bookingToSigned
+        - signedToCompleted
+        - totalDuration
+        - trends
+
+    HiringAnalyticsOutcomes:
+      type: object
+      properties:
+        completed:
+          type: integer
+        cancelled:
+          type: integer
+        inProgress:
+          type: integer
+        other:
+          type: integer
+        total:
+          type: integer
+        completedPct:
+          type: integer
+        cancelledPct:
+          type: integer
+        inProgressPct:
+          type: integer
+        otherPct:
+          type: integer
+      required:
+        - completed
+        - cancelled
+        - inProgress
+        - other
+        - total
+        - completedPct
+        - cancelledPct
+        - inProgressPct
+        - otherPct
+
+    HiringAnalytics:
+      type: object
+      properties:
+        funnel:
+          $ref: "#/components/schemas/HiringAnalyticsFunnel"
+        skillsGap:
+          $ref: "#/components/schemas/HiringAnalyticsSkillsGap"
+        retention:
+          $ref: "#/components/schemas/HiringAnalyticsRetention"
+        lifecycle:
+          $ref: "#/components/schemas/HiringAnalyticsLifecycle"
+        outcomes:
+          $ref: "#/components/schemas/HiringAnalyticsOutcomes"
+      required:
+        - funnel
+        - skillsGap
+        - retention
+        - lifecycle
+        - outcomes
+
+    # ── Document Verification ─────────────────────────────────────────────────
+    DocumentsUploadUrlBody:
+      type: object
+      properties:
+        documentType:
+          type: string
+          enum: [government_id, professional_credential]
+        mimeType:
+          type: string
+          description: "image/jpeg, image/png, image/webp, or application/pdf"
+        fileSize:
+          type: integer
+      required:
+        - documentType
+        - mimeType
+        - fileSize
+
+    DocumentsUploadUrlResponse:
+      type: object
+      properties:
+        uploadUrl:
+          type: string
+        storagePath:
+          type: string
+      required:
+        - uploadUrl
+        - storagePath
+
+    DocumentsConfirmBody:
+      type: object
+      properties:
+        documentType:
+          type: string
+          enum: [government_id, professional_credential]
+        storagePath:
+          type: string
+      required:
+        - documentType
+        - storagePath
+
+    DocumentsConfirmResponse:
       type: object
       properties:
         status:
           type: string
-          description: "verified | rejected | pending"
-        note:
-          type: string
-          description: AI reviewer note
-        emailSent:
-          type: boolean
-        emailPreviewUrl:
-          type: ["string", "null"]
-          description: Ethereal preview URL (dev only)
+          enum: [pending]
       required:
         - status
-        - note
-        - emailSent
+
+    DocumentMeItem:
+      type: object
+      properties:
+        documentType:
+          type: string
+        status:
+          type: string
+          description: "pending | verified | rejected | needs_review"
+        confidence:
+          type: ["integer", "null"]
+        aiNotes:
+          type: ["string", "null"]
+        adminNotes:
+          type: ["string", "null"]
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - documentType
+        - status
+        - updatedAt
+
+    DocumentsMeResponse:
+      type: object
+      properties:
+        verificationLevel:
+          type: string
+          description: "unverified | partially_verified | fully_verified"
+        documents:
+          type: array
+          items:
+            $ref: "#/components/schemas/DocumentMeItem"
+      required:
+        - verificationLevel
+        - documents
+
+    DocumentErrorEnvelope:
+      type: object
+      properties:
+        error:
+          type: string
+        code:
+          type: string
+      required:
+        - error
 
     # ── Storage ────────────────────────────────────────────────────────────────
     UploadUrlRequest:
@@ -2347,16 +4501,14 @@ components:
       properties:
         id:
           type: integer
-        userId:
-          type: integer
         type:
           type: string
-        title:
+        entityType:
+          type: string
+        entityId:
           type: string
         message:
           type: string
-        link:
-          type: ["string", "null"]
         read:
           type: boolean
         createdAt:
@@ -2364,9 +4516,50 @@ components:
           format: date-time
       required:
         - id
-        - userId
         - type
-        - title
+        - entityType
+        - entityId
+        - message
+        - read
+        - createdAt
+
+    NotificationsUnreadCount:
+      type: object
+      properties:
+        count:
+          type: integer
+      required:
+        - count
+
+    NotificationsListResult:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Notification"
+        total:
+          type: integer
+        unreadCount:
+          type: integer
+        page:
+          type: integer
+        pageSize:
+          type: integer
+      required:
+        - data
+        - total
+        - unreadCount
+        - page
+        - pageSize
+
+    NotificationMarkSuccess:
+      type: object
+      properties:
+        success:
+          type: boolean
+      required:
+        - success
         - message
         - read
         - createdAt
@@ -2397,8 +4590,49 @@ components:
             activeBookings: { type: ["integer", "null"] }
             monthlyExpressInterests: { type: ["integer", "null"] }
             teamSeats: { type: ["integer", "null"] }
+            monthlyTokenLimit: { type: ["integer", "null"] }
         priority: { type: integer }
       required: [id, audience, name, priceMonthly, tagline, features, limits, priority]
+
+    TokenUsageBreakdown:
+      type: object
+      properties:
+        ai_match: { type: integer }
+        agreement_generation: { type: integer }
+      required: [ai_match, agreement_generation]
+
+    TokenUsageSummary:
+      type: object
+      properties:
+        plan: { type: string }
+        monthlyTokenLimit: { type: ["integer", "null"] }
+        tokensUsed: { type: integer }
+        tokensRemaining: { type: ["integer", "null"] }
+        resetDate: { type: string, format: date-time }
+        breakdown: { $ref: "#/components/schemas/TokenUsageBreakdown" }
+      required: [plan, monthlyTokenLimit, tokensUsed, tokensRemaining, resetDate, breakdown]
+
+    ConversationTokenMessage:
+      type: object
+      properties:
+        id: { type: integer }
+        promptTokens: { type: integer }
+        completionTokens: { type: integer }
+        totalTokens: { type: integer }
+        createdAt: { type: string, format: date-time }
+      required: [id, promptTokens, completionTokens, totalTokens, createdAt]
+
+    ConversationTokenBreakdown:
+      type: object
+      properties:
+        conversationId: { type: integer }
+        totalTokens: { type: integer }
+        messages:
+          type: array
+          items:
+            $ref: "#/components/schemas/ConversationTokenMessage"
+        legacyData: { type: boolean }
+      required: [conversationId, totalTokens, messages, legacyData]
 
     SubscriptionUsage:
       type: object
@@ -2435,39 +4669,32 @@ components:
         - objectPath
 
     # ── Reviews ────────────────────────────────────────────────────────────────
-    Review:
+    PublicReview:
       type: object
       properties:
         id:
           type: integer
-        bookingId:
-          type: integer
-        reviewerId:
-          type: integer
-        revieweeId:
-          type: integer
-        reviewerRole:
-          type: string
-          description: "employer or freelancer"
         rating:
           type: integer
           minimum: 1
           maximum: 5
-        title:
+        comment:
           type: ["string", "null"]
-        content:
+        reply:
           type: ["string", "null"]
         createdAt:
           type: string
           format: date-time
+        repliedAt:
+          type: ["string", "null"]
+          format: date-time
+        employerDisplayName:
+          type: string
       required:
         - id
-        - bookingId
-        - reviewerId
-        - revieweeId
-        - reviewerRole
         - rating
         - createdAt
+        - employerDisplayName
 
     CreateReviewBody:
       type: object
@@ -2478,40 +4705,110 @@ components:
           type: integer
           minimum: 1
           maximum: 5
-        title:
+        comment:
           type: string
-        content:
-          type: string
+          maxLength: 1000
       required:
         - bookingId
         - rating
 
+    ReplyReviewBody:
+      type: object
+      properties:
+        reply:
+          type: string
+          minLength: 1
+          maxLength: 1000
+      required:
+        - reply
+
     FreelancerReviewsResult:
       type: object
       properties:
-        reviews:
+        data:
           type: array
           items:
-            $ref: "#/components/schemas/Review"
-        averageRating:
-          type: ["number", "null"]
-        totalReviews:
+            $ref: "#/components/schemas/PublicReview"
+        total:
+          type: integer
+        page:
+          type: integer
+        pageSize:
+          type: integer
+        totalPages:
           type: integer
       required:
-        - reviews
-        - totalReviews
+        - data
+        - total
+        - page
+        - pageSize
+        - totalPages
 
-    MyReviewResult:
+    PaginatedBookingsResult:
       type: object
       properties:
-        reviewed:
-          type: boolean
-        review:
-          oneOf:
-            - $ref: "#/components/schemas/Review"
-            - type: "null"
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Booking"
+        total:
+          type: integer
+        page:
+          type: integer
+        pageSize:
+          type: integer
+        totalPages:
+          type: integer
       required:
-        - reviewed
+        - data
+        - total
+        - page
+        - pageSize
+        - totalPages
+
+    PaginatedAgreementsResult:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Agreement"
+        total:
+          type: integer
+        page:
+          type: integer
+        pageSize:
+          type: integer
+        totalPages:
+          type: integer
+      required:
+        - data
+        - total
+        - page
+        - pageSize
+        - totalPages
+
+    PaginatedMeetingsResult:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Meeting"
+        total:
+          type: integer
+        page:
+          type: integer
+        pageSize:
+          type: integer
+        totalPages:
+          type: integer
+      required:
+        - data
+        - total
+        - page
+        - pageSize
+        - totalPages
 
     SaveToggleResult:
       type: object
@@ -2743,6 +5040,247 @@ components:
             type: string
       required: [workExperience, education, certifications, languages]
 
+    # ── Team (Enterprise) ──────────────────────────────────────────────────────
+    Team:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        ownerUserId:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, name, ownerUserId, createdAt]
+
+    TeamMember:
+      type: object
+      properties:
+        id:
+          type: integer
+        userId:
+          type: ["integer", "null"]
+        role:
+          type: string
+          enum: [admin, member]
+        status:
+          type: string
+          enum: [invited, active, deactivated]
+        invitedEmail:
+          type: string
+        invitedAt:
+          type: string
+          format: date-time
+        joinedAt:
+          type: ["string", "null"]
+          format: date-time
+        displayName:
+          type: ["string", "null"]
+        displayEmail:
+          type: string
+      required: [id, role, status, invitedEmail, invitedAt, displayEmail]
+
+    TeamDetails:
+      type: object
+      properties:
+        team:
+          $ref: "#/components/schemas/Team"
+        members:
+          type: array
+          items:
+            $ref: "#/components/schemas/TeamMember"
+        isAdmin:
+          type: boolean
+        isOwner:
+          type: boolean
+      required: [team, members, isAdmin, isOwner]
+
+    CreateTeamBody:
+      type: object
+      properties:
+        name:
+          type: string
+
+    UpdateTeamBody:
+      type: object
+      properties:
+        name:
+          type: string
+      required: [name]
+
+    InviteTeamMemberBody:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+        role:
+          type: string
+          enum: [admin, member]
+      required: [email]
+
+    TeamInviteResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+        invitedEmail:
+          type: string
+        role:
+          type: string
+        status:
+          type: string
+        invitedAt:
+          type: string
+          format: date-time
+        inviteExpiresAt:
+          type: ["string", "null"]
+          format: date-time
+      required: [id, invitedEmail, role, status, invitedAt]
+
+    AcceptTeamInviteResponse:
+      type: object
+      properties:
+        teamName:
+          type: string
+        teamId:
+          type: string
+        message:
+          type: string
+      required: [teamName, teamId, message]
+
+    AcceptTeamInviteAuthRequired:
+      type: object
+      properties:
+        error:
+          type: string
+        code:
+          type: string
+          enum: [AUTH_REQUIRED]
+        teamName:
+          type: string
+      required: [error, code]
+
+    InviteUsedError:
+      type: object
+      properties:
+        error:
+          type: string
+        code:
+          type: string
+          enum: [INVITE_USED]
+      required: [error, code]
+
+    RemoveTeamMemberResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+      required: [success]
+
+    AddTeamShortlistBody:
+      type: object
+      properties:
+        freelancerId:
+          type: integer
+      required: [freelancerId]
+
+    TeamShortlistItem:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: Shortlist entry ID
+        freelancer:
+          $ref: "#/components/schemas/FreelancerProfile"
+        addedByUserId:
+          type: integer
+        addedByName:
+          type: string
+        addedAt:
+          type: string
+          format: date-time
+      required: [id, freelancer, addedByUserId, addedByName, addedAt]
+
+    RemoveTeamShortlistResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+      required: [success]
+
+    TeamAnalyticsMemberSpend:
+      type: object
+      properties:
+        userId:
+          type: integer
+        name:
+          type: string
+        spend:
+          type: number
+      required: [userId, name, spend]
+
+    TeamAnalyticsTopFreelancer:
+      type: object
+      properties:
+        freelancerId:
+          type: integer
+        name:
+          type: string
+        fieldOfWork:
+          type: string
+        totalSpend:
+          type: number
+        bookingCount:
+          type: integer
+      required: [freelancerId, name, fieldOfWork, totalSpend, bookingCount]
+
+    TeamAnalyticsOpenJobs:
+      type: object
+      properties:
+        userId:
+          type: integer
+        name:
+          type: string
+        openJobCount:
+          type: integer
+      required: [userId, name, openJobCount]
+
+    TeamAnalytics:
+      type: object
+      properties:
+        teamName:
+          type: string
+        window:
+          type: string
+          enum: [30d, 90d, 12m]
+        totalSpend:
+          type: number
+        bookingsCreated:
+          type: integer
+        spendByMember:
+          type: array
+          items:
+            $ref: "#/components/schemas/TeamAnalyticsMemberSpend"
+        mostHiredFreelancers:
+          type: array
+          items:
+            $ref: "#/components/schemas/TeamAnalyticsTopFreelancer"
+        openJobsByMember:
+          type: array
+          items:
+            $ref: "#/components/schemas/TeamAnalyticsOpenJobs"
+      required:
+        - teamName
+        - window
+        - totalSpend
+        - bookingsCreated
+        - spendByMember
+        - mostHiredFreelancers
+        - openJobsByMember
+
     PublicFreelancerProfile:
       type: object
       properties:
@@ -2789,9 +5327,11 @@ components:
         reviews:
           type: array
           items:
-            $ref: "#/components/schemas/Review"
+            $ref: "#/components/schemas/PublicReview"
         averageRating:
           type: ["number", "null"]
+        reviewCount:
+          type: integer
         totalReviews:
           type: integer
         createdAt:

@@ -1,4 +1,6 @@
+import { useState } from "react";
 import { useListAgreements, useGetMe } from "@workspace/api-client-react";
+import { PaginationControls } from "@/components/PaginationControls";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -7,16 +9,26 @@ import { FileText, PenLine, CheckCircle2, Shield, ArrowRight } from "lucide-reac
 import { format } from "date-fns";
 
 const statusColors: Record<string, { bg: string, text: string, border: string }> = {
+  draft: { bg: "bg-yellow-50", text: "text-yellow-700", border: "border-yellow-200" },
+  redlined: { bg: "bg-violet-50", text: "text-violet-700", border: "border-violet-200" },
+  partially_signed: { bg: "bg-amber-50", text: "text-amber-700", border: "border-amber-200" },
+  fully_signed: { bg: "bg-green-50", text: "text-green-700", border: "border-green-200" },
+  // legacy values (pre-backfill)
   pending_signatures: { bg: "bg-yellow-50", text: "text-yellow-700", border: "border-yellow-200" },
   signed: { bg: "bg-green-50", text: "text-green-700", border: "border-green-200" },
-  active: { bg: "bg-blue-50", text: "text-blue-700", border: "border-blue-200" },
-  expired: { bg: "bg-gray-50", text: "text-gray-600", border: "border-gray-200" },
-  terminated: { bg: "bg-red-50", text: "text-red-700", border: "border-red-200" },
 };
 
 export default function AgreementsList() {
+  const [page, setPage] = useState(1);
   const { data: me } = useGetMe();
-  const { data: agreements, isLoading } = useListAgreements();
+  const { data, isLoading } = useListAgreements({ page, pageSize: 20 });
+  const agreements = data?.data ?? [];
+  const totalPages = data?.totalPages ?? 1;
+
+  const onPageChange = (newPage: number) => {
+    setPage(newPage);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
 
   if (isLoading) {
     return (
@@ -48,7 +60,7 @@ export default function AgreementsList() {
         </p>
       </div>
 
-      {!agreements || agreements.length === 0 ? (
+      {agreements.length === 0 ? (
         <Card className="flex flex-col items-center justify-center py-24 text-center bg-card shadow-sm border-border border-dashed">
           <div className="h-16 w-16 bg-muted/50 rounded-full flex items-center justify-center mb-6">
             <FileText className="h-8 w-8 text-muted-foreground" />
@@ -66,8 +78,13 @@ export default function AgreementsList() {
           {agreements.map((agreement, index) => {
             const isFullySigned = !!agreement.freelancerSignedAt && !!agreement.employerSignedAt;
             const mySignature = me?.role === "freelancer" ? agreement.freelancerSignedAt : agreement.employerSignedAt;
-            const needsMySignature = !mySignature && agreement.status === "pending_signatures";
-            const colors = statusColors[agreement.status ?? "pending_signatures"] || { bg: "bg-secondary", text: "text-muted-foreground", border: "border-border" };
+            const awaitingSignature =
+              agreement.status === "draft" ||
+              agreement.status === "redlined" ||
+              agreement.status === "partially_signed" ||
+              agreement.status === "pending_signatures";
+            const needsMySignature = !mySignature && awaitingSignature;
+            const colors = statusColors[agreement.status ?? "draft"] || { bg: "bg-secondary", text: "text-muted-foreground", border: "border-border" };
 
             return (
               <Card 
@@ -137,6 +154,13 @@ export default function AgreementsList() {
           })}
         </div>
       )}
+
+      <PaginationControls
+        page={page}
+        totalPages={totalPages}
+        onPageChange={onPageChange}
+        disabled={isLoading}
+      />
     </div>
   );
 }

@@ -13,6 +13,7 @@ export interface PlanLimits {
   activeBookings: number | null;
   monthlyExpressInterests: number | null;
   teamSeats: number | null;
+  monthlyTokenLimit: number | null;
 }
 
 export interface PlanDef {
@@ -34,7 +35,7 @@ export const PLANS: Record<PlanId, PlanDef> = {
     priceMonthly: 0,
     tagline: "Default starter access",
     features: ["Basic access while you choose a plan"],
-    limits: { monthlyJobPosts: 1, activeBookings: 1, monthlyExpressInterests: 3, teamSeats: 1 },
+    limits: { monthlyJobPosts: 1, activeBookings: 1, monthlyExpressInterests: 3, teamSeats: 1, monthlyTokenLimit: null },
     priority: 0,
   },
   freelancer_free: {
@@ -48,7 +49,7 @@ export const PLANS: Record<PlanId, PlanDef> = {
       "Basic profile and AI Match score",
       "3 Express Interest pitches per month",
     ],
-    limits: { monthlyJobPosts: 0, activeBookings: 1, monthlyExpressInterests: 3, teamSeats: 1 },
+    limits: { monthlyJobPosts: 0, activeBookings: 1, monthlyExpressInterests: 3, teamSeats: 1, monthlyTokenLimit: null },
     priority: 1,
   },
   freelancer_pro: {
@@ -63,7 +64,7 @@ export const PLANS: Record<PlanId, PlanDef> = {
       "Priority placement in Vault search",
       "Advanced AI Match insights",
     ],
-    limits: { monthlyJobPosts: 0, activeBookings: 5, monthlyExpressInterests: null, teamSeats: 1 },
+    limits: { monthlyJobPosts: 0, activeBookings: 5, monthlyExpressInterests: null, teamSeats: 1, monthlyTokenLimit: null },
     priority: 2,
   },
   employer_starter: {
@@ -78,7 +79,7 @@ export const PLANS: Record<PlanId, PlanDef> = {
       "Basic AI matching",
       "Standard agreement templates",
     ],
-    limits: { monthlyJobPosts: 5, activeBookings: 2, monthlyExpressInterests: 0, teamSeats: 1 },
+    limits: { monthlyJobPosts: 5, activeBookings: 2, monthlyExpressInterests: 0, teamSeats: 1, monthlyTokenLimit: 50000 },
     priority: 3,
   },
   employer_growth: {
@@ -94,7 +95,7 @@ export const PLANS: Record<PlanId, PlanDef> = {
       "3 team seats",
       "Priority support",
     ],
-    limits: { monthlyJobPosts: null, activeBookings: 10, monthlyExpressInterests: 0, teamSeats: 3 },
+    limits: { monthlyJobPosts: null, activeBookings: 10, monthlyExpressInterests: 0, teamSeats: 3, monthlyTokenLimit: 250000 },
     priority: 4,
   },
   employer_enterprise: {
@@ -110,7 +111,7 @@ export const PLANS: Record<PlanId, PlanDef> = {
       "Audit log export",
       "Dedicated success manager",
     ],
-    limits: { monthlyJobPosts: null, activeBookings: null, monthlyExpressInterests: 0, teamSeats: null },
+    limits: { monthlyJobPosts: null, activeBookings: null, monthlyExpressInterests: 0, teamSeats: null, monthlyTokenLimit: null },
     priority: 5,
   },
 };

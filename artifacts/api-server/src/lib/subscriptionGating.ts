@@ -1,7 +1,8 @@
 import { db } from "@workspace/db";
-import { subscriptionsTable, bookingsTable, jobRequirementsTable, jobInterestsTable, freelancerProfilesTable } from "@workspace/db";
-import { eq, and, gte, inArray } from "drizzle-orm";
-import { getPlan, type PlanDef } from "./plans";
+import { subscriptionsTable, bookingsTable, jobRequirementsTable, jobInterestsTable, freelancerProfilesTable, tokenUsage } from "@workspace/db";
+import { eq, and, gte, inArray, sql } from "drizzle-orm";
+import { getPlan, type PlanDef, type PlanId } from "./plans";
+import { getSystemUserId, isSystemUserId } from "./systemUser";
 
 export interface UsageCounts {
   activeBookings: number;
@@ -20,6 +21,84 @@ export async function getUserSubscription(userId: number): Promise<{ plan: PlanD
 function startOfMonth(): Date {
   const d = new Date();
   return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1));
+}
+
+export function getUtcTokenResetDate(now = new Date()): Date {
+  return new Date(Date.UTC(
+    now.getUTCMonth() === 11 ? now.getUTCFullYear() + 1 : now.getUTCFullYear(),
+    now.getUTCMonth() === 11 ? 0 : now.getUTCMonth() + 1,
+    1,
+  ));
+}
+
+export interface TokenUsageBreakdown {
+  ai_match: number;
+  agreement_generation: number;
+}
+
+export async function getMonthlyTokenUsage(
+  userId: number,
+  startOfMonthUtc = startOfMonth(),
+): Promise<{ tokensUsed: number; breakdown: TokenUsageBreakdown }> {
+  const rows = await db
+    .select({
+      feature: tokenUsage.feature,
+      totalTokens: tokenUsage.totalTokens,
+    })
+    .from(tokenUsage)
+    .where(and(eq(tokenUsage.userId, userId), gte(tokenUsage.createdAt, startOfMonthUtc)));
+
+  const breakdown: TokenUsageBreakdown = { ai_match: 0, agreement_generation: 0 };
+  let tokensUsed = 0;
+  for (const row of rows) {
+    tokensUsed += row.totalTokens;
+    if (row.feature === "ai_match") breakdown.ai_match += row.totalTokens;
+    else if (row.feature === "agreement_generation") breakdown.agreement_generation += row.totalTokens;
+  }
+  return { tokensUsed, breakdown };
+}
+
+function planNeededForTokenLimit(planId: PlanId): string {
+  if (planId === "employer_growth") return "employer_enterprise";
+  return "employer_growth";
+}
+
+export type TokenQuotaResult = { allowed: true } | { allowed: false; planNeeded: string };
+
+export async function checkTokenQuota(_db: typeof db, userId: number): Promise<TokenQuotaResult> {
+  if (isSystemUserId(userId)) {
+    return { allowed: true };
+  }
+
+  try {
+    const systemUserId = await getSystemUserId();
+    if (userId === systemUserId) {
+      return { allowed: true };
+    }
+  } catch {
+    // System user not seeded yet — proceed with normal quota check.
+  }
+
+  return db.transaction(async (tx) => {
+    // NOTE: OpenAI call occurs outside this transaction. Small race window accepted —
+    // consistent with existing plan gating patterns. See specs/token-usage/plan.md Risk 1.
+    await tx.execute(sql`SELECT id FROM users WHERE id = ${userId} FOR UPDATE`);
+    const sub = await getUserSubscription(userId);
+    const limit = sub.plan.limits.monthlyTokenLimit;
+    if (limit === null) return { allowed: true };
+
+    const since = startOfMonth();
+    const [row] = await tx
+      .select({ total: sql<number>`coalesce(sum(${tokenUsage.totalTokens}), 0)` })
+      .from(tokenUsage)
+      .where(and(eq(tokenUsage.userId, userId), gte(tokenUsage.createdAt, since)));
+
+    const tokensUsed = Number(row?.total ?? 0);
+    if (tokensUsed >= limit) {
+      return { allowed: false, planNeeded: planNeededForTokenLimit(sub.plan.id) };
+    }
+    return { allowed: true };
+  });
 }
 
 export async function getEmployerUsage(employerProfileId: number): Promise<Pick<UsageCounts, "activeBookings" | "monthlyJobPosts">> {

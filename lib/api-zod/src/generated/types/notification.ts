@@ -8,12 +8,10 @@
 
 export interface Notification {
   id: number;
-  userId: number;
   type: string;
-  title: string;
+  entityType: string;
+  entityId: string;
   message: string;
-  /** @nullable */
-  link?: string | null;
   read: boolean;
   createdAt: Date;
 }

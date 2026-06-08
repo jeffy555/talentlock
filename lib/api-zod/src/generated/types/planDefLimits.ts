@@ -15,4 +15,6 @@ export type PlanDefLimits = {
   monthlyExpressInterests?: number | null;
   /** @nullable */
   teamSeats?: number | null;
+  /** @nullable */
+  monthlyTokenLimit?: number | null;
 };

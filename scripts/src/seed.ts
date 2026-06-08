@@ -1,8 +1,35 @@
 import { db } from "@workspace/db";
 import { usersTable, freelancerProfilesTable } from "@workspace/db";
 import { onConflictDoNothing } from "drizzle-orm/pg-core";
+import { eq } from "drizzle-orm";
+
+const SYSTEM_USER_CLERK_ID = "system";
+
+async function ensureSystemUser(): Promise<void> {
+  const [existing] = await db
+    .select({ id: usersTable.id })
+    .from(usersTable)
+    .where(eq(usersTable.clerkId, SYSTEM_USER_CLERK_ID))
+    .limit(1);
+
+  if (existing) {
+    console.log("System user already exists.");
+    return;
+  }
+
+  await db.insert(usersTable).values({
+    clerkId: SYSTEM_USER_CLERK_ID,
+    role: "employer",
+    email: "system@talentlock.internal",
+    name: "TalentLock System",
+  });
+  console.log("Created system user for platform token logging.");
+}
 
 async function seed() {
+  console.log("Ensuring system user...");
+  await ensureSystemUser();
+
   console.log("Seeding demo freelancers...");
 
   const demoFreelancers = [
@@ -176,6 +203,78 @@ async function seed() {
       yearsExperience: 10,
       paymentPreference: "hourly" as const,
       hourlyRate: "65",
+      isVerified: true,
+      isAvailable: true,
+    },
+
+    // ── DevOps & Cloud ───────────────────────────────────────────
+    {
+      clerkId: "demo_devops_50",
+      name: "Alex Petrov",
+      email: "alex.petrov@demo.talentlock.io",
+      tagline: "Senior DevOps & SRE Engineer · AWS & Kubernetes · 9 Years",
+      bio: "Site reliability and DevOps engineer with 9 years building and operating large-scale cloud infrastructure on AWS and GCP. Expert in Kubernetes (EKS/GKE), Terraform, Helm, and GitHub Actions. Has led zero-downtime migrations, implemented observability stacks (Prometheus, Grafana, PagerDuty), and reduced infrastructure costs by 40% through right-sizing and spot strategy.",
+      fieldOfWork: "DevOps & Cloud Infrastructure",
+      skills: ["AWS / GCP", "Kubernetes (EKS/GKE)", "Terraform", "Helm", "GitHub Actions", "Prometheus & Grafana", "Incident Management", "Docker", "Networking (VPC/ALB)", "Cost Optimisation"],
+      yearsExperience: 9,
+      paymentPreference: "daily" as const,
+      dailyRate: "1050",
+      isVerified: true,
+      isAvailable: true,
+    },
+    {
+      clerkId: "demo_cloud_51",
+      name: "Maria Santos",
+      email: "maria.santos@demo.talentlock.io",
+      tagline: "Cloud Architect · Multi-Cloud & Security · 12 Years",
+      bio: "Cloud architect and AWS Certified Solutions Architect Professional with 12 years designing enterprise cloud strategies across AWS, Azure, and GCP. Specialises in well-architected reviews, multi-cloud governance, landing zone design, and cloud security posture management.",
+      fieldOfWork: "DevOps & Cloud Infrastructure",
+      skills: ["AWS Solutions Architect Professional", "Azure", "GCP", "Landing Zone Design", "Cloud Security (CSPM)", "Multi-Cloud Governance", "Well-Architected Framework", "IAM & Compliance", "Disaster Recovery", "FinOps"],
+      yearsExperience: 12,
+      paymentPreference: "daily" as const,
+      dailyRate: "1300",
+      isVerified: true,
+      isAvailable: true,
+    },
+    {
+      clerkId: "demo_platform_52",
+      name: "Ben Clarke",
+      email: "ben.clarke@demo.talentlock.io",
+      tagline: "Platform Engineer · Kubernetes & Internal Developer Platforms · 6 Years",
+      bio: "Platform engineer with 6 years building internal developer platforms that help product teams ship faster and safer. Expert in Kubernetes, ArgoCD, Crossplane, and Backstage. Has designed golden-path CI/CD templates and self-service infrastructure portals that reduced deployment lead times from days to minutes.",
+      fieldOfWork: "DevOps & Cloud Infrastructure",
+      skills: ["Kubernetes", "ArgoCD / GitOps", "Crossplane", "Backstage (IDP)", "Helm", "CI/CD Design", "Platform Engineering", "Go", "Developer Experience", "Service Mesh (Istio)"],
+      yearsExperience: 6,
+      paymentPreference: "daily" as const,
+      dailyRate: "950",
+      isVerified: true,
+      isAvailable: true,
+    },
+    {
+      clerkId: "demo_sre_53",
+      name: "Daniel Okonkwo",
+      email: "daniel.okonkwo@demo.talentlock.io",
+      tagline: "Site Reliability Engineer · Observability & On-Call · 11 Years",
+      bio: "SRE with 11 years keeping mission-critical systems online for fintech and e-commerce platforms. Deep expertise in SLI/SLO design, chaos engineering, incident response, and building reliable on-call rotations. Reduced P1 incidents by 60% at a Series C payments company through better alerting and runbooks.",
+      fieldOfWork: "DevOps & Cloud Infrastructure",
+      skills: ["SRE / SLI-SLO", "Prometheus", "Grafana", "PagerDuty", "Chaos Engineering", "Linux Administration", "Python", "AWS", "Incident Response", "Capacity Planning"],
+      yearsExperience: 11,
+      paymentPreference: "daily" as const,
+      dailyRate: "1150",
+      isVerified: true,
+      isAvailable: true,
+    },
+    {
+      clerkId: "demo_cicd_54",
+      name: "Elena Vasquez",
+      email: "elena.vasquez@demo.talentlock.io",
+      tagline: "DevOps Engineer · CI/CD & Infrastructure as Code · 8 Years",
+      bio: "DevOps engineer with 8 years automating build, test, and deployment pipelines for distributed engineering teams. Specialises in Terraform, Ansible, Jenkins, and GitLab CI. Has migrated monolithic release processes to trunk-based delivery with automated rollbacks and blue-green deployments.",
+      fieldOfWork: "DevOps & Cloud Infrastructure",
+      skills: ["Terraform", "Ansible", "Jenkins", "GitLab CI", "Docker", "Kubernetes", "Blue-Green Deployments", "Infrastructure as Code", "Bash / Python", "AWS"],
+      yearsExperience: 8,
+      paymentPreference: "hourly" as const,
+      hourlyRate: "110",
       isVerified: true,
       isAvailable: true,
     },

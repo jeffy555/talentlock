@@ -20,5 +20,7 @@ export interface User {
    * @nullable
    */
   signatureImageUrl?: string | null;
+  /** Whether the user receives email alerts for platform activity */
+  emailNotificationsEnabled: boolean;
   createdAt: Date;
 }

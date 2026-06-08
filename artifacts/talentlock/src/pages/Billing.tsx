@@ -4,8 +4,10 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { Separator } from "@/components/ui/separator";
 import { format } from "date-fns";
 import { CreditCard, ArrowUpRight, ShieldCheck } from "lucide-react";
+import { TokenUsageWidget } from "@/components/TokenUsageWidget";
 
 function UsageRow({ label, used, limit }: { label: string; used: number; limit: number | null }) {
   const isUnlimited = limit === null;
@@ -105,6 +107,14 @@ export default function Billing() {
           </div>
         </CardContent>
       </Card>
+
+      {user?.role === "employer" && (
+        <>
+          <h2 className="text-lg font-semibold text-foreground mb-3">AI Usage</h2>
+          <Separator />
+          <TokenUsageWidget variant="full" />
+        </>
+      )}
     </div>
   );
 }

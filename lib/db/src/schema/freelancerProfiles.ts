@@ -1,4 +1,4 @@
-import { pgTable, text, serial, timestamp, integer, boolean, numeric, real, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, timestamp, integer, boolean, numeric, real, jsonb, date } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
@@ -23,13 +23,19 @@ export const freelancerProfilesTable = pgTable("freelancer_profiles", {
   documentNames: text("document_names").array().default([]),
   verificationStatus: text("verification_status").notNull().default("unverified"),
   verificationNote: text("verification_note"),
+  verificationLevel: text("verification_level").notNull().default("unverified"),
+  // unverified | partially_verified | fully_verified
   isAvailable: boolean("is_available").notNull().default(true),
   currentBookingId: integer("current_booking_id"),
   bookingEndDate: timestamp("booking_end_date", { withTimezone: true }),
   subscriptionPlan: text("subscription_plan").notNull().default("basic"),
   availableFrom: timestamp("available_from", { withTimezone: true }),
+  nextAvailableDate: date("next_available_date"),
   availabilityNote: text("availability_note"),
   resumeAnalysis: jsonb("resume_analysis"),
+  averageRating: numeric("average_rating", { precision: 3, scale: 2 }),
+  reviewCount: integer("review_count").notNull().default(0),
+  completenessScore: integer("completeness_score").notNull().default(0),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });

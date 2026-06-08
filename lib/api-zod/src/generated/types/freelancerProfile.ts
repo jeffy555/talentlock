@@ -34,6 +34,8 @@ export interface FreelancerProfile {
   verificationStatus?: string;
   /** @nullable */
   verificationNote?: string | null;
+  /** unverified | partially_verified | fully_verified */
+  verificationLevel: string;
   documentNames?: string[];
   isAvailable: boolean;
   /** @nullable */
@@ -43,7 +45,17 @@ export interface FreelancerProfile {
   subscriptionPlan: string;
   /** @nullable */
   availableFrom?: Date | null;
+  /**
+   * Cached next available date (null when not available)
+   * @nullable
+   */
+  nextAvailableDate?: Date | null;
   /** @nullable */
   availabilityNote?: string | null;
+  /** @nullable */
+  averageRating?: number | null;
+  reviewCount: number;
+  /** Profile completeness score 0–100 (Talent Vault requires ≥ 60) */
+  completenessScore: number;
   createdAt: Date;
 }

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRoute, Link, useLocation } from "wouter";
 import {
   useGetJobRequirement,
@@ -40,6 +40,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { freelancerProfileHref, persistJobId } from "@/lib/aiMatchJobContext";
 
 export default function JobDetail() {
   const [, params] = useRoute("/jobs/:id");
@@ -68,6 +69,10 @@ export default function JobDetail() {
   const expressInterest = useExpressJobInterest();
   const [interestOpen, setInterestOpen] = useState(false);
   const [interestMessage, setInterestMessage] = useState("");
+
+  useEffect(() => {
+    if (job?.id) persistJobId(job.id);
+  }, [job?.id]);
 
   const handleExpressInterest = async () => {
     try {
@@ -226,7 +231,7 @@ export default function JobDetail() {
                   TalentLock AI is continuously scanning our verified network to find the best professionals for this role.
                 </p>
                 <Button asChild variant="outline" className="border-gold/30 text-primary hover:bg-gold/10 font-semibold">
-                  <Link href="/ai-match">View AI Matches</Link>
+                  <Link href={`/ai-match?jobId=${job.id}`}>View AI Matches</Link>
                 </Button>
               </div>
             </div>
@@ -262,7 +267,7 @@ export default function JobDetail() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
                           <Link
-                            href={`/freelancers/${interest.freelancerId}`}
+                            href={freelancerProfileHref(interest.freelancerId, job.id)}
                             className="font-semibold text-foreground hover:text-primary"
                           >
                             {interest.freelancerName ?? "Freelancer"}
@@ -283,7 +288,7 @@ export default function JobDetail() {
                       </div>
                       <div className="flex-shrink-0 flex gap-2">
                         <Button asChild variant="outline" size="sm" className="font-semibold">
-                          <Link href={`/freelancers/${interest.freelancerId}`}>View Profile</Link>
+                          <Link href={freelancerProfileHref(interest.freelancerId, job.id)}>View Profile</Link>
                         </Button>
                       </div>
                     </div>

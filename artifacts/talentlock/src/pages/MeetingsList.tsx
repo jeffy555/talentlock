@@ -1,4 +1,6 @@
+import { useState } from "react";
 import { useListMeetings, useGetMe } from "@workspace/api-client-react";
+import { PaginationControls } from "@/components/PaginationControls";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -14,8 +16,16 @@ const statusColors: Record<string, string> = {
 };
 
 export default function MeetingsList() {
+  const [page, setPage] = useState(1);
   const { data: me } = useGetMe();
-  const { data: meetings, isLoading } = useListMeetings();
+  const { data, isLoading } = useListMeetings({ page, pageSize: 20 });
+  const meetings = data?.data ?? [];
+  const totalPages = data?.totalPages ?? 1;
+
+  const onPageChange = (newPage: number) => {
+    setPage(newPage);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
 
   const isEmployer = me?.role === "employer";
 
@@ -38,7 +48,7 @@ export default function MeetingsList() {
     );
   }
 
-  const sorted = [...(meetings ?? [])].sort(
+  const sorted = [...meetings].sort(
     (a, b) => new Date(b.scheduledAt).getTime() - new Date(a.scheduledAt).getTime()
   );
 
@@ -146,6 +156,13 @@ export default function MeetingsList() {
           ))}
         </div>
       )}
+
+      <PaginationControls
+        page={page}
+        totalPages={totalPages}
+        onPageChange={onPageChange}
+        disabled={isLoading}
+      />
     </div>
   );
 }

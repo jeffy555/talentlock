@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useGetMe, useUpsertMe, useCreateFreelancerProfile, useUpsertMyEmployerProfile } from "@workspace/api-client-react";
 import { useUser } from "@clerk/react";
@@ -9,12 +9,10 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Briefcase, Building, CheckCircle, FileText, Upload, X, Loader2, ShieldCheck, ShieldX, Mail, ExternalLink, SkipForward } from "lucide-react";
-import { FIELDS_OF_WORK } from "@/lib/fields";
+import { Briefcase, Building, CheckCircle, Loader2 } from "lucide-react";
+import { FIELDS_OF_WORK, isFieldOfWork } from "@/lib/fields";
 import { Badge } from "@/components/ui/badge";
 import { ResumeImporter, type ParsedResume } from "@/components/ResumeImporter";
-
-const BASE = import.meta.env.BASE_URL ?? "/";
 
 function getIntendedRole(): "freelancer" | "employer" | null {
   const val = localStorage.getItem("talentlock_intended_role");
@@ -23,74 +21,6 @@ function getIntendedRole(): "freelancer" | "employer" | null {
 }
 function clearIntendedRole() {
   localStorage.removeItem("talentlock_intended_role");
-}
-
-interface UploadedDoc {
-  objectPath: string;
-  fileName: string;
-  size: number;
-}
-
-interface VerifyResult {
-  status: string;
-  note: string;
-  emailSent: boolean;
-  emailPreviewUrl?: string | null;
-}
-
-async function requestPresignedUrl(fileName: string, contentType: string): Promise<{ uploadURL: string; objectPath: string }> {
-  const res = await fetch(`${BASE}api/storage/uploads/request-url`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ fileName, contentType }),
-  });
-  if (!res.ok) throw new Error("Failed to get upload URL");
-  return res.json();
-}
-
-async function uploadFileToBucket(file: File): Promise<UploadedDoc> {
-  const { uploadURL, objectPath } = await requestPresignedUrl(file.name, file.type || "application/octet-stream");
-  const putRes = await fetch(uploadURL, {
-    method: "PUT",
-    headers: { "Content-Type": file.type || "application/octet-stream" },
-    body: file,
-  });
-  if (!putRes.ok) throw new Error(`Upload failed for ${file.name}`);
-  return { objectPath, fileName: file.name, size: file.size };
-}
-
-async function callVerifyDocuments(docs: UploadedDoc[], token: string | null): Promise<VerifyResult> {
-  const res = await fetch(`${BASE}api/verify/documents`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
-    body: JSON.stringify({
-      documentUrls: docs.map((d) => d.objectPath),
-      documentNames: docs.map((d) => d.fileName),
-    }),
-  });
-  if (!res.ok) throw new Error("Verification request failed");
-  return res.json();
-}
-
-const FREELANCER_DOC_TYPES = [
-  { key: "id", label: "Government-issued ID", hint: "Passport, national ID or driver's licence", accept: ".pdf,.jpg,.jpeg,.png" },
-  { key: "edu", label: "Education Certificate", hint: "Degree, diploma or relevant certification (optional)", accept: ".pdf,.jpg,.jpeg,.png" },
-  { key: "exp", label: "Work Experience / Resume", hint: "Letter of experience or résumé PDF (optional)", accept: ".pdf,.doc,.docx" },
-];
-
-const EMPLOYER_DOC_TYPES = [
-  { key: "reg", label: "Company Registration", hint: "Certificate of incorporation or business registration", accept: ".pdf,.jpg,.jpeg,.png" },
-  { key: "gst", label: "GST / Tax Certificate", hint: "GST, VAT or tax identification document (optional)", accept: ".pdf,.jpg,.jpeg,.png" },
-  { key: "id", label: "Employer ID / Authorization Letter", hint: "HR authorization or employer identification (optional)", accept: ".pdf,.jpg,.jpeg,.png" },
-];
-
-function formatBytes(bytes: number) {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
 export default function Onboarding() {
@@ -103,7 +33,7 @@ export default function Onboarding() {
   const createFreelancerProfile = useCreateFreelancerProfile();
   const upsertEmployerProfile = useUpsertMyEmployerProfile();
 
-  const [step, setStep] = useState<"role" | "freelancer-details" | "employer-details" | "docs" | "verifying" | "result">("role");
+  const [step, setStep] = useState<"role" | "freelancer-details" | "employer-details">("role");
   const [role, setRole] = useState<"freelancer" | "employer" | null>(null);
   const [autoCreating, setAutoCreating] = useState(false);
 
@@ -118,7 +48,7 @@ export default function Onboarding() {
   const handleResumeParsed = async (data: ParsedResume) => {
     // Fill fields for display
     if (data.tagline) setTagline(data.tagline);
-    if (data.fieldOfWork && FIELDS_OF_WORK.includes(data.fieldOfWork)) setFieldOfWork(data.fieldOfWork);
+    if (isFieldOfWork(data.fieldOfWork)) setFieldOfWork(data.fieldOfWork);
     if (data.skills?.length) setSkills(data.skills.join(", "));
     if (data.yearsExperience) setYearsExperience(String(data.yearsExperience));
     if (data.paymentPreference) setPaymentPreference(data.paymentPreference);
@@ -139,17 +69,17 @@ export default function Onboarding() {
       await createFreelancerProfile.mutateAsync({
         data: {
           tagline: data.tagline || "",
-          fieldOfWork: FIELDS_OF_WORK.includes(data.fieldOfWork) ? data.fieldOfWork : "Other",
+          fieldOfWork: isFieldOfWork(data.fieldOfWork) ? data.fieldOfWork : FIELDS_OF_WORK[0],
           skills: data.skills?.slice(0, 15) ?? [],
           yearsExperience: data.yearsExperience ?? 0,
           paymentPreference: data.paymentPreference || "hourly",
           hourlyRate: data.hourlyRate ?? null,
           subscriptionPlan: "basic",
-          resumeAnalysis: data.resumeAnalysis as any ?? null,
+          resumeAnalysis: data.resumeAnalysis ?? null,
         },
       });
-      toast({ title: "Profile created!", description: "Your profile was built from your resume. You can refine it anytime from your profile page." });
-      setStep("docs");
+      toast({ title: "Profile created!", description: "Your profile was built from your resume. Verify your identity anytime from Profile." });
+      setLocation("/dashboard");
     } catch {
       toast({ title: "Could not auto-create profile", description: "Your fields are filled in — review them and click Next.", variant: "destructive" });
     } finally {
@@ -162,14 +92,6 @@ export default function Onboarding() {
   const [industry, setIndustry] = useState("");
   const [companySize, setCompanySize] = useState("");
   const [description, setDescription] = useState("");
-
-  // Document upload state
-  const [docFiles, setDocFiles] = useState<Record<string, File | null>>({});
-  const [uploadingKeys, setUploadingKeys] = useState<Set<string>>(new Set());
-  const [uploadedDocs, setUploadedDocs] = useState<UploadedDoc[]>([]);
-  const [verifyResult, setVerifyResult] = useState<VerifyResult | null>(null);
-  const [isVerifying, setIsVerifying] = useState(false);
-  const fileRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
   useEffect(() => {
     const intended = getIntendedRole();
@@ -230,7 +152,11 @@ export default function Onboarding() {
           subscriptionPlan: "basic",
         },
       });
-      setStep("docs");
+      toast({
+        title: "Profile created",
+        description: "Welcome to TalentLock. Verify your identity anytime from Profile.",
+      });
+      setLocation("/dashboard");
     } catch {
       toast({ title: "Error", description: "Could not create profile. Please try again.", variant: "destructive" });
     }
@@ -257,73 +183,15 @@ export default function Onboarding() {
           subscriptionPlan: "basic",
         },
       });
-      setStep("docs");
+      toast({ title: "Profile created", description: "Welcome to TalentLock." });
+      setLocation("/dashboard");
     } catch {
       toast({ title: "Error", description: "Could not create profile. Please try again.", variant: "destructive" });
     }
   };
 
-  const handleFileSelect = async (key: string, file: File) => {
-    setDocFiles((prev) => ({ ...prev, [key]: file }));
-    setUploadingKeys((prev) => new Set([...prev, key]));
-    try {
-      const doc = await uploadFileToBucket(file);
-      setUploadedDocs((prev) => {
-        const filtered = prev.filter((d) => d.fileName !== file.name);
-        return [...filtered, doc];
-      });
-      toast({ title: "File uploaded", description: `${file.name} ready for verification.` });
-    } catch {
-      toast({ title: "Upload failed", description: `Could not upload ${file.name}.`, variant: "destructive" });
-      setDocFiles((prev) => ({ ...prev, [key]: null }));
-    } finally {
-      setUploadingKeys((prev) => {
-        const next = new Set(prev);
-        next.delete(key);
-        return next;
-      });
-    }
-  };
-
-  const handleRemoveDoc = (key: string) => {
-    const file = docFiles[key];
-    if (file) {
-      setUploadedDocs((prev) => prev.filter((d) => d.fileName !== file.name));
-    }
-    setDocFiles((prev) => ({ ...prev, [key]: null }));
-    if (fileRefs.current[key]) fileRefs.current[key]!.value = "";
-  };
-
-  const handleSubmitDocs = async () => {
-    if (uploadedDocs.length === 0) {
-      toast({ title: "No documents", description: "Please upload at least one document.", variant: "destructive" });
-      return;
-    }
-    setIsVerifying(true);
-    setStep("verifying");
-    try {
-      const token = await user?.getIdToken?.() ?? null;
-      const result = await callVerifyDocuments(uploadedDocs, token);
-      setVerifyResult(result);
-      setStep("result");
-    } catch {
-      toast({ title: "Verification error", description: "Could not verify documents. Try again or skip.", variant: "destructive" });
-      setStep("docs");
-    } finally {
-      setIsVerifying(false);
-    }
-  };
-
-  const handleSkip = () => {
-    toast({ title: "Profile created", description: "Welcome to TalentLock. You can upload documents anytime from your profile." });
-    setLocation("/dashboard");
-  };
-
-  const docTypes = role === "freelancer" ? FREELANCER_DOC_TYPES : EMPLOYER_DOC_TYPES;
-  const uploading = uploadingKeys.size > 0;
-
-  const stepIndex = ["role", "freelancer-details", "employer-details", "docs", "verifying", "result"].indexOf(step);
-  const progressStep = stepIndex <= 0 ? 1 : stepIndex <= 2 ? 2 : stepIndex <= 3 ? 3 : 4;
+  const stepIndex = ["role", "freelancer-details", "employer-details"].indexOf(step);
+  const progressStep = stepIndex <= 0 ? 1 : 2;
 
   return (
     <div className="max-w-2xl mx-auto py-8">
@@ -333,7 +201,7 @@ export default function Onboarding() {
       </div>
 
       {/* ── Account info banner ─────────────────────────────────────────── */}
-      {user && step !== "verifying" && step !== "result" && (
+      {user && (
         <div className="mb-6 rounded-lg border bg-card px-4 py-3 flex items-center gap-3">
           <div className="h-9 w-9 rounded-full overflow-hidden flex-shrink-0 border" style={{ borderColor: "rgba(201,168,76,0.4)" }}>
             {user.imageUrl ? (
@@ -355,12 +223,10 @@ export default function Onboarding() {
       )}
 
       {/* ── Step indicator ──────────────────────────────────────────────── */}
-      {step !== "verifying" && step !== "result" && (
-        <div className="mb-8 flex items-center gap-2">
+      <div className="mb-8 flex items-center gap-2">
           {[
             { n: 1, label: "Account type" },
             { n: 2, label: "Profile details" },
-            { n: 3, label: "Documents" },
           ].map(({ n, label }, i) => (
             <div key={n} className="flex items-center gap-2 flex-1">
               <div className="flex items-center gap-2">
@@ -380,13 +246,12 @@ export default function Onboarding() {
                   {label}
                 </span>
               </div>
-              {i < 2 && (
+              {i < 1 && (
                 <div className="flex-1 h-px mx-2" style={{ backgroundColor: progressStep > n ? "#c9a84c" : "rgba(255,255,255,0.1)" }} />
               )}
             </div>
           ))}
         </div>
-      )}
 
       {/* ── Role selection ──────────────────────────────────────────────── */}
       {step === "role" && (
@@ -507,7 +372,7 @@ export default function Onboarding() {
             <CardFooter className="flex justify-between">
               <Button type="button" variant="outline" onClick={() => { setStep("role"); setRole(null); }}>Back</Button>
               <Button type="submit" disabled={upsertMe.isPending || createFreelancerProfile.isPending}>
-                {createFreelancerProfile.isPending ? "Saving..." : "Next: Upload Documents →"}
+                {createFreelancerProfile.isPending ? "Saving..." : "Create Profile →"}
               </Button>
             </CardFooter>
           </form>
@@ -561,161 +426,10 @@ export default function Onboarding() {
             <CardFooter className="flex justify-between">
               <Button type="button" variant="outline" onClick={() => { setStep("role"); setRole(null); }}>Back</Button>
               <Button type="submit" disabled={upsertMe.isPending || upsertEmployerProfile.isPending}>
-                {upsertEmployerProfile.isPending ? "Saving..." : "Next: Upload Documents →"}
+                {upsertEmployerProfile.isPending ? "Saving..." : "Create Profile →"}
               </Button>
             </CardFooter>
           </form>
-        </Card>
-      )}
-
-      {/* ── Document upload ─────────────────────────────────────────────── */}
-      {step === "docs" && (
-        <Card>
-          <CardHeader>
-            <div className="flex items-center gap-3 mb-1">
-              <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center">
-                <FileText className="h-5 w-5 text-primary" />
-              </div>
-              <div>
-                <CardTitle>Document Verification</CardTitle>
-                <CardDescription>
-                  Upload verification documents. Our AI will review them instantly and send a confirmation to your email.
-                  This step is <strong>optional</strong> — you can skip and submit later from your profile.
-                </CardDescription>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="rounded-lg bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-800 flex items-start gap-2">
-              <ShieldCheck className="h-4 w-4 mt-0.5 flex-shrink-0" />
-              <span>Verified profiles receive a <strong>Verified Badge</strong> and are prioritized in AI matching results.</span>
-            </div>
-
-            {docTypes.map((dt) => {
-              const file = docFiles[dt.key];
-              const isUploading = uploadingKeys.has(dt.key);
-              return (
-                <div key={dt.key} className="space-y-1">
-                  <Label className="flex items-center gap-1.5">
-                    {dt.label}
-                    {dt.hint.includes("optional") && <span className="text-xs text-muted-foreground font-normal">(optional)</span>}
-                  </Label>
-                  <p className="text-xs text-muted-foreground">{dt.hint}</p>
-                  {file ? (
-                    <div className="flex items-center gap-3 rounded-lg border bg-secondary/40 px-3 py-2.5">
-                      {isUploading ? (
-                        <Loader2 className="h-4 w-4 animate-spin text-muted-foreground flex-shrink-0" />
-                      ) : (
-                        <FileText className="h-4 w-4 text-primary flex-shrink-0" />
-                      )}
-                      <div className="flex-1 min-w-0">
-                        <div className="text-sm font-medium truncate">{file.name}</div>
-                        <div className="text-xs text-muted-foreground">{formatBytes(file.size)} · {isUploading ? "Uploading..." : "Ready"}</div>
-                      </div>
-                      <Button type="button" variant="ghost" size="icon" className="h-7 w-7 flex-shrink-0" onClick={() => handleRemoveDoc(dt.key)} disabled={isUploading}>
-                        <X className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  ) : (
-                    <div
-                      className="flex items-center gap-3 rounded-lg border border-dashed px-3 py-3 cursor-pointer hover:bg-secondary/30 transition-colors"
-                      onClick={() => fileRefs.current[dt.key]?.click()}
-                    >
-                      <Upload className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                      <span className="text-sm text-muted-foreground">Click to upload {dt.label}</span>
-                      <input
-                        type="file"
-                        accept={dt.accept}
-                        className="hidden"
-                        ref={(el) => { fileRefs.current[dt.key] = el; }}
-                        onChange={(e) => {
-                          const f = e.target.files?.[0];
-                          if (f) handleFileSelect(dt.key, f);
-                        }}
-                      />
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </CardContent>
-          <CardFooter className="flex justify-between gap-3">
-            <Button type="button" variant="ghost" className="gap-2 text-muted-foreground" onClick={handleSkip}>
-              <SkipForward className="h-4 w-4" />Skip for now
-            </Button>
-            <Button
-              onClick={handleSubmitDocs}
-              disabled={uploading || uploadedDocs.length === 0}
-              className="gap-2"
-            >
-              {uploading ? <><Loader2 className="h-4 w-4 animate-spin" />Uploading...</> : <><ShieldCheck className="h-4 w-4" />Submit for Verification</>}
-            </Button>
-          </CardFooter>
-        </Card>
-      )}
-
-      {/* ── Verifying spinner ───────────────────────────────────────────── */}
-      {step === "verifying" && (
-        <Card>
-          <CardContent className="py-16 flex flex-col items-center gap-4">
-            <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center">
-              <Loader2 className="h-8 w-8 text-primary animate-spin" />
-            </div>
-            <div className="text-center">
-              <h2 className="text-lg font-semibold">AI is reviewing your documents</h2>
-              <p className="text-muted-foreground text-sm mt-1">This usually takes just a few seconds…</p>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* ── Verification result ─────────────────────────────────────────── */}
-      {step === "result" && verifyResult && (
-        <Card>
-          <CardContent className="py-10 space-y-6">
-            <div className="flex flex-col items-center gap-3">
-              {verifyResult.status === "verified" ? (
-                <div className="h-16 w-16 rounded-full bg-green-100 flex items-center justify-center">
-                  <ShieldCheck className="h-9 w-9 text-green-600" />
-                </div>
-              ) : (
-                <div className="h-16 w-16 rounded-full bg-red-100 flex items-center justify-center">
-                  <ShieldX className="h-9 w-9 text-red-600" />
-                </div>
-              )}
-              <div className="text-center">
-                <h2 className="text-xl font-bold">
-                  {verifyResult.status === "verified" ? "Documents Verified!" : verifyResult.status === "pending" ? "Under Manual Review" : "Verification Unsuccessful"}
-                </h2>
-                <Badge className={`mt-2 capitalize ${verifyResult.status === "verified" ? "bg-green-100 text-green-800 border-green-200" : verifyResult.status === "pending" ? "bg-yellow-100 text-yellow-800 border-yellow-200" : "bg-red-100 text-red-800 border-red-200"} border`}>
-                  {verifyResult.status}
-                </Badge>
-              </div>
-            </div>
-
-            <div className="rounded-lg bg-secondary/40 border p-4 text-sm">
-              <div className="text-xs text-muted-foreground uppercase tracking-wide font-medium mb-1.5">AI Reviewer Notes</div>
-              <p className="text-foreground">{verifyResult.note}</p>
-            </div>
-
-            {verifyResult.emailSent && (
-              <div className="flex items-start gap-3 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">
-                <Mail className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                <div className="flex-1">
-                  <p className="font-semibold">Confirmation email sent to {user?.primaryEmailAddress?.emailAddress}</p>
-                  {verifyResult.emailPreviewUrl && (
-                    <a href={verifyResult.emailPreviewUrl} target="_blank" rel="noopener noreferrer" className="mt-1 inline-flex items-center gap-1 text-blue-700 underline text-xs">
-                      <ExternalLink className="h-3 w-3" />Preview email
-                    </a>
-                  )}
-                </div>
-              </div>
-            )}
-
-            <Button className="w-full" onClick={() => setLocation("/dashboard")}>
-              Go to Dashboard →
-            </Button>
-          </CardContent>
         </Card>
       )}
     </div>

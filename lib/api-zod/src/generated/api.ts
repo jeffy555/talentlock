@@ -29,6 +29,9 @@ export const GetMeResponse = zod.object({
     .string()
     .nullish()
     .describe("Stored signature image path (object storage)"),
+  emailNotificationsEnabled: zod
+    .boolean()
+    .describe("Whether the user receives email alerts for platform activity"),
   createdAt: zod.coerce.date(),
 });
 
@@ -54,7 +57,22 @@ export const UpsertMeResponse = zod.object({
     .string()
     .nullish()
     .describe("Stored signature image path (object storage)"),
+  emailNotificationsEnabled: zod
+    .boolean()
+    .describe("Whether the user receives email alerts for platform activity"),
   createdAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Update email notification preferences
+ */
+export const PatchNotificationPreferencesBody = zod.object({
+  emailNotificationsEnabled: zod.boolean(),
+});
+
+export const PatchNotificationPreferencesResponse = zod.object({
+  success: zod.boolean(),
+  emailNotificationsEnabled: zod.boolean(),
 });
 
 /**
@@ -63,8 +81,22 @@ export const UpsertMeResponse = zod.object({
 export const ListFreelancersQueryParams = zod.object({
   field: zod.coerce.string().optional().describe("Filter by field of work"),
   available: zod.coerce.boolean().optional().describe("Filter by availability"),
+  verified: zod.coerce
+    .boolean()
+    .optional()
+    .describe(
+      "When true, only freelancers with at least one verified document",
+    ),
   limit: zod.coerce.number().optional().describe("Number of results"),
   offset: zod.coerce.number().optional().describe("Pagination offset"),
+  availableFrom: zod
+    .date()
+    .optional()
+    .describe("Only return freelancers available on or before this date"),
+  q: zod.coerce
+    .string()
+    .optional()
+    .describe("Full-text keyword search across bio and skills"),
 });
 
 export const ListFreelancersResponseItem = zod.object({
@@ -89,13 +121,25 @@ export const ListFreelancersResponseItem = zod.object({
     .optional()
     .describe("unverified | pending | verified | rejected"),
   verificationNote: zod.string().nullish(),
+  verificationLevel: zod
+    .string()
+    .describe("unverified | partially_verified | fully_verified"),
   documentNames: zod.array(zod.string()).optional(),
   isAvailable: zod.boolean(),
   currentBookingId: zod.number().nullish(),
   bookingEndDate: zod.coerce.date().nullish(),
   subscriptionPlan: zod.string(),
   availableFrom: zod.coerce.date().nullish(),
+  nextAvailableDate: zod.coerce
+    .date()
+    .nullish()
+    .describe("Cached next available date (null when not available)"),
   availabilityNote: zod.string().nullish(),
+  averageRating: zod.number().nullish(),
+  reviewCount: zod.number(),
+  completenessScore: zod
+    .number()
+    .describe("Profile completeness score 0–100 (Talent Vault requires ≥ 60)"),
   createdAt: zod.coerce.date(),
 });
 export const ListFreelancersResponse = zod.array(ListFreelancersResponseItem);
@@ -163,13 +207,25 @@ export const GetMyFreelancerProfileResponse = zod.object({
     .optional()
     .describe("unverified | pending | verified | rejected"),
   verificationNote: zod.string().nullish(),
+  verificationLevel: zod
+    .string()
+    .describe("unverified | partially_verified | fully_verified"),
   documentNames: zod.array(zod.string()).optional(),
   isAvailable: zod.boolean(),
   currentBookingId: zod.number().nullish(),
   bookingEndDate: zod.coerce.date().nullish(),
   subscriptionPlan: zod.string(),
   availableFrom: zod.coerce.date().nullish(),
+  nextAvailableDate: zod.coerce
+    .date()
+    .nullish()
+    .describe("Cached next available date (null when not available)"),
   availabilityNote: zod.string().nullish(),
+  averageRating: zod.number().nullish(),
+  reviewCount: zod.number(),
+  completenessScore: zod
+    .number()
+    .describe("Profile completeness score 0–100 (Talent Vault requires ≥ 60)"),
   createdAt: zod.coerce.date(),
 });
 
@@ -216,13 +272,25 @@ export const UpdateMyFreelancerProfileResponse = zod.object({
     .optional()
     .describe("unverified | pending | verified | rejected"),
   verificationNote: zod.string().nullish(),
+  verificationLevel: zod
+    .string()
+    .describe("unverified | partially_verified | fully_verified"),
   documentNames: zod.array(zod.string()).optional(),
   isAvailable: zod.boolean(),
   currentBookingId: zod.number().nullish(),
   bookingEndDate: zod.coerce.date().nullish(),
   subscriptionPlan: zod.string(),
   availableFrom: zod.coerce.date().nullish(),
+  nextAvailableDate: zod.coerce
+    .date()
+    .nullish()
+    .describe("Cached next available date (null when not available)"),
   availabilityNote: zod.string().nullish(),
+  averageRating: zod.number().nullish(),
+  reviewCount: zod.number(),
+  completenessScore: zod
+    .number()
+    .describe("Profile completeness score 0–100 (Talent Vault requires ≥ 60)"),
   createdAt: zod.coerce.date(),
 });
 
@@ -233,36 +301,126 @@ export const GetFreelancerProfileParams = zod.object({
   id: zod.coerce.number(),
 });
 
-export const GetFreelancerProfileResponse = zod.object({
-  id: zod.number(),
-  userId: zod.number(),
-  clerkId: zod.string(),
-  name: zod.string(),
-  tagline: zod.string(),
-  fieldOfWork: zod.string(),
-  skills: zod.array(zod.string()),
-  yearsExperience: zod.number(),
-  bio: zod.string().nullish(),
-  resumeUrl: zod.string().nullish(),
-  portfolioUrl: zod.string().nullish(),
-  paymentPreference: zod.string().describe("hourly or daily"),
-  hourlyRate: zod.number().nullish(),
-  dailyRate: zod.number().nullish(),
-  achievements: zod.string().nullish(),
-  isVerified: zod.boolean(),
-  verificationStatus: zod
-    .string()
-    .optional()
-    .describe("unverified | pending | verified | rejected"),
-  verificationNote: zod.string().nullish(),
-  documentNames: zod.array(zod.string()).optional(),
-  isAvailable: zod.boolean(),
-  currentBookingId: zod.number().nullish(),
-  bookingEndDate: zod.coerce.date().nullish(),
-  subscriptionPlan: zod.string(),
-  availableFrom: zod.coerce.date().nullish(),
-  availabilityNote: zod.string().nullish(),
-  createdAt: zod.coerce.date(),
+export const GetFreelancerProfileResponse = zod
+  .object({
+    id: zod.number(),
+    userId: zod.number(),
+    clerkId: zod.string(),
+    name: zod.string(),
+    tagline: zod.string(),
+    fieldOfWork: zod.string(),
+    skills: zod.array(zod.string()),
+    yearsExperience: zod.number(),
+    bio: zod.string().nullish(),
+    resumeUrl: zod.string().nullish(),
+    portfolioUrl: zod.string().nullish(),
+    paymentPreference: zod.string().describe("hourly or daily"),
+    hourlyRate: zod.number().nullish(),
+    dailyRate: zod.number().nullish(),
+    achievements: zod.string().nullish(),
+    isVerified: zod.boolean(),
+    verificationStatus: zod
+      .string()
+      .optional()
+      .describe("unverified | pending | verified | rejected"),
+    verificationNote: zod.string().nullish(),
+    verificationLevel: zod
+      .string()
+      .describe("unverified | partially_verified | fully_verified"),
+    documentNames: zod.array(zod.string()).optional(),
+    isAvailable: zod.boolean(),
+    currentBookingId: zod.number().nullish(),
+    bookingEndDate: zod.coerce.date().nullish(),
+    subscriptionPlan: zod.string(),
+    availableFrom: zod.coerce.date().nullish(),
+    nextAvailableDate: zod.coerce
+      .date()
+      .nullish()
+      .describe("Cached next available date (null when not available)"),
+    availabilityNote: zod.string().nullish(),
+    averageRating: zod.number().nullish(),
+    reviewCount: zod.number(),
+    completenessScore: zod
+      .number()
+      .describe(
+        "Profile completeness score 0–100 (Talent Vault requires ≥ 60)",
+      ),
+    createdAt: zod.coerce.date(),
+  })
+  .and(
+    zod.object({
+      email: zod.string().nullish(),
+      verification: zod.object({
+        level: zod
+          .string()
+          .describe("unverified | partially_verified | fully_verified"),
+        verifiedDocumentCount: zod.number(),
+      }),
+    }),
+  );
+
+/**
+ * @summary Get my availability blocks (freelancer only)
+ */
+export const GetMyAvailabilityResponse = zod.object({
+  nextAvailableDate: zod.coerce.date().nullable(),
+  blocks: zod.array(
+    zod.object({
+      id: zod.number(),
+      startDate: zod.coerce.date(),
+      endDate: zod.coerce.date(),
+      reason: zod.enum(["booked", "holiday", "unavailable"]),
+      label: zod.string().nullable(),
+      bookingId: zod
+        .string()
+        .nullable()
+        .describe("Non-null when auto-created from a booking"),
+      createdAt: zod.coerce.date(),
+    }),
+  ),
+});
+
+/**
+ * @summary Create a manual availability block (freelancer only)
+ */
+export const createAvailabilityBlockBodyLabelMax = 100;
+
+export const CreateAvailabilityBlockBody = zod.object({
+  startDate: zod.coerce.date(),
+  endDate: zod.coerce.date(),
+  reason: zod.enum(["holiday", "unavailable"]),
+  label: zod.string().max(createAvailabilityBlockBodyLabelMax).optional(),
+});
+
+/**
+ * @summary Delete a manual availability block (freelancer only)
+ */
+export const DeleteAvailabilityBlockParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const DeleteAvailabilityBlockResponse = zod.object({
+  success: zod.boolean(),
+});
+
+/**
+ * @summary Get public availability blocks for a freelancer
+ */
+export const GetFreelancerAvailabilityParams = zod.object({
+  freelancerId: zod.coerce.number(),
+});
+
+export const GetFreelancerAvailabilityResponse = zod.object({
+  freelancerId: zod.string(),
+  nextAvailableDate: zod.coerce.date().nullable(),
+  blocks: zod.array(
+    zod.object({
+      id: zod.number(),
+      startDate: zod.coerce.date(),
+      endDate: zod.coerce.date(),
+      reason: zod.enum(["booked", "holiday", "unavailable"]),
+    }),
+  ),
 });
 
 /**
@@ -471,21 +629,53 @@ export const ListJobInterestsResponseItem = zod.object({
 export const ListJobInterestsResponse = zod.array(ListJobInterestsResponseItem);
 
 /**
- * @summary List the current user's notifications
+ * @summary Unread notification count for the current user
  */
-export const ListNotificationsResponseItem = zod.object({
-  id: zod.number(),
-  userId: zod.number(),
-  type: zod.string(),
-  title: zod.string(),
-  message: zod.string(),
-  link: zod.string().nullish(),
-  read: zod.boolean(),
-  createdAt: zod.coerce.date(),
+export const GetNotificationsUnreadCountResponse = zod.object({
+  count: zod.number(),
 });
-export const ListNotificationsResponse = zod.array(
-  ListNotificationsResponseItem,
-);
+
+/**
+ * @summary Paginated notifications for the current user
+ */
+export const listNotificationsQueryPageDefault = 1;
+
+export const listNotificationsQueryPageSizeDefault = 20;
+export const listNotificationsQueryPageSizeMax = 50;
+
+export const ListNotificationsQueryParams = zod.object({
+  page: zod.coerce.number().min(1).default(listNotificationsQueryPageDefault),
+  pageSize: zod.coerce
+    .number()
+    .min(1)
+    .max(listNotificationsQueryPageSizeMax)
+    .default(listNotificationsQueryPageSizeDefault),
+});
+
+export const ListNotificationsResponse = zod.object({
+  data: zod.array(
+    zod.object({
+      id: zod.number(),
+      type: zod.string(),
+      entityType: zod.string(),
+      entityId: zod.string(),
+      message: zod.string(),
+      read: zod.boolean(),
+      createdAt: zod.coerce.date(),
+    }),
+  ),
+  total: zod.number(),
+  unreadCount: zod.number(),
+  page: zod.number(),
+  pageSize: zod.number(),
+});
+
+/**
+ * @summary Mark all notifications as read for the current user
+ */
+export const MarkAllNotificationsReadResponse = zod.object({
+  success: zod.boolean(),
+});
 
 /**
  * @summary Mark a notification as read
@@ -495,21 +685,7 @@ export const MarkNotificationReadParams = zod.object({
 });
 
 export const MarkNotificationReadResponse = zod.object({
-  id: zod.number(),
-  userId: zod.number(),
-  type: zod.string(),
-  title: zod.string(),
-  message: zod.string(),
-  link: zod.string().nullish(),
-  read: zod.boolean(),
-  createdAt: zod.coerce.date(),
-});
-
-/**
- * @summary Mark all notifications as read for the current user
- */
-export const MarkAllNotificationsReadResponse = zod.object({
-  updated: zod.number(),
+  success: zod.boolean(),
 });
 
 /**
@@ -531,6 +707,7 @@ export const ListPlansResponseItem = zod.object({
     activeBookings: zod.number().nullish(),
     monthlyExpressInterests: zod.number().nullish(),
     teamSeats: zod.number().nullish(),
+    monthlyTokenLimit: zod.number().nullish(),
   }),
   priority: zod.number(),
 });
@@ -552,6 +729,7 @@ export const GetMySubscriptionResponse = zod.object({
       activeBookings: zod.number().nullish(),
       monthlyExpressInterests: zod.number().nullish(),
       teamSeats: zod.number().nullish(),
+      monthlyTokenLimit: zod.number().nullish(),
     }),
     priority: zod.number(),
   }),
@@ -584,6 +762,7 @@ export const UpgradeSubscriptionResponse = zod.object({
       activeBookings: zod.number().nullish(),
       monthlyExpressInterests: zod.number().nullish(),
       teamSeats: zod.number().nullish(),
+      monthlyTokenLimit: zod.number().nullish(),
     }),
     priority: zod.number(),
   }),
@@ -597,8 +776,48 @@ export const UpgradeSubscriptionResponse = zod.object({
 });
 
 /**
+ * @summary Get the current employer's AI token usage for the UTC calendar month
+ */
+export const GetTokenUsageMeResponse = zod.object({
+  plan: zod.string(),
+  monthlyTokenLimit: zod.number().nullable(),
+  tokensUsed: zod.number(),
+  tokensRemaining: zod.number().nullable(),
+  resetDate: zod.coerce.date(),
+  breakdown: zod.object({
+    ai_match: zod.number(),
+    agreement_generation: zod.number(),
+  }),
+});
+
+/**
+ * @summary Get per-conversation AI token breakdown (Growth/Enterprise employers)
+ */
+export const GetTokenUsageConversationIdParams = zod.object({
+  conversationId: zod.coerce.number(),
+});
+
+export const GetTokenUsageConversationIdResponse = zod.object({
+  conversationId: zod.number(),
+  totalTokens: zod.number(),
+  messages: zod.array(
+    zod.object({
+      id: zod.number(),
+      promptTokens: zod.number(),
+      completionTokens: zod.number(),
+      totalTokens: zod.number(),
+      createdAt: zod.coerce.date(),
+    }),
+  ),
+  legacyData: zod.boolean(),
+});
+
+/**
  * @summary List bookings
  */
+export const listBookingsQueryPageDefault = 1;
+export const listBookingsQueryPageSizeDefault = 20;
+
 export const ListBookingsQueryParams = zod.object({
   status: zod.coerce
     .string()
@@ -608,34 +827,69 @@ export const ListBookingsQueryParams = zod.object({
     .string()
     .optional()
     .describe("Filter by role (freelancer, employer)"),
+  page: zod.coerce.number().default(listBookingsQueryPageDefault),
+  pageSize: zod.coerce.number().default(listBookingsQueryPageSizeDefault),
 });
 
-export const ListBookingsResponseItem = zod.object({
-  id: zod.number(),
-  freelancerId: zod.number(),
-  employerId: zod.number(),
-  jobRequirementId: zod.number().nullish(),
-  startDate: zod.coerce.date(),
-  endDate: zod.coerce.date(),
-  status: zod.string().describe("pending, active, completed, cancelled"),
-  paymentType: zod.string(),
-  rate: zod.number().nullish(),
-  notes: zod.string().nullish(),
-  proposedRate: zod
-    .number()
-    .nullish()
-    .describe("Current outstanding rate proposal"),
-  lastProposedBy: zod.string().nullish().describe("'employer' or 'freelancer'"),
-  negotiationStatus: zod.string().describe("'negotiating' or 'agreed'"),
-  freelancerName: zod.string().nullish(),
-  employerName: zod.string().nullish(),
-  createdAt: zod.coerce.date(),
+export const listBookingsResponseDataItemReviewOneRatingMax = 5;
+
+export const ListBookingsResponse = zod.object({
+  data: zod.array(
+    zod.object({
+      id: zod.number(),
+      freelancerId: zod.number(),
+      employerId: zod.number(),
+      jobRequirementId: zod.number().nullish(),
+      startDate: zod.coerce.date(),
+      endDate: zod.coerce.date(),
+      status: zod.string().describe("pending, active, completed, cancelled"),
+      paymentType: zod.string(),
+      rate: zod.number().nullish(),
+      notes: zod.string().nullish(),
+      message: zod
+        .string()
+        .nullish()
+        .describe("Optional message from employer when creating the booking"),
+      proposedRate: zod
+        .number()
+        .nullish()
+        .describe("Current outstanding rate proposal"),
+      lastProposedBy: zod
+        .string()
+        .nullish()
+        .describe("'employer' or 'freelancer'"),
+      negotiationStatus: zod.string().describe("'negotiating' or 'agreed'"),
+      freelancerName: zod.string().nullish(),
+      employerName: zod.string().nullish(),
+      review: zod.union([
+        zod.object({
+          id: zod.number(),
+          rating: zod
+            .number()
+            .min(1)
+            .max(listBookingsResponseDataItemReviewOneRatingMax),
+          comment: zod.string().nullish(),
+          reply: zod.string().nullish(),
+          createdAt: zod.coerce.date(),
+          repliedAt: zod.coerce.date().nullish(),
+          employerDisplayName: zod.string(),
+        }),
+        zod.null(),
+      ]),
+      createdAt: zod.coerce.date(),
+    }),
+  ),
+  total: zod.number(),
+  page: zod.number(),
+  pageSize: zod.number(),
+  totalPages: zod.number(),
 });
-export const ListBookingsResponse = zod.array(ListBookingsResponseItem);
 
 /**
  * @summary Create a booking
  */
+export const createBookingBodyMessageMax = 500;
+
 export const CreateBookingBody = zod.object({
   freelancerId: zod.number(),
   jobRequirementId: zod.number().nullish(),
@@ -643,6 +897,11 @@ export const CreateBookingBody = zod.object({
   endDate: zod.coerce.date(),
   paymentType: zod.string(),
   rate: zod.number().nullish(),
+  message: zod
+    .string()
+    .max(createBookingBodyMessageMax)
+    .nullish()
+    .describe("Optional message to the freelancer (max 500 chars)"),
 });
 
 /**
@@ -651,6 +910,8 @@ export const CreateBookingBody = zod.object({
 export const GetBookingParams = zod.object({
   id: zod.coerce.number(),
 });
+
+export const getBookingResponseReviewOneRatingMax = 5;
 
 export const GetBookingResponse = zod.object({
   id: zod.number(),
@@ -663,6 +924,10 @@ export const GetBookingResponse = zod.object({
   paymentType: zod.string(),
   rate: zod.number().nullish(),
   notes: zod.string().nullish(),
+  message: zod
+    .string()
+    .nullish()
+    .describe("Optional message from employer when creating the booking"),
   proposedRate: zod
     .number()
     .nullish()
@@ -671,6 +936,18 @@ export const GetBookingResponse = zod.object({
   negotiationStatus: zod.string().describe("'negotiating' or 'agreed'"),
   freelancerName: zod.string().nullish(),
   employerName: zod.string().nullish(),
+  review: zod.union([
+    zod.object({
+      id: zod.number(),
+      rating: zod.number().min(1).max(getBookingResponseReviewOneRatingMax),
+      comment: zod.string().nullish(),
+      reply: zod.string().nullish(),
+      createdAt: zod.coerce.date(),
+      repliedAt: zod.coerce.date().nullish(),
+      employerDisplayName: zod.string(),
+    }),
+    zod.null(),
+  ]),
   createdAt: zod.coerce.date(),
 });
 
@@ -685,6 +962,8 @@ export const UpdateBookingBody = zod.object({
   status: zod.string().optional(),
 });
 
+export const updateBookingResponseReviewOneRatingMax = 5;
+
 export const UpdateBookingResponse = zod.object({
   id: zod.number(),
   freelancerId: zod.number(),
@@ -696,6 +975,10 @@ export const UpdateBookingResponse = zod.object({
   paymentType: zod.string(),
   rate: zod.number().nullish(),
   notes: zod.string().nullish(),
+  message: zod
+    .string()
+    .nullish()
+    .describe("Optional message from employer when creating the booking"),
   proposedRate: zod
     .number()
     .nullish()
@@ -704,6 +987,18 @@ export const UpdateBookingResponse = zod.object({
   negotiationStatus: zod.string().describe("'negotiating' or 'agreed'"),
   freelancerName: zod.string().nullish(),
   employerName: zod.string().nullish(),
+  review: zod.union([
+    zod.object({
+      id: zod.number(),
+      rating: zod.number().min(1).max(updateBookingResponseReviewOneRatingMax),
+      comment: zod.string().nullish(),
+      reply: zod.string().nullish(),
+      createdAt: zod.coerce.date(),
+      repliedAt: zod.coerce.date().nullish(),
+      employerDisplayName: zod.string(),
+    }),
+    zod.null(),
+  ]),
   createdAt: zod.coerce.date(),
 });
 
@@ -726,6 +1021,8 @@ export const NegotiateBookingBody = zod.object({
     .describe("Required when action is 'counter'"),
 });
 
+export const negotiateBookingResponseReviewOneRatingMax = 5;
+
 export const NegotiateBookingResponse = zod.object({
   id: zod.number(),
   freelancerId: zod.number(),
@@ -737,6 +1034,10 @@ export const NegotiateBookingResponse = zod.object({
   paymentType: zod.string(),
   rate: zod.number().nullish(),
   notes: zod.string().nullish(),
+  message: zod
+    .string()
+    .nullish()
+    .describe("Optional message from employer when creating the booking"),
   proposedRate: zod
     .number()
     .nullish()
@@ -745,50 +1046,100 @@ export const NegotiateBookingResponse = zod.object({
   negotiationStatus: zod.string().describe("'negotiating' or 'agreed'"),
   freelancerName: zod.string().nullish(),
   employerName: zod.string().nullish(),
+  review: zod.union([
+    zod.object({
+      id: zod.number(),
+      rating: zod
+        .number()
+        .min(1)
+        .max(negotiateBookingResponseReviewOneRatingMax),
+      comment: zod.string().nullish(),
+      reply: zod.string().nullish(),
+      createdAt: zod.coerce.date(),
+      repliedAt: zod.coerce.date().nullish(),
+      employerDisplayName: zod.string(),
+    }),
+    zod.null(),
+  ]),
   createdAt: zod.coerce.date(),
 });
 
 /**
  * @summary List agreements
  */
+export const listAgreementsQueryPageDefault = 1;
+export const listAgreementsQueryPageSizeDefault = 20;
+
 export const ListAgreementsQueryParams = zod.object({
   status: zod.coerce
     .string()
     .optional()
     .describe(
-      "Filter by status (draft, pending_signatures, signed, active, completed)",
+      "Filter by status (draft, redlined, partially_signed, fully_signed)",
     ),
+  page: zod.coerce.number().default(listAgreementsQueryPageDefault),
+  pageSize: zod.coerce.number().default(listAgreementsQueryPageSizeDefault),
 });
 
-export const ListAgreementsResponseItem = zod.object({
-  id: zod.number(),
-  bookingId: zod.number(),
-  freelancerId: zod.number(),
-  employerId: zod.number(),
-  content: zod.string().describe("AI-generated legal agreement text"),
-  status: zod
-    .string()
-    .describe("draft, pending_signatures, signed, active, completed"),
-  freelancerSignedAt: zod.coerce.date().nullish(),
-  employerSignedAt: zod.coerce.date().nullish(),
-  freelancerSignatureName: zod.string().nullish(),
-  employerSignatureName: zod.string().nullish(),
-  documentUrl: zod.string().nullish(),
-  freelancerSignatureImageUrl: zod.string().nullish(),
-  employerSignatureImageUrl: zod.string().nullish(),
-  freelancerDownloadedAt: zod.coerce.date().nullish(),
-  employerDownloadedAt: zod.coerce.date().nullish(),
-  freelancerName: zod.string().nullish(),
-  employerName: zod.string().nullish(),
-  createdAt: zod.coerce.date(),
+export const ListAgreementsResponse = zod.object({
+  data: zod.array(
+    zod.object({
+      id: zod.number(),
+      bookingId: zod.number(),
+      freelancerId: zod.number(),
+      employerId: zod.number(),
+      content: zod.string().describe("AI-generated legal agreement text"),
+      status: zod
+        .string()
+        .describe("draft, redlined, partially_signed, fully_signed"),
+      estimatedRedlineTokens: zod
+        .number()
+        .optional()
+        .describe(
+          "Approximate tokens for a redline request (~content\/4 + 500)",
+        ),
+      freelancerSignedAt: zod.coerce.date().nullish(),
+      employerSignedAt: zod.coerce.date().nullish(),
+      freelancerSignatureName: zod.string().nullish(),
+      employerSignatureName: zod.string().nullish(),
+      documentUrl: zod.string().nullish(),
+      freelancerSignatureImageUrl: zod.string().nullish(),
+      employerSignatureImageUrl: zod.string().nullish(),
+      freelancerDownloadedAt: zod.coerce.date().nullish(),
+      employerDownloadedAt: zod.coerce.date().nullish(),
+      freelancerName: zod.string().nullish(),
+      employerName: zod.string().nullish(),
+      createdAt: zod.coerce.date(),
+    }),
+  ),
+  total: zod.number(),
+  page: zod.number(),
+  pageSize: zod.number(),
+  totalPages: zod.number(),
 });
-export const ListAgreementsResponse = zod.array(ListAgreementsResponseItem);
 
 /**
  * @summary Generate an AI legal agreement for a booking
  */
+export const createAgreementBodyCustomClausesMax = 5;
+
 export const CreateAgreementBody = zod.object({
   bookingId: zod.number(),
+  industry: zod
+    .enum([
+      "general",
+      "software_development",
+      "design_creative",
+      "marketing_content",
+      "consulting_strategy",
+      "data_analytics",
+    ])
+    .optional(),
+  customClauses: zod
+    .array(zod.string())
+    .max(createAgreementBodyCustomClausesMax)
+    .optional()
+    .describe("Enterprise only — up to 5 custom clauses (20–500 chars each)"),
 });
 
 /**
@@ -806,7 +1157,11 @@ export const GetAgreementResponse = zod.object({
   content: zod.string().describe("AI-generated legal agreement text"),
   status: zod
     .string()
-    .describe("draft, pending_signatures, signed, active, completed"),
+    .describe("draft, redlined, partially_signed, fully_signed"),
+  estimatedRedlineTokens: zod
+    .number()
+    .optional()
+    .describe("Approximate tokens for a redline request (~content\/4 + 500)"),
   freelancerSignedAt: zod.coerce.date().nullish(),
   employerSignedAt: zod.coerce.date().nullish(),
   freelancerSignatureName: zod.string().nullish(),
@@ -857,7 +1212,11 @@ export const SignAgreementResponse = zod.object({
   content: zod.string().describe("AI-generated legal agreement text"),
   status: zod
     .string()
-    .describe("draft, pending_signatures, signed, active, completed"),
+    .describe("draft, redlined, partially_signed, fully_signed"),
+  estimatedRedlineTokens: zod
+    .number()
+    .optional()
+    .describe("Approximate tokens for a redline request (~content\/4 + 500)"),
   freelancerSignedAt: zod.coerce.date().nullish(),
   employerSignedAt: zod.coerce.date().nullish(),
   freelancerSignatureName: zod.string().nullish(),
@@ -873,23 +1232,73 @@ export const SignAgreementResponse = zod.object({
 });
 
 /**
+ * @summary Get AI contract redlining suggestions (employer, Growth+)
+ */
+export const PostAgreementsIdRedlineParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const PostAgreementsIdRedlineResponse = zod.object({
+  suggestions: zod.array(
+    zod.object({
+      clauseNumber: zod.string(),
+      originalText: zod.string(),
+      suggestedText: zod.string(),
+      reason: zod.string(),
+    }),
+  ),
+  parseError: zod.boolean().optional(),
+});
+
+/**
+ * @summary Accept a redline suggestion and update agreement content (employer)
+ */
+export const PatchAgreementsIdAcceptRedlineParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const PatchAgreementsIdAcceptRedlineBody = zod.object({
+  newContent: zod.string(),
+});
+
+export const PatchAgreementsIdAcceptRedlineResponse = zod.object({
+  success: zod.boolean(),
+  status: zod.string(),
+});
+
+/**
  * @summary List meetings for the current user
  */
-export const ListMeetingsResponseItem = zod.object({
-  id: zod.number(),
-  freelancerId: zod.number(),
-  employerId: zod.number(),
-  title: zod.string(),
-  scheduledAt: zod.coerce.date(),
-  durationMinutes: zod.number(),
-  agenda: zod.string().nullish(),
-  status: zod.string().describe("pending, confirmed, cancelled, completed"),
-  meetingLink: zod.string().nullish(),
-  freelancerName: zod.string().nullish(),
-  employerName: zod.string().nullish(),
-  createdAt: zod.coerce.date(),
+export const listMeetingsQueryPageDefault = 1;
+export const listMeetingsQueryPageSizeDefault = 20;
+
+export const ListMeetingsQueryParams = zod.object({
+  page: zod.coerce.number().default(listMeetingsQueryPageDefault),
+  pageSize: zod.coerce.number().default(listMeetingsQueryPageSizeDefault),
 });
-export const ListMeetingsResponse = zod.array(ListMeetingsResponseItem);
+
+export const ListMeetingsResponse = zod.object({
+  data: zod.array(
+    zod.object({
+      id: zod.number(),
+      freelancerId: zod.number(),
+      employerId: zod.number(),
+      title: zod.string(),
+      scheduledAt: zod.coerce.date(),
+      durationMinutes: zod.number(),
+      agenda: zod.string().nullish(),
+      status: zod.string().describe("pending, confirmed, cancelled, completed"),
+      meetingLink: zod.string().nullish(),
+      freelancerName: zod.string().nullish(),
+      employerName: zod.string().nullish(),
+      createdAt: zod.coerce.date(),
+    }),
+  ),
+  total: zod.number(),
+  page: zod.number(),
+  pageSize: zod.number(),
+  totalPages: zod.number(),
+});
 
 /**
  * @summary Schedule a discovery meeting with a freelancer
@@ -1031,6 +1440,114 @@ export const SendOpenaiMessageResponse = zod.object({
 });
 
 /**
+ * @summary AI job description assistant (generate, improve, or check)
+ */
+export const PostAiJobDescriptionBody = zod.object({
+  mode: zod.enum(["generate", "improve", "check"]),
+  content: zod.string(),
+  jobTitle: zod.string().optional(),
+});
+
+export const postAiJobDescriptionResponseScoreMin = 0;
+export const postAiJobDescriptionResponseScoreMax = 100;
+
+export const PostAiJobDescriptionResponse = zod.object({
+  mode: zod.enum(["generate", "improve", "check"]),
+  output: zod.string().optional(),
+  score: zod
+    .number()
+    .min(postAiJobDescriptionResponseScoreMin)
+    .max(postAiJobDescriptionResponseScoreMax)
+    .optional(),
+  missing: zod.array(zod.string()).optional(),
+});
+
+/**
+ * @summary AI proposal generator for freelancer booking responses
+ */
+export const PostAiProposalBody = zod.object({
+  bookingId: zod.string(),
+  tone: zod.enum(["professional", "friendly", "concise"]),
+});
+
+export const PostAiProposalResponse = zod.object({
+  proposal: zod.string(),
+  error: zod.string().optional(),
+});
+
+/**
+ * @summary Generate a structured match explanation for a freelancer
+ */
+export const PostAiMatchExplanationBody = zod.object({
+  freelancerId: zod.number(),
+  jobRequirementId: zod.number().nullish(),
+  conversationId: zod
+    .string()
+    .describe(
+      "Active conversation id, or 'direct-view' for freelancer detail page",
+    ),
+});
+
+export const PostAiMatchExplanationResponse = zod.object({
+  skillsAlignment: zod
+    .object({
+      matched: zod.array(zod.string()),
+      gaps: zod.array(zod.string()),
+    })
+    .optional(),
+  rateFit: zod
+    .union([
+      zod.object({
+        freelancerRate: zod.number().nullable(),
+        budgetMin: zod.number().nullable(),
+        budgetMax: zod.number().nullable(),
+        assessment: zod.enum([
+          "within_budget",
+          "above_budget",
+          "below_budget",
+          "unknown",
+        ]),
+      }),
+      zod.null(),
+    ])
+    .optional(),
+  availabilityFit: zod
+    .object({
+      freelancerAvailableFrom: zod.string().nullable(),
+      requiredStartDate: zod.string().nullable(),
+      assessment: zod.enum(["available", "unavailable", "unknown"]),
+    })
+    .optional(),
+  overallSummary: zod.string().optional(),
+  parseError: zod.boolean().optional(),
+  rawContent: zod.string().optional(),
+});
+
+/**
+ * @summary Rate context and AI rate suggestion for employers
+ */
+export const postAiRateSuggestionBodyIncludeAiDefault = false;
+
+export const PostAiRateSuggestionBody = zod.object({
+  freelancerId: zod.number(),
+  proposedRate: zod.number().optional(),
+  jobRequirementId: zod.number().optional(),
+  bookingId: zod.number().optional(),
+  paymentType: zod.enum(["hourly", "daily", "fixed"]).optional(),
+  includeAi: zod.boolean().default(postAiRateSuggestionBodyIncludeAiDefault),
+});
+
+export const PostAiRateSuggestionResponse = zod.object({
+  freelancerRate: zod.number(),
+  marketMedian: zod.number().nullable(),
+  yourHistoricalAvg: zod.number().nullable(),
+  suggestedRate: zod.number(),
+  explanation: zod.string(),
+  confidence: zod.enum(["high", "medium", "low"]),
+  isAiSuggestion: zod.boolean(),
+});
+
+/**
  * @summary Get dashboard statistics for the current user
  */
 export const GetDashboardStatsResponse = zod.object({
@@ -1064,6 +1581,201 @@ export const GetDashboardActivityResponse = zod.array(
 );
 
 /**
+ * @summary Freelancer earnings intelligence (trend, benchmark, projection, top skills)
+ */
+export const GetDashboardEarningsIntelligenceResponse = zod.object({
+  summary: zod.object({
+    thisMonth: zod.number(),
+    lastMonth: zod.number(),
+    allTime: zod.number(),
+    monthOverMonthChange: zod.number().nullable(),
+  }),
+  trend: zod.object({
+    months: zod.array(zod.string()),
+    freelancerEarnings: zod.array(zod.number()),
+    platformAverage: zod.array(zod.number().nullable()),
+  }),
+  rateBenchmark: zod
+    .union([
+      zod.object({
+        myRate: zod.number(),
+        fieldOfWork: zod.string(),
+        percentile: zod.number(),
+        fieldMin: zod.number(),
+        fieldMedian: zod.number(),
+        fieldMax: zod.number(),
+        freelancerCount: zod.number(),
+      }),
+      zod.null(),
+    ])
+    .optional(),
+  projection: zod.object({
+    projectedAmount: zod.number(),
+    milestoneCount: zod.number(),
+    currency: zod.enum(["USD"]),
+  }),
+  topSkills: zod.array(
+    zod.object({
+      skill: zod.string(),
+      totalEarned: zod.number(),
+      bookingCount: zod.number(),
+    }),
+  ),
+});
+
+/**
+ * @summary Employer spend analytics (trend, field breakdown, top freelancers, committed spend, rate benchmark)
+ */
+export const GetDashboardSpendAnalyticsResponse = zod.object({
+  summary: zod.object({
+    thisMonth: zod.number(),
+    lastMonth: zod.number(),
+    allTime: zod.number(),
+    monthOverMonthChange: zod.number().nullable(),
+  }),
+  trend: zod.object({
+    months: zod.array(zod.string()),
+    spend: zod.array(zod.number()),
+  }),
+  spendByField: zod.array(
+    zod.object({
+      field: zod.string(),
+      totalSpend: zod.number(),
+      percentageOfTotal: zod.number(),
+    }),
+  ),
+  topFreelancers: zod.array(
+    zod.object({
+      freelancerId: zod.string(),
+      name: zod.string(),
+      fieldOfWork: zod.string(),
+      totalPaid: zod.number(),
+      bookingCount: zod.number(),
+      averageRatingGiven: zod.number().nullable(),
+    }),
+  ),
+  committed: zod.object({
+    committedAmount: zod.number(),
+    milestoneCount: zod.number(),
+  }),
+  rateBenchmark: zod
+    .union([
+      zod.object({
+        averageRatePaid: zod.number(),
+        marketMedian: zod.number(),
+        fields: zod.array(
+          zod.object({
+            field: zod.string(),
+            avgPaid: zod.number(),
+            marketMedian: zod.number(),
+            differencePercent: zod.number(),
+          }),
+        ),
+      }),
+      zod.null(),
+    ])
+    .optional(),
+});
+
+/**
+ * @summary Employer hiring analytics (funnel, skills gap, retention, lifecycle, outcomes)
+ */
+export const getDashboardHiringAnalyticsQueryWindowDefault = `90d`;
+
+export const GetDashboardHiringAnalyticsQueryParams = zod.object({
+  window: zod
+    .enum(["30d", "90d", "12m"])
+    .default(getDashboardHiringAnalyticsQueryWindowDefault),
+});
+
+export const GetDashboardHiringAnalyticsResponse = zod.object({
+  funnel: zod.object({
+    window: zod.enum(["30d", "90d", "12m"]),
+    jobsPosted: zod.number(),
+    bookingsCreated: zod.number(),
+    agreementsSigned: zod.number(),
+    completed: zod.number(),
+    conversionRates: zod.object({
+      jobToBooking: zod.number().nullable(),
+      bookingToSigned: zod.number().nullable(),
+      signedToCompleted: zod.number().nullable(),
+    }),
+  }),
+  skillsGap: zod.object({
+    demand: zod.array(
+      zod.object({
+        skill: zod.string(),
+        count: zod.number(),
+      }),
+    ),
+    supply: zod.array(
+      zod.object({
+        skill: zod.string(),
+        count: zod.number(),
+      }),
+    ),
+    gaps: zod.array(zod.string()),
+  }),
+  retention: zod.object({
+    repeatRate: zod.number(),
+    newRate: zod.number(),
+    totalBookings: zod.number(),
+    repeatFreelancers: zod.array(
+      zod.object({
+        freelancerId: zod.string(),
+        name: zod.string(),
+        fieldOfWork: zod.string(),
+        bookingCount: zod.number(),
+      }),
+    ),
+  }),
+  lifecycle: zod.object({
+    window: zod.enum(["30d", "90d", "12m"]),
+    jobToFirstBooking: zod.number().nullable(),
+    bookingToSigned: zod.number().nullable(),
+    signedToCompleted: zod.number().nullable(),
+    totalDuration: zod.number().nullable(),
+    trends: zod.object({
+      jobToFirstBooking: zod
+        .union([
+          zod.literal("faster"),
+          zod.literal("slower"),
+          zod.literal("same"),
+          zod.literal(null),
+        ])
+        .nullable(),
+      bookingToSigned: zod
+        .union([
+          zod.literal("faster"),
+          zod.literal("slower"),
+          zod.literal("same"),
+          zod.literal(null),
+        ])
+        .nullable(),
+      signedToCompleted: zod
+        .union([
+          zod.literal("faster"),
+          zod.literal("slower"),
+          zod.literal("same"),
+          zod.literal(null),
+        ])
+        .nullable(),
+    }),
+  }),
+  outcomes: zod.object({
+    completed: zod.number(),
+    cancelled: zod.number(),
+    inProgress: zod.number(),
+    other: zod.number(),
+    total: zod.number(),
+    completedPct: zod.number(),
+    cancelledPct: zod.number(),
+    inProgressPct: zod.number(),
+    otherPct: zod.number(),
+  }),
+});
+
+/**
  * @summary Request a presigned URL for file upload
  */
 export const RequestUploadUrlBody = zod.object({
@@ -1091,77 +1803,88 @@ export const GetObjectParams = zod.object({
 });
 
 /**
- * @summary List reviews for a freelancer (public)
+ * @summary List reviews for a freelancer (public, paginated)
  */
 export const ListFreelancerReviewsParams = zod.object({
   freelancerId: zod.coerce.number(),
 });
 
-export const listFreelancerReviewsResponseReviewsItemRatingMax = 5;
+export const listFreelancerReviewsQueryPageDefault = 1;
+
+export const listFreelancerReviewsQueryPageSizeDefault = 10;
+export const listFreelancerReviewsQueryPageSizeMax = 50;
+
+export const ListFreelancerReviewsQueryParams = zod.object({
+  page: zod.coerce
+    .number()
+    .min(1)
+    .default(listFreelancerReviewsQueryPageDefault),
+  pageSize: zod.coerce
+    .number()
+    .min(1)
+    .max(listFreelancerReviewsQueryPageSizeMax)
+    .default(listFreelancerReviewsQueryPageSizeDefault),
+});
+
+export const listFreelancerReviewsResponseDataItemRatingMax = 5;
 
 export const ListFreelancerReviewsResponse = zod.object({
-  reviews: zod.array(
+  data: zod.array(
     zod.object({
       id: zod.number(),
-      bookingId: zod.number(),
-      reviewerId: zod.number(),
-      revieweeId: zod.number(),
-      reviewerRole: zod.string().describe("employer or freelancer"),
       rating: zod
         .number()
         .min(1)
-        .max(listFreelancerReviewsResponseReviewsItemRatingMax),
-      title: zod.string().nullish(),
-      content: zod.string().nullish(),
+        .max(listFreelancerReviewsResponseDataItemRatingMax),
+      comment: zod.string().nullish(),
+      reply: zod.string().nullish(),
       createdAt: zod.coerce.date(),
+      repliedAt: zod.coerce.date().nullish(),
+      employerDisplayName: zod.string(),
     }),
   ),
-  averageRating: zod.number().nullish(),
-  totalReviews: zod.number(),
+  total: zod.number(),
+  page: zod.number(),
+  pageSize: zod.number(),
+  totalPages: zod.number(),
 });
 
 /**
- * @summary Check whether current user has reviewed a booking
- */
-export const GetMyBookingReviewParams = zod.object({
-  bookingId: zod.coerce.number(),
-});
-
-export const getMyBookingReviewResponseReviewOneRatingMax = 5;
-
-export const GetMyBookingReviewResponse = zod.object({
-  reviewed: zod.boolean(),
-  review: zod
-    .union([
-      zod.object({
-        id: zod.number(),
-        bookingId: zod.number(),
-        reviewerId: zod.number(),
-        revieweeId: zod.number(),
-        reviewerRole: zod.string().describe("employer or freelancer"),
-        rating: zod
-          .number()
-          .min(1)
-          .max(getMyBookingReviewResponseReviewOneRatingMax),
-        title: zod.string().nullish(),
-        content: zod.string().nullish(),
-        createdAt: zod.coerce.date(),
-      }),
-      zod.null(),
-    ])
-    .optional(),
-});
-
-/**
- * @summary Submit a review for a completed booking
+ * @summary Submit a review for a completed booking (employer only)
  */
 export const createReviewBodyRatingMax = 5;
+
+export const createReviewBodyCommentMax = 1000;
 
 export const CreateReviewBody = zod.object({
   bookingId: zod.number(),
   rating: zod.number().min(1).max(createReviewBodyRatingMax),
-  title: zod.string().optional(),
-  content: zod.string().optional(),
+  comment: zod.string().max(createReviewBodyCommentMax).optional(),
+});
+
+/**
+ * @summary Freelancer reply to a review (one reply per review)
+ */
+export const ReplyToReviewParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const replyToReviewBodyReplyMax = 1000;
+
+export const ReplyToReviewBody = zod.object({
+  reply: zod.string().min(1).max(replyToReviewBodyReplyMax),
+});
+
+export const replyToReviewResponseRatingMax = 5;
+
+export const ReplyToReviewResponse = zod.object({
+  id: zod.number(),
+  rating: zod.number().min(1).max(replyToReviewResponseRatingMax),
+  comment: zod.string().nullish(),
+  reply: zod.string().nullish(),
+  createdAt: zod.coerce.date(),
+  repliedAt: zod.coerce.date().nullish(),
+  employerDisplayName: zod.string(),
 });
 
 /**
@@ -1189,13 +1912,25 @@ export const ListSavedFreelancersResponseItem = zod.object({
     .optional()
     .describe("unverified | pending | verified | rejected"),
   verificationNote: zod.string().nullish(),
+  verificationLevel: zod
+    .string()
+    .describe("unverified | partially_verified | fully_verified"),
   documentNames: zod.array(zod.string()).optional(),
   isAvailable: zod.boolean(),
   currentBookingId: zod.number().nullish(),
   bookingEndDate: zod.coerce.date().nullish(),
   subscriptionPlan: zod.string(),
   availableFrom: zod.coerce.date().nullish(),
+  nextAvailableDate: zod.coerce
+    .date()
+    .nullish()
+    .describe("Cached next available date (null when not available)"),
   availabilityNote: zod.string().nullish(),
+  averageRating: zod.number().nullish(),
+  reviewCount: zod.number(),
+  completenessScore: zod
+    .number()
+    .describe("Profile completeness score 0–100 (Talent Vault requires ≥ 60)"),
   createdAt: zod.coerce.date(),
 });
 export const ListSavedFreelancersResponse = zod.array(
@@ -1455,38 +2190,330 @@ export const GetPublicFreelancerProfileResponse = zod.object({
   reviews: zod.array(
     zod.object({
       id: zod.number(),
-      bookingId: zod.number(),
-      reviewerId: zod.number(),
-      revieweeId: zod.number(),
-      reviewerRole: zod.string().describe("employer or freelancer"),
       rating: zod
         .number()
         .min(1)
         .max(getPublicFreelancerProfileResponseReviewsItemRatingMax),
-      title: zod.string().nullish(),
-      content: zod.string().nullish(),
+      comment: zod.string().nullish(),
+      reply: zod.string().nullish(),
       createdAt: zod.coerce.date(),
+      repliedAt: zod.coerce.date().nullish(),
+      employerDisplayName: zod.string(),
     }),
   ),
   averageRating: zod.number().nullish(),
+  reviewCount: zod.number().optional(),
   totalReviews: zod.number(),
   createdAt: zod.coerce.date(),
 });
 
 /**
- * @summary Submit documents for AI verification and send confirmation email
+ * @summary Request a presigned upload URL for a verification document
  */
-export const VerifyDocumentsBody = zod.object({
-  documentUrls: zod.array(zod.string()),
-  documentNames: zod.array(zod.string()),
+export const PostDocumentsUploadUrlBody = zod.object({
+  documentType: zod.enum(["government_id", "professional_credential"]),
+  mimeType: zod
+    .string()
+    .describe("image\/jpeg, image\/png, image\/webp, or application\/pdf"),
+  fileSize: zod.number(),
 });
 
-export const VerifyDocumentsResponse = zod.object({
-  status: zod.string().describe("verified | rejected | pending"),
-  note: zod.string().describe("AI reviewer note"),
-  emailSent: zod.boolean(),
-  emailPreviewUrl: zod
+export const PostDocumentsUploadUrlResponse = zod.object({
+  uploadUrl: zod.string(),
+  storagePath: zod.string(),
+});
+
+/**
+ * @summary Confirm document upload and queue AI review
+ */
+export const PostDocumentsConfirmBody = zod.object({
+  documentType: zod.enum(["government_id", "professional_credential"]),
+  storagePath: zod.string(),
+});
+
+/**
+ * @summary Get my document verification status
+ */
+export const GetDocumentsMeResponse = zod.object({
+  verificationLevel: zod
     .string()
-    .nullish()
-    .describe("Ethereal preview URL (dev only)"),
+    .describe("unverified | partially_verified | fully_verified"),
+  documents: zod.array(
+    zod.object({
+      documentType: zod.string(),
+      status: zod
+        .string()
+        .describe("pending | verified | rejected | needs_review"),
+      confidence: zod.number().nullish(),
+      aiNotes: zod.string().nullish(),
+      adminNotes: zod.string().nullish(),
+      updatedAt: zod.coerce.date(),
+    }),
+  ),
+});
+
+/**
+ * @summary Get team details and member list
+ */
+export const GetTeamResponse = zod.object({
+  team: zod.object({
+    id: zod.string(),
+    name: zod.string(),
+    ownerUserId: zod.number(),
+    createdAt: zod.coerce.date(),
+  }),
+  members: zod.array(
+    zod.object({
+      id: zod.number(),
+      userId: zod.number().nullish(),
+      role: zod.enum(["admin", "member"]),
+      status: zod.enum(["invited", "active", "deactivated"]),
+      invitedEmail: zod.string(),
+      invitedAt: zod.coerce.date(),
+      joinedAt: zod.coerce.date().nullish(),
+      displayName: zod.string().nullish(),
+      displayEmail: zod.string(),
+    }),
+  ),
+  isAdmin: zod.boolean(),
+  isOwner: zod.boolean(),
+});
+
+/**
+ * @summary Create a team (enterprise employer, once)
+ */
+export const CreateTeamBody = zod.object({
+  name: zod.string().optional(),
+});
+
+/**
+ * @summary Update team name (admin only)
+ */
+export const UpdateTeamBody = zod.object({
+  name: zod.string(),
+});
+
+export const UpdateTeamResponse = zod.object({
+  team: zod.object({
+    id: zod.string(),
+    name: zod.string(),
+    ownerUserId: zod.number(),
+    createdAt: zod.coerce.date(),
+  }),
+  members: zod.array(
+    zod.object({
+      id: zod.number(),
+      userId: zod.number().nullish(),
+      role: zod.enum(["admin", "member"]),
+      status: zod.enum(["invited", "active", "deactivated"]),
+      invitedEmail: zod.string(),
+      invitedAt: zod.coerce.date(),
+      joinedAt: zod.coerce.date().nullish(),
+      displayName: zod.string().nullish(),
+      displayEmail: zod.string(),
+    }),
+  ),
+  isAdmin: zod.boolean(),
+  isOwner: zod.boolean(),
+});
+
+/**
+ * @summary Invite a team member (admin only)
+ */
+export const InviteTeamMemberBody = zod.object({
+  email: zod.string().email(),
+  role: zod.enum(["admin", "member"]).optional(),
+});
+
+/**
+ * @summary Accept a team invitation via token
+ */
+export const AcceptTeamInviteQueryParams = zod.object({
+  token: zod.coerce.string(),
+});
+
+export const AcceptTeamInviteResponse = zod.object({
+  teamName: zod.string(),
+  teamId: zod.string(),
+  message: zod.string(),
+});
+
+/**
+ * @summary List shared team shortlist (active team members)
+ */
+export const ListTeamShortlistResponseItem = zod.object({
+  id: zod.number().describe("Shortlist entry ID"),
+  freelancer: zod.object({
+    id: zod.number(),
+    userId: zod.number(),
+    clerkId: zod.string(),
+    name: zod.string(),
+    tagline: zod.string(),
+    fieldOfWork: zod.string(),
+    skills: zod.array(zod.string()),
+    yearsExperience: zod.number(),
+    bio: zod.string().nullish(),
+    resumeUrl: zod.string().nullish(),
+    portfolioUrl: zod.string().nullish(),
+    paymentPreference: zod.string().describe("hourly or daily"),
+    hourlyRate: zod.number().nullish(),
+    dailyRate: zod.number().nullish(),
+    achievements: zod.string().nullish(),
+    isVerified: zod.boolean(),
+    verificationStatus: zod
+      .string()
+      .optional()
+      .describe("unverified | pending | verified | rejected"),
+    verificationNote: zod.string().nullish(),
+    verificationLevel: zod
+      .string()
+      .describe("unverified | partially_verified | fully_verified"),
+    documentNames: zod.array(zod.string()).optional(),
+    isAvailable: zod.boolean(),
+    currentBookingId: zod.number().nullish(),
+    bookingEndDate: zod.coerce.date().nullish(),
+    subscriptionPlan: zod.string(),
+    availableFrom: zod.coerce.date().nullish(),
+    nextAvailableDate: zod.coerce
+      .date()
+      .nullish()
+      .describe("Cached next available date (null when not available)"),
+    availabilityNote: zod.string().nullish(),
+    averageRating: zod.number().nullish(),
+    reviewCount: zod.number(),
+    completenessScore: zod
+      .number()
+      .describe(
+        "Profile completeness score 0–100 (Talent Vault requires ≥ 60)",
+      ),
+    createdAt: zod.coerce.date(),
+  }),
+  addedByUserId: zod.number(),
+  addedByName: zod.string(),
+  addedAt: zod.coerce.date(),
+});
+export const ListTeamShortlistResponse = zod.array(
+  ListTeamShortlistResponseItem,
+);
+
+/**
+ * @summary Add a freelancer to the shared team shortlist
+ */
+export const AddTeamShortlistBody = zod.object({
+  freelancerId: zod.number(),
+});
+
+export const AddTeamShortlistResponse = zod.object({
+  id: zod.number().describe("Shortlist entry ID"),
+  freelancer: zod.object({
+    id: zod.number(),
+    userId: zod.number(),
+    clerkId: zod.string(),
+    name: zod.string(),
+    tagline: zod.string(),
+    fieldOfWork: zod.string(),
+    skills: zod.array(zod.string()),
+    yearsExperience: zod.number(),
+    bio: zod.string().nullish(),
+    resumeUrl: zod.string().nullish(),
+    portfolioUrl: zod.string().nullish(),
+    paymentPreference: zod.string().describe("hourly or daily"),
+    hourlyRate: zod.number().nullish(),
+    dailyRate: zod.number().nullish(),
+    achievements: zod.string().nullish(),
+    isVerified: zod.boolean(),
+    verificationStatus: zod
+      .string()
+      .optional()
+      .describe("unverified | pending | verified | rejected"),
+    verificationNote: zod.string().nullish(),
+    verificationLevel: zod
+      .string()
+      .describe("unverified | partially_verified | fully_verified"),
+    documentNames: zod.array(zod.string()).optional(),
+    isAvailable: zod.boolean(),
+    currentBookingId: zod.number().nullish(),
+    bookingEndDate: zod.coerce.date().nullish(),
+    subscriptionPlan: zod.string(),
+    availableFrom: zod.coerce.date().nullish(),
+    nextAvailableDate: zod.coerce
+      .date()
+      .nullish()
+      .describe("Cached next available date (null when not available)"),
+    availabilityNote: zod.string().nullish(),
+    averageRating: zod.number().nullish(),
+    reviewCount: zod.number(),
+    completenessScore: zod
+      .number()
+      .describe(
+        "Profile completeness score 0–100 (Talent Vault requires ≥ 60)",
+      ),
+    createdAt: zod.coerce.date(),
+  }),
+  addedByUserId: zod.number(),
+  addedByName: zod.string(),
+  addedAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Remove a freelancer from the shared team shortlist
+ */
+export const RemoveTeamShortlistParams = zod.object({
+  freelancerId: zod.coerce.number(),
+});
+
+export const RemoveTeamShortlistResponse = zod.object({
+  success: zod.boolean(),
+});
+
+/**
+ * @summary Team-wide hiring analytics (admin only)
+ */
+export const getTeamAnalyticsQueryWindowDefault = `90d`;
+
+export const GetTeamAnalyticsQueryParams = zod.object({
+  window: zod
+    .enum(["30d", "90d", "12m"])
+    .default(getTeamAnalyticsQueryWindowDefault),
+});
+
+export const GetTeamAnalyticsResponse = zod.object({
+  teamName: zod.string(),
+  window: zod.enum(["30d", "90d", "12m"]),
+  totalSpend: zod.number(),
+  bookingsCreated: zod.number(),
+  spendByMember: zod.array(
+    zod.object({
+      userId: zod.number(),
+      name: zod.string(),
+      spend: zod.number(),
+    }),
+  ),
+  mostHiredFreelancers: zod.array(
+    zod.object({
+      freelancerId: zod.number(),
+      name: zod.string(),
+      fieldOfWork: zod.string(),
+      totalSpend: zod.number(),
+      bookingCount: zod.number(),
+    }),
+  ),
+  openJobsByMember: zod.array(
+    zod.object({
+      userId: zod.number(),
+      name: zod.string(),
+      openJobCount: zod.number(),
+    }),
+  ),
+});
+
+/**
+ * @summary Remove or deactivate a team member (admin only)
+ */
+export const RemoveTeamMemberParams = zod.object({
+  memberId: zod.coerce.number(),
+});
+
+export const RemoveTeamMemberResponse = zod.object({
+  success: zod.boolean(),
 });

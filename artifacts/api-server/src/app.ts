@@ -1,6 +1,7 @@
 import express, { type Express } from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
+import helmet from "helmet";
 import pinoHttp from "pino-http";
 import { clerkMiddleware } from "@clerk/express";
 import { publishableKeyFromHost } from "@clerk/shared/keys";
@@ -11,8 +12,14 @@ import {
 } from "./middlewares/clerkProxyMiddleware";
 import router from "./routes";
 import { logger } from "./lib/logger";
+import { generateCsrfToken, doubleCsrfProtection } from "./lib/csrf";
 
 const app: Express = express();
+
+app.use(helmet());
+
+// Uncomment when deployed behind a reverse proxy (e.g. Railway, Render, nginx):
+// app.set('trust proxy', 1);
 
 app.use(
   pinoHttp({
@@ -38,8 +45,8 @@ app.use(CLERK_PROXY_PATH, clerkProxyMiddleware());
 
 app.use(cors({ credentials: true, origin: true }));
 app.use(cookieParser());
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: "1mb" }));
+app.use(express.urlencoded({ extended: true, limit: "1mb" }));
 
 app.use(
   clerkMiddleware((req) => ({
@@ -49,6 +56,24 @@ app.use(
     ),
   })),
 );
+
+// CSRF: token endpoint must be registered before protection middleware.
+app.get("/api/admin/csrf-token", (req, res) => {
+  if (!process.env.CSRF_SECRET) {
+    res.status(500).json({ error: "CSRF not configured" });
+    return;
+  }
+  res.json({ token: generateCsrfToken(req, res) });
+});
+
+app.use("/api/admin", (req, res, next) => {
+  if (req.method === "GET" || req.method === "HEAD") return next();
+  if (!process.env.CSRF_SECRET) {
+    res.status(500).json({ error: "CSRF not configured" });
+    return;
+  }
+  return doubleCsrfProtection(req, res, next);
+});
 
 app.use("/api", router);
 

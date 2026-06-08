@@ -8,7 +8,9 @@
 
 export type ListAgreementsParams = {
   /**
-   * Filter by status (draft, pending_signatures, signed, active, completed)
+   * Filter by status (draft, redlined, partially_signed, fully_signed)
    */
   status?: string;
+  page?: number;
+  pageSize?: number;
 };

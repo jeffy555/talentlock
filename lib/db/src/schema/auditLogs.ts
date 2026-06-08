@@ -1,4 +1,7 @@
-import { pgTable, text, serial, timestamp, integer, index } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, timestamp, integer, index, jsonb } from "drizzle-orm/pg-core";
+
+// Security Hardening Phase 2 — inspection: ipAddress/userAgent existed; added entityType/entityId;
+// metadata migrated text → jsonb. event column is free-form text (no enum constraint).
 
 export const auditLogsTable = pgTable("audit_logs", {
   id: serial("id").primaryKey(),
@@ -9,7 +12,9 @@ export const auditLogsTable = pgTable("audit_logs", {
   event: text("event").notNull(),
   ipAddress: text("ip_address"),
   userAgent: text("user_agent"),
-  metadata: text("metadata"),
+  entityType: text("entity_type"),
+  entityId: text("entity_id"),
+  metadata: jsonb("metadata"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 }, (t) => ({
   byCreated: index("audit_logs_created_idx").on(t.createdAt),

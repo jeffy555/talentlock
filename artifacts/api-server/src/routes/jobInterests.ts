@@ -6,11 +6,12 @@ import {
   jobRequirementsTable,
   freelancerProfilesTable,
   employerProfilesTable,
-  notificationsTable,
   usersTable,
 } from "@workspace/db";
 import { eq, and, desc, gte, sql } from "drizzle-orm";
 import { getUserSubscription, checkLimit } from "../lib/subscriptionGating";
+import { createNotification, NotificationType, userIdFromEmployerProfileId } from "../lib/createNotification";
+import { sendNotificationEmailAsync } from "../lib/emailService";
 
 const router = Router();
 
@@ -68,26 +69,20 @@ router.post("/job-requirements/:id/interest", async (req, res) => {
       throw insertErr;
     }
 
-    // Notify the employer who owns this job. Notification failure must not roll
-    // back the (already-committed) interest record — log and continue.
-    try {
-      const [employerProfile] = await db.select().from(employerProfilesTable)
-        .where(eq(employerProfilesTable.id, job.employerId)).limit(1);
-      if (employerProfile) {
-        const [employerUser] = await db.select().from(usersTable)
-          .where(eq(usersTable.clerkId, employerProfile.clerkId)).limit(1);
-        if (employerUser) {
-          await db.insert(notificationsTable).values({
-            userId: employerUser.id,
-            type: "job_interest",
-            title: "New interest in your role",
-            message: `${freelancer.name} expressed interest in "${job.title}".`,
-            link: `/jobs/${job.id}`,
-          });
-        }
-      }
-    } catch (notifyErr) {
-      req.log.error({ err: notifyErr, jobId, freelancerId: freelancer.id }, "Failed to enqueue employer notification (interest still recorded)");
+    const employerUserId = await userIdFromEmployerProfileId(job.employerId);
+    if (employerUserId) {
+      const interestMsg = `${freelancer.name} expressed interest in "${job.title}".`;
+      createNotification(db, {
+        userId: employerUserId,
+        type: NotificationType.JOB_INTEREST,
+        entityType: "job",
+        entityId: jobId,
+        message: interestMsg,
+      }).catch((err) => req.log.warn({ err, jobId }, "notification write failed"));
+      sendNotificationEmailAsync(
+        db, employerUserId, "New job interest on TalentLock", interestMsg,
+        `/jobs/${jobId}`, req.log,
+      );
     }
 
     res.status(201).json(interest);

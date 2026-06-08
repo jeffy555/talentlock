@@ -6,7 +6,10 @@ import {
   useSendOpenaiMessage,
   useDeleteOpenaiConversation,
   useGetMe,
+  useGetMyEmployerProfile,
   useGetFreelancerProfile,
+  useGetTokenUsageMe,
+  useListJobRequirements,
 } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -17,10 +20,23 @@ import {
   Bot, MessageSquare, Plus, Send, Trash2, User,
   Mail, ExternalLink, Calendar, BadgeCheck, Lock, Sparkles,
 } from "lucide-react";
+import { resolveVerificationLevel, isVerifiedLevel } from "@/lib/verification";
 import { format } from "date-fns";
-import { Link } from "wouter";
+import { Link, useLocation, useSearch } from "wouter";
+import { TokenUsageBanner } from "@/components/TokenUsageBanner";
+import ConversationTokenBadge from "@/components/ConversationTokenBadge";
+import ConversationTokenBreakdown from "@/components/ConversationTokenBreakdown";
+import MatchExplanationCard from "@/components/MatchExplanationCard";
+import {
+  freelancerProfileHref,
+  parseJobIdFromSearch,
+  persistJobId,
+  readPersistedJobId,
+  resolveActiveJobId,
+} from "@/lib/aiMatchJobContext";
 
 type Match = { id: number; score?: number; reason?: string };
+type Recommendation = { freelancerId: string; name: string };
 
 const MATCH_MARKER_RE = /\[MATCH:(\d+)\|SCORE:(\d+)\|REASON:([^\]]+)\]/g;
 
@@ -51,6 +67,29 @@ function stripMatchMarkers(text: string): string {
   return text.replace(MATCH_MARKER_RE, "").replace(/\n{3,}/g, "\n\n").trim();
 }
 
+function parseChatResponse(rawContent: string): {
+  message: string;
+  recommendations: Recommendation[];
+  isStructuredJson: boolean;
+} {
+  try {
+    const parsed = JSON.parse(rawContent);
+    if (parsed.message && Array.isArray(parsed.recommendations)) {
+      return {
+        message: parsed.message,
+        recommendations: parsed.recommendations.map((rec: { freelancerId: string | number; name: string }) => ({
+          freelancerId: String(rec.freelancerId),
+          name: rec.name,
+        })),
+        isStructuredJson: true,
+      };
+    }
+  } catch {
+    // Legacy format or non-JSON response
+  }
+  return { message: rawContent, recommendations: [], isStructuredJson: false };
+}
+
 function scoreColor(score?: number): string {
   if (score === undefined) return "bg-secondary text-secondary-foreground border-border";
   if (score >= 90) return "bg-green-100 text-green-800 border-green-200";
@@ -66,7 +105,13 @@ function scoreLabel(score: number): string {
   return "Weak match";
 }
 
-function FreelancerContactCard({ match }: { match: Match }) {
+function FreelancerContactCard({
+  match,
+  jobRequirementId,
+}: {
+  match: Match;
+  jobRequirementId?: number | null;
+}) {
   const { data: freelancer, isLoading } = useGetFreelancerProfile(match.id, {
     query: { enabled: true } as any,
   });
@@ -95,6 +140,7 @@ function FreelancerContactCard({ match }: { match: Match }) {
   }
   if (!freelancer) return null;
 
+  const profileJobId = jobRequirementId ?? readPersistedJobId();
   const f = freelancer as typeof freelancer & { email?: string | null };
   const initials = f.name.split(" ").map((w: string) => w[0]).join("").slice(0, 2).toUpperCase();
   const rate = f.paymentPreference === "hourly" && f.hourlyRate
@@ -123,7 +169,9 @@ function FreelancerContactCard({ match }: { match: Match }) {
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="font-semibold text-sm">{f.name}</span>
-            {f.isVerified && <BadgeCheck className="h-4 w-4 text-primary" />}
+            {isVerifiedLevel(resolveVerificationLevel(f as { verificationLevel?: string; isVerified?: boolean })) && (
+              <BadgeCheck className="h-4 w-4 text-primary" />
+            )}
             {f.isAvailable
               ? <Badge className="bg-green-600 text-white text-xs py-0">Available</Badge>
               : <Badge variant="destructive" className="text-xs py-0 flex items-center gap-1"><Lock className="h-2.5 w-2.5" />Booked</Badge>
@@ -174,11 +222,11 @@ function FreelancerContactCard({ match }: { match: Match }) {
 
         <div className="flex gap-2 pt-1">
           <Button size="sm" variant="outline" className="flex-1 text-xs h-7" asChild>
-            <Link href={`/freelancers/${f.id}`}>View Profile</Link>
+            <Link href={freelancerProfileHref(f.id, profileJobId)}>View Profile</Link>
           </Button>
           {f.isAvailable && (
             <Button size="sm" className="flex-1 text-xs h-7" asChild>
-              <Link href={`/freelancers/${f.id}`}>
+              <Link href={freelancerProfileHref(f.id, profileJobId)}>
                 <Calendar className="h-3 w-3 mr-1" />Book Now
               </Link>
             </Button>
@@ -189,9 +237,27 @@ function FreelancerContactCard({ match }: { match: Match }) {
   );
 }
 
-function AiMessageBubble({ msg }: { msg: any }) {
-  const matches = msg.role === "assistant" ? parseMatches(msg.content) : [];
-  const displayContent = msg.role === "assistant" ? stripMatchMarkers(msg.content) : msg.content;
+function AiMessageBubble({
+  msg,
+  conversationId,
+  activeJobId,
+}: {
+  msg: any;
+  conversationId: number;
+  activeJobId?: number;
+}) {
+  const effectiveJobId = activeJobId ?? null;
+  const isAssistant = msg.role === "assistant";
+  const parsed = isAssistant ? parseChatResponse(msg.content) : null;
+  const jsonRecommendations = parsed && parsed.recommendations.length > 0
+    ? parsed.recommendations.slice(0, 3)
+    : [];
+  const legacyMatches = isAssistant && jsonRecommendations.length === 0
+    ? parseMatches(msg.content)
+    : [];
+  const displayContent = isAssistant
+    ? (parsed!.isStructuredJson ? parsed!.message : stripMatchMarkers(msg.content))
+    : msg.content;
 
   return (
     <div className="space-y-3">
@@ -211,15 +277,37 @@ function AiMessageBubble({ msg }: { msg: any }) {
         )}
       </div>
 
-      {matches.length > 0 && (
+      {jsonRecommendations.length > 0 && (
+        <div className="ml-11 min-w-0 space-y-3">
+          <p className="text-xs text-muted-foreground mb-2 font-medium flex items-center gap-1.5">
+            <Sparkles className="h-3 w-3 text-primary" />
+            {jsonRecommendations.length} matched {jsonRecommendations.length === 1 ? "candidate" : "candidates"}:
+          </p>
+          {jsonRecommendations.map(rec => (
+            <div key={rec.freelancerId}>
+              <FreelancerContactCard
+                match={{ id: parseInt(rec.freelancerId, 10) }}
+                jobRequirementId={effectiveJobId}
+              />
+              <MatchExplanationCard
+                freelancerId={rec.freelancerId}
+                jobRequirementId={effectiveJobId != null ? String(effectiveJobId) : undefined}
+                conversationId={String(conversationId)}
+              />
+            </div>
+          ))}
+        </div>
+      )}
+
+      {legacyMatches.length > 0 && (
         <div className="ml-11 min-w-0">
           <p className="text-xs text-muted-foreground mb-2 font-medium flex items-center gap-1.5">
             <Sparkles className="h-3 w-3 text-primary" />
-            {matches.length} matched {matches.length === 1 ? "candidate" : "candidates"} — sorted by fit:
+            {legacyMatches.length} matched {legacyMatches.length === 1 ? "candidate" : "candidates"} — sorted by fit:
           </p>
           <div className="grid gap-3 grid-cols-1 xl:grid-cols-2 min-w-0">
-            {[...matches].sort((a, b) => (b.score ?? 0) - (a.score ?? 0)).map(m => (
-              <FreelancerContactCard key={m.id} match={m} />
+            {[...legacyMatches].sort((a, b) => (b.score ?? 0) - (a.score ?? 0)).map(m => (
+              <FreelancerContactCard key={m.id} match={m} jobRequirementId={effectiveJobId} />
             ))}
           </div>
         </div>
@@ -230,7 +318,25 @@ function AiMessageBubble({ msg }: { msg: any }) {
 
 export default function AiMatch() {
   const { toast } = useToast();
+  const [, setLocation] = useLocation();
+  const search = useSearch();
+  const urlJobRequirementId = parseJobIdFromSearch(search);
   const { data: me } = useGetMe();
+  const { data: myEmployerProfile } = useGetMyEmployerProfile({
+    query: { enabled: me?.role === "employer" } as any,
+  });
+  const { data: employerJobs } = useListJobRequirements(
+    myEmployerProfile ? { employerId: myEmployerProfile.id, status: "open" } : undefined,
+    { query: { enabled: me?.role === "employer" && !!myEmployerProfile?.id } as any },
+  );
+  const latestOpenJobId = employerJobs?.length
+    ? [...employerJobs].sort(
+        (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+      )[0]?.id
+    : undefined;
+  const { data: tokenUsage } = useGetTokenUsageMe({
+    query: { enabled: me?.role === "employer" } as any,
+  });
   const { data: conversations, refetch: refetchConversations } = useListOpenaiConversations();
   const createConversation = useCreateOpenaiConversation();
   const deleteConversation = useDeleteOpenaiConversation();
@@ -246,6 +352,26 @@ export default function AiMatch() {
     { query: { enabled: selectedId !== null } as any }
   );
 
+  const activeJobId = resolveActiveJobId(
+    activeConversation?.jobRequirementId,
+    urlJobRequirementId,
+    latestOpenJobId,
+  );
+
+  useEffect(() => {
+    if (activeJobId) persistJobId(activeJobId);
+  }, [activeJobId]);
+
+  useEffect(() => {
+    if (urlJobRequirementId) persistJobId(urlJobRequirementId);
+  }, [urlJobRequirementId]);
+
+  useEffect(() => {
+    if (activeConversation?.jobRequirementId != null) {
+      persistJobId(activeConversation.jobRequirementId);
+    }
+  }, [activeConversation?.jobRequirementId]);
+
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [activeConversation?.messages]);
@@ -260,10 +386,35 @@ export default function AiMatch() {
     );
   }
 
+  const monthlyTokenLimit = tokenUsage?.monthlyTokenLimit ?? null;
+  const tokensUsed = tokenUsage?.tokensUsed ?? 0;
+  const isAtLimit = !!monthlyTokenLimit && tokensUsed >= monthlyTokenLimit;
+  const resetLabel = tokenUsage?.resetDate
+    ? new Date(tokenUsage.resetDate).toLocaleDateString(undefined, {
+        month: "long",
+        day: "numeric",
+        year: "numeric",
+      })
+    : null;
+
+  const handleTokenLimitError = (error: any) => {
+    const body = error?.body ?? error?.data ?? error?.response?.data;
+    if (error?.status === 402 && body?.code === "TOKEN_LIMIT") {
+      setLocation("/pricing");
+      return true;
+    }
+    return false;
+  };
+
   const handleNewConversation = async () => {
     const title = newConvTitle.trim() || `Talent Search ${format(new Date(), "MMM d")}`;
     try {
-      const conv = await createConversation.mutateAsync({ data: { title } });
+      const conv = await createConversation.mutateAsync({
+        data: {
+          title,
+          ...(activeJobId ? { jobRequirementId: activeJobId } : {}),
+        },
+      });
       await refetchConversations();
       setSelectedId(conv.id);
       setNewConvTitle("");
@@ -283,13 +434,14 @@ export default function AiMatch() {
   };
 
   const handleSend = async () => {
-    if (!inputMessage.trim() || selectedId === null) return;
+    if (!inputMessage.trim() || selectedId === null || isAtLimit) return;
     const msg = inputMessage;
     setInputMessage("");
     try {
       await sendMessage.mutateAsync({ id: selectedId, data: { content: msg } });
       refetchConv();
-    } catch {
+    } catch (error: any) {
+      if (handleTokenLimitError(error)) return;
       toast({ title: "Failed to send message", variant: "destructive" });
     }
   };
@@ -303,6 +455,8 @@ export default function AiMatch() {
 
   return (
     <div className="space-y-6">
+      <TokenUsageBanner />
+
       <div>
         <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
           <Bot className="h-8 w-8" />AI Talent Matching
@@ -339,7 +493,14 @@ export default function AiMatch() {
                   onClick={() => setSelectedId(conv.id)}
                 >
                   <MessageSquare className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                  <span className="text-sm font-medium flex-1 truncate">{conv.title}</span>
+                  <div className="flex items-center gap-1 flex-1 min-w-0">
+                    <span className="text-sm font-medium flex-1 truncate">{conv.title}</span>
+                    <ConversationTokenBadge
+                      conversationId={conv.id}
+                      isActive={selectedId === conv.id}
+                      userPlan={tokenUsage?.plan ?? "employer_starter"}
+                    />
+                  </div>
                   <button
                     className="opacity-0 group-hover:opacity-100 transition-opacity"
                     onClick={(e) => { e.stopPropagation(); handleDeleteConversation(conv.id); }}
@@ -380,7 +541,12 @@ export default function AiMatch() {
                   </div>
                 ) : (
                   activeConversation.messages.map((msg: any) => (
-                    <AiMessageBubble key={msg.id} msg={msg} />
+                    <AiMessageBubble
+                      key={msg.id}
+                      msg={msg}
+                      conversationId={selectedId!}
+                      activeJobId={activeJobId}
+                    />
                   ))
                 )}
                 {sendMessage.isPending && (
@@ -399,19 +565,37 @@ export default function AiMatch() {
                 )}
                 <div ref={messagesEndRef} />
               </CardContent>
-              <div className="p-4 border-t">
+              <div className="px-4 pb-2">
+                <ConversationTokenBreakdown
+                  conversationId={selectedId}
+                  userPlan={tokenUsage?.plan ?? "employer_starter"}
+                />
+              </div>
+              <div className="p-4 border-t space-y-2">
                 <div className="flex gap-2">
                   <Input
                     placeholder="Describe the talent you need..."
                     value={inputMessage}
                     onChange={e => setInputMessage(e.target.value)}
                     onKeyDown={handleKeyDown}
-                    disabled={sendMessage.isPending}
+                    disabled={sendMessage.isPending || isAtLimit}
                   />
-                  <Button size="icon" onClick={handleSend} disabled={sendMessage.isPending || !inputMessage.trim()}>
+                  <Button
+                    size="icon"
+                    onClick={handleSend}
+                    disabled={sendMessage.isPending || !inputMessage.trim() || isAtLimit}
+                  >
                     <Send className="h-4 w-4" />
                   </Button>
                 </div>
+                {isAtLimit && resetLabel && (
+                  <p className="text-sm text-muted-foreground">
+                    Your monthly AI token limit has been reached. Tokens reset on {resetLabel}.{" "}
+                    <Link href="/pricing" className="text-primary underline-offset-4 hover:underline">
+                      Upgrade your plan →
+                    </Link>
+                  </p>
+                )}
               </div>
             </>
           )}

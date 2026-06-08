@@ -75,6 +75,7 @@
     "zod": "catalog:"
   },
   "dependencies": {
-    "@clerk/react": "^6.5.0"
+    "@clerk/react": "^6.5.0",
+    "use-debounce": "^10.1.1"
   }
 }

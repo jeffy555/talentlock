@@ -12,8 +12,17 @@ import {
   auditLogsTable,
   freelancerProfilesTable,
   employerProfilesTable,
+  reviewsTable,
+  tokenUsage,
+  documentsTable,
 } from "@workspace/db";
-import { sql, desc, eq, gte, count, and } from "drizzle-orm";
+import { sql, desc, eq, gte, count, and, asc, inArray } from "drizzle-orm";
+import { PLANS, type PlanId } from "../lib/plans";
+import { updateVerificationLevel } from "../lib/documentReview";
+import { createNotification, NotificationType, userIdFromFreelancerProfileId } from "../lib/createNotification";
+import { sendNotificationEmailAsync } from "../lib/emailService";
+import { isPdfStoragePath } from "../lib/documentConstants";
+import { ObjectStorageService } from "../lib/objectStorage";
 import {
   verifyAdminCredentials,
   issueAdminCookie,
@@ -23,6 +32,7 @@ import {
 } from "../lib/adminAuth";
 
 const router: IRouter = Router();
+const objectStorageService = new ObjectStorageService();
 
 // Naive in-memory rate limit: 10 attempts / 5 min per IP.
 const loginAttempts = new Map<string, { count: number; resetAt: number }>();
@@ -179,7 +189,37 @@ router.get("/admin/bookings", requireAdmin, async (req, res) => {
     .leftJoin(employerProfilesTable, eq(bookingsTable.employerId, employerProfilesTable.id))
     .orderBy(desc(bookingsTable.createdAt))
     .limit(limit);
-  res.json(rows);
+
+  const bookingIds = rows.map((r) => r.id);
+  const reviewRows = bookingIds.length > 0
+    ? await db
+        .select({
+          bookingId: reviewsTable.bookingId,
+          rating: reviewsTable.rating,
+          comment: reviewsTable.comment,
+          reply: reviewsTable.reply,
+        })
+        .from(reviewsTable)
+        .where(inArray(reviewsTable.bookingId, bookingIds))
+    : [];
+
+  const reviewByBookingId = new Map(reviewRows.map((r) => [r.bookingId, r]));
+
+  res.json(
+    rows.map((row) => {
+      const review = reviewByBookingId.get(row.id);
+      return {
+        ...row,
+        review: review
+          ? {
+              rating: review.rating,
+              comment: review.comment,
+              hasReply: review.reply != null,
+            }
+          : null,
+      };
+    }),
+  );
 });
 
 router.get("/admin/jobs", requireAdmin, async (req, res) => {
@@ -218,9 +258,87 @@ router.get("/admin/subscriptions", requireAdmin, async (_req, res) => {
   res.json(rows);
 });
 
+router.get("/admin/token-usage", requireAdmin, async (req, res) => {
+  try {
+    const pageSize = 20;
+    const page = Math.max(1, Number(req.query.page) || 1);
+    const offset = (page - 1) * pageSize;
+
+    const now = new Date();
+    const startOfMonthUtc = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+
+    const [totalRow] = await db
+      .select({ c: count() })
+      .from(usersTable)
+      .where(eq(usersTable.role, "employer"));
+    const total = totalRow?.c ?? 0;
+
+    const employers = await db
+      .select({
+        userId: usersTable.id,
+        email: usersTable.email,
+        subscriptionPlan: subscriptionsTable.plan,
+      })
+      .from(usersTable)
+      .leftJoin(subscriptionsTable, eq(usersTable.id, subscriptionsTable.userId))
+      .where(eq(usersTable.role, "employer"))
+      .orderBy(asc(usersTable.email))
+      .limit(pageSize)
+      .offset(offset);
+
+    const employerIds = employers.map((e) => e.userId);
+    const usageByUserId = new Map<number, number>();
+
+    if (employerIds.length > 0) {
+      const usageRows = await db
+        .select({
+          userId: tokenUsage.userId,
+          tokensUsed: sql<number>`coalesce(sum(${tokenUsage.totalTokens}), 0)::int`.as("tokens_used"),
+        })
+        .from(tokenUsage)
+        .where(and(inArray(tokenUsage.userId, employerIds), gte(tokenUsage.createdAt, startOfMonthUtc)))
+        .groupBy(tokenUsage.userId);
+
+      for (const row of usageRows) {
+        usageByUserId.set(row.userId, row.tokensUsed);
+      }
+    }
+
+    const data = employers.map((employer) => {
+      const planId = employer.subscriptionPlan ?? "employer_starter";
+      const planDef = PLANS[planId as PlanId] ?? PLANS.employer_starter;
+      const monthlyTokenLimit =
+        employer.subscriptionPlan === null
+          ? PLANS.employer_starter.limits.monthlyTokenLimit
+          : planDef.limits.monthlyTokenLimit;
+      const tokensUsed = usageByUserId.get(employer.userId) ?? 0;
+      const percentUsed =
+        monthlyTokenLimit === null ? null : Math.floor((tokensUsed / monthlyTokenLimit) * 100);
+
+      return {
+        userId: String(employer.userId),
+        email: employer.email,
+        planId,
+        planDisplayName: planDef.name,
+        monthlyTokenLimit,
+        tokensUsed,
+        percentUsed,
+      };
+    });
+
+    res.json({ data, total, page, pageSize });
+  } catch (err) {
+    req.log.error({ err }, "Failed to fetch admin token usage");
+    res.status(500).json({ error: "Failed to fetch token usage" });
+  }
+});
+
 router.post("/admin/reset-freelancer-availability", requireAdmin, async (req, res) => {
   const { email } = req.body as { email?: string };
-  if (!email) return res.status(400).json({ error: "email required" });
+  if (!email) {
+    res.status(400).json({ error: "email required" });
+    return;
+  }
   try {
     const result = await db.execute(sql`
       UPDATE freelancer_profiles fp
@@ -646,6 +764,162 @@ router.post("/admin/wipe-all-data", requireAdmin, async (req, res) => {
   } catch (err) {
     req.log.error({ err }, "Failed to wipe data");
     res.status(500).json({ error: "Wipe failed" });
+  }
+});
+
+router.get("/admin/documents", requireAdmin, async (req, res) => {
+  try {
+    const page = Math.max(1, parseInt(String(req.query.page ?? "1"), 10) || 1);
+    const pageSize = 20;
+    const offset = (page - 1) * pageSize;
+
+    const [totalRow] = await db
+      .select({ total: count() })
+      .from(documentsTable)
+      .where(eq(documentsTable.status, "needs_review"));
+
+    const rows = await db
+      .select({
+        id: documentsTable.id,
+        freelancerId: documentsTable.freelancerId,
+        documentType: documentsTable.documentType,
+        aiNotes: documentsTable.aiNotes,
+        confidence: documentsTable.confidence,
+        updatedAt: documentsTable.updatedAt,
+        fileUrl: documentsTable.fileUrl,
+        freelancerName: freelancerProfilesTable.name,
+        freelancerEmail: usersTable.email,
+      })
+      .from(documentsTable)
+      .innerJoin(freelancerProfilesTable, eq(documentsTable.freelancerId, freelancerProfilesTable.id))
+      .innerJoin(usersTable, eq(freelancerProfilesTable.userId, usersTable.id))
+      .where(eq(documentsTable.status, "needs_review"))
+      .orderBy(asc(documentsTable.updatedAt))
+      .limit(pageSize)
+      .offset(offset);
+
+    res.json({
+      data: rows.map((row) => ({
+        id: row.id,
+        freelancerId: row.freelancerId,
+        documentType: row.documentType,
+        aiNotes: row.aiNotes,
+        confidence: row.confidence,
+        updatedAt: row.updatedAt.toISOString(),
+        freelancerName: row.freelancerName,
+        freelancerEmail: row.freelancerEmail,
+        isPdf: isPdfStoragePath(row.fileUrl),
+      })),
+      total: totalRow?.total ?? 0,
+    });
+  } catch (err) {
+    req.log.error({ err }, "Failed to list admin document review queue");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.get("/admin/documents/:id/signed-url", requireAdmin, async (req, res) => {
+  const id = parseInt(Array.isArray(req.params.id) ? req.params.id[0] : req.params.id, 10);
+  if (Number.isNaN(id)) {
+    res.status(400).json({ error: "Invalid document ID" });
+    return;
+  }
+
+  try {
+    const [doc] = await db.select().from(documentsTable).where(eq(documentsTable.id, id)).limit(1);
+    if (!doc) {
+      res.status(404).json({ error: "Document not found" });
+      return;
+    }
+
+    const signedUrl = await objectStorageService.getSignedReadUrlForKey(doc.fileUrl, 15 * 60);
+    res.json({
+      signedUrl,
+      expiresInSeconds: 15 * 60,
+      isPdf: isPdfStoragePath(doc.fileUrl),
+    });
+  } catch (err) {
+    req.log.error({ err, documentId: id }, "Failed to generate admin document signed URL");
+    res.status(500).json({ error: "Failed to generate signed URL" });
+  }
+});
+
+router.patch("/admin/documents/:id", requireAdmin, async (req, res) => {
+  const id = parseInt(Array.isArray(req.params.id) ? req.params.id[0] : req.params.id, 10);
+  if (Number.isNaN(id)) {
+    res.status(400).json({ error: "Invalid document ID" });
+    return;
+  }
+
+  const { verdict, adminNotes } = (req.body ?? {}) as {
+    verdict?: string;
+    adminNotes?: string;
+  };
+
+  if (verdict !== "verified" && verdict !== "rejected") {
+    res.status(400).json({ error: "verdict must be verified or rejected" });
+    return;
+  }
+
+  if (adminNotes !== undefined && adminNotes.length > 300) {
+    res.status(400).json({ error: "adminNotes must be 300 characters or fewer" });
+    return;
+  }
+
+  try {
+    const [doc] = await db.select().from(documentsTable).where(eq(documentsTable.id, id)).limit(1);
+    if (!doc) {
+      res.status(404).json({ error: "Document not found" });
+      return;
+    }
+    if (doc.status !== "needs_review") {
+      res.status(400).json({ error: "Document is not awaiting manual review" });
+      return;
+    }
+
+    const [updated] = await db
+      .update(documentsTable)
+      .set({
+        status: verdict,
+        reviewedBy: "admin",
+        adminNotes: adminNotes?.trim() || null,
+        updatedAt: new Date(),
+      })
+      .where(eq(documentsTable.id, id))
+      .returning();
+
+    await updateVerificationLevel(db, doc.freelancerId);
+
+    const userId = await userIdFromFreelancerProfileId(doc.freelancerId);
+    const docLabel = doc.documentType.replace(/_/g, " ");
+    if (userId) {
+      const docMsg = verdict === "verified"
+        ? `Your ${docLabel} has been verified ✓`
+        : `Your ${docLabel} was not verified — please re-upload`;
+      createNotification(db, {
+        userId,
+        type: verdict === "verified"
+          ? NotificationType.DOCUMENT_VERIFIED
+          : NotificationType.DOCUMENT_REJECTED,
+        entityType: "document",
+        entityId: doc.freelancerId,
+        message: docMsg,
+      }).catch((err) => req.log.warn({ err, documentId: id }, "notification write failed"));
+      sendNotificationEmailAsync(
+        db, userId,
+        verdict === "verified" ? "Document verified on TalentLock" : "Document review on TalentLock",
+        docMsg, "/profile", req.log,
+      );
+    }
+
+    res.json({
+      id: updated!.id,
+      status: updated!.status,
+      adminNotes: updated!.adminNotes,
+    });
+  } catch (err) {
+    req.log.error({ err, documentId: id }, "Failed to update admin document verdict");
+    res.status(500).json({ error: "Internal server error" });
   }
 });
 

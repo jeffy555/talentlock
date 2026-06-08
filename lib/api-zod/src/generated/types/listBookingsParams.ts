@@ -15,4 +15,6 @@ export type ListBookingsParams = {
    * Filter by role (freelancer, employer)
    */
   role?: string;
+  page?: number;
+  pageSize?: number;
 };

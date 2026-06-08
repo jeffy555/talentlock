@@ -5,6 +5,8 @@ import { conversations, messages, usersTable, freelancerProfilesTable } from "@w
 import { eq } from "drizzle-orm";
 import { CreateOpenaiConversationBody, SendOpenaiMessageBody } from "@workspace/api-zod";
 import OpenAI from "openai";
+import { checkTokenQuota } from "../lib/subscriptionGating";
+import { logTokenUsage } from "../lib/tokenLogger";
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY_TALENTLOCK });
 
@@ -76,8 +78,22 @@ router.post("/openai/conversations/:id/messages", async (req, res) => {
   const parsed = SendOpenaiMessageBody.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
   try {
+    const [user] = await db.select().from(usersTable).where(eq(usersTable.clerkId, clerkId)).limit(1);
+    if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
+
     const [conv] = await db.select().from(conversations).where(eq(conversations.id, id)).limit(1);
     if (!conv) { res.status(404).json({ error: "Conversation not found" }); return; }
+
+    const quota = await checkTokenQuota(db, user.id);
+    if (!quota.allowed) {
+      res.status(402).json({
+        error: "Monthly AI token limit reached",
+        code: "TOKEN_LIMIT",
+        planNeeded: quota.planNeeded,
+      });
+      return;
+    }
+
     await db.insert(messages).values({ conversationId: id, role: "user", content: parsed.data.content });
     const history = await db.select().from(messages).where(eq(messages.conversationId, id));
 
@@ -108,18 +124,21 @@ IMPORTANT MATCHING RULES:
 - Never say there are no matches without carefully checking the Skills of every candidate.
 - When presenting matches, always include the Freelancer ID, name, years of experience, and their relevant skills.
 
-REQUIRED OUTPUT FORMAT FOR MATCHES:
-For EVERY freelancer you recommend, you MUST end the recommendation with a structured match marker on its own line, in this exact format:
-[MATCH:<id>|SCORE:<0-100>|REASON:<one short sentence, max 12 words>]
-
-- SCORE: how well the candidate fits the request (90+ = excellent, 70-89 = strong, 50-69 = partial, <50 = weak).
-- REASON: a concise human-readable explanation (e.g. "5 of 6 required skills, within budget, available now").
-- Do NOT use square brackets anywhere else in your response. Do NOT wrap the marker in quotes or code fences.
-- Always include the marker, even if you only suggest one candidate.
-
-Example:
-"**Jane Doe** (ID: 4) — 8 years building React/Next.js apps, strong in TypeScript and AWS.
-[MATCH:4|SCORE:92|REASON:All 5 required skills, within budget, available immediately]"
+REQUIRED OUTPUT FORMAT:
+Always return your entire response as valid JSON with this structure:
+{
+  "message": "<your conversational response>",
+  "recommendations": [
+    { "freelancerId": "<exact Freelancer ID from database>", "name": "<freelancer display name>" }
+  ]
+}
+When not recommending specific freelancers, still return JSON:
+{
+  "message": "<your conversational response>",
+  "recommendations": []
+}
+Always return valid JSON. Never use markdown fences around it. Never use any other structured format.
+When recommending freelancers, include their exact Freelancer ID and name in the recommendations array.
 
 Available freelancers on the platform:\n\n${freelancerContext}`,
         },
@@ -129,6 +148,13 @@ Available freelancers on the platform:\n\n${freelancerContext}`,
     });
 
     const aiContent = completion.choices[0]?.message?.content ?? "I couldn't process your request. Please try again.";
+
+    if (completion.usage) {
+      await logTokenUsage(db, user.id, "ai_match", completion.usage, id);
+    } else {
+      req.log.warn({ userId: user.id, feature: "ai_match" }, "token usage unavailable on response");
+    }
+
     const [aiMessage] = await db.insert(messages)
       .values({ conversationId: id, role: "assistant", content: aiContent })
       .returning();

@@ -5,11 +5,12 @@
  * TalentLock API specification
  * OpenAPI spec version: 0.1.0
  */
-import type { Review } from "./review";
+import type { PublicReview } from "./publicReview";
 
 export interface FreelancerReviewsResult {
-  reviews: Review[];
-  /** @nullable */
-  averageRating?: number | null;
-  totalReviews: number;
+  data: PublicReview[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
 }

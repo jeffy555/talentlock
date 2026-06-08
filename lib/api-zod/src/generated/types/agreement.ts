@@ -13,8 +13,10 @@ export interface Agreement {
   employerId: number;
   /** AI-generated legal agreement text */
   content: string;
-  /** draft, pending_signatures, signed, active, completed */
+  /** draft, redlined, partially_signed, fully_signed */
   status: string;
+  /** Approximate tokens for a redline request (~content/4 + 500) */
+  estimatedRedlineTokens?: number;
   /** @nullable */
   freelancerSignedAt?: Date | null;
   /** @nullable */

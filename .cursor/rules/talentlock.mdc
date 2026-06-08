@@ -1,0 +1,122 @@
+---
+description: TalentLock monorepo rules — apply to all code tasks
+globs: ["artifacts/**", "lib/**", "specs/**"]
+alwaysApply: true
+---
+
+# TalentLock — Cursor Agent Rules
+
+## Before Every Task
+- Read `project.md` first. Never assume the schema, routes, or tech stack from memory.
+- Read the relevant `specs/{feature}/plan.md` before writing any code.
+- Read the relevant `specs/{feature}/task.md` before writing any code.
+- Read `specs/{feature}/UI.md` before writing any frontend component (Phase 3 only).
+- If `plan.md` and `task.md` conflict, `plan.md` wins — always.
+
+## Architecture Rules
+- Frontend lives in `artifacts/talentlock/src/`
+- Backend lives in `artifacts/api-server/src/`
+- Database schema lives in `lib/db/src/schema/` — multiple files, edit the relevant one
+- Always use Drizzle ORM — never write raw SQL
+- After editing any schema file run: `pnpm --filter @workspace/db run push`
+- API hooks are generated via Orval — import from `@workspace/api-client-react`
+- Zod schemas for request validation — import from `@workspace/api-zod`
+- Never hand-edit generated files in `lib/api-client-react/src/` or `lib/api-zod/src/`
+- Auth is Clerk — never implement custom auth logic
+- Admin auth is a separate HMAC-signed cookie (`tl_admin`) — completely independent of Clerk
+- Use `req.log` (Pino) in route handlers — never `console.log`
+- Vite proxies all `/api` calls to `localhost:8080` — no CORS configuration needed
+
+## API Workflow (OpenAPI → codegen)
+The single source of truth for the API contract is `lib/api-spec/openapi.yaml`.
+
+When adding a new endpoint:
+1. Add the route definition in `lib/api-spec/openapi.yaml`
+2. Run `pnpm --filter @workspace/api-spec run codegen`
+3. Implement the route in `artifacts/api-server/src/routes/`
+4. Register it in `artifacts/api-server/src/index.ts`
+5. Use the generated hook in the frontend
+
+After every codegen run — mandatory checks:
+- `lib/api-zod/orval.config.ts` must still have `indexFiles: false`
+- `lib/api-zod/src/index.ts` must only export `./generated/api`
+- Run `pnpm run typecheck` — fix all errors before any frontend work
+
+## Coding Rules
+- Never modify freelancer-facing pages unless the task explicitly says so
+- All new API routes must be registered in `artifacts/api-server/src/index.ts`
+- All quota checks must use `SELECT ... FOR UPDATE` inside a Drizzle transaction
+- HTTP 402 errors must return `{ error, code, planNeeded }` — match existing pattern
+- Frontend 402 `TOKEN_LIMIT` handlers show inline error — do NOT redirect to /pricing
+- Frontend 402 `PLAN_LIMIT` handlers redirect to /pricing — match PostJob/JobDetail pattern
+- Do not use `localStorage` in React components — use `sessionStorage` or React state
+- Never store AI output in form state until the employer explicitly clicks Accept
+
+## Schema Changes Workflow
+1. Edit the relevant file in `lib/db/src/schema/`
+2. Run `pnpm --filter @workspace/db run push`
+3. If migration affects existing data — run backfill SQL immediately after push
+4. Verify columns exist in Neon before proceeding to backend work
+
+## Spec Execution Order
+Always execute tasks in this phase order:
+1. Database (schema + migration + backfill if needed)
+2. Backend API (utilities → routes → OpenAPI → codegen → typecheck)
+3. Frontend (hooks → components → page integrations)
+4. Admin console
+
+Rules:
+- Never start Phase 2 before Phase 1 migration is confirmed in Neon
+- Never start Phase 3 before Phase 2 codegen is confirmed and typecheck passes
+- Never start Phase 4 before Phase 3 typecheck passes
+- Execute only the phase instructed — do not jump ahead
+
+## What the Agent Reads Per Phase
+| Phase | Files to read |
+|---|---|
+| Verification | `project.md` + `plan.md` + `task.md` |
+| Phase 1 — Database | `project.md` + `plan.md` + `task.md` |
+| Phase 2 — Backend | `project.md` + `plan.md` + `task.md` |
+| Phase 3 — Frontend | `project.md` + `plan.md` + `task.md` + `UI.md` |
+| Phase 4 — Admin | `project.md` + `plan.md` + `task.md` + `UI.md` |
+| Validation | `project.md` + `validation.md` |
+
+`features.md` and `clarify.md` are reference documents for humans — the agent does not need them during execution.
+
+## What NOT to Do
+- Do not invent file paths — use only paths specified in `task.md`
+- Do not add Stripe or email logic — deferred to a future phase
+- Do not add token tracking to freelancer routes
+- Do not hand-write React Query hooks — always run codegen
+- Do not skip the post-codegen checks (`indexFiles: false`, `index.ts` exports, typecheck)
+- Do not run migrations without also running any required backfill SQL
+- Do not modify the form's description state from inside an AI assistant component — use the `onAccept` callback only
+- Do not redirect to `/pricing` for `TOKEN_LIMIT` errors inside drawers or inline panels — show the error inline
+
+## Useful Commands Reference
+```bash
+# Install all workspace dependencies
+pnpm install
+
+# Push DB schema changes
+pnpm --filter @workspace/db run push
+
+# Regenerate API client after editing openapi.yaml
+pnpm --filter @workspace/api-spec run codegen
+
+# Type-check the entire workspace
+pnpm run typecheck
+
+# Type-check a single package
+pnpm --filter @workspace/talentlock run typecheck
+pnpm --filter @workspace/api-server run typecheck
+
+# Run API server in dev mode
+pnpm --filter @workspace/api-server run dev
+
+# Run frontend in dev mode
+pnpm --filter @workspace/talentlock run dev
+
+# Seed demo freelancers
+pnpm --filter @workspace/scripts run seed
+```

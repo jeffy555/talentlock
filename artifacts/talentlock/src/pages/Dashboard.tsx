@@ -1,8 +1,24 @@
-import { useGetMe, useGetDashboardStats, useGetDashboardActivity, useGetMyAnalytics } from "@workspace/api-client-react";
+import { useMemo } from "react";
+import { useQueries } from "@tanstack/react-query";
+import { subDays } from "date-fns";
+import {
+  useGetMe,
+  useGetDashboardStats,
+  useGetDashboardActivity,
+  useGetMyAnalytics,
+  useListBookings,
+  getBooking,
+} from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Activity, Briefcase, Calendar, CheckCircle2, Clock, FileText, User, TrendingUp, Star } from "lucide-react";
 import { format } from "date-fns";
+import { Link } from "wouter";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import { TokenUsageWidget } from "@/components/TokenUsageWidget";
+import { TokenUsageBanner } from "@/components/TokenUsageBanner";
+import { EarningsIntelligencePanel } from "@/components/earnings/EarningsIntelligencePanel";
+import { SpendAnalyticsPanel } from "@/components/spend/SpendAnalyticsPanel";
+import { HiringAnalyticsPanel } from "@/components/hiring/HiringAnalyticsPanel";
 
 function StatCardSkeleton() {
   return (
@@ -53,6 +69,36 @@ export default function Dashboard() {
   const { data: analytics } = useGetMyAnalytics();
 
   const isEmployer = user?.role === "employer";
+  const { data: completedBookings } = useListBookings(
+    { status: "completed" },
+    { query: { enabled: isEmployer } as never },
+  );
+
+  const recentCompletedIds = useMemo(() => {
+    const cutoff = subDays(new Date(), 30);
+    return (completedBookings?.data ?? [])
+      .filter((b) => new Date(b.endDate) >= cutoff)
+      .slice(0, 5)
+      .map((b) => b.id);
+  }, [completedBookings]);
+
+  const bookingDetailQueries = useQueries({
+    queries: recentCompletedIds.map((id) => ({
+      queryKey: [`/api/bookings/${id}`],
+      queryFn: () => getBooking(id),
+      enabled: isEmployer,
+    })),
+  });
+
+  const reviewPrompts = useMemo(
+    () =>
+      bookingDetailQueries
+        .map((q) => q.data)
+        .filter((b) => b && b.review == null)
+        .slice(0, 3),
+    [bookingDetailQueries],
+  );
+
   const monthly = analytics?.monthly ?? [];
   const totals = analytics?.totals as Record<string, number | null | undefined> | undefined;
   const valueKey = isEmployer ? "spend" : "earnings";
@@ -74,6 +120,8 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-8 animate-fade-in">
+      {isEmployer && <TokenUsageBanner />}
+
       <div>
         <h1 className="text-3xl font-serif font-bold tracking-tight text-foreground">Dashboard</h1>
         <p className="text-muted-foreground mt-1 font-light">Welcome back, {user?.name}. Here is your overview.</p>
@@ -160,6 +208,8 @@ export default function Dashboard() {
             </Card>
           </>
         )}
+
+        {isEmployer && <TokenUsageWidget variant="compact" />}
       </div>
 
       {/* Analytics Chart */}
@@ -194,6 +244,33 @@ export default function Dashboard() {
         </Card>
       )}
 
+      {!isEmployer && (
+        <section>
+          <h2 className="text-lg font-semibold text-slate-800 mt-8 mb-4">
+            Earnings Intelligence
+          </h2>
+          <EarningsIntelligencePanel />
+        </section>
+      )}
+
+      {isEmployer && (
+        <section>
+          <h2 className="text-lg font-semibold text-slate-800 mt-8 mb-4">
+            Spend Analytics
+          </h2>
+          <SpendAnalyticsPanel />
+        </section>
+      )}
+
+      {isEmployer && (
+        <section>
+          <h2 className="text-lg font-semibold text-slate-800 mt-8 mb-4">
+            Hiring Analytics
+          </h2>
+          <HiringAnalyticsPanel />
+        </section>
+      )}
+
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
         <Card className="col-span-4 shadow-sm border-border">
           <CardHeader>
@@ -201,6 +278,31 @@ export default function Dashboard() {
             <CardDescription>Your latest actions and updates across the platform.</CardDescription>
           </CardHeader>
           <CardContent>
+            {isEmployer && reviewPrompts.length > 0 && (
+              <div className="space-y-3 mb-8">
+                {reviewPrompts.map((booking) => booking && (
+                  <div
+                    key={booking.id}
+                    className="rounded-md border border-amber-200 bg-amber-50/80 px-4 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2"
+                  >
+                    <div>
+                      <p className="text-sm font-medium text-amber-900">
+                        ⭐ Leave a review for {booking.freelancerName ?? "your freelancer"}
+                      </p>
+                      <p className="text-xs text-amber-800/80 mt-0.5">
+                        Booking completed {format(new Date(booking.endDate), "MMM d")}
+                      </p>
+                    </div>
+                    <Link
+                      href={`/bookings/${booking.id}`}
+                      className="text-sm font-medium text-amber-900 hover:underline whitespace-nowrap"
+                    >
+                      Write Review →
+                    </Link>
+                  </div>
+                ))}
+              </div>
+            )}
             {activity && activity.length > 0 ? (
               <div className="space-y-8">
                 {activity.map((item) => (

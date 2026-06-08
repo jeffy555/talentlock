@@ -3,7 +3,8 @@ import { db } from "@workspace/db";
 import {
   freelancerProfilesTable, portfolioItemsTable, reviewsTable,
 } from "@workspace/db";
-import { eq, avg, count, desc } from "drizzle-orm";
+import { eq, desc } from "drizzle-orm";
+import { resolveEmployerDisplayName, toPublicReview } from "../lib/reviewUtils";
 
 const router = Router();
 
@@ -19,22 +20,24 @@ router.get("/public/freelancers/:id", async (req, res) => {
       .where(eq(portfolioItemsTable.freelancerId, id))
       .orderBy(portfolioItemsTable.createdAt);
 
-    const reviews = await db.select().from(reviewsTable)
-      .where(eq(reviewsTable.revieweeId, profile.userId))
+    const reviewRows = await db.select().from(reviewsTable)
+      .where(eq(reviewsTable.freelancerId, profile.userId))
       .orderBy(desc(reviewsTable.createdAt))
       .limit(10);
 
-    const [agg] = await db.select({ avg: avg(reviewsTable.rating), total: count() })
-      .from(reviewsTable).where(eq(reviewsTable.revieweeId, profile.userId));
+    const reviews = await Promise.all(
+      reviewRows.map(async (row) => toPublicReview(row, await resolveEmployerDisplayName(row.employerId))),
+    );
 
     res.json({
       ...profile,
       hourlyRate: profile.hourlyRate ? parseFloat(profile.hourlyRate) : null,
       dailyRate: profile.dailyRate ? parseFloat(profile.dailyRate) : null,
+      averageRating: profile.averageRating ? parseFloat(profile.averageRating) : null,
+      reviewCount: profile.reviewCount ?? 0,
       portfolio,
       reviews,
-      averageRating: agg.avg ? parseFloat(agg.avg) : null,
-      totalReviews: Number(agg.total),
+      totalReviews: profile.reviewCount ?? 0,
     });
   } catch (err) {
     req.log.error({ err }, "Failed to get public profile");

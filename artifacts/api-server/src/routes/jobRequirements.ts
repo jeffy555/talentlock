@@ -9,6 +9,7 @@ import {
   ListJobRequirementsQueryParams,
 } from "@workspace/api-zod";
 import { getUserSubscription, checkLimit } from "../lib/subscriptionGating";
+import { sanitiseText } from "../lib/sanitise";
 
 const router = Router();
 
@@ -55,7 +56,13 @@ router.post("/job-requirements", async (req, res) => {
       if (!gate.allowed) return { gate, job: null };
 
       const [job] = await tx.insert(jobRequirementsTable)
-        .values({ ...parsed.data as any, employerId: employer.id, status: "open" })
+        .values({
+          ...parsed.data as any,
+          title: sanitiseText(parsed.data.title),
+          description: sanitiseText(parsed.data.description),
+          employerId: employer.id,
+          status: "open",
+        })
         .returning();
       return { gate: null, job };
     });
@@ -89,9 +96,12 @@ router.patch("/job-requirements/:id", async (req, res) => {
   if (isNaN(id)) { res.status(400).json({ error: "Invalid ID" }); return; }
   const parsed = UpdateJobRequirementBody.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
+  const data = { ...parsed.data } as Record<string, unknown>;
+  if (parsed.data.title !== undefined) data.title = sanitiseText(parsed.data.title);
+  if (parsed.data.description !== undefined) data.description = sanitiseText(parsed.data.description);
   try {
     const [updated] = await db.update(jobRequirementsTable)
-      .set({ ...parsed.data as any, updatedAt: new Date() })
+      .set({ ...data, updatedAt: new Date() })
       .where(eq(jobRequirementsTable.id, id))
       .returning();
     if (!updated) { res.status(404).json({ error: "Job requirement not found" }); return; }

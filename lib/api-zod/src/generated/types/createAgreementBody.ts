@@ -5,7 +5,14 @@
  * TalentLock API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { AgreementIndustry } from "./agreementIndustry";
 
 export interface CreateAgreementBody {
   bookingId: number;
+  industry?: AgreementIndustry;
+  /**
+   * Enterprise only — up to 5 custom clauses (20–500 chars each)
+   * @maxItems 5
+   */
+  customClauses?: string[];
 }

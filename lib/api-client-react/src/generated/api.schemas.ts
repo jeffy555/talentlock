@@ -27,6 +27,8 @@ export interface User {
    * @nullable
    */
   signatureImageUrl?: string | null;
+  /** Whether the user receives email alerts for platform activity */
+  emailNotificationsEnabled: boolean;
   createdAt: string;
 }
 
@@ -69,6 +71,8 @@ export interface FreelancerProfile {
   verificationStatus?: string;
   /** @nullable */
   verificationNote?: string | null;
+  /** unverified | partially_verified | fully_verified */
+  verificationLevel: string;
   documentNames?: string[];
   isAvailable: boolean;
   /** @nullable */
@@ -78,10 +82,41 @@ export interface FreelancerProfile {
   subscriptionPlan: string;
   /** @nullable */
   availableFrom?: string | null;
+  /**
+   * Cached next available date (null when not available)
+   * @nullable
+   */
+  nextAvailableDate?: string | null;
   /** @nullable */
   availabilityNote?: string | null;
+  /** @nullable */
+  averageRating?: number | null;
+  reviewCount: number;
+  /** Profile completeness score 0–100 (Talent Vault requires ≥ 60) */
+  completenessScore: number;
   createdAt: string;
 }
+
+export interface PatchNotificationPreferencesBody {
+  emailNotificationsEnabled: boolean;
+}
+
+export interface NotificationPreferencesResult {
+  success: boolean;
+  emailNotificationsEnabled: boolean;
+}
+
+export interface FreelancerVerification {
+  /** unverified | partially_verified | fully_verified */
+  level: string;
+  verifiedDocumentCount: number;
+}
+
+export type FreelancerProfileDetail = FreelancerProfile & {
+  /** @nullable */
+  email?: string | null;
+  verification: FreelancerVerification;
+};
 
 export interface ResumeWorkExperience {
   company: string;
@@ -120,6 +155,70 @@ export interface CreateFreelancerProfileBody {
   achievements?: string | null;
   subscriptionPlan: string;
   resumeAnalysis?: ResumeAnalysis | null;
+}
+
+export type AvailabilityBlockReason =
+  (typeof AvailabilityBlockReason)[keyof typeof AvailabilityBlockReason];
+
+export const AvailabilityBlockReason = {
+  booked: "booked",
+  holiday: "holiday",
+  unavailable: "unavailable",
+} as const;
+
+export interface AvailabilityPublicBlock {
+  id: number;
+  startDate: string;
+  endDate: string;
+  reason: AvailabilityBlockReason;
+}
+
+export interface AvailabilityMeBlock {
+  id: number;
+  startDate: string;
+  endDate: string;
+  reason: AvailabilityBlockReason;
+  /** @nullable */
+  label: string | null;
+  /**
+   * Non-null when auto-created from a booking
+   * @nullable
+   */
+  bookingId: string | null;
+  createdAt: string;
+}
+
+export interface AvailabilityPublicResponse {
+  freelancerId: string;
+  /** @nullable */
+  nextAvailableDate: string | null;
+  blocks: AvailabilityPublicBlock[];
+}
+
+export interface AvailabilityMeResponse {
+  /** @nullable */
+  nextAvailableDate: string | null;
+  blocks: AvailabilityMeBlock[];
+}
+
+export type CreateAvailabilityBlockBodyReason =
+  (typeof CreateAvailabilityBlockBodyReason)[keyof typeof CreateAvailabilityBlockBodyReason];
+
+export const CreateAvailabilityBlockBodyReason = {
+  holiday: "holiday",
+  unavailable: "unavailable",
+} as const;
+
+export interface CreateAvailabilityBlockBody {
+  startDate: string;
+  endDate: string;
+  reason: CreateAvailabilityBlockBodyReason;
+  /** @maxLength 100 */
+  label?: string;
+}
+
+export interface DeleteAvailabilityBlockResponse {
+  success: boolean;
 }
 
 export interface UpdateFreelancerProfileBody {
@@ -226,6 +325,23 @@ export interface UpdateJobRequirementBody {
   status?: string;
 }
 
+export interface PublicReview {
+  id: number;
+  /**
+   * @minimum 1
+   * @maximum 5
+   */
+  rating: number;
+  /** @nullable */
+  comment?: string | null;
+  /** @nullable */
+  reply?: string | null;
+  createdAt: string;
+  /** @nullable */
+  repliedAt?: string | null;
+  employerDisplayName: string;
+}
+
 export interface Booking {
   id: number;
   freelancerId: number;
@@ -242,6 +358,11 @@ export interface Booking {
   /** @nullable */
   notes?: string | null;
   /**
+   * Optional message from employer when creating the booking
+   * @nullable
+   */
+  message?: string | null;
+  /**
    * Current outstanding rate proposal
    * @nullable
    */
@@ -257,6 +378,7 @@ export interface Booking {
   freelancerName?: string | null;
   /** @nullable */
   employerName?: string | null;
+  review: PublicReview | null;
   createdAt: string;
 }
 
@@ -269,6 +391,12 @@ export interface CreateBookingBody {
   paymentType: string;
   /** @nullable */
   rate?: number | null;
+  /**
+   * Optional message to the freelancer (max 500 chars)
+   * @maxLength 500
+   * @nullable
+   */
+  message?: string | null;
 }
 
 export interface UpdateBookingBody {
@@ -282,6 +410,51 @@ export interface NegotiateBookingBody {
   counterRate?: number;
 }
 
+export type AgreementIndustry =
+  (typeof AgreementIndustry)[keyof typeof AgreementIndustry];
+
+export const AgreementIndustry = {
+  general: "general",
+  software_development: "software_development",
+  design_creative: "design_creative",
+  marketing_content: "marketing_content",
+  consulting_strategy: "consulting_strategy",
+  data_analytics: "data_analytics",
+} as const;
+
+export interface RedlineSuggestion {
+  clauseNumber: string;
+  originalText: string;
+  suggestedText: string;
+  reason: string;
+}
+
+export interface RedlineResponse {
+  suggestions: RedlineSuggestion[];
+  parseError?: boolean;
+}
+
+export interface AcceptRedlineBody {
+  newContent: string;
+}
+
+export interface AcceptRedlineResponse {
+  success: boolean;
+  status: string;
+}
+
+export type AgreementSignedErrorCode =
+  (typeof AgreementSignedErrorCode)[keyof typeof AgreementSignedErrorCode];
+
+export const AgreementSignedErrorCode = {
+  AGREEMENT_SIGNED: "AGREEMENT_SIGNED",
+} as const;
+
+export interface AgreementSignedError {
+  error: string;
+  code: AgreementSignedErrorCode;
+}
+
 export interface Agreement {
   id: number;
   bookingId: number;
@@ -289,8 +462,10 @@ export interface Agreement {
   employerId: number;
   /** AI-generated legal agreement text */
   content: string;
-  /** draft, pending_signatures, signed, active, completed */
+  /** draft, redlined, partially_signed, fully_signed */
   status: string;
+  /** Approximate tokens for a redline request (~content/4 + 500) */
+  estimatedRedlineTokens?: number;
   /** @nullable */
   freelancerSignedAt?: string | null;
   /** @nullable */
@@ -318,6 +493,12 @@ export interface Agreement {
 
 export interface CreateAgreementBody {
   bookingId: number;
+  industry?: AgreementIndustry;
+  /**
+   * Enterprise only — up to 5 custom clauses (20–500 chars each)
+   * @maxItems 5
+   */
+  customClauses?: string[];
 }
 
 export interface SignAgreementBody {
@@ -407,6 +588,195 @@ export interface SendOpenaiMessageBody {
   content: string;
 }
 
+export type PostAiJobDescriptionBodyMode =
+  (typeof PostAiJobDescriptionBodyMode)[keyof typeof PostAiJobDescriptionBodyMode];
+
+export const PostAiJobDescriptionBodyMode = {
+  generate: "generate",
+  improve: "improve",
+  check: "check",
+} as const;
+
+export interface PostAiJobDescriptionBody {
+  mode: PostAiJobDescriptionBodyMode;
+  content: string;
+  jobTitle?: string;
+}
+
+export type JobDescriptionResponseMode =
+  (typeof JobDescriptionResponseMode)[keyof typeof JobDescriptionResponseMode];
+
+export const JobDescriptionResponseMode = {
+  generate: "generate",
+  improve: "improve",
+  check: "check",
+} as const;
+
+export interface JobDescriptionResponse {
+  mode: JobDescriptionResponseMode;
+  output?: string;
+  /**
+   * @minimum 0
+   * @maximum 100
+   */
+  score?: number;
+  missing?: string[];
+}
+
+export type PostAiProposalBodyTone =
+  (typeof PostAiProposalBodyTone)[keyof typeof PostAiProposalBodyTone];
+
+export const PostAiProposalBodyTone = {
+  professional: "professional",
+  friendly: "friendly",
+  concise: "concise",
+} as const;
+
+export interface PostAiProposalBody {
+  bookingId: string;
+  tone: PostAiProposalBodyTone;
+}
+
+export interface AiProposalResponse {
+  proposal: string;
+  error?: string;
+}
+
+export type BookingNotPendingErrorCode =
+  (typeof BookingNotPendingErrorCode)[keyof typeof BookingNotPendingErrorCode];
+
+export const BookingNotPendingErrorCode = {
+  BOOKING_NOT_PENDING: "BOOKING_NOT_PENDING",
+} as const;
+
+export interface BookingNotPendingError {
+  error: string;
+  code: BookingNotPendingErrorCode;
+}
+
+export type ContentTooShortErrorCode =
+  (typeof ContentTooShortErrorCode)[keyof typeof ContentTooShortErrorCode];
+
+export const ContentTooShortErrorCode = {
+  CONTENT_TOO_SHORT: "CONTENT_TOO_SHORT",
+} as const;
+
+export interface ContentTooShortError {
+  error: string;
+  code: ContentTooShortErrorCode;
+}
+
+export interface PostAiMatchExplanationBody {
+  freelancerId: number;
+  /** @nullable */
+  jobRequirementId?: number | null;
+  /** Active conversation id, or 'direct-view' for freelancer detail page */
+  conversationId: string;
+}
+
+export interface MatchExplanationSkillsAlignment {
+  matched: string[];
+  gaps: string[];
+}
+
+export type MatchExplanationRateFitAssessment =
+  (typeof MatchExplanationRateFitAssessment)[keyof typeof MatchExplanationRateFitAssessment];
+
+export const MatchExplanationRateFitAssessment = {
+  within_budget: "within_budget",
+  above_budget: "above_budget",
+  below_budget: "below_budget",
+  unknown: "unknown",
+} as const;
+
+export interface MatchExplanationRateFit {
+  /** @nullable */
+  freelancerRate: number | null;
+  /** @nullable */
+  budgetMin: number | null;
+  /** @nullable */
+  budgetMax: number | null;
+  assessment: MatchExplanationRateFitAssessment;
+}
+
+export type MatchExplanationAvailabilityFitAssessment =
+  (typeof MatchExplanationAvailabilityFitAssessment)[keyof typeof MatchExplanationAvailabilityFitAssessment];
+
+export const MatchExplanationAvailabilityFitAssessment = {
+  available: "available",
+  unavailable: "unavailable",
+  unknown: "unknown",
+} as const;
+
+export interface MatchExplanationAvailabilityFit {
+  /** @nullable */
+  freelancerAvailableFrom: string | null;
+  /** @nullable */
+  requiredStartDate: string | null;
+  assessment: MatchExplanationAvailabilityFitAssessment;
+}
+
+export interface MatchExplanation {
+  skillsAlignment?: MatchExplanationSkillsAlignment;
+  rateFit?: MatchExplanationRateFit | null;
+  availabilityFit?: MatchExplanationAvailabilityFit;
+  overallSummary?: string;
+  parseError?: boolean;
+  rawContent?: string;
+}
+
+export type PostAiRateSuggestionBodyPaymentType =
+  (typeof PostAiRateSuggestionBodyPaymentType)[keyof typeof PostAiRateSuggestionBodyPaymentType];
+
+export const PostAiRateSuggestionBodyPaymentType = {
+  hourly: "hourly",
+  daily: "daily",
+  fixed: "fixed",
+} as const;
+
+export interface PostAiRateSuggestionBody {
+  freelancerId: number;
+  proposedRate?: number;
+  jobRequirementId?: number;
+  bookingId?: number;
+  paymentType?: PostAiRateSuggestionBodyPaymentType;
+  includeAi?: boolean;
+}
+
+export type RateSuggestionResponseConfidence =
+  (typeof RateSuggestionResponseConfidence)[keyof typeof RateSuggestionResponseConfidence];
+
+export const RateSuggestionResponseConfidence = {
+  high: "high",
+  medium: "medium",
+  low: "low",
+} as const;
+
+export interface RateSuggestionResponse {
+  freelancerRate: number;
+  /** @nullable */
+  marketMedian: number | null;
+  /** @nullable */
+  yourHistoricalAvg: number | null;
+  suggestedRate: number;
+  explanation: string;
+  confidence: RateSuggestionResponseConfidence;
+  isAiSuggestion: boolean;
+}
+
+export type TokenLimitErrorCode =
+  (typeof TokenLimitErrorCode)[keyof typeof TokenLimitErrorCode];
+
+export const TokenLimitErrorCode = {
+  TOKEN_LIMIT: "TOKEN_LIMIT",
+} as const;
+
+export interface TokenLimitError {
+  error: string;
+  code: TokenLimitErrorCode;
+  planNeeded?: string;
+}
+
 export interface DashboardStats {
   activeBookings: number;
   completedBookings: number;
@@ -432,22 +802,321 @@ export interface ActivityItem {
   metadata?: ActivityItemMetadata;
 }
 
-export interface VerifyDocumentsBody {
-  documentUrls: string[];
-  documentNames: string[];
+export interface EarningsIntelligenceSummary {
+  thisMonth: number;
+  lastMonth: number;
+  allTime: number;
+  /** @nullable */
+  monthOverMonthChange: number | null;
 }
 
-export interface VerifyDocumentsResult {
-  /** verified | rejected | pending */
+export interface EarningsIntelligenceTrend {
+  months: string[];
+  freelancerEarnings: number[];
+  platformAverage: (number | null)[];
+}
+
+export interface EarningsIntelligenceRateBenchmark {
+  myRate: number;
+  fieldOfWork: string;
+  percentile: number;
+  fieldMin: number;
+  fieldMedian: number;
+  fieldMax: number;
+  freelancerCount: number;
+}
+
+export type EarningsIntelligenceProjectionCurrency =
+  (typeof EarningsIntelligenceProjectionCurrency)[keyof typeof EarningsIntelligenceProjectionCurrency];
+
+export const EarningsIntelligenceProjectionCurrency = {
+  USD: "USD",
+} as const;
+
+export interface EarningsIntelligenceProjection {
+  projectedAmount: number;
+  milestoneCount: number;
+  currency: EarningsIntelligenceProjectionCurrency;
+}
+
+export interface EarningsIntelligenceTopSkill {
+  skill: string;
+  totalEarned: number;
+  bookingCount: number;
+}
+
+export interface EarningsIntelligence {
+  summary: EarningsIntelligenceSummary;
+  trend: EarningsIntelligenceTrend;
+  rateBenchmark?: EarningsIntelligenceRateBenchmark | null;
+  projection: EarningsIntelligenceProjection;
+  topSkills: EarningsIntelligenceTopSkill[];
+}
+
+export interface SpendAnalyticsSummary {
+  thisMonth: number;
+  lastMonth: number;
+  allTime: number;
+  /** @nullable */
+  monthOverMonthChange: number | null;
+}
+
+export interface SpendAnalyticsTrend {
+  months: string[];
+  spend: number[];
+}
+
+export interface SpendAnalyticsFieldSpend {
+  field: string;
+  totalSpend: number;
+  percentageOfTotal: number;
+}
+
+export interface SpendAnalyticsTopFreelancer {
+  freelancerId: string;
+  name: string;
+  fieldOfWork: string;
+  totalPaid: number;
+  bookingCount: number;
+  /** @nullable */
+  averageRatingGiven: number | null;
+}
+
+export interface SpendAnalyticsCommitted {
+  committedAmount: number;
+  milestoneCount: number;
+}
+
+export interface SpendAnalyticsRateBenchmarkField {
+  field: string;
+  avgPaid: number;
+  marketMedian: number;
+  differencePercent: number;
+}
+
+export interface SpendAnalyticsRateBenchmark {
+  averageRatePaid: number;
+  marketMedian: number;
+  fields: SpendAnalyticsRateBenchmarkField[];
+}
+
+export interface SpendAnalytics {
+  summary: SpendAnalyticsSummary;
+  trend: SpendAnalyticsTrend;
+  spendByField: SpendAnalyticsFieldSpend[];
+  topFreelancers: SpendAnalyticsTopFreelancer[];
+  committed: SpendAnalyticsCommitted;
+  rateBenchmark?: SpendAnalyticsRateBenchmark | null;
+}
+
+export type HiringAnalyticsFunnelWindow =
+  (typeof HiringAnalyticsFunnelWindow)[keyof typeof HiringAnalyticsFunnelWindow];
+
+export const HiringAnalyticsFunnelWindow = {
+  "30d": "30d",
+  "90d": "90d",
+  "12m": "12m",
+} as const;
+
+export interface HiringAnalyticsConversionRates {
+  /** @nullable */
+  jobToBooking: number | null;
+  /** @nullable */
+  bookingToSigned: number | null;
+  /** @nullable */
+  signedToCompleted: number | null;
+}
+
+export interface HiringAnalyticsFunnel {
+  window: HiringAnalyticsFunnelWindow;
+  jobsPosted: number;
+  bookingsCreated: number;
+  agreementsSigned: number;
+  completed: number;
+  conversionRates: HiringAnalyticsConversionRates;
+}
+
+export interface HiringAnalyticsSkillCount {
+  skill: string;
+  count: number;
+}
+
+export interface HiringAnalyticsSkillsGap {
+  demand: HiringAnalyticsSkillCount[];
+  supply: HiringAnalyticsSkillCount[];
+  gaps: string[];
+}
+
+export interface HiringAnalyticsRepeatFreelancer {
+  freelancerId: string;
+  name: string;
+  fieldOfWork: string;
+  bookingCount: number;
+}
+
+export interface HiringAnalyticsRetention {
+  repeatRate: number;
+  newRate: number;
+  totalBookings: number;
+  repeatFreelancers: HiringAnalyticsRepeatFreelancer[];
+}
+
+/**
+ * @nullable
+ */
+export type HiringAnalyticsLifecycleTrendsJobToFirstBooking =
+  | (typeof HiringAnalyticsLifecycleTrendsJobToFirstBooking)[keyof typeof HiringAnalyticsLifecycleTrendsJobToFirstBooking]
+  | null;
+
+export const HiringAnalyticsLifecycleTrendsJobToFirstBooking = {
+  faster: "faster",
+  slower: "slower",
+  same: "same",
+} as const;
+
+/**
+ * @nullable
+ */
+export type HiringAnalyticsLifecycleTrendsBookingToSigned =
+  | (typeof HiringAnalyticsLifecycleTrendsBookingToSigned)[keyof typeof HiringAnalyticsLifecycleTrendsBookingToSigned]
+  | null;
+
+export const HiringAnalyticsLifecycleTrendsBookingToSigned = {
+  faster: "faster",
+  slower: "slower",
+  same: "same",
+} as const;
+
+/**
+ * @nullable
+ */
+export type HiringAnalyticsLifecycleTrendsSignedToCompleted =
+  | (typeof HiringAnalyticsLifecycleTrendsSignedToCompleted)[keyof typeof HiringAnalyticsLifecycleTrendsSignedToCompleted]
+  | null;
+
+export const HiringAnalyticsLifecycleTrendsSignedToCompleted = {
+  faster: "faster",
+  slower: "slower",
+  same: "same",
+} as const;
+
+export interface HiringAnalyticsLifecycleTrends {
+  /** @nullable */
+  jobToFirstBooking: HiringAnalyticsLifecycleTrendsJobToFirstBooking;
+  /** @nullable */
+  bookingToSigned: HiringAnalyticsLifecycleTrendsBookingToSigned;
+  /** @nullable */
+  signedToCompleted: HiringAnalyticsLifecycleTrendsSignedToCompleted;
+}
+
+export type HiringAnalyticsLifecycleWindow =
+  (typeof HiringAnalyticsLifecycleWindow)[keyof typeof HiringAnalyticsLifecycleWindow];
+
+export const HiringAnalyticsLifecycleWindow = {
+  "30d": "30d",
+  "90d": "90d",
+  "12m": "12m",
+} as const;
+
+export interface HiringAnalyticsLifecycle {
+  window: HiringAnalyticsLifecycleWindow;
+  /** @nullable */
+  jobToFirstBooking: number | null;
+  /** @nullable */
+  bookingToSigned: number | null;
+  /** @nullable */
+  signedToCompleted: number | null;
+  /** @nullable */
+  totalDuration: number | null;
+  trends: HiringAnalyticsLifecycleTrends;
+}
+
+export interface HiringAnalyticsOutcomes {
+  completed: number;
+  cancelled: number;
+  inProgress: number;
+  other: number;
+  total: number;
+  completedPct: number;
+  cancelledPct: number;
+  inProgressPct: number;
+  otherPct: number;
+}
+
+export interface HiringAnalytics {
+  funnel: HiringAnalyticsFunnel;
+  skillsGap: HiringAnalyticsSkillsGap;
+  retention: HiringAnalyticsRetention;
+  lifecycle: HiringAnalyticsLifecycle;
+  outcomes: HiringAnalyticsOutcomes;
+}
+
+export type DocumentsUploadUrlBodyDocumentType =
+  (typeof DocumentsUploadUrlBodyDocumentType)[keyof typeof DocumentsUploadUrlBodyDocumentType];
+
+export const DocumentsUploadUrlBodyDocumentType = {
+  government_id: "government_id",
+  professional_credential: "professional_credential",
+} as const;
+
+export interface DocumentsUploadUrlBody {
+  documentType: DocumentsUploadUrlBodyDocumentType;
+  /** image/jpeg, image/png, image/webp, or application/pdf */
+  mimeType: string;
+  fileSize: number;
+}
+
+export interface DocumentsUploadUrlResponse {
+  uploadUrl: string;
+  storagePath: string;
+}
+
+export type DocumentsConfirmBodyDocumentType =
+  (typeof DocumentsConfirmBodyDocumentType)[keyof typeof DocumentsConfirmBodyDocumentType];
+
+export const DocumentsConfirmBodyDocumentType = {
+  government_id: "government_id",
+  professional_credential: "professional_credential",
+} as const;
+
+export interface DocumentsConfirmBody {
+  documentType: DocumentsConfirmBodyDocumentType;
+  storagePath: string;
+}
+
+export type DocumentsConfirmResponseStatus =
+  (typeof DocumentsConfirmResponseStatus)[keyof typeof DocumentsConfirmResponseStatus];
+
+export const DocumentsConfirmResponseStatus = {
+  pending: "pending",
+} as const;
+
+export interface DocumentsConfirmResponse {
+  status: DocumentsConfirmResponseStatus;
+}
+
+export interface DocumentMeItem {
+  documentType: string;
+  /** pending | verified | rejected | needs_review */
   status: string;
-  /** AI reviewer note */
-  note: string;
-  emailSent: boolean;
-  /**
-   * Ethereal preview URL (dev only)
-   * @nullable
-   */
-  emailPreviewUrl?: string | null;
+  /** @nullable */
+  confidence?: number | null;
+  /** @nullable */
+  aiNotes?: string | null;
+  /** @nullable */
+  adminNotes?: string | null;
+  updatedAt: string;
+}
+
+export interface DocumentsMeResponse {
+  /** unverified | partially_verified | fully_verified */
+  verificationLevel: string;
+  documents: DocumentMeItem[];
+}
+
+export interface DocumentErrorEnvelope {
+  error: string;
+  code?: string;
 }
 
 export interface UploadUrlRequest {
@@ -490,14 +1159,28 @@ export interface MyJobInterest {
 
 export interface Notification {
   id: number;
-  userId: number;
   type: string;
-  title: string;
+  entityType: string;
+  entityId: string;
   message: string;
-  /** @nullable */
-  link?: string | null;
   read: boolean;
   createdAt: string;
+}
+
+export interface NotificationsUnreadCount {
+  count: number;
+}
+
+export interface NotificationsListResult {
+  data: Notification[];
+  total: number;
+  unreadCount: number;
+  page: number;
+  pageSize: number;
+}
+
+export interface NotificationMarkSuccess {
+  success: boolean;
 }
 
 export type PlanLimitErrorCode =
@@ -522,6 +1205,8 @@ export type PlanDefLimits = {
   monthlyExpressInterests?: number | null;
   /** @nullable */
   teamSeats?: number | null;
+  /** @nullable */
+  monthlyTokenLimit?: number | null;
 };
 
 export interface PlanDef {
@@ -533,6 +1218,37 @@ export interface PlanDef {
   features: string[];
   limits: PlanDefLimits;
   priority: number;
+}
+
+export interface TokenUsageBreakdown {
+  ai_match: number;
+  agreement_generation: number;
+}
+
+export interface TokenUsageSummary {
+  plan: string;
+  /** @nullable */
+  monthlyTokenLimit: number | null;
+  tokensUsed: number;
+  /** @nullable */
+  tokensRemaining: number | null;
+  resetDate: string;
+  breakdown: TokenUsageBreakdown;
+}
+
+export interface ConversationTokenMessage {
+  id: number;
+  promptTokens: number;
+  completionTokens: number;
+  totalTokens: number;
+  createdAt: string;
+}
+
+export interface ConversationTokenBreakdown {
+  conversationId: number;
+  totalTokens: number;
+  messages: ConversationTokenMessage[];
+  legacyData: boolean;
 }
 
 export interface SubscriptionUsage {
@@ -558,25 +1274,6 @@ export interface UploadUrlResponse {
   objectPath: string;
 }
 
-export interface Review {
-  id: number;
-  bookingId: number;
-  reviewerId: number;
-  revieweeId: number;
-  /** employer or freelancer */
-  reviewerRole: string;
-  /**
-   * @minimum 1
-   * @maximum 5
-   */
-  rating: number;
-  /** @nullable */
-  title?: string | null;
-  /** @nullable */
-  content?: string | null;
-  createdAt: string;
-}
-
 export interface CreateReviewBody {
   bookingId: number;
   /**
@@ -584,20 +1281,48 @@ export interface CreateReviewBody {
    * @maximum 5
    */
   rating: number;
-  title?: string;
-  content?: string;
+  /** @maxLength 1000 */
+  comment?: string;
+}
+
+export interface ReplyReviewBody {
+  /**
+   * @minLength 1
+   * @maxLength 1000
+   */
+  reply: string;
 }
 
 export interface FreelancerReviewsResult {
-  reviews: Review[];
-  /** @nullable */
-  averageRating?: number | null;
-  totalReviews: number;
+  data: PublicReview[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
 }
 
-export interface MyReviewResult {
-  reviewed: boolean;
-  review?: Review | null;
+export interface PaginatedBookingsResult {
+  data: Booking[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+}
+
+export interface PaginatedAgreementsResult {
+  data: Agreement[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+}
+
+export interface PaginatedMeetingsResult {
+  data: Meeting[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
 }
 
 export interface SaveToggleResult {
@@ -694,6 +1419,174 @@ export interface AnalyticsData {
   totals: AnalyticsDataTotals;
 }
 
+export interface Team {
+  id: string;
+  name: string;
+  ownerUserId: number;
+  createdAt: string;
+}
+
+export type TeamMemberRole =
+  (typeof TeamMemberRole)[keyof typeof TeamMemberRole];
+
+export const TeamMemberRole = {
+  admin: "admin",
+  member: "member",
+} as const;
+
+export type TeamMemberStatus =
+  (typeof TeamMemberStatus)[keyof typeof TeamMemberStatus];
+
+export const TeamMemberStatus = {
+  invited: "invited",
+  active: "active",
+  deactivated: "deactivated",
+} as const;
+
+export interface TeamMember {
+  id: number;
+  /** @nullable */
+  userId?: number | null;
+  role: TeamMemberRole;
+  status: TeamMemberStatus;
+  invitedEmail: string;
+  invitedAt: string;
+  /** @nullable */
+  joinedAt?: string | null;
+  /** @nullable */
+  displayName?: string | null;
+  displayEmail: string;
+}
+
+export interface TeamDetails {
+  team: Team;
+  members: TeamMember[];
+  isAdmin: boolean;
+  isOwner: boolean;
+}
+
+export interface CreateTeamBody {
+  name?: string;
+}
+
+export interface UpdateTeamBody {
+  name: string;
+}
+
+export type InviteTeamMemberBodyRole =
+  (typeof InviteTeamMemberBodyRole)[keyof typeof InviteTeamMemberBodyRole];
+
+export const InviteTeamMemberBodyRole = {
+  admin: "admin",
+  member: "member",
+} as const;
+
+export interface InviteTeamMemberBody {
+  email: string;
+  role?: InviteTeamMemberBodyRole;
+}
+
+export interface TeamInviteResponse {
+  id: number;
+  invitedEmail: string;
+  role: string;
+  status: string;
+  invitedAt: string;
+  /** @nullable */
+  inviteExpiresAt?: string | null;
+}
+
+export interface AcceptTeamInviteResponse {
+  teamName: string;
+  teamId: string;
+  message: string;
+}
+
+export type AcceptTeamInviteAuthRequiredCode =
+  (typeof AcceptTeamInviteAuthRequiredCode)[keyof typeof AcceptTeamInviteAuthRequiredCode];
+
+export const AcceptTeamInviteAuthRequiredCode = {
+  AUTH_REQUIRED: "AUTH_REQUIRED",
+} as const;
+
+export interface AcceptTeamInviteAuthRequired {
+  error: string;
+  code: AcceptTeamInviteAuthRequiredCode;
+  teamName?: string;
+}
+
+export type InviteUsedErrorCode =
+  (typeof InviteUsedErrorCode)[keyof typeof InviteUsedErrorCode];
+
+export const InviteUsedErrorCode = {
+  INVITE_USED: "INVITE_USED",
+} as const;
+
+export interface InviteUsedError {
+  error: string;
+  code: InviteUsedErrorCode;
+}
+
+export interface RemoveTeamMemberResponse {
+  success: boolean;
+}
+
+export interface AddTeamShortlistBody {
+  freelancerId: number;
+}
+
+export interface TeamShortlistItem {
+  /** Shortlist entry ID */
+  id: number;
+  freelancer: FreelancerProfile;
+  addedByUserId: number;
+  addedByName: string;
+  addedAt: string;
+}
+
+export interface RemoveTeamShortlistResponse {
+  success: boolean;
+}
+
+export interface TeamAnalyticsMemberSpend {
+  userId: number;
+  name: string;
+  spend: number;
+}
+
+export interface TeamAnalyticsTopFreelancer {
+  freelancerId: number;
+  name: string;
+  fieldOfWork: string;
+  totalSpend: number;
+  bookingCount: number;
+}
+
+export interface TeamAnalyticsOpenJobs {
+  userId: number;
+  name: string;
+  openJobCount: number;
+}
+
+export type TeamAnalyticsWindow =
+  (typeof TeamAnalyticsWindow)[keyof typeof TeamAnalyticsWindow];
+
+export const TeamAnalyticsWindow = {
+  "30d": "30d",
+  "90d": "90d",
+  "12m": "12m",
+} as const;
+
+export interface TeamAnalytics {
+  teamName: string;
+  window: TeamAnalyticsWindow;
+  totalSpend: number;
+  bookingsCreated: number;
+  spendByMember: TeamAnalyticsMemberSpend[];
+  mostHiredFreelancers: TeamAnalyticsTopFreelancer[];
+  openJobsByMember: TeamAnalyticsOpenJobs[];
+}
+
 export interface PublicFreelancerProfile {
   id: number;
   userId: number;
@@ -717,9 +1610,10 @@ export interface PublicFreelancerProfile {
   availabilityNote?: string | null;
   resumeAnalysis?: ResumeAnalysis | null;
   portfolio: PortfolioItem[];
-  reviews: Review[];
+  reviews: PublicReview[];
   /** @nullable */
   averageRating?: number | null;
+  reviewCount?: number;
   totalReviews: number;
   createdAt: string;
 }
@@ -734,6 +1628,10 @@ export type ListFreelancersParams = {
    */
   available?: boolean;
   /**
+   * When true, only freelancers with at least one verified document
+   */
+  verified?: boolean;
+  /**
    * Number of results
    */
   limit?: number;
@@ -741,6 +1639,14 @@ export type ListFreelancersParams = {
    * Pagination offset
    */
   offset?: number;
+  /**
+   * Only return freelancers available on or before this date
+   */
+  availableFrom?: string;
+  /**
+   * Full-text keyword search across bio and skills
+   */
+  q?: string;
 };
 
 export type ListJobRequirementsParams = {
@@ -754,8 +1660,16 @@ export type ListJobRequirementsParams = {
   status?: string;
 };
 
-export type MarkAllNotificationsRead200 = {
-  updated: number;
+export type ListNotificationsParams = {
+  /**
+   * @minimum 1
+   */
+  page?: number;
+  /**
+   * @minimum 1
+   * @maximum 50
+   */
+  pageSize?: number;
 };
 
 export type ListPlansParams = {
@@ -780,15 +1694,66 @@ export type ListBookingsParams = {
    * Filter by role (freelancer, employer)
    */
   role?: string;
+  page?: number;
+  pageSize?: number;
 };
 
 export type ListAgreementsParams = {
   /**
-   * Filter by status (draft, pending_signatures, signed, active, completed)
+   * Filter by status (draft, redlined, partially_signed, fully_signed)
    */
   status?: string;
+  page?: number;
+  pageSize?: number;
+};
+
+export type ListMeetingsParams = {
+  page?: number;
+  pageSize?: number;
+};
+
+export type GetDashboardHiringAnalyticsParams = {
+  window?: GetDashboardHiringAnalyticsWindow;
+};
+
+export type GetDashboardHiringAnalyticsWindow =
+  (typeof GetDashboardHiringAnalyticsWindow)[keyof typeof GetDashboardHiringAnalyticsWindow];
+
+export const GetDashboardHiringAnalyticsWindow = {
+  "30d": "30d",
+  "90d": "90d",
+  "12m": "12m",
+} as const;
+
+export type ListFreelancerReviewsParams = {
+  /**
+   * @minimum 1
+   */
+  page?: number;
+  /**
+   * @minimum 1
+   * @maximum 50
+   */
+  pageSize?: number;
 };
 
 export type DeletePortfolioItem200 = {
   deleted: boolean;
 };
+
+export type AcceptTeamInviteParams = {
+  token: string;
+};
+
+export type GetTeamAnalyticsParams = {
+  window?: GetTeamAnalyticsWindow;
+};
+
+export type GetTeamAnalyticsWindow =
+  (typeof GetTeamAnalyticsWindow)[keyof typeof GetTeamAnalyticsWindow];
+
+export const GetTeamAnalyticsWindow = {
+  "30d": "30d",
+  "90d": "90d",
+  "12m": "12m",
+} as const;

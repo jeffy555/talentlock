@@ -7,6 +7,14 @@ import {
 } from "@workspace/db";
 import { eq, and } from "drizzle-orm";
 import { z } from "zod/v4";
+import {
+  createNotification,
+  NotificationType,
+  userIdFromEmployerProfileId,
+  userIdFromFreelancerProfileId,
+  freelancerNameForProfile,
+} from "../lib/createNotification";
+import { sendNotificationEmailAsync } from "../lib/emailService";
 
 const router = Router();
 
@@ -122,6 +130,43 @@ router.patch("/milestones/:id", async (req, res) => {
     }
     const [updated] = await db.update(milestonesTable).set(updateData as any)
       .where(eq(milestonesTable.id, id)).returning();
+
+    if (parsed.data.status === "completed" && milestone.status !== "completed" && booking) {
+      const employerUserId = await userIdFromEmployerProfileId(booking.employerId);
+      const freelancerName = await freelancerNameForProfile(booking.freelancerId);
+      if (employerUserId) {
+        const milestoneMsg = `${freelancerName} marked milestone '${updated.title}' as complete`;
+        createNotification(db, {
+          userId: employerUserId,
+          type: NotificationType.MILESTONE_COMPLETED,
+          entityType: "milestone",
+          entityId: booking.id,
+          message: milestoneMsg,
+        }).catch((err) => req.log.warn({ err, milestoneId: id }, "notification write failed"));
+        sendNotificationEmailAsync(
+          db, employerUserId, "Milestone completed on TalentLock", milestoneMsg,
+          `/bookings/${booking.id}`, req.log,
+        );
+      }
+    }
+    if (parsed.data.status === "approved" && milestone.status !== "approved" && booking) {
+      const freelancerUserId = await userIdFromFreelancerProfileId(booking.freelancerId);
+      if (freelancerUserId) {
+        const approvedMsg = `Milestone '${updated.title}' has been approved`;
+        createNotification(db, {
+          userId: freelancerUserId,
+          type: NotificationType.MILESTONE_APPROVED,
+          entityType: "milestone",
+          entityId: booking.id,
+          message: approvedMsg,
+        }).catch((err) => req.log.warn({ err, milestoneId: id }, "notification write failed"));
+        sendNotificationEmailAsync(
+          db, freelancerUserId, "Milestone approved on TalentLock", approvedMsg,
+          `/bookings/${booking.id}`, req.log,
+        );
+      }
+    }
+
     res.json({ ...updated, amount: updated.amount ? parseFloat(updated.amount) : null });
   } catch (err) {
     req.log.error({ err }, "Failed to update milestone");

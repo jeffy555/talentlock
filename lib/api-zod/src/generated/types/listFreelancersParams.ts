@@ -16,6 +16,10 @@ export type ListFreelancersParams = {
    */
   available?: boolean;
   /**
+   * When true, only freelancers with at least one verified document
+   */
+  verified?: boolean;
+  /**
    * Number of results
    */
   limit?: number;
@@ -23,4 +27,12 @@ export type ListFreelancersParams = {
    * Pagination offset
    */
   offset?: number;
+  /**
+   * Only return freelancers available on or before this date
+   */
+  availableFrom?: Date;
+  /**
+   * Full-text keyword search across bio and skills
+   */
+  q?: string;
 };

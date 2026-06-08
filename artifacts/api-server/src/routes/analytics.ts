@@ -3,9 +3,9 @@ import { getAuth } from "@clerk/express";
 import { db } from "@workspace/db";
 import {
   usersTable, bookingsTable, freelancerProfilesTable,
-  employerProfilesTable, reviewsTable,
+  employerProfilesTable,
 } from "@workspace/db";
-import { eq, and, gte, desc, count, avg, sum } from "drizzle-orm";
+import { eq, and, gte, desc, count, sum } from "drizzle-orm";
 
 const router = Router();
 
@@ -61,9 +61,6 @@ router.get("/analytics/me", async (req, res) => {
         return { month: label, bookings: inMonth.length, earnings };
       });
 
-      const [reviewAgg] = await db.select({ avg: avg(reviewsTable.rating), total: count() })
-        .from(reviewsTable).where(eq(reviewsTable.revieweeId, user.id));
-
       const completedBookings = allBookings.filter(b => b.status === "completed");
       const totalEarnings = completedBookings.reduce((sum, b) => sum + (b.rate ? parseFloat(b.rate) : 0), 0);
 
@@ -75,8 +72,8 @@ router.get("/analytics/me", async (req, res) => {
           activeBookings: allBookings.filter(b => b.status === "active").length,
           completedBookings: completedBookings.length,
           totalEarnings,
-          averageRating: reviewAgg.avg ? parseFloat(reviewAgg.avg) : null,
-          totalReviews: Number(reviewAgg.total),
+          averageRating: profile.averageRating ? parseFloat(profile.averageRating) : null,
+          totalReviews: profile.reviewCount ?? 0,
         },
       });
     } else {

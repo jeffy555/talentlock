@@ -5,6 +5,7 @@ import { subscriptionsTable, usersTable, freelancerProfilesTable, employerProfil
 import { eq } from "drizzle-orm";
 import { PLANS, getPlan, listPlansForAudience, type Audience } from "../lib/plans";
 import { getUserSubscription, getCombinedUsage } from "../lib/subscriptionGating";
+import { logAudit } from "../lib/auditLogger";
 
 const router = Router();
 
@@ -64,6 +65,8 @@ router.post("/subscriptions/upgrade", async (req, res) => {
       return;
     }
 
+    const existingSub = await getUserSubscription(user.id);
+    const previousPlan = existingSub.plan;
     const periodEnd = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
 
     // Atomic upsert keyed on the unique (user_id) index — safe under concurrent
@@ -83,6 +86,15 @@ router.post("/subscriptions/upgrade", async (req, res) => {
       employerProfileId: employer?.id ?? null,
       freelancerProfileId: freelancer?.id ?? null,
     });
+
+    logAudit(db, {
+      userId: user.id,
+      action: "subscription.upgraded",
+      entityType: "subscription",
+      entityId: String(user.id),
+      ipAddress: req.ip,
+      metadata: { fromPlan: previousPlan, toPlan: plan.id },
+    }).catch((err) => req.log.warn({ err }, "audit log write failed"));
 
     res.json({ plan, status: "active", currentPeriodEnd: periodEnd, usage });
   } catch (err) {

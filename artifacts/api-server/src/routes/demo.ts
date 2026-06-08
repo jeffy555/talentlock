@@ -3,9 +3,11 @@ import { createClerkClient } from "@clerk/express";
 
 const router: IRouter = Router();
 
+// Defaults match seeded Neon profiles (Jefferson Immanuel / LoavesFlash).
+// Override via DEMO_EMPLOYER_CLERK_ID / DEMO_FREELANCER_CLERK_ID in .env.
 const DEMO_USERS: Record<string, string> = {
-  employer: process.env.DEMO_EMPLOYER_CLERK_ID || "user_3DCjDCio53BNo5NfE5Cp1rm2Vo4",
-  freelancer: process.env.DEMO_FREELANCER_CLERK_ID || "user_3DCjDTWarCQhCgJy5n3EjJOck2N",
+  employer: process.env.DEMO_EMPLOYER_CLERK_ID || "user_3DBguOY4TbwT9bxOYc9NcYU5q9a",
+  freelancer: process.env.DEMO_FREELANCER_CLERK_ID || "user_3DBiBymDbIiXQnFqyk64WquLsdY",
 };
 
 router.post("/demo/sign-in-token", async (req, res) => {

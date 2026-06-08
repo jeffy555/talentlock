@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
+import { getAdminCsrfToken } from "@/lib/adminCsrf";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,15 +15,26 @@ export default function AdminLogin() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [csrfToken, setCsrfToken] = useState<string | null>(null);
+
+  useEffect(() => {
+    getAdminCsrfToken()
+      .then(setCsrfToken)
+      .catch(() => setCsrfToken(null));
+  }, []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setSubmitting(true);
     try {
+      const token = csrfToken ?? (await getAdminCsrfToken());
       const res = await fetch(`${basePath}/api/admin/login`, {
         method: "POST",
         credentials: "include",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "x-csrf-token": token,
+        },
         body: JSON.stringify({ username, password }),
       });
       if (!res.ok) {
@@ -75,7 +87,7 @@ export default function AdminLogin() {
                 required
               />
             </div>
-            <Button type="submit" className="w-full" disabled={submitting}>
+            <Button type="submit" className="w-full" disabled={submitting || !csrfToken}>
               {submitting ? "Signing in…" : "Sign in"}
             </Button>
             <p className="text-xs text-muted-foreground text-center pt-2">

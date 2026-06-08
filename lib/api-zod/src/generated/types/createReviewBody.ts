@@ -13,6 +13,6 @@ export interface CreateReviewBody {
    * @maximum 5
    */
   rating: number;
-  title?: string;
-  content?: string;
+  /** @maxLength 1000 */
+  comment?: string;
 }

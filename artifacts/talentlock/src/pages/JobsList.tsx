@@ -1,4 +1,4 @@
-import { useGetMe, useListJobRequirements } from "@workspace/api-client-react";
+import { useGetMe, useGetMyEmployerProfile, useListJobRequirements } from "@workspace/api-client-react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,9 +9,22 @@ import { format } from "date-fns";
 export default function JobsList() {
   const { data: user } = useGetMe();
   const isEmployer = user?.role === "employer";
-  
-  const params = isEmployer ? { employerId: user?.id } : { status: "open" };
-  const { data: jobs, isLoading } = useListJobRequirements(params);
+  const { data: myEmployerProfile, isLoading: profileLoading } = useGetMyEmployerProfile({
+    query: { enabled: isEmployer } as any,
+  });
+
+  // job_requirements.employer_id stores employer_profiles.id, not users.id
+  const listParams = isEmployer
+    ? myEmployerProfile
+      ? { employerId: myEmployerProfile.id }
+      : undefined
+    : { status: "open" };
+
+  const { data: jobs, isLoading: jobsLoading } = useListJobRequirements(listParams, {
+    query: { enabled: !isEmployer || !!myEmployerProfile?.id } as any,
+  });
+
+  const isLoading = isEmployer ? profileLoading || jobsLoading : jobsLoading;
 
   if (isLoading) {
     return (

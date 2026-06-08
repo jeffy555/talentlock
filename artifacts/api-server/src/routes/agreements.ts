@@ -1,22 +1,109 @@
-import { Router } from "express";
+// agreements.status: draft | redlined | partially_signed | fully_signed
+
+import { Router, type Request } from "express";
 import { getAuth } from "@clerk/express";
 import { db } from "@workspace/db";
 import {
-  agreementsTable, bookingsTable, freelancerProfilesTable, employerProfilesTable,
+  agreementsTable, bookingsTable, freelancerProfilesTable, employerProfilesTable, usersTable,
 } from "@workspace/db";
-import { eq, or, and, SQL } from "drizzle-orm";
-import { CreateAgreementBody, SignAgreementBody, ListAgreementsQueryParams } from "@workspace/api-zod";
+import { eq, or, and, SQL, count } from "drizzle-orm";
+import {
+  CreateAgreementBody,
+  SignAgreementBody,
+  ListAgreementsQueryParams,
+  PatchAgreementsIdAcceptRedlineBody,
+} from "@workspace/api-zod";
 import OpenAI from "openai";
+import { checkTokenQuota, getUserSubscription } from "../lib/subscriptionGating";
+import { logTokenUsage } from "../lib/tokenLogger";
+import {
+  buildIndustrySection,
+  buildCustomClausesSection,
+  sanitiseClause,
+  VALID_INDUSTRIES,
+} from "../lib/industryTemplates";
+import {
+  createNotification,
+  NotificationType,
+  userIdFromEmployerProfileId,
+  userIdFromFreelancerProfileId,
+  freelancerNameForProfile,
+  employerCompanyForProfile,
+} from "../lib/createNotification";
+import { logAudit } from "../lib/auditLogger";
+import { sendNotificationEmailAsync } from "../lib/emailService";
+import { parsePagination, paginatedResponse } from "../lib/paginationUtils";
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY_TALENTLOCK });
 
+const REDLINE_SYSTEM_PROMPT = `You are a legal contract reviewer for a freelance platform.
+Review the following contract and identify up to 10 improvements.
+Focus on: ambiguous language, missing specificity, unusually one-sided terms, and unclear obligations.
+
+Return ONLY a JSON array — no preamble, no markdown fences:
+[
+  {
+    "clauseNumber": "clause identifier or section number",
+    "originalText": "exact quote from the contract",
+    "suggestedText": "your proposed replacement",
+    "reason": "plain English explanation, max 2 sentences"
+  }
+]
+
+If fewer than 10 improvements are needed, return only the genuine ones — do not pad.
+If no improvements are needed, return an empty array: []`;
+
 const router = Router();
+
+function agreementSignStatus(
+  freelancerSignedAt: Date | null | undefined,
+  employerSignedAt: Date | null | undefined,
+): "partially_signed" | "fully_signed" {
+  return freelancerSignedAt && employerSignedAt ? "fully_signed" : "partially_signed";
+}
+
+async function auditAgreementSigned(
+  req: Request,
+  agreementId: number,
+  signerRole: string,
+  agreement: { status: string | null },
+  employerId: number,
+  freelancerId: number,
+): Promise<void> {
+  const { userId: clerkId } = getAuth(req);
+  let internalUserId: number | null = null;
+  if (clerkId) {
+    const [user] = await db.select({ id: usersTable.id }).from(usersTable).where(eq(usersTable.clerkId, clerkId)).limit(1);
+    internalUserId = user?.id ?? null;
+  }
+  if (internalUserId == null) {
+    internalUserId = signerRole === "employer"
+      ? await userIdFromEmployerProfileId(employerId)
+      : await userIdFromFreelancerProfileId(freelancerId);
+  }
+  logAudit(db, {
+    userId: internalUserId,
+    action: "agreement.signed",
+    entityType: "agreement",
+    entityId: String(agreementId),
+    ipAddress: req.ip,
+    userAgent: req.headers["user-agent"],
+    metadata: {
+      signerRole,
+      fullySignedAt: agreement.status === "fully_signed" ? new Date().toISOString() : null,
+    },
+  }).catch((err) => req.log.warn({ err }, "audit log write failed"));
+}
 
 router.get("/agreements", async (req, res) => {
   const { userId: clerkId } = getAuth(req);
   if (!clerkId) { res.status(401).json({ error: "Unauthorized" }); return; }
   const parsed = ListAgreementsQueryParams.safeParse(req.query);
-  const params = parsed.success ? parsed.data : {};
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+  const params = parsed.data;
   try {
     const [freelancer] = await db.select().from(freelancerProfilesTable).where(eq(freelancerProfilesTable.clerkId, clerkId)).limit(1);
     const [employer] = await db.select().from(employerProfilesTable).where(eq(employerProfilesTable.clerkId, clerkId)).limit(1);
@@ -31,9 +118,16 @@ router.get("/agreements", async (req, res) => {
     }
     if (params.status) conditions.push(eq(agreementsTable.status, params.status));
 
-    const agreements = await db.select().from(agreementsTable).where(conditions.length > 0 ? and(...conditions) : undefined);
-    const enriched = await Promise.all(agreements.map(enrichAgreement));
-    res.json(enriched);
+    const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+    const { page, pageSize, offset } = parsePagination(params);
+
+    const [rows, countResult] = await Promise.all([
+      db.select().from(agreementsTable).where(whereClause).limit(pageSize).offset(offset),
+      db.select({ count: count() }).from(agreementsTable).where(whereClause),
+    ]);
+    const enriched = await Promise.all(rows.map(enrichAgreement));
+    const total = Number(countResult[0]?.count ?? 0);
+    res.json(paginatedResponse(enriched, total, page, pageSize));
   } catch (err) {
     req.log.error({ err }, "Failed to list agreements");
     res.status(500).json({ error: "Internal server error" });
@@ -49,12 +143,62 @@ router.post("/agreements", async (req, res) => {
     const [booking] = await db.select().from(bookingsTable).where(eq(bookingsTable.id, parsed.data.bookingId)).limit(1);
     if (!booking) { res.status(404).json({ error: "Booking not found" }); return; }
 
+    const [user] = await db.select().from(usersTable).where(eq(usersTable.clerkId, clerkId)).limit(1);
+    if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
+
+    const quota = await checkTokenQuota(db, user.id);
+    if (!quota.allowed) {
+      res.status(402).json({
+        error: "Monthly AI token limit reached",
+        code: "TOKEN_LIMIT",
+        planNeeded: quota.planNeeded,
+      });
+      return;
+    }
+
     // Block agreement generation until rate negotiation is complete
     if (booking.negotiationStatus === "negotiating") {
       res.status(400).json({ error: "Rate negotiation must be completed before generating an agreement.", code: "NEGOTIATION_PENDING" }); return;
     }
     const [freelancer] = await db.select().from(freelancerProfilesTable).where(eq(freelancerProfilesTable.id, booking.freelancerId)).limit(1);
     const [employer] = await db.select().from(employerProfilesTable).where(eq(employerProfilesTable.id, booking.employerId)).limit(1);
+
+    const industry = parsed.data.industry ?? "general";
+    if (!VALID_INDUSTRIES.includes(industry as (typeof VALID_INDUSTRIES)[number])) {
+      res.status(400).json({ error: "Invalid industry value" });
+      return;
+    }
+
+    const customClauses = parsed.data.customClauses ?? [];
+    if (customClauses.length > 0) {
+      const sub = await getUserSubscription(user.id);
+      if (sub.plan.id !== "employer_enterprise") {
+        res.status(403).json({
+          error: "Custom clauses require Enterprise plan",
+          code: "PLAN_LIMIT",
+          planNeeded: "employer_enterprise",
+        });
+        return;
+      }
+      if (customClauses.length > 5) {
+        res.status(400).json({ error: "Maximum 5 custom clauses allowed" });
+        return;
+      }
+      for (const clause of customClauses) {
+        if (clause.trim().length < 20) {
+          res.status(400).json({ error: "Clause must be at least 20 characters", code: "CLAUSE_TOO_SHORT" });
+          return;
+        }
+        if (clause.length > 500) {
+          res.status(400).json({ error: "Clause must be 500 characters or fewer", code: "CLAUSE_TOO_LONG" });
+          return;
+        }
+      }
+    }
+
+    const sanitised = customClauses.map(sanitiseClause);
+    const industrySection = buildIndustrySection(industry);
+    const customSection = buildCustomClausesSection(sanitised);
 
     const startDate = booking.startDate.toISOString().split("T")[0];
     const endDate = booking.endDate.toISOString().split("T")[0];
@@ -120,7 +264,7 @@ router.post("/agreements", async (req, res) => {
       messages: [
         {
           role: "system",
-          content: `You are a senior commercial attorney drafting a binding freelance services agreement on behalf of TalentLock, a secure freelancer booking platform. You write precise, enforceable legal contracts — not templates, not samples. Every clause must contain complete, substantive legal language. Do NOT include placeholder text such as "[insert…]", "TBD", or "to be agreed". Where jurisdiction-specific details are unavailable, default to the laws of the State of Delaware, USA, and US federal law. Write in formal legal English.`,
+          content: `You are a senior commercial attorney drafting a binding freelance services agreement on behalf of TalentLock, a secure freelancer booking platform. You write precise, enforceable legal contracts — not templates, not samples. Every clause must contain complete, substantive legal language. Do NOT include placeholder text such as "[insert…]", "TBD", or "to be agreed". Where jurisdiction-specific details are unavailable, default to the laws of the State of Delaware, USA, and US federal law. Write in formal legal English.${industrySection}${customSection}`,
         },
         {
           role: "user",
@@ -281,6 +425,12 @@ This agreement was generated and is administered through the TalentLock Platform
       max_completion_tokens: 4096,
     });
 
+    if (completion.usage) {
+      await logTokenUsage(db, user.id, "agreement_generation", completion.usage);
+    } else {
+      req.log.warn({ userId: user.id, feature: "agreement_generation" }, "token usage unavailable on response");
+    }
+
     const content = completion.choices[0]?.message?.content ?? "Agreement content could not be generated.";
     const [agreement] = await db.insert(agreementsTable)
       .values({
@@ -288,9 +438,29 @@ This agreement was generated and is administered through the TalentLock Platform
         freelancerId: booking.freelancerId,
         employerId: booking.employerId,
         content,
-        status: "pending_signatures",
+        status: "draft",
       })
       .returning();
+
+    const readyMsg = "An agreement is ready for your signature";
+    const employerUserId = await userIdFromEmployerProfileId(booking.employerId);
+    const freelancerUserId = await userIdFromFreelancerProfileId(booking.freelancerId);
+    for (const userId of [employerUserId, freelancerUserId]) {
+      if (userId) {
+        createNotification(db, {
+          userId,
+          type: NotificationType.AGREEMENT_READY,
+          entityType: "agreement",
+          entityId: agreement.id,
+          message: readyMsg,
+        }).catch((err) => req.log.warn({ err, agreementId: agreement.id }, "notification write failed"));
+        sendNotificationEmailAsync(
+          db, userId, "Agreement ready on TalentLock", readyMsg,
+          `/agreements/${agreement.id}`, req.log,
+        );
+      }
+    }
+
     res.status(201).json(await enrichAgreement(agreement));
   } catch (err) {
     req.log.error({ err }, "Failed to create agreement");
@@ -307,6 +477,133 @@ router.get("/agreements/:id", async (req, res) => {
     res.json(await enrichAgreement(agreement));
   } catch (err) {
     req.log.error({ err }, "Failed to get agreement");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.post("/agreements/:id/redline", async (req, res) => {
+  const id = parseInt(req.params.id);
+  if (isNaN(id)) { res.status(400).json({ error: "Invalid ID" }); return; }
+
+  const { userId: clerkId } = getAuth(req);
+  if (!clerkId) { res.status(401).json({ error: "Unauthorized" }); return; }
+
+  try {
+    const [user] = await db.select().from(usersTable).where(eq(usersTable.clerkId, clerkId)).limit(1);
+    if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
+    if (user.role !== "employer") {
+      res.status(403).json({ error: "Only employers can request contract redlining" });
+      return;
+    }
+
+    const [agreement] = await db.select().from(agreementsTable).where(eq(agreementsTable.id, id)).limit(1);
+    if (!agreement) { res.status(404).json({ error: "Agreement not found" }); return; }
+
+    if (agreement.freelancerSignedAt || agreement.employerSignedAt) {
+      res.status(409).json({
+        error: "Cannot redline a partially or fully signed agreement",
+        code: "AGREEMENT_SIGNED",
+      });
+      return;
+    }
+
+    const sub = await getUserSubscription(user.id);
+    if (!["employer_growth", "employer_enterprise"].includes(sub.plan.id)) {
+      res.status(402).json({
+        error: "Contract redlining requires Growth plan or higher",
+        code: "PLAN_LIMIT",
+        planNeeded: "employer_growth",
+      });
+      return;
+    }
+
+    const quota = await checkTokenQuota(db, user.id);
+    if (!quota.allowed) {
+      res.status(402).json({
+        error: "Monthly AI token limit reached",
+        code: "TOKEN_LIMIT",
+        planNeeded: quota.planNeeded,
+      });
+      return;
+    }
+
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [
+        { role: "system", content: REDLINE_SYSTEM_PROMPT },
+        { role: "user", content: agreement.content },
+      ],
+      max_completion_tokens: 2000,
+    });
+
+    if (completion.usage) {
+      await logTokenUsage(db, user.id, "contract_redlining", completion.usage);
+    } else {
+      req.log.warn({ userId: user.id, feature: "contract_redlining" }, "token usage unavailable on response");
+    }
+
+    const rawContent = completion.choices[0]?.message?.content ?? "[]";
+    try {
+      const suggestions = JSON.parse(rawContent);
+      if (!Array.isArray(suggestions)) throw new Error("Not an array");
+      res.status(200).json({ suggestions });
+    } catch {
+      req.log.warn({ agreementId: id }, "redline JSON parse failed");
+      res.status(200).json({ suggestions: [], parseError: true });
+    }
+  } catch (err) {
+    req.log.error({ err }, "Failed to redline agreement");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.patch("/agreements/:id/accept-redline", async (req, res) => {
+  const id = parseInt(req.params.id);
+  if (isNaN(id)) { res.status(400).json({ error: "Invalid ID" }); return; }
+
+  const { userId: clerkId } = getAuth(req);
+  if (!clerkId) { res.status(401).json({ error: "Unauthorized" }); return; }
+
+  const parsed = PatchAgreementsIdAcceptRedlineBody.safeParse(req.body);
+  if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
+
+  try {
+    const [user] = await db.select().from(usersTable).where(eq(usersTable.clerkId, clerkId)).limit(1);
+    if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
+    if (user.role !== "employer") {
+      res.status(403).json({ error: "Only employers can accept redline changes" });
+      return;
+    }
+
+    const [agreement] = await db.select().from(agreementsTable).where(eq(agreementsTable.id, id)).limit(1);
+    if (!agreement) { res.status(404).json({ error: "Agreement not found" }); return; }
+
+    if (agreement.freelancerSignedAt || agreement.employerSignedAt) {
+      res.status(409).json({
+        error: "Cannot redline a partially or fully signed agreement",
+        code: "AGREEMENT_SIGNED",
+      });
+      return;
+    }
+
+    const { newContent } = parsed.data;
+    await db.transaction(async (tx) => {
+      await tx.update(agreementsTable)
+        .set({ content: newContent, updatedAt: new Date() })
+        .where(eq(agreementsTable.id, id));
+      await tx.update(agreementsTable)
+        .set({
+          freelancerSignedAt: null,
+          employerSignedAt: null,
+          status: "redlined",
+          updatedAt: new Date(),
+        })
+        .where(eq(agreementsTable.id, id));
+    });
+
+    res.status(200).json({ success: true, status: "redlined" });
+  } catch (err) {
+    req.log.error({ err }, "Failed to accept redline");
     res.status(500).json({ error: "Internal server error" });
   }
 });
@@ -347,6 +644,12 @@ router.post("/agreements/:id/sign", async (req, res) => {
       res.status(400).json({ error: "Invalid role" }); return;
     }
 
+    const newStatus = agreementSignStatus(
+      parsed.data.role === "freelancer" ? now : agreement.freelancerSignedAt,
+      parsed.data.role === "employer" ? now : agreement.employerSignedAt,
+    );
+    updates.status = newStatus;
+
     const [updated] = await db.update(agreementsTable)
       .set(updates as any)
       .where(eq(agreementsTable.id, id))
@@ -366,25 +669,85 @@ router.post("/agreements/:id/sign", async (req, res) => {
           .set({
             freelancerSignedAt: new Date(),
             freelancerSignatureName: freelancerProfile.name,
-            status: "signed",
+            status: "fully_signed",
           })
           .where(eq(agreementsTable.id, id))
           .returning();
         await db.update(bookingsTable).set({ status: "active" }).where(eq(bookingsTable.id, updated.bookingId));
         req.log.info({ agreementId: id, freelancerClerkId: freelancerProfile.clerkId }, "Auto-signed agreement on behalf of demo freelancer");
+        const fullMsg = "Agreement fully signed — your document is ready to download";
+        const empUid = await userIdFromEmployerProfileId(autoSigned.employerId);
+        const flUid = await userIdFromFreelancerProfileId(autoSigned.freelancerId);
+        for (const userId of [empUid, flUid]) {
+          if (userId) {
+            createNotification(db, {
+              userId,
+              type: NotificationType.AGREEMENT_FULLY_SIGNED,
+              entityType: "agreement",
+              entityId: id,
+              message: fullMsg,
+            }).catch((err) => req.log.warn({ err, agreementId: id }, "notification write failed"));
+            sendNotificationEmailAsync(
+              db, userId, "Agreement fully signed on TalentLock", fullMsg,
+              `/agreements/${id}`, req.log,
+            );
+          }
+        }
+        await auditAgreementSigned(req, id, parsed.data.role, autoSigned, autoSigned.employerId, autoSigned.freelancerId);
         res.json(await enrichAgreement(autoSigned));
         return;
       }
     }
 
+    const signerName = parsed.data.role === "employer"
+      ? await employerCompanyForProfile(updated.employerId)
+      : await freelancerNameForProfile(updated.freelancerId);
+
     if (updated.freelancerSignedAt && updated.employerSignedAt) {
       const [fullySignedAgreement] = await db.update(agreementsTable)
-        .set({ status: "signed" })
+        .set({ status: "fully_signed" })
         .where(eq(agreementsTable.id, id))
         .returning();
       await db.update(bookingsTable).set({ status: "active" }).where(eq(bookingsTable.id, updated.bookingId));
+      const fullMsg = "Agreement fully signed — your document is ready to download";
+      const empUid = await userIdFromEmployerProfileId(fullySignedAgreement.employerId);
+      const flUid = await userIdFromFreelancerProfileId(fullySignedAgreement.freelancerId);
+      for (const userId of [empUid, flUid]) {
+        if (userId) {
+          createNotification(db, {
+            userId,
+            type: NotificationType.AGREEMENT_FULLY_SIGNED,
+            entityType: "agreement",
+            entityId: id,
+            message: fullMsg,
+          }).catch((err) => req.log.warn({ err, agreementId: id }, "notification write failed"));
+          sendNotificationEmailAsync(
+            db, userId, "Agreement fully signed on TalentLock", fullMsg,
+            `/agreements/${id}`, req.log,
+          );
+        }
+      }
+      await auditAgreementSigned(req, id, parsed.data.role, fullySignedAgreement, fullySignedAgreement.employerId, fullySignedAgreement.freelancerId);
       res.json(await enrichAgreement(fullySignedAgreement));
     } else {
+      const otherUserId = parsed.data.role === "employer"
+        ? await userIdFromFreelancerProfileId(updated.freelancerId)
+        : await userIdFromEmployerProfileId(updated.employerId);
+      if (otherUserId) {
+        const signedMsg = `${signerName} signed the agreement`;
+        createNotification(db, {
+          userId: otherUserId,
+          type: NotificationType.AGREEMENT_SIGNED,
+          entityType: "agreement",
+          entityId: id,
+          message: signedMsg,
+        }).catch((err) => req.log.warn({ err, agreementId: id }, "notification write failed"));
+        sendNotificationEmailAsync(
+          db, otherUserId, "Agreement signed on TalentLock", signedMsg,
+          `/agreements/${id}`, req.log,
+        );
+      }
+      await auditAgreementSigned(req, id, parsed.data.role, updated, updated.employerId, updated.freelancerId);
       res.json(await enrichAgreement(updated));
     }
   } catch (err) {
@@ -405,6 +768,9 @@ router.get("/agreements/:id/download", async (req, res) => {
 
     if (!agreement.freelancerSignedAt || !agreement.employerSignedAt) {
       res.status(403).json({ error: "Agreement must be fully signed before it can be downloaded" }); return;
+    }
+    if (agreement.status !== "fully_signed") {
+      res.status(403).json({ error: "Agreement not fully signed" }); return;
     }
 
     const [freelancer] = await db.select().from(freelancerProfilesTable).where(eq(freelancerProfilesTable.id, agreement.freelancerId)).limit(1);
@@ -464,6 +830,16 @@ router.get("/agreements/:id/download", async (req, res) => {
       "═══════════════════════════════════════════════════════",
     ].join("\n");
 
+    const [user] = await db.select({ id: usersTable.id }).from(usersTable).where(eq(usersTable.clerkId, clerkId)).limit(1);
+    logAudit(db, {
+      userId: user?.id ?? null,
+      action: "agreement.downloaded",
+      entityType: "agreement",
+      entityId: String(id),
+      ipAddress: req.ip,
+      userAgent: req.headers["user-agent"],
+    }).catch((err) => req.log.warn({ err }, "audit log write failed"));
+
     res.setHeader("Content-Type", "text/plain; charset=utf-8");
     res.setHeader("Content-Disposition", `attachment; filename="TalentLock-Agreement-${id}.txt"`);
     res.send(document);
@@ -476,7 +852,12 @@ router.get("/agreements/:id/download", async (req, res) => {
 async function enrichAgreement(a: typeof agreementsTable.$inferSelect) {
   const [f] = await db.select({ name: freelancerProfilesTable.name }).from(freelancerProfilesTable).where(eq(freelancerProfilesTable.id, a.freelancerId)).limit(1);
   const [e] = await db.select({ name: employerProfilesTable.companyName }).from(employerProfilesTable).where(eq(employerProfilesTable.id, a.employerId)).limit(1);
-  return { ...a, freelancerName: f?.name ?? null, employerName: e?.name ?? null };
+  return {
+    ...a,
+    freelancerName: f?.name ?? null,
+    employerName: e?.name ?? null,
+    estimatedRedlineTokens: Math.ceil((a.content?.length ?? 0) / 4) + 500,
+  };
 }
 
 export default router;

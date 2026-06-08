@@ -5,6 +5,7 @@
  * TalentLock API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { PublicReview } from "./publicReview";
 
 export interface Booking {
   id: number;
@@ -22,6 +23,11 @@ export interface Booking {
   /** @nullable */
   notes?: string | null;
   /**
+   * Optional message from employer when creating the booking
+   * @nullable
+   */
+  message?: string | null;
+  /**
    * Current outstanding rate proposal
    * @nullable
    */
@@ -37,5 +43,6 @@ export interface Booking {
   freelancerName?: string | null;
   /** @nullable */
   employerName?: string | null;
+  review: PublicReview | null;
   createdAt: Date;
 }

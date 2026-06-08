@@ -1,5 +1,12 @@
 import { useParams } from "wouter";
-import { useGetAgreement, useSignAgreement, useGetMe } from "@workspace/api-client-react";
+import {
+  useGetAgreement,
+  useSignAgreement,
+  useGetMe,
+  useGetMySubscription,
+  useGetTokenUsageMe,
+} from "@workspace/api-client-react";
+import ContractRedliningSection from "@/components/ContractRedliningSection";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -122,6 +129,12 @@ export default function AgreementDetail() {
   const { id } = useParams<{ id: string }>();
   const { toast } = useToast();
   const { data: me } = useGetMe();
+  const { data: subscription } = useGetMySubscription({
+    query: { enabled: me?.role === "employer" } as any,
+  });
+  const { data: tokenUsage } = useGetTokenUsageMe({
+    query: { enabled: me?.role === "employer" } as any,
+  });
   const { data: agreement, isLoading, refetch } = useGetAgreement(parseInt(id!), { query: { enabled: !!id } as any });
   const signAgreement = useSignAgreement();
   const [signDialogOpen, setSignDialogOpen] = useState(false);
@@ -252,7 +265,7 @@ export default function AgreementDetail() {
     }
   };
 
-  if (isLoading) {
+  if (isLoading && !agreement) {
     return (
       <div className="max-w-4xl mx-auto space-y-8 animate-fade-in">
         <div className="h-8 w-32 bg-muted rounded animate-pulse"></div>
@@ -536,6 +549,28 @@ export default function AgreementDetail() {
               )}
             </CardContent>
           </Card>
+
+          {ag.status === "redlined" && !employerSigned && !freelancerSigned && (
+            <div className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-800">
+              ⚠ This agreement was revised. Both parties must sign again.
+            </div>
+          )}
+
+          {isEmployer && ag && (
+            <ContractRedliningSection
+              agreementId={ag.id}
+              agreement={ag}
+              userPlan={subscription?.plan?.id ?? "employer_starter"}
+              tokensUsed={tokenUsage?.tokensUsed ?? 0}
+              monthlyTokenLimit={tokenUsage?.monthlyTokenLimit ?? null}
+            />
+          )}
+
+          {isFreelancer && ag.status === "redlined" && (
+            <div className="rounded-md border border-violet-200 bg-violet-50 p-3 text-sm text-violet-700">
+              ℹ This agreement was revised with AI assistance before signing.
+            </div>
+          )}
         </div>
 
         <div className="space-y-6">

@@ -3,8 +3,8 @@ import { getAuth } from "@clerk/express";
 import { db } from "@workspace/db";
 import { usersTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
-import { UpsertMeBody } from "@workspace/api-zod";
-import { logger } from "../lib/logger";
+import { UpsertMeBody, PatchNotificationPreferencesBody } from "@workspace/api-zod";
+import { sanitiseText } from "../lib/sanitise";
 import { z } from "zod/v4";
 
 const router = Router();
@@ -40,7 +40,10 @@ router.put("/users/me", async (req, res) => {
     return;
   }
   try {
-    const data = parsed.data;
+    const data = {
+      ...parsed.data,
+      name: sanitiseText(parsed.data.name),
+    };
     const [existing] = await db.select().from(usersTable).where(eq(usersTable.clerkId, clerkId)).limit(1);
     if (existing) {
       const [updated] = await db.update(usersTable)
@@ -56,6 +59,27 @@ router.put("/users/me", async (req, res) => {
     }
   } catch (err) {
     req.log.error({ err }, "Failed to upsert user");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.patch("/users/me/notification-preferences", async (req, res) => {
+  const { userId: clerkId } = getAuth(req);
+  if (!clerkId) { res.status(401).json({ error: "Unauthorized" }); return; }
+  const parsed = PatchNotificationPreferencesBody.safeParse(req.body);
+  if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
+  try {
+    const [updated] = await db.update(usersTable)
+      .set({
+        emailNotificationsEnabled: parsed.data.emailNotificationsEnabled,
+        updatedAt: new Date(),
+      })
+      .where(eq(usersTable.clerkId, clerkId))
+      .returning();
+    if (!updated) { res.status(404).json({ error: "User not found" }); return; }
+    res.json({ success: true, emailNotificationsEnabled: updated.emailNotificationsEnabled });
+  } catch (err) {
+    req.log.error({ err }, "Failed to update notification preferences");
     res.status(500).json({ error: "Internal server error" });
   }
 });

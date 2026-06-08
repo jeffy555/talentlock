@@ -3,10 +3,10 @@ import { pgTable, text, serial, timestamp, integer, boolean, index } from "drizz
 export const notificationsTable = pgTable("notifications", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").notNull(),
-  type: text("type").notNull(), // job_interest | meeting_invite | booking_update | agreement_signed
-  title: text("title").notNull(),
+  type: text("type").notNull(),
+  entityType: text("entity_type").notNull(),
+  entityId: text("entity_id").notNull(),
   message: text("message").notNull(),
-  link: text("link"),
   read: boolean("read").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 }, (t) => ({

@@ -87,3 +87,7 @@ export const FIELDS_OF_WORK = [
 ] as const;
 
 export type FieldOfWork = (typeof FIELDS_OF_WORK)[number];
+
+export function isFieldOfWork(value: string | undefined | null): value is FieldOfWork {
+  return !!value && (FIELDS_OF_WORK as readonly string[]).includes(value);
+}

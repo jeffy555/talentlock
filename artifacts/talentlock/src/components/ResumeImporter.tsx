@@ -14,6 +14,22 @@ export interface ParsedResume {
   paymentPreference: "hourly" | "daily";
   hourlyRate: number | null;
   bio: string;
+  resumeAnalysis?: {
+    workExperience: Array<{
+      company: string;
+      role: string;
+      startDate: string;
+      endDate: string;
+      highlights: string[];
+    }>;
+    education: Array<{
+      institution: string;
+      degree: string;
+      year: string;
+    }>;
+    certifications: string[];
+    languages: string[];
+  };
 }
 
 interface ResumeImporterProps {

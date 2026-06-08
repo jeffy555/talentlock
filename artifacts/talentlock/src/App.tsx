@@ -29,9 +29,15 @@ import Billing from "@/pages/Billing";
 import AdminLogin from "@/pages/AdminLogin";
 import AdminDashboard from "@/pages/AdminDashboard";
 import PublicProfile from "@/pages/PublicProfile";
+import Team from "@/pages/Team";
+import TeamAnalytics from "@/pages/TeamAnalytics";
+import AcceptInvite from "@/pages/AcceptInvite";
 
-const clerkPubKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY as string;
+const clerkPubKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY as string | undefined;
 const clerkProxyUrl = import.meta.env.VITE_CLERK_PROXY_URL as string | undefined;
+// Clerk proxy only works in production (Replit/custom domain). Localhost loads Clerk from Clerk's CDN.
+const clerkProxyUrlForEnv =
+  import.meta.env.PROD && clerkProxyUrl ? clerkProxyUrl : undefined;
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
 
 function stripBase(path: string): string {
@@ -41,7 +47,7 @@ function stripBase(path: string): string {
 }
 
 if (!clerkPubKey) {
-  throw new Error("Missing VITE_CLERK_PUBLISHABLE_KEY in .env file");
+  console.error("Missing VITE_CLERK_PUBLISHABLE_KEY in .env file");
 }
 
 const clerkAppearance = {
@@ -351,10 +357,23 @@ const queryClient = new QueryClient({
 function ClerkProviderWithRoutes() {
   const [, setLocation] = useLocation();
 
+  if (!clerkPubKey) {
+    return (
+      <div className="flex min-h-[100dvh] items-center justify-center p-8 text-center">
+        <div className="max-w-md space-y-2">
+          <h1 className="text-lg font-semibold">Configuration error</h1>
+          <p className="text-sm text-muted-foreground">
+            Missing <code>VITE_CLERK_PUBLISHABLE_KEY</code> in the project <code>.env</code> file.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <ClerkProvider
       publishableKey={clerkPubKey}
-      proxyUrl={clerkProxyUrl}
+      proxyUrl={clerkProxyUrlForEnv}
       appearance={clerkAppearance}
       signInUrl={`${basePath}/sign-in`}
       signUpUrl={`${basePath}/sign-up`}
@@ -386,6 +405,9 @@ function ClerkProviderWithRoutes() {
           <Route path="/profile" component={() => <ProtectedRoute component={Profile} />} />
           <Route path="/pricing" component={() => <ProtectedRoute component={Pricing} />} />
           <Route path="/billing" component={() => <ProtectedRoute component={Billing} />} />
+          <Route path="/team" component={() => <ProtectedRoute component={Team} />} />
+          <Route path="/team/analytics" component={() => <ProtectedRoute component={TeamAnalytics} />} />
+          <Route path="/team/accept-invite" component={AcceptInvite} />
 
           <Route path="/f/:id" component={PublicProfile} />
 

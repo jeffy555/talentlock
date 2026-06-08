@@ -1,0 +1,52 @@
+import { tokenUsage } from "@workspace/db";
+import type { db } from "@workspace/db";
+
+export type TokenFeature =
+  | "ai_match"
+  | "ai_match_explanation"
+  | "agreement_generation"
+  | "contract_redlining"
+  | "job_description_assistant"
+  | "ai_proposal"
+  | "document_verification"
+  | "rate_suggestion";
+
+const VALID_TOKEN_FEATURES: TokenFeature[] = [
+  "ai_match",
+  "ai_match_explanation",
+  "agreement_generation",
+  "contract_redlining",
+  "job_description_assistant",
+  "ai_proposal",
+  "document_verification",
+  "rate_suggestion",
+];
+
+export interface TokenUsageInput {
+  prompt_tokens: number;
+  completion_tokens: number;
+  total_tokens: number;
+}
+
+type DbClient = Pick<typeof db, "insert">;
+
+export async function logTokenUsage(
+  dbOrTx: DbClient,
+  userId: number,
+  feature: TokenFeature,
+  usage: TokenUsageInput,
+  conversationId?: number,
+): Promise<void> {
+  if (!VALID_TOKEN_FEATURES.includes(feature)) {
+    throw new Error(`Invalid token usage feature: ${feature}`);
+  }
+
+  await dbOrTx.insert(tokenUsage).values({
+    userId,
+    feature,
+    promptTokens: usage.prompt_tokens,
+    completionTokens: usage.completion_tokens,
+    totalTokens: usage.total_tokens,
+    conversationId: conversationId ?? null,
+  });
+}

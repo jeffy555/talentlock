@@ -2,21 +2,13 @@ import { useParams } from "wouter";
 import { useGetPublicFreelancerProfile } from "@workspace/api-client-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { BadgeCheck, Briefcase, Building2, DollarSign, ExternalLink, GraduationCap, Globe, Lock, Star, Award, Calendar } from "lucide-react";
+import { BadgeCheck, Briefcase, Building, Building2, CheckCircle, DollarSign, ExternalLink, GraduationCap, Globe, Lock, Star, Award, Calendar } from "lucide-react";
 import { format } from "date-fns";
-
-function StarDisplay({ rating, max = 5 }: { rating: number; max?: number }) {
-  return (
-    <div className="flex items-center gap-0.5">
-      {Array.from({ length: max }, (_, i) => (
-        <Star
-          key={i}
-          className={`h-4 w-4 ${i < Math.round(rating) ? "text-gold fill-gold" : "text-muted-foreground/30"}`}
-        />
-      ))}
-    </div>
-  );
-}
+import VerificationBadge from "@/components/VerificationBadge";
+import StarRating from "@/components/StarRating";
+import ReviewList from "@/components/ReviewList";
+import { resolveVerificationLevel } from "@/lib/verification";
+import { AvailabilitySection } from "@/components/availability/AvailabilitySection";
 
 function TimelineDot({ isFirst }: { isFirst?: boolean }) {
   return (
@@ -75,6 +67,7 @@ export default function PublicProfile() {
   const hasCerts = ra?.certifications && ra.certifications.length > 0;
   const hasLanguages = ra?.languages && ra.languages.length > 0;
   const hasResumeData = hasWorkExp || hasEducation || hasCerts || hasLanguages;
+  const verificationLevel = resolveVerificationLevel(profile as { verificationLevel?: string; isVerified?: boolean });
 
   return (
     <div className="min-h-screen bg-background">
@@ -102,13 +95,11 @@ export default function PublicProfile() {
             <div>
               <div className="flex items-center gap-3 mb-2">
                 <h1 className="text-4xl font-serif font-bold tracking-tight text-foreground">{profile.name}</h1>
-                {profile.isVerified && (
-                  <div className="bg-primary/5 border border-primary/10 text-primary px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest flex items-center gap-1.5">
-                    <BadgeCheck className="w-3.5 h-3.5" /> Verified
-                  </div>
-                )}
               </div>
               <p className="text-lg font-medium text-primary">{profile.tagline}</p>
+              <div className="mt-2">
+                <VerificationBadge level={verificationLevel} size="md" showTooltip />
+              </div>
             </div>
             <div className="flex-shrink-0">
               {profile.isAvailable ? (
@@ -123,13 +114,14 @@ export default function PublicProfile() {
             </div>
           </div>
 
-          {profile.averageRating && (
-            <div className="flex items-center gap-3">
-              <StarDisplay rating={profile.averageRating} />
-              <span className="font-semibold text-foreground">{profile.averageRating.toFixed(1)}</span>
-              <span className="text-sm text-muted-foreground">({profile.totalReviews} review{profile.totalReviews !== 1 ? "s" : ""})</span>
-            </div>
-          )}
+          <div className="mt-1">
+            <StarRating
+              value={profile.averageRating ?? null}
+              count={profile.reviewCount ?? profile.totalReviews ?? 0}
+              readonly
+              size="md"
+            />
+          </div>
 
           <div className="flex flex-wrap gap-x-6 gap-y-3 py-4 border-y border-border/50 text-sm">
             <div className="flex items-center gap-2 text-foreground font-medium">
@@ -158,6 +150,8 @@ export default function PublicProfile() {
                 <p className="text-muted-foreground leading-relaxed whitespace-pre-wrap">{profile.bio}</p>
               </section>
             )}
+
+            <AvailabilitySection freelancerId={parseInt(id!)} />
 
             {/* ── Work Experience (from resume AI scan) ── */}
             {hasWorkExp && (
@@ -309,25 +303,9 @@ export default function PublicProfile() {
               </section>
             )}
 
-            {profile.reviews.length > 0 && (
-              <section className="space-y-4">
-                <h2 className="font-serif text-2xl font-semibold text-foreground">Reviews</h2>
-                <div className="space-y-4">
-                  {profile.reviews.map((review) => (
-                    <Card key={review.id} className="border-border shadow-sm bg-card">
-                      <CardContent className="p-5 space-y-2">
-                        <div className="flex items-center justify-between gap-2">
-                          <StarDisplay rating={review.rating} />
-                          <span className="text-xs text-muted-foreground">{format(new Date(review.createdAt), "MMM d, yyyy")}</span>
-                        </div>
-                        {review.title && <p className="font-semibold text-foreground">{review.title}</p>}
-                        {review.content && <p className="text-sm text-muted-foreground leading-relaxed">{review.content}</p>}
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              </section>
-            )}
+            <section className="space-y-4">
+              <ReviewList freelancerId={profile.id} />
+            </section>
           </div>
 
           {/* Sidebar CTA */}

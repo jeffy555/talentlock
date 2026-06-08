@@ -1,4 +1,4 @@
-import { Router, type IRouter } from "express";
+import { Router, type IRouter, type Request } from "express";
 import { getAuth } from "@clerk/express";
 import { createRequire } from "node:module";
 import { writeFileSync, unlinkSync } from "node:fs";
@@ -93,7 +93,7 @@ router.post(
     next();
   },
   upload.single("resume"),
-  async (req, res) => {
+  async (req: Request & { file?: Express.Multer.File }, res) => {
     if (!req.file) {
       res.status(400).json({ error: "No file uploaded. Please attach a PDF, DOCX, or TXT resume." });
       return;

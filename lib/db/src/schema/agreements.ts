@@ -8,7 +8,7 @@ export const agreementsTable = pgTable("agreements", {
   freelancerId: integer("freelancer_id").notNull(),
   employerId: integer("employer_id").notNull(),
   content: text("content").notNull(),
-  status: text("status").notNull().default("draft"), // draft | pending_signatures | signed | active | completed
+  status: text("status").notNull().default("draft"), // draft | redlined | partially_signed | fully_signed
   freelancerSignedAt: timestamp("freelancer_signed_at", { withTimezone: true }),
   employerSignedAt: timestamp("employer_signed_at", { withTimezone: true }),
   freelancerSignatureName: text("freelancer_signature_name"),

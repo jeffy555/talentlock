@@ -2,9 +2,19 @@ import { Router } from "express";
 import { getAuth } from "@clerk/express";
 import { db } from "@workspace/db";
 import { meetingsTable, freelancerProfilesTable, employerProfilesTable, usersTable } from "@workspace/db";
-import { eq, or, and } from "drizzle-orm";
+import { eq, or, and, count } from "drizzle-orm";
 import { CreateMeetingBody, UpdateMeetingBody } from "@workspace/api-zod";
 import { randomBytes } from "crypto";
+import {
+  createNotification,
+  NotificationType,
+  userIdFromFreelancerProfileId,
+  userIdFromEmployerProfileId,
+  freelancerNameForProfile,
+  employerCompanyForProfile,
+} from "../lib/createNotification";
+import { sendNotificationEmailAsync } from "../lib/emailService";
+import { parsePagination, paginatedResponse } from "../lib/paginationUtils";
 
 const router = Router();
 
@@ -45,19 +55,28 @@ router.get("/meetings", async (req, res) => {
     const [freelancer] = await db.select().from(freelancerProfilesTable).where(eq(freelancerProfilesTable.clerkId, clerkId)).limit(1);
     const [employer] = await db.select().from(employerProfilesTable).where(eq(employerProfilesTable.clerkId, clerkId)).limit(1);
 
-    let meetings: (typeof meetingsTable.$inferSelect)[] = [];
+    const conditions = [];
     if (freelancer && employer) {
-      meetings = await db.select().from(meetingsTable).where(
-        or(eq(meetingsTable.freelancerId, freelancer.id), eq(meetingsTable.employerId, employer.id))
-      );
+      conditions.push(or(eq(meetingsTable.freelancerId, freelancer.id), eq(meetingsTable.employerId, employer.id))!);
     } else if (freelancer) {
-      meetings = await db.select().from(meetingsTable).where(eq(meetingsTable.freelancerId, freelancer.id));
+      conditions.push(eq(meetingsTable.freelancerId, freelancer.id));
     } else if (employer) {
-      meetings = await db.select().from(meetingsTable).where(eq(meetingsTable.employerId, employer.id));
+      conditions.push(eq(meetingsTable.employerId, employer.id));
     }
 
-    const enriched = await Promise.all(meetings.map(enrichMeeting));
-    res.json(enriched);
+    const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+    const page = Math.max(1, parseInt(String(req.query.page ?? "1"), 10) || 1);
+    const pageSize = Math.min(Math.max(1, parseInt(String(req.query.pageSize ?? "20"), 10) || 20), 100);
+    const offset = (page - 1) * pageSize;
+
+    const [rows, countResult] = await Promise.all([
+      db.select().from(meetingsTable).where(whereClause).limit(pageSize).offset(offset),
+      db.select({ count: count() }).from(meetingsTable).where(whereClause),
+    ]);
+
+    const enriched = await Promise.all(rows.map(enrichMeeting));
+    const total = Number(countResult[0]?.count ?? 0);
+    res.json(paginatedResponse(enriched, total, page, pageSize));
   } catch (err) {
     req.log.error({ err }, "Failed to list meetings");
     res.status(500).json({ error: "Internal server error" });
@@ -89,6 +108,24 @@ router.post("/meetings", async (req, res) => {
     const [meeting] = await db.insert(meetingsTable)
       .values({ ...data, employerId: employer.id, status: "pending" })
       .returning();
+
+    const freelancerUserId = await userIdFromFreelancerProfileId(meeting.freelancerId);
+    const employerName = await employerCompanyForProfile(employer.id);
+    if (freelancerUserId) {
+      const meetMsg = `${employerName} requested a discovery meeting`;
+      createNotification(db, {
+        userId: freelancerUserId,
+        type: NotificationType.MEETING_REQUESTED,
+        entityType: "meeting",
+        entityId: meeting.id,
+        message: meetMsg,
+      }).catch((err) => req.log.warn({ err, meetingId: meeting.id }, "notification write failed"));
+      sendNotificationEmailAsync(
+        db, freelancerUserId, "New meeting request on TalentLock", meetMsg,
+        `/meetings/${meeting.id}`, req.log,
+      );
+    }
+
     res.status(201).json(await enrichMeeting(meeting));
   } catch (err) {
     req.log.error({ err }, "Failed to create meeting");
@@ -115,11 +152,49 @@ router.patch("/meetings/:id", async (req, res) => {
   const parsed = UpdateMeetingBody.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
   try {
+    const [before] = await db.select().from(meetingsTable).where(eq(meetingsTable.id, id)).limit(1);
+    if (!before) { res.status(404).json({ error: "Meeting not found" }); return; }
+
     const [updated] = await db.update(meetingsTable)
       .set({ ...parsed.data as any, updatedAt: new Date() })
       .where(eq(meetingsTable.id, id))
       .returning();
     if (!updated) { res.status(404).json({ error: "Meeting not found" }); return; }
+
+    if (parsed.data.status && parsed.data.status !== before.status) {
+      const { userId: clerkId } = getAuth(req);
+      let recipientUserId: number | null = null;
+      let otherName = "the other party";
+      if (clerkId) {
+        const [freelancer] = await db.select().from(freelancerProfilesTable)
+          .where(eq(freelancerProfilesTable.clerkId, clerkId)).limit(1);
+        const [employer] = await db.select().from(employerProfilesTable)
+          .where(eq(employerProfilesTable.clerkId, clerkId)).limit(1);
+        const isEmployer = !!employer && employer.id === updated.employerId;
+        if (isEmployer) {
+          recipientUserId = await userIdFromFreelancerProfileId(updated.freelancerId);
+          otherName = await employerCompanyForProfile(updated.employerId);
+        } else if (freelancer && freelancer.id === updated.freelancerId) {
+          recipientUserId = await userIdFromEmployerProfileId(updated.employerId);
+          otherName = await freelancerNameForProfile(updated.freelancerId);
+        }
+      }
+      if (recipientUserId) {
+        const meetStatusMsg = `Your meeting with ${otherName} has been ${parsed.data.status}`;
+        createNotification(db, {
+          userId: recipientUserId,
+          type: NotificationType.MEETING_STATUS_CHANGED,
+          entityType: "meeting",
+          entityId: id,
+          message: meetStatusMsg,
+        }).catch((err) => req.log.warn({ err, meetingId: id }, "notification write failed"));
+        sendNotificationEmailAsync(
+          db, recipientUserId, "Meeting status updated on TalentLock", meetStatusMsg,
+          `/meetings/${id}`, req.log,
+        );
+      }
+    }
+
     res.json(await enrichMeeting(updated));
   } catch (err) {
     req.log.error({ err }, "Failed to update meeting");

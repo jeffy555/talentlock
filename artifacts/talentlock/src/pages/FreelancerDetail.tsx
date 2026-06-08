@@ -1,8 +1,8 @@
-import { useParams, useLocation } from "wouter";
+import { useParams, useLocation, useSearch } from "wouter";
 import {
   useGetFreelancerProfile, useGetMe, useCreateBooking, useCreateMeeting,
   useToggleSaveFreelancer, useCheckFreelancerSaved,
-  useListFreelancerReviews, useListFreelancerPortfolio,
+  useListFreelancerPortfolio, useGetMySubscription,
 } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -10,31 +10,37 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, BadgeCheck, Briefcase, Calendar, Clock, DollarSign, Lock, Star, ExternalLink, Video, ShieldCheck, Heart, Image } from "lucide-react";
+import { ArrowLeft, BadgeCheck, Briefcase, Calendar, Clock, DollarSign, Lock, Star, ExternalLink, Video, Heart, Image, Info, ShieldCheck } from "lucide-react";
 import { useState } from "react";
 import { Link } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
 import { buildGoogleCalendarUrl } from "@/lib/calendarUrl";
 import { format } from "date-fns";
-
-function StarDisplay({ rating, max = 5 }: { rating: number; max?: number }) {
-  return (
-    <div className="flex items-center gap-0.5">
-      {Array.from({ length: max }, (_, i) => (
-        <Star key={i} className={`h-3.5 w-3.5 ${i < Math.round(rating) ? "text-gold fill-gold" : "text-muted-foreground/30"}`} />
-      ))}
-    </div>
-  );
-}
+import VerificationBadge from "@/components/VerificationBadge";
+import StarRating from "@/components/StarRating";
+import ReviewList from "@/components/ReviewList";
+import { resolveVerificationLevel, isVerifiedLevel } from "@/lib/verification";
+import type { FreelancerProfileDetail } from "@workspace/api-client-react";
+import MatchExplanationCard from "@/components/MatchExplanationCard";
+import RateSuggestionWidget from "@/components/RateSuggestionWidget";
+import { AvailabilitySection } from "@/components/availability/AvailabilitySection";
+import { resolveFreelancerDetailJobId } from "@/lib/aiMatchJobContext";
 
 export default function FreelancerDetail() {
   const { id } = useParams<{ id: string }>();
   const [, setLocation] = useLocation();
+  const search = useSearch();
+  const jobId = resolveFreelancerDetailJobId(search);
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { data: me } = useGetMe();
+  const { data: subscription } = useGetMySubscription({
+    query: { enabled: me?.role === "employer" } as any,
+  });
+  const userPlan = subscription?.plan?.id ?? "employer_starter";
   const { data: freelancer, isLoading } = useGetFreelancerProfile(parseInt(id!), { query: { enabled: !!id } as any });
   const createBooking = useCreateBooking();
   const createMeeting = useCreateMeeting();
@@ -42,7 +48,6 @@ export default function FreelancerDetail() {
   const freelancerId = parseInt(id!);
   const { data: savedData, refetch: refetchSaved } = useCheckFreelancerSaved(freelancerId, { query: { enabled: !!id } } as any);
   const toggleSave = useToggleSaveFreelancer();
-  const { data: reviews } = useListFreelancerReviews(freelancerId, { query: { enabled: !!id } } as any);
   const { data: portfolio } = useListFreelancerPortfolio(freelancerId, { query: { enabled: !!id } } as any);
 
   const isSaved = savedData?.saved ?? false;
@@ -52,6 +57,7 @@ export default function FreelancerDetail() {
   const [endDate, setEndDate] = useState("");
   const [paymentType, setPaymentType] = useState("hourly");
   const [proposedRate, setProposedRate] = useState("");
+  const [bookingMessage, setBookingMessage] = useState("");
   const [confirmedBookingId, setConfirmedBookingId] = useState<number | null>(null);
 
   const [meetingOpen, setMeetingOpen] = useState(false);
@@ -84,6 +90,7 @@ export default function FreelancerDetail() {
           endDate,
           paymentType: paymentType as "hourly" | "daily" | "fixed",
           rate: isNaN(rateNum) ? undefined : rateNum,
+          ...(bookingMessage.trim() ? { message: bookingMessage.trim() } : {}),
         },
       });
       await queryClient.invalidateQueries({ queryKey: ["/api/bookings"] });
@@ -148,8 +155,14 @@ export default function FreelancerDetail() {
   }
 
   const isEmployer = me?.role === "employer";
-  const avgRating = (freelancer as any).averageRating as number | null | undefined;
-  const totalReviews = (freelancer as any).totalReviews as number | null | undefined;
+  const avgRating = freelancer.averageRating ?? null;
+  const reviewCount = freelancer.reviewCount ?? 0;
+  const detail = freelancer as typeof freelancer & FreelancerProfileDetail;
+  const verificationLevel = resolveVerificationLevel({
+    verificationLevel: detail.verification?.level ?? freelancer.verificationLevel,
+    isVerified: freelancer.isVerified,
+  });
+  const verifiedDocumentCount = detail.verification?.verifiedDocumentCount ?? 0;
 
   return (
     <div className="max-w-5xl mx-auto space-y-8 animate-fade-in">
@@ -185,20 +198,16 @@ export default function FreelancerDetail() {
               <div>
                 <div className="flex items-center gap-3 mb-2">
                   <h1 className="text-4xl font-serif font-bold tracking-tight text-foreground leading-tight">{freelancer.name}</h1>
-                  {freelancer.isVerified && (
-                    <div className="bg-primary/5 border border-primary/10 text-primary px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest flex items-center gap-1.5 shadow-sm">
-                      <ShieldCheck className="w-3.5 h-3.5" /> Verified
-                    </div>
-                  )}
                 </div>
                 <h2 className="text-lg font-medium text-primary line-clamp-2">{freelancer.tagline}</h2>
-                {avgRating != null && (
-                  <div className="flex items-center gap-2 mt-2">
-                    <StarDisplay rating={avgRating} />
-                    <span className="text-sm font-semibold text-foreground">{avgRating.toFixed(1)}</span>
-                    <span className="text-xs text-muted-foreground">({totalReviews} review{totalReviews !== 1 ? "s" : ""})</span>
-                  </div>
-                )}
+                <div className="mt-2">
+                  <StarRating
+                    value={avgRating}
+                    count={reviewCount}
+                    readonly
+                    size="md"
+                  />
+                </div>
               </div>
               <div className="flex-shrink-0 pt-1">
                 {!freelancer.isAvailable ? (
@@ -212,6 +221,19 @@ export default function FreelancerDetail() {
                 )}
               </div>
             </div>
+
+            {isVerifiedLevel(verificationLevel) && (
+              <div className="rounded-lg border border-border bg-card p-4 space-y-2">
+                <VerificationBadge level={verificationLevel} size="md" showTooltip />
+                <p className="text-sm text-muted-foreground">
+                  {verifiedDocumentCount} document{verifiedDocumentCount !== 1 ? "s" : ""} verified
+                </p>
+                <p className="text-xs text-muted-foreground flex items-start gap-1">
+                  <Info className="h-3 w-3 mt-0.5 flex-shrink-0" />
+                  Document reviewed by AI — not a legal identity verification.
+                </p>
+              </div>
+            )}
 
             <div className="flex flex-wrap gap-x-6 gap-y-3 py-4 border-y border-border/50 text-sm">
               <div className="flex items-center gap-2 text-foreground font-medium">
@@ -234,6 +256,16 @@ export default function FreelancerDetail() {
               <h3 className="font-serif text-2xl font-semibold text-foreground">About</h3>
               <p className="text-muted-foreground leading-relaxed whitespace-pre-wrap">{freelancer.bio}</p>
             </section>
+          )}
+
+          <AvailabilitySection freelancerId={freelancerId} />
+
+          {jobId && me?.role === "employer" && (
+            <MatchExplanationCard
+              freelancerId={String(freelancer.id)}
+              jobRequirementId={jobId}
+              conversationId="direct-view"
+            />
           )}
 
           <section className="space-y-4">
@@ -279,26 +311,9 @@ export default function FreelancerDetail() {
             </section>
           )}
 
-          {/* Reviews */}
-          {reviews && (reviews as any).reviews?.length > 0 && (
-            <section className="space-y-4">
-              <h3 className="font-serif text-2xl font-semibold text-foreground">Reviews</h3>
-              <div className="space-y-4">
-                {((reviews as any).reviews as any[]).map((review: any) => (
-                  <Card key={review.id} className="border-border shadow-sm bg-card">
-                    <CardContent className="p-5 space-y-2">
-                      <div className="flex items-center justify-between gap-2">
-                        <StarDisplay rating={review.rating} />
-                        <span className="text-xs text-muted-foreground">{format(new Date(review.createdAt), "MMM d, yyyy")}</span>
-                      </div>
-                      {review.title && <p className="font-semibold text-foreground">{review.title}</p>}
-                      {review.content && <p className="text-sm text-muted-foreground leading-relaxed">{review.content}</p>}
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            </section>
-          )}
+          <section className="space-y-4">
+            <ReviewList freelancerId={freelancerId} />
+          </section>
 
           {freelancer.portfolioUrl && (
             <section className="space-y-4 pt-4 border-t border-border/50">
@@ -411,6 +426,34 @@ export default function FreelancerDetail() {
                                 />
                               </div>
                               <p className="text-[11px] text-muted-foreground">The freelancer will see this and can accept or counter-propose before the agreement is signed.</p>
+                              {me?.role === "employer" && (
+                                <RateSuggestionWidget
+                                  freelancerId={String(freelancer.id)}
+                                  fieldOfWork={freelancer.fieldOfWork}
+                                  jobRequirementId={jobId ?? undefined}
+                                  paymentType={paymentType as "hourly" | "daily" | "fixed"}
+                                  proposedRate={proposedRate}
+                                  onUseSuggestion={(rate) => setProposedRate(String(rate))}
+                                  userPlan={userPlan}
+                                />
+                              )}
+                            </div>
+                            <div className="space-y-1">
+                              <label className="text-sm font-medium text-slate-700">
+                                Message to {freelancer.name.split(" ")[0]}{" "}
+                                <span className="text-muted-foreground font-normal">(optional)</span>
+                              </label>
+                              <Textarea
+                                placeholder={`e.g. "Hi ${freelancer.name.split(" ")[0]}, I'm building..."`}
+                                value={bookingMessage}
+                                onChange={(e) => setBookingMessage(e.target.value)}
+                                maxLength={500}
+                                rows={3}
+                                className="resize-none"
+                              />
+                              <p className={`text-xs text-right ${bookingMessage.length >= 450 ? "text-red-500" : "text-muted-foreground"}`}>
+                                {bookingMessage.length}/500
+                              </p>
                             </div>
                           </div>
                           <DialogFooter className="border-t pt-4">

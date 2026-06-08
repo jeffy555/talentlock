@@ -1,4 +1,6 @@
+import { useState } from "react";
 import { useListBookings, useGetMe } from "@workspace/api-client-react";
+import { PaginationControls } from "@/components/PaginationControls";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -14,8 +16,16 @@ const statusColors: Record<string, { bg: string, text: string, border: string }>
 };
 
 export default function BookingsList() {
+  const [page, setPage] = useState(1);
   const { data: me } = useGetMe();
-  const { data: bookings, isLoading } = useListBookings();
+  const { data, isLoading } = useListBookings({ page, pageSize: 20 });
+  const bookings = data?.data ?? [];
+  const totalPages = data?.totalPages ?? 1;
+
+  const onPageChange = (newPage: number) => {
+    setPage(newPage);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
 
   if (isLoading) {
     return (
@@ -47,7 +57,7 @@ export default function BookingsList() {
         </p>
       </div>
 
-      {!bookings || bookings.length === 0 ? (
+      {bookings.length === 0 ? (
         <Card className="flex flex-col items-center justify-center py-24 text-center bg-card shadow-sm border-border border-dashed">
           <div className="h-16 w-16 bg-muted/50 rounded-full flex items-center justify-center mb-6">
             <Calendar className="h-8 w-8 text-muted-foreground" />
@@ -139,6 +149,13 @@ export default function BookingsList() {
           })}
         </div>
       )}
+
+      <PaginationControls
+        page={page}
+        totalPages={totalPages}
+        onPageChange={onPageChange}
+        disabled={isLoading}
+      />
     </div>
   );
 }

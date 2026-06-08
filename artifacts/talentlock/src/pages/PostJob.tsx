@@ -8,9 +8,10 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Briefcase, Calendar, DollarSign, Target } from "lucide-react";
+import { ArrowLeft, Briefcase, Calendar, DollarSign, Sparkles, Target } from "lucide-react";
 import { format } from "date-fns";
 import { FIELDS_OF_WORK } from "@/lib/fields";
+import JobDescriptionAssistant from "@/components/JobDescriptionAssistant";
 
 export default function PostJob() {
   const [, setLocation] = useLocation();
@@ -26,6 +27,7 @@ export default function PostJob() {
   const [budget, setBudget] = useState("");
   const [startDate, setStartDate] = useState(format(new Date(), "yyyy-MM-dd"));
   const [endDate, setEndDate] = useState("");
+  const [isAssistantOpen, setIsAssistantOpen] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -140,7 +142,18 @@ export default function PostJob() {
             </div>
 
             <div className="space-y-2.5">
-              <Label htmlFor="description" className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Detailed Description</Label>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="description" className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Detailed Description</Label>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setIsAssistantOpen(true)}
+                >
+                  <Sparkles className="h-4 w-4 mr-1 text-violet-500" />
+                  AI Assist
+                </Button>
+              </div>
               <Textarea 
                 id="description" 
                 placeholder="Describe the project goals, responsibilities, and specific deliverables. Be comprehensive — our AI uses this to match candidates accurately..." 
@@ -254,6 +267,17 @@ export default function PostJob() {
           </Button>
         </div>
       </form>
+
+      <JobDescriptionAssistant
+        isOpen={isAssistantOpen}
+        onClose={() => setIsAssistantOpen(false)}
+        descriptionValue={description}
+        jobTitle={title}
+        onAccept={(value) => {
+          setDescription(value);
+          setIsAssistantOpen(false);
+        }}
+      />
     </div>
   );
 }

@@ -8,6 +8,11 @@ import {
   getObjectAclPolicy,
   setObjectAclPolicy,
 } from "./objectAcl";
+import {
+  createLocalSignedUrl,
+  relativeKeyFromLocalUploadUrl,
+  usesLocalObjectStorage,
+} from "./localObjectStorage";
 
 const REPLIT_SIDECAR_ENDPOINT = "http://127.0.0.1:1106";
 
@@ -60,11 +65,14 @@ export class ObjectStorageService {
   }
 
   getPrivateObjectDir(): string {
+    if (usesLocalObjectStorage()) {
+      return "/local-bucket/private";
+    }
     const dir = process.env.PRIVATE_OBJECT_DIR || "";
     if (!dir) {
       throw new Error(
         "PRIVATE_OBJECT_DIR not set. Create a bucket in 'Object Storage' " +
-          "tool and set PRIVATE_OBJECT_DIR env var."
+          "tool and set PRIVATE_OBJECT_DIR env var.",
       );
     }
     return dir;
@@ -116,7 +124,13 @@ export class ObjectStorageService {
     }
 
     const objectId = randomUUID();
-    const fullPath = `${privateObjectDir}/uploads/${objectId}`;
+    const relativeKey = `uploads/${objectId}`;
+
+    if (usesLocalObjectStorage()) {
+      return createLocalSignedUrl(relativeKey, "PUT", 900);
+    }
+
+    const fullPath = `${privateObjectDir}/${relativeKey}`;
 
     const { bucketName, objectName } = parseObjectPath(fullPath);
 
@@ -126,6 +140,41 @@ export class ObjectStorageService {
       method: "PUT",
       ttlSec: 900,
     });
+  }
+
+  async getSignedUploadUrlForKey(relativeKey: string, ttlSec = 900): Promise<string> {
+    if (usesLocalObjectStorage()) {
+      return createLocalSignedUrl(relativeKey, "PUT", ttlSec);
+    }
+    const { bucketName, objectName } = this.resolveRelativeObjectKey(relativeKey);
+    return signObjectURL({
+      bucketName,
+      objectName,
+      method: "PUT",
+      ttlSec,
+    });
+  }
+
+  async getSignedReadUrlForKey(relativeKey: string, ttlSec: number): Promise<string> {
+    if (usesLocalObjectStorage()) {
+      return createLocalSignedUrl(relativeKey, "GET", ttlSec);
+    }
+    const { bucketName, objectName } = this.resolveRelativeObjectKey(relativeKey);
+    return signObjectURL({
+      bucketName,
+      objectName,
+      method: "GET",
+      ttlSec,
+    });
+  }
+
+  private resolveRelativeObjectKey(relativeKey: string): { bucketName: string; objectName: string } {
+    const privateObjectDir = this.getPrivateObjectDir();
+    const normalizedKey = relativeKey.replace(/^\//, "");
+    const fullPath = privateObjectDir.endsWith("/")
+      ? `${privateObjectDir}${normalizedKey}`
+      : `${privateObjectDir}/${normalizedKey}`;
+    return parseObjectPath(fullPath.startsWith("/") ? fullPath : `/${fullPath}`);
   }
 
   async getObjectEntityFile(objectPath: string): Promise<File> {
@@ -155,6 +204,11 @@ export class ObjectStorageService {
   }
 
   normalizeObjectEntityPath(rawPath: string): string {
+    const localKey = relativeKeyFromLocalUploadUrl(rawPath);
+    if (localKey) {
+      return `/objects/${localKey}`;
+    }
+
     if (!rawPath.startsWith("https://storage.googleapis.com/")) {
       return rawPath;
     }

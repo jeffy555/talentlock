@@ -2,9 +2,24 @@ import { useParams, useLocation } from "wouter";
 import {
   useGetBooking, useUpdateBooking, useCreateAgreement, useGetMe, useListAgreements,
   useListMilestones, useCreateMilestone, useUpdateMilestone,
-  useGetMyBookingReview, useCreateReview, useNegotiateBooking,
+  useCreateReview, useNegotiateBooking, useGetTokenUsageMe,
+  useGetMySubscription, useGetFreelancerProfile,
+  type AgreementIndustry,
 } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
@@ -12,11 +27,16 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Calendar, CheckCircle2, FileText, XCircle, Sparkles, ShieldCheck, Clock, DollarSign, Lock, Flag, Plus, Check, Star, ArrowLeftRight, RefreshCw } from "lucide-react";
+import { ArrowLeft, Calendar, CheckCircle2, FileText, XCircle, Sparkles, ShieldCheck, Clock, DollarSign, Lock, Flag, Plus, Check, ArrowLeftRight, RefreshCw } from "lucide-react";
+import ReviewPrompt from "@/components/ReviewPrompt";
+import ReviewCard from "@/components/ReviewCard";
+import ProposalGeneratorDrawer, { AcceptedProposalBlock } from "@/components/ProposalGeneratorDrawer";
+import RateSuggestionWidget from "@/components/RateSuggestionWidget";
+import { dismissReviewPrompt, isReviewPromptDismissed } from "@/lib/reviewPromptStorage";
 import { Link } from "wouter";
 import { format } from "date-fns";
 import { buildGoogleCalendarUrl } from "@/lib/calendarUrl";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 
 const statusColors: Record<string, { bg: string, text: string, border: string }> = {
@@ -32,32 +52,30 @@ const milestoneColors: Record<string, { bg: string, text: string, border: string
   approved: { bg: "bg-green-50", text: "text-green-700", border: "border-green-200" },
 };
 
-function StarPicker({ value, onChange }: { value: number; onChange: (v: number) => void }) {
-  const [hover, setHover] = useState(0);
-  return (
-    <div className="flex gap-1">
-      {[1, 2, 3, 4, 5].map(i => (
-        <button
-          key={i}
-          type="button"
-          onMouseEnter={() => setHover(i)}
-          onMouseLeave={() => setHover(0)}
-          onClick={() => onChange(i)}
-          className="transition-transform hover:scale-110"
-        >
-          <Star className={`h-7 w-7 ${(hover || value) >= i ? "text-gold fill-gold" : "text-muted-foreground/30"}`} />
-        </button>
-      ))}
-    </div>
-  );
-}
-
 export default function BookingDetail() {
   const { id } = useParams<{ id: string }>();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const qc = useQueryClient();
   const { data: me } = useGetMe();
+  const { data: tokenUsage } = useGetTokenUsageMe({
+    query: { enabled: me?.role === "employer" } as any,
+  });
+  const { data: subscription } = useGetMySubscription({
+    query: { enabled: me?.role === "employer" } as any,
+  });
+  const userPlan = subscription?.plan?.id ?? "employer_starter";
+  const isEnterprise = userPlan === "employer_enterprise";
+
+  const [industry, setIndustry] = useState<AgreementIndustry>("general");
+  const [customClauses, setCustomClauses] = useState<string[]>([]);
+
+  const clauseErrors = customClauses.map(c =>
+    c.trim().length < 20 ? "Clause must be at least 20 characters"
+    : c.length > 500 ? "Clause must be 500 characters or fewer"
+    : null,
+  );
+  const hasClauseErrors = clauseErrors.some(e => e !== null);
   const { data: booking, isLoading, refetch } = useGetBooking(parseInt(id!), { query: { enabled: !!id } } as any);
   const { data: agreements, refetch: refetchAgreements } = useListAgreements({ status: undefined }, { query: { enabled: !!booking } } as any);
   const updateBooking = useUpdateBooking();
@@ -67,12 +85,21 @@ export default function BookingDetail() {
   const { data: milestones, refetch: refetchMilestones } = useListMilestones(bookingId, { query: { enabled: !!booking } } as any);
   const createMilestone = useCreateMilestone();
   const updateMilestone = useUpdateMilestone();
-  const { data: reviewData, refetch: refetchReview } = useGetMyBookingReview(bookingId, { query: { enabled: !!booking } } as any);
   const createReview = useCreateReview();
+  const [reviewDismissed, setReviewDismissed] = useState(false);
+  const [isProposalDrawerOpen, setIsProposalDrawerOpen] = useState(false);
+  const [acceptedProposal, setAcceptedProposal] = useState<string | null>(null);
+
+  useEffect(() => {
+    setReviewDismissed(isReviewPromptDismissed(bookingId));
+  }, [bookingId]);
 
   const negotiateBooking = useNegotiateBooking();
   const [counterOpen, setCounterOpen] = useState(false);
   const [counterRate, setCounterRate] = useState("");
+  const { data: counterFreelancer } = useGetFreelancerProfile(booking?.freelancerId ?? 0, {
+    query: { enabled: !!booking?.freelancerId && counterOpen } as any,
+  });
 
   const [milestoneOpen, setMilestoneOpen] = useState(false);
   const [msTitle, setMsTitle] = useState("");
@@ -80,12 +107,27 @@ export default function BookingDetail() {
   const [msAmount, setMsAmount] = useState("");
   const [msDueDate, setMsDueDate] = useState("");
 
-  const [reviewOpen, setReviewOpen] = useState(false);
-  const [reviewRating, setReviewRating] = useState(0);
-  const [reviewTitle, setReviewTitle] = useState("");
-  const [reviewContent, setReviewContent] = useState("");
+  const bookingAgreements = agreements?.data?.filter(a => a.bookingId === bookingId) ?? [];
 
-  const bookingAgreements = agreements?.filter(a => a.bookingId === bookingId) ?? [];
+  const monthlyTokenLimit = tokenUsage?.monthlyTokenLimit ?? null;
+  const tokensUsed = tokenUsage?.tokensUsed ?? 0;
+  const isAtLimit = !!monthlyTokenLimit && tokensUsed >= monthlyTokenLimit;
+  const resetLabel = tokenUsage?.resetDate
+    ? new Date(tokenUsage.resetDate).toLocaleDateString(undefined, {
+        month: "long",
+        day: "numeric",
+        year: "numeric",
+      })
+    : null;
+
+  const handleTokenLimitError = (error: any) => {
+    const body = error?.body ?? error?.data ?? error?.response?.data;
+    if (error?.status === 402 && body?.code === "TOKEN_LIMIT") {
+      setLocation("/pricing");
+      return true;
+    }
+    return false;
+  };
 
   const handleAcceptRate = async () => {
     try {
@@ -123,11 +165,18 @@ export default function BookingDetail() {
 
   const handleGenerateAgreement = async () => {
     try {
-      const agreement = await createAgreement.mutateAsync({ data: { bookingId } });
+      const agreement = await createAgreement.mutateAsync({
+        data: {
+          bookingId,
+          industry,
+          ...(isEnterprise && customClauses.length > 0 ? { customClauses } : {}),
+        },
+      });
       toast({ title: "Agreement generated", description: "AI has drafted a legal agreement. Review and sign to activate the engagement." });
       refetchAgreements();
       setLocation(`/agreements/${agreement.id}`);
-    } catch {
+    } catch (error: any) {
+      if (handleTokenLimitError(error)) return;
       toast({ title: "Failed to generate agreement", description: "Please try again.", variant: "destructive" });
     }
   };
@@ -163,20 +212,18 @@ export default function BookingDetail() {
     }
   };
 
-  const handleSubmitReview = async () => {
-    if (reviewRating === 0) { toast({ title: "Please select a rating", variant: "destructive" }); return; }
+  const handleSubmitReview = async (rating: number, comment: string) => {
     try {
       await createReview.mutateAsync({
         data: {
           bookingId,
-          rating: reviewRating,
-          ...(reviewTitle ? { title: reviewTitle } : {}),
-          ...(reviewContent ? { content: reviewContent } : {}),
+          rating,
+          ...(comment.trim() ? { comment: comment.trim() } : {}),
         },
       });
-      toast({ title: "Review submitted", description: "Thank you for your feedback." });
-      setReviewOpen(false);
-      refetchReview();
+      toast({ title: "Review submitted. Thank you for your feedback!" });
+      await refetch();
+      qc.invalidateQueries({ queryKey: [`/api/bookings/${bookingId}`] });
     } catch {
       toast({ title: "Failed to submit review", variant: "destructive" });
     }
@@ -219,7 +266,11 @@ export default function BookingDetail() {
   const myRole = isEmployer ? "employer" : "freelancer";
   const isMyTurn = lastProposedBy !== myRole && (isEmployer || isFreelancer);
   const colors = statusColors[booking.status] || { bg: "bg-secondary", text: "text-muted-foreground", border: "border-border" };
-  const canReview = isCompleted && !reviewData?.reviewed;
+  const showReviewPrompt =
+    isEmployer &&
+    isCompleted &&
+    booking.review == null &&
+    !reviewDismissed;
 
   return (
     <div className="max-w-5xl mx-auto space-y-8 animate-fade-in">
@@ -275,23 +326,49 @@ export default function BookingDetail() {
               <CheckCircle2 className="h-4 w-4 mr-2" />Mark Complete
             </Button>
           )}
+          {isFreelancer && booking.status === "pending" && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-9 font-medium shadow-sm w-full"
+              onClick={() => setIsProposalDrawerOpen(true)}
+            >
+              <Sparkles className="h-4 w-4 mr-1 text-violet-500" />
+              Write proposal
+            </Button>
+          )}
           {booking.status === "pending" && (
             <Button variant="outline" size="sm" className="h-9 font-medium shadow-sm border-destructive/30 text-destructive hover:bg-destructive/5 hover:text-destructive w-full" onClick={() => handleStatusUpdate("cancelled")}>
               <XCircle className="h-4 w-4 mr-2" />Cancel Booking
             </Button>
           )}
-          {canReview && (
-            <Button size="sm" className="h-9 font-medium shadow-sm w-full gap-2" onClick={() => setReviewOpen(true)}>
-              <Star className="h-4 w-4" />Leave Review
-            </Button>
-          )}
-          {reviewData?.reviewed && (
+          {booking.review != null && (
             <div className="flex items-center gap-1 text-xs text-muted-foreground font-medium">
               <Check className="h-3 w-3 text-green-600" /> Reviewed
             </div>
           )}
         </div>
       </div>
+
+      {showReviewPrompt && (
+        <ReviewPrompt
+          bookingId={bookingId}
+          freelancerName={booking.freelancerName ?? "this freelancer"}
+          onSubmit={handleSubmitReview}
+          onDismiss={() => {
+            dismissReviewPrompt(bookingId);
+            setReviewDismissed(true);
+          }}
+          isSubmitting={createReview.isPending}
+        />
+      )}
+
+      {isEmployer && booking.review != null && (
+        <div>
+          <h3 className="text-sm font-semibold text-slate-700 mb-2">Your Review</h3>
+          <ReviewCard review={booking.review} />
+        </div>
+      )}
 
       {/* Rate Negotiation Panel */}
       {!isCancelled && isNegotiating && (
@@ -358,9 +435,109 @@ export default function BookingDetail() {
             <p className="text-sm text-muted-foreground leading-relaxed mb-4 max-w-2xl">
               Rate agreed. TalentLock AI can now generate a binding legal agreement encompassing exclusivity, scope, and payment terms ready for signature.
             </p>
-            <Button onClick={handleGenerateAgreement} disabled={createAgreement.isPending} className="font-semibold shadow-sm bg-primary text-primary-foreground hover:bg-primary/90">
-              {createAgreement.isPending ? "Drafting Agreement..." : "Generate AI Agreement"}
-            </Button>
+
+            <div className="space-y-4 mb-4 max-w-xl">
+              <div>
+                <Label className="text-sm font-medium">Agreement Template</Label>
+                <Select value={industry} onValueChange={(v) => setIndustry(v as AgreementIndustry)}>
+                  <SelectTrigger className="mt-1.5">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="general">General</SelectItem>
+                    <SelectItem value="software_development">Software Development</SelectItem>
+                    <SelectItem value="design_creative">Design &amp; Creative</SelectItem>
+                    <SelectItem value="marketing_content">Marketing &amp; Content</SelectItem>
+                    <SelectItem value="consulting_strategy">Consulting &amp; Strategy</SelectItem>
+                    <SelectItem value="data_analytics">Data &amp; Analytics</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Includes industry-specific standard clauses in the agreement.
+                </p>
+              </div>
+
+              {isEnterprise && (
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-sm font-medium">
+                      Custom Clauses{" "}
+                      <span className="text-xs text-muted-foreground font-normal">(optional — up to 5)</span>
+                    </Label>
+                    {customClauses.length > 0 && (
+                      <span className="text-xs text-muted-foreground">({customClauses.length} of 5)</span>
+                    )}
+                  </div>
+                  {customClauses.map((clause, idx) => (
+                    <div key={idx} className="rounded-md border border-border p-3 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium text-slate-600">Clause {idx + 1}</span>
+                        <div className="flex items-center gap-2">
+                          <span className={`text-xs ${clause.length > 480 ? "text-red-500" : "text-muted-foreground"}`}>
+                            {clause.length}/500
+                          </span>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setCustomClauses(prev => prev.filter((_, i) => i !== idx))}
+                          >
+                            ×
+                          </Button>
+                        </div>
+                      </div>
+                      <Textarea
+                        value={clause}
+                        onChange={(e) => {
+                          const next = [...customClauses];
+                          next[idx] = e.target.value;
+                          setCustomClauses(next);
+                        }}
+                        rows={3}
+                      />
+                      {clauseErrors[idx] && (
+                        <p className="text-xs text-red-500">{clauseErrors[idx]}</p>
+                      )}
+                    </div>
+                  ))}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={customClauses.length >= 5}
+                    onClick={() => setCustomClauses(prev => [...prev, ""])}
+                  >
+                    + Add Custom Clause
+                  </Button>
+                </div>
+              )}
+            </div>
+
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className="inline-block">
+                    <Button
+                      onClick={handleGenerateAgreement}
+                      disabled={createAgreement.isPending || isAtLimit || hasClauseErrors}
+                      className="font-semibold shadow-sm bg-primary text-primary-foreground hover:bg-primary/90"
+                    >
+                      {createAgreement.isPending ? "Drafting Agreement..." : "Generate AI Agreement"}
+                    </Button>
+                  </span>
+                </TooltipTrigger>
+                {hasClauseErrors && (
+                  <TooltipContent>Fix clause errors before generating</TooltipContent>
+                )}
+              </Tooltip>
+            </TooltipProvider>
+            {isAtLimit && resetLabel && (
+              <p className="text-sm text-muted-foreground mt-3">
+                AI Agreement Generation is paused — your monthly token limit has been reached.
+                Tokens reset on {resetLabel}.{" "}
+                <Link href="/pricing" className="text-primary underline-offset-4 hover:underline">
+                  Upgrade your plan →
+                </Link>
+              </p>
+            )}
           </div>
         </div>
       )}
@@ -387,6 +564,18 @@ export default function BookingDetail() {
               </div>
               <p className="text-xs text-muted-foreground">Payment type: <span className="font-medium capitalize">{booking.paymentType}</span></p>
             </div>
+            {isEmployer && isNegotiating && counterFreelancer && (
+              <RateSuggestionWidget
+                freelancerId={String(booking.freelancerId)}
+                fieldOfWork={counterFreelancer.fieldOfWork}
+                jobRequirementId={booking.jobRequirementId != null ? String(booking.jobRequirementId) : undefined}
+                bookingId={String(booking.id)}
+                paymentType={booking.paymentType as "hourly" | "daily" | "fixed"}
+                proposedRate={counterRate}
+                onUseSuggestion={(rate) => setCounterRate(String(rate))}
+                userPlan={userPlan}
+              />
+            )}
           </div>
           <DialogFooter className="border-t pt-4">
             <Button variant="ghost" onClick={() => setCounterOpen(false)}>Cancel</Button>
@@ -509,6 +698,17 @@ export default function BookingDetail() {
             </CardContent>
           </Card>
 
+          {(booking as { message?: string | null }).message && (
+            <div className="rounded-md border border-slate-200 bg-slate-50 p-3">
+              <p className="text-xs font-medium text-slate-500 mb-1">Message from employer:</p>
+              <p className="text-sm text-slate-700 italic">&ldquo;{(booking as { message?: string | null }).message}&rdquo;</p>
+            </div>
+          )}
+
+          {acceptedProposal && (
+            <AcceptedProposalBlock proposal={acceptedProposal} />
+          )}
+
           {booking.notes && (
             <Card className="shadow-sm border-border bg-card">
               <CardHeader className="pb-4 border-b border-border/30 bg-muted/5">
@@ -595,35 +795,15 @@ export default function BookingDetail() {
         </DialogContent>
       </Dialog>
 
-      {/* Review Dialog */}
-      <Dialog open={reviewOpen} onOpenChange={setReviewOpen}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader className="pb-4 border-b">
-            <DialogTitle className="font-serif text-xl">Leave a Review</DialogTitle>
-            <DialogDescription>Share your experience with this engagement.</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Rating *</Label>
-              <StarPicker value={reviewRating} onChange={setReviewRating} />
-            </div>
-            <div className="space-y-2">
-              <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground flex justify-between">Title <span className="font-normal opacity-60 lowercase">optional</span></Label>
-              <Input placeholder="Summary of your experience" value={reviewTitle} onChange={e => setReviewTitle(e.target.value)} />
-            </div>
-            <div className="space-y-2">
-              <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground flex justify-between">Review <span className="font-normal opacity-60 lowercase">optional</span></Label>
-              <Textarea placeholder="Share your experience in detail..." value={reviewContent} onChange={e => setReviewContent(e.target.value)} className="resize-none h-24" />
-            </div>
-          </div>
-          <DialogFooter className="border-t pt-4">
-            <Button variant="ghost" onClick={() => setReviewOpen(false)}>Cancel</Button>
-            <Button onClick={handleSubmitReview} disabled={createReview.isPending || reviewRating === 0}>
-              {createReview.isPending ? "Submitting..." : "Submit Review"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {booking && (
+        <ProposalGeneratorDrawer
+          bookingId={String(booking.id)}
+          isOpen={isProposalDrawerOpen}
+          onClose={() => setIsProposalDrawerOpen(false)}
+          onAccept={(proposal) => setAcceptedProposal(proposal)}
+        />
+      )}
+
     </div>
   );
 }

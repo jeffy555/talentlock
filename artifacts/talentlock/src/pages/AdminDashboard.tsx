@@ -1,10 +1,14 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, Fragment } from "react";
+import { ChevronDown, Star } from "lucide-react";
 import { useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
+import AdminTokenUsageTab, { AdminTokenUsageTabIcon } from "@/components/AdminTokenUsageTab";
+import AdminDocumentReviewTab, { AdminDocumentReviewTabIcon } from "@/components/AdminDocumentReviewTab";
+import { adminMutate, clearAdminCsrfToken } from "@/lib/adminCsrf";
 
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
 
@@ -39,6 +43,12 @@ type UserRow = {
   createdAt: string;
 };
 
+type AdminBookingReview = {
+  rating: number;
+  comment: string | null;
+  hasReply: boolean;
+};
+
 type BookingRow = {
   id: number;
   status: string;
@@ -49,7 +59,13 @@ type BookingRow = {
   createdAt: string;
   freelancerName: string | null;
   employerCompany: string | null;
+  review: AdminBookingReview | null;
 };
+
+function truncateComment(text: string, max = 100): string {
+  if (text.length <= max) return text;
+  return `${text.slice(0, max).trimEnd()}…`;
+}
 
 type JobRow = {
   id: number;
@@ -111,18 +127,21 @@ export default function AdminDashboard() {
   const [bookings, setBookings] = useState<BookingRow[]>([]);
   const [jobs, setJobs] = useState<JobRow[]>([]);
   const [subs, setSubs] = useState<SubRow[]>([]);
+  const [docReviewPending, setDocReviewPending] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [expandedBookingId, setExpandedBookingId] = useState<number | null>(null);
 
   const loadAll = useCallback(async () => {
     setLoading(true);
     try {
-      const [s, a, u, b, j, sb] = await Promise.all([
+      const [s, a, u, b, j, sb, docQueue] = await Promise.all([
         api<Stats>("/admin/stats"),
         api<AuditRow[]>("/admin/audit?limit=200"),
         api<UserRow[]>("/admin/users?limit=200"),
         api<BookingRow[]>("/admin/bookings?limit=200"),
         api<JobRow[]>("/admin/jobs?limit=200"),
         api<SubRow[]>("/admin/subscriptions"),
+        api<{ data: unknown[]; total: number }>("/admin/documents?page=1").catch(() => ({ data: [], total: 0 })),
       ]);
       setStats(s);
       setAudit(a);
@@ -130,6 +149,7 @@ export default function AdminDashboard() {
       setBookings(b);
       setJobs(j);
       setSubs(sb);
+      setDocReviewPending(docQueue.total);
     } catch (err: any) {
       if (err?.message === "UNAUTHORIZED") {
         setLocation("/admin/login");
@@ -146,7 +166,8 @@ export default function AdminDashboard() {
   }, [loadAll]);
 
   async function logout() {
-    await fetch(`${basePath}/api/admin/logout`, { method: "POST", credentials: "include" });
+    await adminMutate(`${basePath}/api/admin/logout`, { method: "POST" });
+    clearAdminCsrfToken();
     setLocation("/admin/login");
   }
 
@@ -194,12 +215,25 @@ export default function AdminDashboard() {
         </section>
 
         <Tabs defaultValue="audit">
-          <TabsList>
+          <TabsList className="h-auto flex-wrap justify-start gap-1">
             <TabsTrigger value="audit">Activity Log</TabsTrigger>
             <TabsTrigger value="users">Users</TabsTrigger>
             <TabsTrigger value="bookings">Bookings</TabsTrigger>
             <TabsTrigger value="jobs">Jobs</TabsTrigger>
             <TabsTrigger value="subs">Subscriptions</TabsTrigger>
+            <TabsTrigger value="token-usage" className="gap-1.5">
+              <AdminTokenUsageTabIcon />
+              Token Usage
+            </TabsTrigger>
+            <TabsTrigger value="document-review" className="gap-1.5">
+              <AdminDocumentReviewTabIcon />
+              Document Review
+              {docReviewPending > 0 && (
+                <span className="ml-1 rounded-full bg-amber-500 text-white text-xs px-1.5 py-0.5">
+                  {docReviewPending}
+                </span>
+              )}
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="audit" className="mt-4">
@@ -288,16 +322,73 @@ export default function AdminDashboard() {
                       </tr>
                     </thead>
                     <tbody>
-                      {bookings.map((b) => (
-                        <tr key={b.id} className="border-b last:border-0">
-                          <td className="py-2 pr-4">{b.id}</td>
-                          <td className="py-2 pr-4">{b.freelancerName ?? "—"}</td>
-                          <td className="py-2 pr-4">{b.employerCompany ?? "—"}</td>
-                          <td className="py-2 pr-4 text-xs whitespace-nowrap">{new Date(b.startDate).toLocaleDateString()} → {new Date(b.endDate).toLocaleDateString()}</td>
-                          <td className="py-2 pr-4">{b.rate ? `$${b.rate} / ${b.paymentType}` : "—"}</td>
-                          <td className="py-2 pr-4"><Badge variant="secondary">{b.status}</Badge></td>
-                        </tr>
-                      ))}
+                      {bookings.map((b) => {
+                        const isExpanded = expandedBookingId === b.id;
+                        return (
+                          <Fragment key={b.id}>
+                            <tr
+                              className={`border-b cursor-pointer hover:bg-muted/40 ${isExpanded ? "bg-muted/30" : ""}`}
+                              onClick={() => setExpandedBookingId(isExpanded ? null : b.id)}
+                            >
+                              <td className="py-2 pr-4">
+                                <span className="inline-flex items-center gap-1">
+                                  <ChevronDown className={`h-3.5 w-3.5 text-muted-foreground transition-transform ${isExpanded ? "rotate-180" : ""}`} />
+                                  {b.id}
+                                </span>
+                              </td>
+                              <td className="py-2 pr-4">{b.freelancerName ?? "—"}</td>
+                              <td className="py-2 pr-4">{b.employerCompany ?? "—"}</td>
+                              <td className="py-2 pr-4 text-xs whitespace-nowrap">{new Date(b.startDate).toLocaleDateString()} → {new Date(b.endDate).toLocaleDateString()}</td>
+                              <td className="py-2 pr-4">{b.rate ? `$${b.rate} / ${b.paymentType}` : "—"}</td>
+                              <td className="py-2 pr-4">
+                                <div className="flex items-center gap-2">
+                                  <Badge variant="secondary">{b.status}</Badge>
+                                  {b.review ? (
+                                    <span className="inline-flex items-center gap-0.5 text-xs text-amber-600">
+                                      <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
+                                      {b.review.rating}
+                                    </span>
+                                  ) : null}
+                                </div>
+                              </td>
+                            </tr>
+                            {isExpanded && (
+                              <tr className="border-b last:border-0 bg-muted/20">
+                                <td colSpan={6} className="py-3 px-4">
+                                  <div className="text-xs uppercase tracking-wider text-muted-foreground font-semibold mb-2">
+                                    Review
+                                  </div>
+                                  {b.review ? (
+                                    <div className="space-y-1.5 text-sm">
+                                      <p className="flex items-center gap-1.5">
+                                        <span className="inline-flex items-center gap-0.5 font-medium">
+                                          {Array.from({ length: 5 }, (_, i) => (
+                                            <Star
+                                              key={i}
+                                              className={`h-3.5 w-3.5 ${i < b.review!.rating ? "fill-amber-400 text-amber-400" : "text-slate-200"}`}
+                                            />
+                                          ))}
+                                        </span>
+                                        <span className="text-muted-foreground">({b.review.rating}/5)</span>
+                                      </p>
+                                      {b.review.comment ? (
+                                        <p className="text-slate-600">{truncateComment(b.review.comment)}</p>
+                                      ) : (
+                                        <p className="text-muted-foreground italic">No written comment</p>
+                                      )}
+                                      {b.review.hasReply && (
+                                        <Badge variant="outline" className="text-xs">Has reply</Badge>
+                                      )}
+                                    </div>
+                                  ) : (
+                                    <p className="text-sm text-muted-foreground">No review submitted for this booking.</p>
+                                  )}
+                                </td>
+                              </tr>
+                            )}
+                          </Fragment>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
@@ -369,6 +460,17 @@ export default function AdminDashboard() {
                 </div>
               </CardContent>
             </Card>
+          </TabsContent>
+
+          <TabsContent value="token-usage" className="mt-4">
+            <AdminTokenUsageTab onUnauthorized={() => setLocation("/admin/login")} />
+          </TabsContent>
+
+          <TabsContent value="document-review" className="mt-4">
+            <AdminDocumentReviewTab
+              onUnauthorized={() => setLocation("/admin/login")}
+              onPendingCountChange={setDocReviewPending}
+            />
           </TabsContent>
         </Tabs>
       </main>
