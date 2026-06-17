@@ -18,6 +18,8 @@ import {
 } from "@workspace/db";
 import { sql, desc, eq, gte, count, and, asc, inArray } from "drizzle-orm";
 import { PLANS, type PlanId } from "../lib/plans";
+import { aggregateTokenUsageRows, type TokenUsageBreakdown } from "../lib/subscriptionGating";
+import { TOKEN_FEATURES } from "../lib/tokenLogger";
 import { updateVerificationLevel } from "../lib/documentReview";
 import { createNotification, NotificationType, userIdFromFreelancerProfileId } from "../lib/createNotification";
 import { sendNotificationEmailAsync } from "../lib/emailService";
@@ -287,22 +289,33 @@ router.get("/admin/token-usage", requireAdmin, async (req, res) => {
       .offset(offset);
 
     const employerIds = employers.map((e) => e.userId);
-    const usageByUserId = new Map<number, number>();
+    const usageByUserId = new Map<number, { tokensUsed: number; breakdown: TokenUsageBreakdown }>();
 
     if (employerIds.length > 0) {
       const usageRows = await db
         .select({
           userId: tokenUsage.userId,
-          tokensUsed: sql<number>`coalesce(sum(${tokenUsage.totalTokens}), 0)::int`.as("tokens_used"),
+          feature: tokenUsage.feature,
+          totalTokens: sql<number>`coalesce(sum(${tokenUsage.totalTokens}), 0)::int`.as("total_tokens"),
         })
         .from(tokenUsage)
         .where(and(inArray(tokenUsage.userId, employerIds), gte(tokenUsage.createdAt, startOfMonthUtc)))
-        .groupBy(tokenUsage.userId);
+        .groupBy(tokenUsage.userId, tokenUsage.feature);
 
+      const rowsByUser = new Map<number, { feature: string; totalTokens: number }[]>();
       for (const row of usageRows) {
-        usageByUserId.set(row.userId, row.tokensUsed);
+        const existing = rowsByUser.get(row.userId) ?? [];
+        existing.push({ feature: row.feature, totalTokens: row.totalTokens });
+        rowsByUser.set(row.userId, existing);
+      }
+
+      for (const employerId of employerIds) {
+        const rows = rowsByUser.get(employerId) ?? [];
+        usageByUserId.set(employerId, aggregateTokenUsageRows(rows));
       }
     }
+
+    const emptyBreakdown = Object.fromEntries(TOKEN_FEATURES.map((f) => [f, 0])) as TokenUsageBreakdown;
 
     const data = employers.map((employer) => {
       const planId = employer.subscriptionPlan ?? "employer_starter";
@@ -311,7 +324,8 @@ router.get("/admin/token-usage", requireAdmin, async (req, res) => {
         employer.subscriptionPlan === null
           ? PLANS.employer_starter.limits.monthlyTokenLimit
           : planDef.limits.monthlyTokenLimit;
-      const tokensUsed = usageByUserId.get(employer.userId) ?? 0;
+      const usage = usageByUserId.get(employer.userId) ?? { tokensUsed: 0, breakdown: emptyBreakdown };
+      const { tokensUsed, breakdown } = usage;
       const percentUsed =
         monthlyTokenLimit === null ? null : Math.floor((tokensUsed / monthlyTokenLimit) * 100);
 
@@ -323,6 +337,7 @@ router.get("/admin/token-usage", requireAdmin, async (req, res) => {
         monthlyTokenLimit,
         tokensUsed,
         percentUsed,
+        breakdown,
       };
     });
 

@@ -123,3 +123,27 @@ Available on all freelancer plans. No token consumption. No plan gate.
 - Freelancer working hours or timezone settings
 - Automatic notifications when a freelancer becomes available
 - Calendar export to PDF or image
+
+---
+
+# P1 Follow-Up Addendum — Premature Availability Lock (added 2026-06-09)
+
+> Source: TalentLock Security & Production Readiness review (P1). This addendum is appended after the original feature shipped. It is scoped, additive, and does not change any module above.
+
+## Problem
+
+`POST /api/bookings` sets `isAvailable: false` (and `currentBookingId` / `bookingEndDate`) on the freelancer's profile **immediately when the booking is created in `pending` status** (`artifacts/api-server/src/routes/bookings.ts`, in the create transaction). A booking request is not an acceptance — the freelancer has not agreed to anything yet (rate negotiation may still be in progress, `negotiationStatus = 'negotiating'`). The effect is that simply *requesting* a freelancer removes them from the Talent Vault and flips their availability, even if they later decline or the negotiation collapses.
+
+This contradicts Module 2 of this spec ("Auto-Block From Confirmed Bookings"), which correctly creates the `booked` availability block only when a booking becomes `active`/confirmed (handled in `PATCH /api/bookings/:id`). The `isAvailable` flag should follow the same rule as the auto-block.
+
+## Module 8 — Defer Availability Lock to Confirmation
+
+**Fix:** Move the `isAvailable = false` / `currentBookingId` / `bookingEndDate` mutation out of `POST /api/bookings` (pending creation) and into the booking-confirmation path in `PATCH /api/bookings/:id` (status → `active`), alongside the existing auto-block creation. On `pending` creation, the freelancer remains available and visible in the Vault. On confirmation, availability flips false and the auto-block is created (existing behaviour). On `cancelled`/`completed`, availability is restored (existing behaviour at the `isAvailable: true` reset).
+
+**Result:** Availability state and the calendar auto-block become fully consistent — both driven by the `active` transition, never by a pending request.
+
+## Non-Goals (Addendum)
+
+- No change to the rate-negotiation flow itself (`POST /bookings/:id/negotiate`).
+- No new "freelancer accept/decline" booking state machine — that is a separate `booking-acceptance` spec (P2). This addendum only fixes *when* the availability flag flips.
+- No schema change.

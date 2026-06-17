@@ -241,3 +241,38 @@ All hardening items apply to all users and all plans. No plan gate. No token con
 - SOC 2 compliance documentation
 - Data encryption at rest (handled by Neon/PostgreSQL — not application-level)
 - Content Security Policy headers beyond basic Helmet defaults
+
+---
+
+# P1 Follow-Up Addendum — Sanitisation Coverage Gaps (added 2026-06-09)
+
+> Source: TalentLock Security & Production Readiness review (P1). This extends **Module 2 — Input Sanitisation**, which shipped but did not cover every free-text write path. Additive only.
+
+## Problem
+
+Phase 4 applied `sanitiseText` to a subset of routes (`account`, `availability`, `employers`, `freelancers`, `users`, `team`, `bookings`, `reviews`, `jobRequirements` — confirmed via import grep on 2026-06-09). Six write paths that persist user-controlled free text were **missed** and still store raw input, leaving stored-XSS exposure on those fields:
+
+| Route | File | Unsanitised free-text field(s) | Evidence |
+|---|---|---|---|
+| Meetings | `routes/meetings.ts` | create `.values({ ...data })` (line ~110) and update `.set({ ...parsed.data })` (line ~178) — title / agenda / notes | no `sanitiseText` import |
+| Portfolio | `routes/portfolio.ts` | `title` (≤120), `description` (≤1000) — create line ~64, update line ~90 | no `sanitiseText` import |
+| Milestones | `routes/milestones.ts` | `title` (≤200), `description` (≤1000) — insert lines ~92–93 | no `sanitiseText` import |
+| Job Interests | `routes/jobInterests.ts` | `message` — insert line ~51 (currently only trimmed/sliced) | no `sanitiseText` import |
+| Agreement signing | `routes/agreements.ts` | `signatureName` — line ~791, persisted at ~820/~828 (currently only `.trim()`) | no `sanitiseText` import |
+| AI chat | `routes/openaiChat.ts` | conversation `title` (line ~39), user message `content` (line ~122) | no `sanitiseText` import |
+
+These persist via length-validated Zod schemas but **without HTML/script neutralisation** — the exact gap Module 2 exists to close.
+
+## Module 2 (Extended) — Close Remaining Sanitisation Paths
+
+**Fix:** Apply the same `sanitiseText` utility (already built in Phase 1) to the free-text fields above, on **both create and update** paths, before the DB write. Where a handler currently spreads the parsed body directly (`{ ...data }` / `{ ...parsed.data }`), sanitise the named text fields explicitly rather than relying on the spread, so no raw field slips through.
+
+**Special cases:**
+- **AI chat `content`:** sanitise the stored user message, but feed the model the sanitised value too (consistent persistence). Do not alter assistant output handling.
+- **`signatureName`:** keep the existing `.trim()` + "name or image required" validation; add `sanitiseText` on top before persisting to `employerSignatureName` / `freelancerSignatureName`.
+
+## Non-Goals (Addendum)
+
+- No change to the `sanitiseText` implementation itself (reuse as-is).
+- No re-sanitisation/backfill of existing stored rows (forward-only).
+- No new routes — only the six listed above.

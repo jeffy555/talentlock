@@ -30,6 +30,7 @@ import publicProfileRouter from "./publicProfile";
 import availabilityRouter from "./availability";
 import accountRouter from "./account";
 import teamRouter from "./team";
+import cruiseModeRouter from "./cruiseMode";
 
 const router: IRouter = Router();
 
@@ -64,5 +65,6 @@ router.use(aiAssistRouter);
 router.use(dashboardRouter);
 router.use(documentsRouter);
 router.use(teamRouter);
+router.use(cruiseModeRouter);
 
 export default router;

@@ -392,3 +392,55 @@ CSRF_SECRET=your-64-character-random-string-here
 | Phase 3 | CSRF on admin + audit logging in route handlers | ⬜ Not started |
 | Phase 4 | GDPR deletion endpoint + sanitisation across routes | ⬜ Not started |
 | Phase 5 | Frontend — deletion UI + admin CSRF token integration | ⬜ Not started |
+
+---
+
+# P1 Follow-Up Addendum — Sanitisation Coverage Gaps (added 2026-06-09)
+
+> Binding decisions for the extended Module 2 in `features.md`. Verified against the six route files on 2026-06-09. Reuses the Phase 1 `sanitiseText` utility — no new helper.
+
+### A1 — Pattern: never trust the spread
+
+Several handlers persist `{ ...parsed.data }` / `{ ...data }` directly. For those, sanitise the named text fields explicitly so a raw value can never reach the DB:
+
+```ts
+import { sanitiseText } from "../lib/sanitise"; // same utility used in Phase 4 routes
+
+const clean = {
+  ...parsed.data,
+  title: parsed.data.title != null ? sanitiseText(parsed.data.title) : parsed.data.title,
+  description: parsed.data.description != null ? sanitiseText(parsed.data.description) : parsed.data.description,
+  // ...repeat for each free-text field on that route
+};
+```
+
+Apply on **both** the create (`.values`) and update (`.set`) paths.
+
+### A2 — Per-route field map
+
+| File | Create path | Update path | Fields to sanitise |
+|---|---|---|---|
+| `routes/meetings.ts` | `.values({ ...data })` ~110 | `.set({ ...parsed.data })` ~178 | title, agenda, notes (every free-text field in the meeting schema) |
+| `routes/portfolio.ts` | `.values({...})` ~64 | `.set({ ...parsed.data })` ~90 | title, description |
+| `routes/milestones.ts` | `.values({...})` ~92 | (update handler if present) | title, description |
+| `routes/jobInterests.ts` | `.values({...})` ~51 | — | message (replace bare trim/slice with sanitise → then length cap) |
+| `routes/agreements.ts` | sign handler ~820/~828 | — | signatureName (after existing `.trim()`, before persist) |
+| `routes/openaiChat.ts` | conversation `.values` ~39; message `.values` ~122 | — | conversation title, user message content |
+
+### A3 — AI chat content decision
+
+Sanitise `parsed.data.content` once, store the sanitised value (line ~122), and pass that same sanitised string into the model history. Assistant-generated `content` (line ~184) is not user input and is left unchanged.
+
+### A4 — Order of operations for `jobInterests.message`
+
+Current code trims then slices to a max length. New order: `sanitiseText(raw)` → trim → slice to the existing cap. This guarantees the stored value is both neutralised and within bounds.
+
+### A5 — No double-encoding
+
+`sanitiseText` must be applied exactly once per field on write. Do not also sanitise on read/render — the frontend already treats these as text. Matches the existing Phase 4 routes' behaviour.
+
+### Addendum Sign-Off
+
+| Phase | Description | Status |
+|---|---|---|
+| Phase 6 (Addendum) | Apply `sanitiseText` to the six missed routes (create + update) | ⬜ Not started |

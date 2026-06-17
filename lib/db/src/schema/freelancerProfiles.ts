@@ -1,3 +1,7 @@
+// Teaching Professional Profile — Phase 1 inspection:
+// Q1: skills is text("skills").array() — teachingSubjects/teachingLevels use .array()
+// Q2: no location/timezone column exists — location added as nullable text
+
 import { pgTable, text, serial, timestamp, integer, boolean, numeric, real, jsonb, date } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
@@ -36,6 +40,20 @@ export const freelancerProfilesTable = pgTable("freelancer_profiles", {
   averageRating: numeric("average_rating", { precision: 3, scale: 2 }),
   reviewCount: integer("review_count").notNull().default(0),
   completenessScore: integer("completeness_score").notNull().default(0),
+  professionCategory: text("profession_category").notNull().default("technology"),
+  educationProfessionType: text("education_profession_type"),
+  teachingSubjects: text("teaching_subjects").array(),
+  teachingLevels: text("teaching_levels").array(),
+  yearsTeachingExperience: integer("years_teaching_experience"),
+  highestDegree: text("highest_degree"),
+  degreeSubject: text("degree_subject"),
+  degreeInstitution: text("degree_institution"),
+  teachingLicenceState: text("teaching_licence_state"),
+  teachingLicenceExpiry: timestamp("teaching_licence_expiry", { withTimezone: true }),
+  dbsCheckStatus: text("dbs_check_status"),
+  researchPublications: text("research_publications"),
+  preferredTeachingMode: text("preferred_teaching_mode"),
+  location: text("location"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });

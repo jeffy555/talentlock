@@ -1,0 +1,6 @@
+fuser -k 8080/tcp 25807/tcp 2>/dev/null; \
+cd /mnt/d/Talent-Lock && \
+pnpm --filter @workspace/api-server run dev &
+pnpm --filter @workspace/talentlock run dev
+
+Only WSL

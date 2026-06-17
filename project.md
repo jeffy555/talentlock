@@ -29,7 +29,7 @@ The Vite dev server has a proxy rule that forwards `/api` calls to `localhost:80
 | `employer_profiles` | Employer company info |
 | `job_requirements` | Job postings by employers |
 | `bookings` | Exclusive engagements. Has negotiation columns: `proposedRate`, `lastProposedBy`, `negotiationStatus`, and optional employer `message` |
-| `agreements` | AI-generated legal agreements. Has `freelancerSignatureImageUrl`, `employerSignatureImageUrl`, `status` |
+| `agreements` | AI-generated legal agreements. Has `freelancerSignatureImageUrl`, `employerSignatureImageUrl`, `status`, `healthScore`, `healthScoreDetail`, `healthScoredAt`, `freelancerSummary`, `freelancerSummaryScoredAt`, `employerSignedAt`, `freelancerSignedAt` columns. |
 | `conversations` | AI match chat sessions. Has `jobRequirementId` column. |
 | `messages` | Individual chat messages |
 | `meetings` | Discovery meeting requests |
@@ -44,6 +44,16 @@ The Vite dev server has a proxy rule that forwards `/api` calls to `localhost:80
 | `teams` | Enterprise team accounts. Has `ownerUserId`, `name` columns. |
 | `team_members` | Team membership with roles (admin/member), invite tokens, and status. |
 | `team_shortlist` | Shared freelancer shortlist for enterprise teams. |
+| `cruise_mode_configs` | One per freelancer. Has `isActive`, `isDryRun`, `rules` (jsonb), `rulesVersion`, `messagesThisMonth`, `messagesResetAt` columns. |
+| `cruise_mode_activity` | Per-job evaluation log. Has `freelancerId`, `jobRequirementId`, `score`, `decision`, `matchReasons`, `proposedMessage`, `sentAt` columns. |
+
+### Teaching Professional Profile additions (additive, non-breaking)
+
+`freelancer_profiles` gains `professionCategory` (text, NOT NULL DEFAULT 'technology') and 12 nullable education fields: `educationProfessionType`, `teachingSubjects`, `teachingLevels`, `yearsTeachingExperience`, `highestDegree`, `degreeSubject`, `degreeInstitution`, `teachingLicenceState`, `teachingLicenceExpiry`, `dbsCheckStatus`, `researchPublications`, `preferredTeachingMode`, `location`.
+
+`job_requirements` gains `professionCategory` (text, NOT NULL DEFAULT 'technology') and `rateType` (text, NOT NULL DEFAULT 'hourly').
+
+All existing rows backfilled to `'technology'` / `'hourly'` via column default — zero behaviour change for existing data.
 
 ### Schema changes workflow
 
@@ -100,6 +110,7 @@ Post-codegen mandatory checks:
 | `/team` | Team management (enterprise only) | `employer_enterprise` |
 | `/team/analytics` | Team-level spend and hiring analytics | `employer_enterprise` admin |
 | `/team/accept-invite` | Accept team invite via token | Public |
+| `/cruise-mode` | Cruise Mode setup, activity feed, and stats | `freelancer_pro` only |
 | `/admin/login` | Admin login | Public |
 | `/admin` | Admin dashboard | Admin session only |
 
@@ -114,6 +125,7 @@ PUT  /api/users/me/signature                      Save/clear signature image URL
 PATCH /api/users/me/notification-preferences      Toggle email notification opt-in/out
 
 GET  /api/freelancers                             List freelancers (filters + ?q=keyword + ?availableFrom=YYYY-MM-DD; completeness ≥ 60%)
+                                                   Additive optional filters: ?professionCategory=technology|education, ?teachingSubject=<text> (case-insensitive array match)
 GET  /api/freelancers/:id                         Freelancer detail (includes nextAvailableDate)
 GET  /api/freelancers/me                          My freelancer profile
 PUT  /api/freelancers/me                          Update my freelancer profile (recalculates completenessScore atomically)
@@ -136,9 +148,11 @@ GET  /api/agreements                              Paginated list (?page, ?pageSi
 POST /api/agreements                              Generate agreement (AI)
 GET  /api/agreements/:id                          Agreement detail
 POST /api/agreements/:id/sign                     Sign agreement (image or typed name)
-GET  /api/agreements/:id/download                 One-time PDF/text download
+GET  /api/agreements/:id/download                 Download fully signed agreement as a formatted PDF; cached in GCS after first generation; both parties; requires status = fully_signed
 POST /api/agreements/:id/redline                  AI contract review suggestions (Growth+)
 PATCH /api/agreements/:id/accept-redline          Accept a redline suggestion
+POST /api/agreements/:id/health-score             AI contract quality score across 5 dimensions (0–100); cached on agreements table; invalidated on redline accept
+POST /api/agreements/:id/summarise               AI plain-English summary for freelancer (6 sections + attention flags); cached; invalidated on redline accept; freelancer-only (403 for employers)
 
 GET  /api/meetings                                Paginated list (?page, ?pageSize)
 POST /api/meetings                                Request meeting
@@ -188,6 +202,17 @@ GET  /api/dashboard/activity                      Recent activity feed
 GET  /api/subscriptions/plans                     Plan list
 GET  /api/subscriptions/me                        My plan + usage
 POST /api/subscriptions/upgrade                   Upgrade plan (simulated checkout — shaped for Stripe)
+
+GET  /api/cruise-mode                            Freelancer Cruise Mode config (null if none)
+POST /api/cruise-mode                            Create or update Cruise Mode config
+PATCH /api/cruise-mode/activate                  Activate live mode (freelancer_pro only)
+PATCH /api/cruise-mode/dry-run                   Activate dry run mode
+PATCH /api/cruise-mode/pause                     Pause Cruise Mode
+PATCH /api/cruise-mode/deactivate                Deactivate and clear
+POST /api/cruise-mode/parse-rules                AI parses free-form text into structured rules
+GET  /api/cruise-mode/activity                   Paginated activity feed (jobs evaluated, scores, decisions, messages)
+POST /api/cruise-mode/activity/:id/follow-up     Mark follow-up sent for an activity entry
+GET  /api/cruise-mode/stats                      Today and monthly stats
 
 POST /api/storage/uploads/request-url             Request presigned GCS upload URL
 GET  /api/storage/objects/*path                   Serve stored object
@@ -248,7 +273,14 @@ POST /api/admin/logout                            Admin: logout
 27. **Product Gaps** — Resend email notifications (opt-out toggle), Talent Vault keyword search, profile completeness gate (≥ 60%), paginated list endpoints, employer booking message, public profile preview link
 28. **AI Proposal Generator** — Freelancer "Write proposal" drawer on pending `/bookings/:id`; three tones; copyable accepted block; `ai_proposal` token label
 29. **Smart Rate Suggestions** — Rate context widget on booking creation and negotiation; static context (all plans) + AI suggestion (Growth+, `rate_suggestion` token label); "Use suggested rate" fills input only
-30. **Team Accounts (Enterprise)** — Multi-member teams for `employer_enterprise`; invite flow with 7-day expiring UUID tokens; admin/member roles; shared Talent Vault shortlist; team analytics page
+30. **Team Accounts (Enterprise)**
+31. **AI Contract Health Score** — On-demand 0–100 composite score across 5 dimensions (Clarity, Fairness, Completeness, Enforceability, Industry Fit); letter grade A–F; cached on agreements table; invalidated when redline accepted; visible to both parties on `/agreements/:id`
+32. **Auth Hardening (Access Control)** — Per-resource authorization on 11 routes + storage ACL via `accessControl.ts`; server-side agreement signing role; namespaced upload paths; IDOR protection (401/403/404 convention)
+33. **Agreement AI Summary**
+34. **Agreement PDF Download**
+35. **Cruise Mode** — `freelancer_pro` feature; freelancer defines rules (skills, rate range, exclusions, blackout windows) via form or free-form text/file; AI evaluates every new job post against the rules and sends a personalised interest message to the employer on the freelancer's behalf when score ≥ threshold; two-stage filter (pre-filter + AI evaluation); dry run mode; daily digest option; activity feed with match scores and sent messages; monthly quota of 10 messages; employer sees a "Cruise Mode ✦" badge; `cruise_mode_evaluation` token label — `GET /api/agreements/:id/download` returns a professionally formatted PDF for fully signed agreements; rendered via `@react-pdf/renderer` with both signature images (or cursive typed names), signing timestamps, metadata block, and TalentLock footer; cached in GCS after first generation; available to both parties on all plans; GDPR deletion removes cached PDFs — Freelancer-only "✦ Summarise for me" button on `/agreements/:id`; AI produces 6-section plain-English summary (what you do, payment, IP, termination, restrictions, key dates) + up to 3 attention flags; disclaimer always first; cached on agreements table (`freelancerSummary`, `freelancerSummaryScoredAt`); invalidated on redline accept alongside health score; `agreement_summary` token label; 403 for employers
+
+36. **Teaching Professional Profile** — `professionCategory` (`technology`|`education`, NOT NULL DEFAULT 'technology') on `freelancer_profiles` and `job_requirements`; `rateType` (`hourly`|`per_day`|`per_session`|`per_course`, NOT NULL DEFAULT 'hourly') on `job_requirements`; 12 nullable education fields (subjects, levels, degree, teaching licence, DBS status, research profile, location) on `freelancer_profiles` for `educationProfessionType` (`school_teacher`|`university_lecturer`|`tutor`|`researcher`); onboarding gains a conditional profession-category step for freelancers (employers unaffected); Talent Vault gains `professionCategory`/`teachingSubject` filters (additive, default behaviour unchanged); AI matching prompt gains profession-context injection that is byte-identical (empty string) for technology jobs; `formatRate()`/`rateUnitLabel()` utility centralises rate unit display across 9 call sites
 
 ### Dashboard analytics panels
 
@@ -260,11 +292,23 @@ POST /api/admin/logout                            Admin: logout
 
 Shared server utilities: `artifacts/api-server/src/lib/earningsUtils.ts` (`getLast6Months`, `fillZeroMonths`, `formatCurrency`, `getWindowDates`, `safeAverage`, `getLifecycleTrend`).
 
+
+### Cursor notes — Teaching Professional Profile
+
+- `professionCategory` and `rateType` are NOT NULL with DB defaults (`'technology'` / `'hourly'`) — never write `?? 'technology'` fallback checks, the column guarantees a value
+- The 12 education fields are genuinely nullable — guard all education-specific UI on `educationProfessionType !== null`, never on `professionCategory` alone
+- AI matching prompt: `buildProfessionContext()` MUST return `''` (empty string, no whitespace) for `professionCategory !== 'education'` — this guarantees byte-identical prompts for all existing technology jobs. Any prompt change here requires the diff regression test in `specs/teaching-professional-profile/task.md` Task 2.3
+- `calculateCompletenessScore()` is NOT modified by this feature — education fields do not affect the ≥60% Talent Vault visibility gate
+- No new columns on `bookings` or `agreements` — `professionCategory`/`rateType` are read via `booking.jobRequirementId` join when needed (e.g. agreement generation in a future spec)
+
 ### Utility file registry
 
 | File | Purpose |
 |---|---|
 | `artifacts/api-server/src/lib/availabilityUtils.ts` | `calculateNextAvailableDate`, `refreshNextAvailableDate`, `createAvailabilityBlock`, `deleteAvailabilityBlockByBookingId` |
+| `artifacts/talentlock/src/lib/rateFormatUtils.ts` | `formatRate(amount, rateType, currencySymbol)`, `rateUnitLabel(rateType)` — centralised rate display for hourly/per_day/per_session/per_course |
+| `artifacts/talentlock/src/components/onboarding/TeachingDetailsSection.tsx` | Conditional onboarding/profile section for `professionCategory: 'education'` freelancers |
+| `lib/db/src/schema/` — `REQUIRED_DOCUMENTS_BY_EDUCATION_TYPE` | Static lookup: required/recommended documents per `educationProfessionType` |
 | `artifacts/api-server/src/lib/sanitise.ts` | `sanitiseText()`, `sanitiseRichText()` — strip HTML from all free-text writes |
 | `artifacts/api-server/src/lib/auditLogger.ts` | `logAudit()` — fire-and-forget structured audit events |
 | `artifacts/api-server/src/lib/csrf.ts` | `generateCsrfToken`, `doubleCsrfProtection` for admin routes |
@@ -284,6 +328,20 @@ Shared server utilities: `artifacts/api-server/src/lib/earningsUtils.ts` (`getLa
 | `artifacts/talentlock/src/components/DeleteAccountSection.tsx` | Danger zone + email confirmation on `/profile` |
 | `artifacts/talentlock/src/components/RateSuggestionWidget.tsx` | Rate context + AI suggestion on booking form and negotiation panel |
 | `artifacts/talentlock/src/components/ProposalGeneratorDrawer.tsx` | AI proposal generator drawer on `/bookings/:id` (freelancer) |
+| `artifacts/api-server/src/lib/contractHealthUtils.ts` | `buildHealthScorePrompt()`, `validateHealthScoreResponse()` — server-side health score utilities |
+| `artifacts/talentlock/src/lib/contractHealthUtils.ts` | `getHealthGrade()`, `verdictColour()`, `DIMENSION_LABELS` — client-side score display helpers |
+| `artifacts/talentlock/src/components/ContractHealthScoreCard.tsx` | Health score card with 5-dimension breakdown, grade badge, redline nudge |
+| `artifacts/api-server/src/lib/accessControl.ts` | `resolveUserByClerkId`, `canAccessBooking/Meeting/JobRequirement/Conversation/Agreement`, `agreementRoleForUser` — per-resource authorization helpers |
+| `artifacts/api-server/validate-auth-hardening.mjs` | Automated validation runner for Auth Hardening (32 checks) |
+| `artifacts/api-server/src/lib/agreementSummaryUtils.ts` | `buildSummaryPrompt()`, `validateSummaryResponse()`, `AGREEMENT_SUMMARY_DISCLAIMER` — server-side summary utilities |
+| `artifacts/talentlock/src/lib/agreementSummaryUtils.ts` | `SECTION_ORDER`, `SECTION_ICONS`, `AGREEMENT_SUMMARY_DISCLAIMER` — client-side section ordering and icon map |
+| `artifacts/talentlock/src/components/AgreementSummaryPanel.tsx` | 6-section plain-English summary panel with attention flags, disclaimer, cache indicator; freelancer-only |
+| `artifacts/api-server/src/lib/agreementPdfUtils.ts` | `generateAgreementPdf()`, `preprocessAgreementContent()`, `formatSignedAt()`, `AgreementPdf` React component — server-side PDF generation |
+| `artifacts/talentlock/src/lib/downloadUtils.ts` | `downloadAgreementPdf()` — shared browser file download helper for detail page and list page |
+| `artifacts/api-server/src/lib/cruiseModeUtils.ts` | `preFilter()`, `isInBlackoutWindow()`, `normaliseJob()`, `buildEvaluationPrompt()`, `validateEvaluationResponse()` |
+| `artifacts/api-server/src/lib/cruiseModeEvaluator.ts` | `evaluateCruiseModeForNewJob()` — background evaluation pipeline; fires after job creation |
+| `artifacts/api-server/src/routes/cruiseMode.ts` | All `/api/cruise-mode/*` routes |
+| `artifacts/talentlock/src/components/cruise-mode/` | `CruiseModeStatusBar`, `CruiseModeRuleBuilder`, `CruiseModeActivityFeed` |
 
 ---
 
@@ -323,6 +381,17 @@ pnpm --filter @workspace/talentlock run dev
 - `Onboarding.tsx` treats a 404 as "new user"
 - Admin auth is completely separate from Clerk — uses an HMAC-signed cookie (`tl_admin`, 8h TTL)
 - Admin POST/PATCH/DELETE routes are CSRF-protected via `csrf-csrf` double-submit pattern
+
+### Per-Resource Authorization (Access Control)
+
+- Clerk authentication (`getAuth(req)`) only proves **who** the caller is — it does NOT prove they own a given resource. Every `/:id` detail, mutation, sign, download, and delete route must additionally verify participation/ownership.
+- Canonical pattern: resolve the `users` row from the Clerk id, load the resource, then check the caller's `employer_profiles`/`freelancer_profiles` id against the resource's `employerId`/`freelancerId`. See `artifacts/api-server/src/routes/milestones.ts` (`canAccessBooking`) and `POST /bookings/:id/negotiate`.
+- Shared helpers live in `artifacts/api-server/src/lib/accessControl.ts` (`spec/AuthHardening/`). Convention: not authenticated → `401`; authenticated non-participant → `403`; unknown id → `404`.
+- `freelancer_profiles` and `employer_profiles` carry **both** `clerkId` and `userId`; access-control helpers join on `userId` after resolving the user once.
+- Gated routes (validated 2026-06-09): `GET/PATCH /api/bookings/:id`, `GET/PATCH /api/meetings/:id`, `GET /api/agreements/:id`, `POST /api/agreements/:id/sign` (role derived server-side), `GET /api/agreements/:id/download`, `GET/DELETE /api/openai/conversations/:id`, `POST /api/openai/conversations/:id/messages`, `PATCH/DELETE /api/job-requirements/:id`, `POST /api/storage/uploads/request-url`, `GET /api/storage/objects/uploads/{userId}/...`.
+- Intentionally public (no per-resource gate): `GET /api/freelancers`, `GET /api/freelancers/:id`, `GET /api/job-requirements`, `GET /api/job-requirements/:id`, public profile `/f/:id`, and `GET /api/storage/public-objects/*`.
+- `POST /api/bookings/:id/negotiate` retains its existing participant check (unchanged by Auth Hardening).
+- Validation: `node artifacts/api-server/validate-auth-hardening.mjs` — 32/32 passed (2026-06-09).
 
 ---
 
@@ -377,3 +446,8 @@ pnpm --filter @workspace/talentlock run dev
 - **Team routes** — require `employer_enterprise` plan + active `team_members` row; use `requireTeamMember()` / `requireTeamAdmin()` middleware
 - **Invite tokens** — single-use UUID; cleared immediately on acceptance; expire after 7 days (`inviteExpiresAt`)
 - **GDPR deletion** — anonymise in Drizzle transaction first, then call Clerk API outside the transaction; if Clerk fails, reset request to `pending` for retry
+- **Agreement summary cache** — nullify `freelancerSummary` and `freelancerSummaryScoredAt` in the SAME `db.update()` call as health score cache nullification in `accept-redline` handler — one update, both caches cleared atomically
+- **Cruise Mode evaluation** — fires fire-and-forget after `POST /api/job-requirements`; use `evaluateCruiseModeForNewJob(db, jobId, req.log).catch(...)` — never awaited, never delays the response; evaluation failure must never affect job creation
+- **Cruise Mode plan gate** — `PATCH /api/cruise-mode/activate` requires `freelancer_pro`; return `402 PLAN_LIMIT` for `freelancer_free`
+- **Agreement PDF download** — `GET /api/agreements/:id/download` requires `status === 'fully_signed'` (403 with `code: NOT_FULLY_SIGNED` otherwise); GCS upload of cached PDF is fire-and-forget `.catch()` — never block the response
+- **Agreement summary is freelancer-only** — `POST /api/agreements/:id/summarise` returns 403 for any employer; `<AgreementSummaryPanel />` is conditionally rendered only when `userRole === 'freelancer'` — not hidden with CSS, not rendered at all

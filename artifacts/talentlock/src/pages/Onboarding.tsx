@@ -9,10 +9,14 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Briefcase, Building, CheckCircle, Loader2 } from "lucide-react";
+import { Briefcase, Building, CheckCircle, GraduationCap, Laptop, Loader2 } from "lucide-react";
 import { FIELDS_OF_WORK, isFieldOfWork } from "@/lib/fields";
 import { Badge } from "@/components/ui/badge";
 import { ResumeImporter, type ParsedResume } from "@/components/ResumeImporter";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import TeachingDetailsSection, { emptyTeachingDetails, type TeachingDetailsValues } from "@/components/onboarding/TeachingDetailsSection";
+import { cn } from "@/lib/utils";
+import type { EducationProfessionType, ProfessionCategory } from "@workspace/api-client-react";
 
 function getIntendedRole(): "freelancer" | "employer" | null {
   const val = localStorage.getItem("talentlock_intended_role");
@@ -33,9 +37,14 @@ export default function Onboarding() {
   const createFreelancerProfile = useCreateFreelancerProfile();
   const upsertEmployerProfile = useUpsertMyEmployerProfile();
 
-  const [step, setStep] = useState<"role" | "freelancer-details" | "employer-details">("role");
+  const [step, setStep] = useState<"role" | "profession_category" | "freelancer-details" | "employer-details">("role");
   const [role, setRole] = useState<"freelancer" | "employer" | null>(null);
   const [autoCreating, setAutoCreating] = useState(false);
+
+  // Profession category (freelancers only)
+  const [professionCategory, setProfessionCategory] = useState<ProfessionCategory | null>(null);
+  const [educationProfessionType, setEducationProfessionType] = useState<EducationProfessionType | null>(null);
+  const [teachingDetails, setTeachingDetails] = useState<TeachingDetailsValues>(emptyTeachingDetails());
 
   // Freelancer fields
   const [tagline, setTagline] = useState("");
@@ -97,7 +106,7 @@ export default function Onboarding() {
     const intended = getIntendedRole();
     if (intended) {
       setRole(intended);
-      setStep(intended === "freelancer" ? "freelancer-details" : "employer-details");
+      setStep(intended === "freelancer" ? "profession_category" : "employer-details");
       clearIntendedRole();
     }
   }, []);
@@ -126,7 +135,28 @@ export default function Onboarding() {
 
   const handleRoleSelection = (selectedRole: "freelancer" | "employer") => {
     setRole(selectedRole);
-    setStep(selectedRole === "freelancer" ? "freelancer-details" : "employer-details");
+    setStep(selectedRole === "freelancer" ? "profession_category" : "employer-details");
+  };
+
+  const buildTeachingPayload = () => {
+    if (professionCategory !== "education") return { professionCategory: "technology" as const };
+    return {
+      professionCategory: "education" as const,
+      educationProfessionType: educationProfessionType ?? undefined,
+      teachingSubjects: teachingDetails.teachingSubjects.length ? teachingDetails.teachingSubjects : undefined,
+      teachingLevels: teachingDetails.teachingLevels.length ? teachingDetails.teachingLevels : undefined,
+      yearsTeachingExperience: teachingDetails.yearsTeachingExperience ?? undefined,
+      highestDegree: teachingDetails.highestDegree ?? undefined,
+      degreeSubject: teachingDetails.degreeSubject || undefined,
+      degreeInstitution: teachingDetails.degreeInstitution || undefined,
+      teachingLicenceState: teachingDetails.teachingLicenceState || undefined,
+      teachingLicenceExpiry: teachingDetails.teachingLicenceExpiry
+        ? new Date(teachingDetails.teachingLicenceExpiry).toISOString()
+        : undefined,
+      researchPublications: teachingDetails.researchPublications || undefined,
+      preferredTeachingMode: teachingDetails.preferredTeachingMode ?? undefined,
+      location: teachingDetails.location || undefined,
+    };
   };
 
   const handleFreelancerSubmit = async (e: React.FormEvent) => {
@@ -150,6 +180,7 @@ export default function Onboarding() {
           paymentPreference,
           hourlyRate: hourlyRate ? parseInt(hourlyRate, 10) : null,
           subscriptionPlan: "basic",
+          ...buildTeachingPayload(),
         },
       });
       toast({
@@ -294,6 +325,86 @@ export default function Onboarding() {
         </>
       )}
 
+      {/* ── Profession category (freelancers only) ─────────────────────── */}
+      {step === "profession_category" && (
+        <Card>
+          <CardHeader>
+            <CardTitle>What kind of work do you do?</CardTitle>
+            <CardDescription>This helps us show you the right opportunities.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="grid grid-cols-2 gap-4">
+              <button
+                type="button"
+                onClick={() => setProfessionCategory("technology")}
+                className={cn(
+                  "rounded-lg border-2 p-5 text-left transition-colors",
+                  professionCategory === "technology"
+                    ? "border-violet-400 ring-2 ring-violet-200 bg-violet-50"
+                    : "border-slate-200 hover:border-slate-300",
+                )}
+              >
+                <Laptop className="h-6 w-6 mb-2 text-slate-600" />
+                <p className="font-semibold text-slate-800">Technology</p>
+                <p className="text-sm text-slate-500 mt-1">Software development, design, data, DevOps</p>
+              </button>
+              <button
+                type="button"
+                onClick={() => setProfessionCategory("education")}
+                className={cn(
+                  "rounded-lg border-2 p-5 text-left transition-colors",
+                  professionCategory === "education"
+                    ? "border-violet-400 ring-2 ring-violet-200 bg-violet-50"
+                    : "border-slate-200 hover:border-slate-300",
+                )}
+              >
+                <GraduationCap className="h-6 w-6 mb-2 text-slate-600" />
+                <p className="font-semibold text-slate-800">Education</p>
+                <p className="text-sm text-slate-500 mt-1">Teaching, tutoring, lecturing, research</p>
+              </button>
+            </div>
+
+            {professionCategory === "education" && (
+              <div className="animate-in fade-in slide-in-from-top-2">
+                <p className="text-sm font-medium text-slate-700 mb-3">What best describes you?</p>
+                <RadioGroup
+                  value={educationProfessionType ?? ""}
+                  onValueChange={(v) => setEducationProfessionType(v as EducationProfessionType)}
+                  className="space-y-2"
+                >
+                  <div className="flex items-center gap-2">
+                    <RadioGroupItem value="school_teacher" id="school_teacher" />
+                    <Label htmlFor="school_teacher" className="font-normal cursor-pointer">School Teacher (K-12 / Secondary)</Label>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <RadioGroupItem value="university_lecturer" id="university_lecturer" />
+                    <Label htmlFor="university_lecturer" className="font-normal cursor-pointer">University Lecturer / Professor</Label>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <RadioGroupItem value="tutor" id="tutor" />
+                    <Label htmlFor="tutor" className="font-normal cursor-pointer">Private Tutor</Label>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <RadioGroupItem value="researcher" id="researcher" />
+                    <Label htmlFor="researcher" className="font-normal cursor-pointer">Researcher</Label>
+                  </div>
+                </RadioGroup>
+              </div>
+            )}
+          </CardContent>
+          <CardFooter className="flex justify-between">
+            <Button type="button" variant="outline" onClick={() => { setStep("role"); setRole(null); }}>Back</Button>
+            <Button
+              type="button"
+              disabled={!professionCategory || (professionCategory === "education" && !educationProfessionType)}
+              onClick={() => setStep("freelancer-details")}
+            >
+              Continue →
+            </Button>
+          </CardFooter>
+        </Card>
+      )}
+
       {/* ── Freelancer details ──────────────────────────────────────────── */}
       {step === "freelancer-details" && (
         <Card className="relative">
@@ -352,6 +463,13 @@ export default function Onboarding() {
                 <Label htmlFor="skills">Skills (comma separated)</Label>
                 <Input id="skills" placeholder="React, TypeScript, Node.js" value={skills} onChange={(e) => setSkills(e.target.value)} required />
               </div>
+              {professionCategory === "education" && (
+                <TeachingDetailsSection
+                  educationProfessionType={educationProfessionType}
+                  values={teachingDetails}
+                  onChange={setTeachingDetails}
+                />
+              )}
               <div className="grid md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="paymentPreference">Payment Preference</Label>
@@ -370,7 +488,7 @@ export default function Onboarding() {
               </div>
             </CardContent>
             <CardFooter className="flex justify-between">
-              <Button type="button" variant="outline" onClick={() => { setStep("role"); setRole(null); }}>Back</Button>
+              <Button type="button" variant="outline" onClick={() => setStep("profession_category")}>Back</Button>
               <Button type="submit" disabled={upsertMe.isPending || createFreelancerProfile.isPending}>
                 {createFreelancerProfile.isPending ? "Saving..." : "Create Profile →"}
               </Button>

@@ -8,5 +8,15 @@
 
 export interface TokenUsageBreakdown {
   ai_match: number;
+  ai_match_explanation: number;
   agreement_generation: number;
+  contract_redlining: number;
+  job_description_assistant: number;
+  ai_proposal: number;
+  document_verification: number;
+  rate_suggestion: number;
+  contract_health_score: number;
+  agreement_summary: number;
+  cruise_mode_parse: number;
+  cruise_mode_evaluation: number;
 }

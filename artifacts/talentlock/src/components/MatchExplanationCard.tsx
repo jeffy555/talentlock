@@ -10,11 +10,14 @@ import {
 } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { formatRate, rateUnitLabel } from "@/lib/rateFormatUtils";
+import type { RateType } from "@/lib/rateFormatUtils";
 
 interface MatchExplanationCardProps {
   freelancerId: string;
   jobRequirementId?: string;
   conversationId: string;
+  rateType?: RateType | null;
 }
 
 type CardState = "loading" | "loaded" | "quota_reached" | "error" | "parse_error";
@@ -66,6 +69,7 @@ export default function MatchExplanationCard({
   freelancerId,
   jobRequirementId,
   conversationId,
+  rateType,
 }: MatchExplanationCardProps) {
   const [cardState, setCardState] = useState<CardState>("loading");
   const [data, setData] = useState<MatchExplanation | null>(null);
@@ -199,12 +203,13 @@ export default function MatchExplanationCard({
           <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-1.5">Rate Fit</p>
           <div className="flex items-center gap-2 text-sm flex-wrap">
             {rateFit.freelancerRate != null && (
-              <span className="text-slate-700">${rateFit.freelancerRate}/hr</span>
+              <span className="text-slate-700">{formatRate(rateFit.freelancerRate, rateType)}</span>
             )}
             {rateFit.budgetMin != null && rateFit.budgetMax != null && (
               <span className="text-slate-400">
-                · Budget: ${rateFit.budgetMin}
-                {rateFit.budgetMin !== rateFit.budgetMax ? ` – $${rateFit.budgetMax}` : ""}/hr
+                · Budget: ${rateFit.budgetMin.toLocaleString()}
+                {rateFit.budgetMin !== rateFit.budgetMax ? ` – $${rateFit.budgetMax.toLocaleString()}` : ""}
+                {rateUnitLabel(rateType)}
               </span>
             )}
             <RateFitBadge assessment={rateFit.assessment} />

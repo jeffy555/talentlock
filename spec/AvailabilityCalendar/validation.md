@@ -253,3 +253,37 @@ Servers: `http://localhost:25807` (frontend) · `http://localhost:8080` (API)
 `node artifacts/api-server/validate-availability-calendar.mjs` — **33/33 passed**
 
 Includes: Neon schema, demo Clerk ID alignment, public/freelancer/employer API, CRUD block lifecycle, demo sign-in tokens, frontend route shells, component integration grep, Vite proxy.
+
+---
+
+# P1 Follow-Up Validation — Premature Availability Lock (added 2026-06-09)
+
+> Validates Phase 4 in `task.md`. Run after the lock is moved from pending-create to active-confirm.
+
+## Pending creation no longer locks
+- [ ] `POST /api/bookings` for an available freelancer returns the booking in `pending` status
+- [ ] Immediately after, the freelancer's `isAvailable` is still `true`
+- [ ] `currentBookingId` is still `null` and `bookingEndDate` is still `null`
+- [ ] Freelancer still appears in `GET /api/freelancers` (Talent Vault) and is not filtered out
+- [ ] `nextAvailableDate` is unaffected by the pending booking
+
+## Confirmation locks (and auto-blocks) correctly
+- [ ] `PATCH /api/bookings/:id` with `status: "active"` sets `isAvailable: false`
+- [ ] Same transition sets `currentBookingId` and `bookingEndDate`
+- [ ] Same transition creates the `booked` availability block (existing behaviour preserved)
+- [ ] Freelancer is now excluded from / flagged in the Talent Vault as expected
+
+## Cancellation / completion restores
+- [ ] `PATCH /api/bookings/:id` → `cancelled` restores `isAvailable: true`, clears `currentBookingId`/`bookingEndDate`
+- [ ] `PATCH /api/bookings/:id` → `completed` restores availability
+- [ ] A freelancer who declines (booking never reaches `active`) was never locked in the first place
+
+## Regression
+- [ ] Auth guard from `specs/AuthHardening/` still enforced on `PATCH /bookings/:id`
+- [ ] `pnpm run typecheck` passes with zero new errors
+
+## Addendum Sign-Off
+
+| Phase | All Checks Pass | Signed Off By | Date |
+|---|---|---|---|
+| Phase 4 — Defer availability lock | ⬜ Pending implementation | — | — |

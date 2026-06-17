@@ -9,6 +9,8 @@ import StarRating from "@/components/StarRating";
 import ReviewList from "@/components/ReviewList";
 import { resolveVerificationLevel } from "@/lib/verification";
 import { AvailabilitySection } from "@/components/availability/AvailabilitySection";
+import { formatRate, profileDefaultRateType } from "@/lib/rateFormatUtils";
+import { EDUCATION_TYPE_LABELS } from "@/components/onboarding/TeachingDetailsSection";
 
 function TimelineDot({ isFirst }: { isFirst?: boolean }) {
   return (
@@ -93,8 +95,14 @@ export default function PublicProfile() {
         <div className="space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
             <div>
-              <div className="flex items-center gap-3 mb-2">
+              <div className="flex items-center gap-3 mb-2 flex-wrap">
                 <h1 className="text-4xl font-serif font-bold tracking-tight text-foreground">{profile.name}</h1>
+                {profile.professionCategory === "education" && profile.educationProfessionType && (
+                  <span className="inline-flex items-center gap-1 text-xs bg-blue-50 text-blue-700 border border-blue-200 rounded px-1.5 py-0.5">
+                    <GraduationCap className="h-3 w-3" />
+                    {EDUCATION_TYPE_LABELS[profile.educationProfessionType]}
+                  </span>
+                )}
               </div>
               <p className="text-lg font-medium text-primary">{profile.tagline}</p>
               <div className="mt-2">
@@ -134,8 +142,12 @@ export default function PublicProfile() {
             </div>
             <div className="flex items-center gap-2 text-foreground font-medium">
               <DollarSign className="h-4 w-4 text-muted-foreground" />
-              {profile.paymentPreference === "hourly" && profile.hourlyRate && `$${profile.hourlyRate}/hr`}
-              {profile.paymentPreference === "daily" && profile.dailyRate && `$${profile.dailyRate}/day`}
+              {profile.paymentPreference === "hourly" && profile.hourlyRate != null
+                ? formatRate(Number(profile.hourlyRate), profileDefaultRateType(profile.professionCategory))
+                : null}
+              {profile.paymentPreference === "daily" && profile.dailyRate != null
+                ? formatRate(Number(profile.dailyRate), "per_day")
+                : null}
               {profile.paymentPreference === "fixed" && "Fixed Rate"}
             </div>
           </div>
@@ -317,16 +329,18 @@ export default function PublicProfile() {
               </CardHeader>
               <CardContent className="space-y-4 pt-4">
                 <div className="text-sm space-y-2">
-                  {profile.hourlyRate && (
+                  {profile.hourlyRate != null && (
                     <div className="flex justify-between items-center">
-                      <span className="text-muted-foreground">Hourly rate</span>
-                      <span className="font-bold text-foreground">${profile.hourlyRate}/hr</span>
+                      <span className="text-muted-foreground">Rate</span>
+                      <span className="font-bold text-foreground">
+                        {formatRate(Number(profile.hourlyRate), profileDefaultRateType(profile.professionCategory))}
+                      </span>
                     </div>
                   )}
-                  {profile.dailyRate && (
+                  {profile.dailyRate != null && (
                     <div className="flex justify-between items-center">
                       <span className="text-muted-foreground">Daily rate</span>
-                      <span className="font-bold text-foreground">${profile.dailyRate}/day</span>
+                      <span className="font-bold text-foreground">{formatRate(Number(profile.dailyRate), "per_day")}</span>
                     </div>
                   )}
                   <div className="flex justify-between items-center">

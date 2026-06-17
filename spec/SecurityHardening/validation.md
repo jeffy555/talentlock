@@ -219,3 +219,32 @@
 `node artifacts/api-server/validate-security-hardening.mjs` — **28/28 passed, 2 skipped** (V5.1 no active booking in DB; V5.2 destructive happy path)
 
 Includes: Helmet headers, 413 limit, audit_logs + account_deletion_requests schema, CSRF token flow, sanitisation API smoke tests, account route registration, frontend component grep, Clerk auth regression.
+
+---
+
+# P1 Follow-Up Validation — Sanitisation Coverage Gaps (added 2026-06-09)
+
+> Validates Phase 6 in `task.md`. For each field, submit a payload like `<script>alert(1)</script>Hello` and confirm the stored value is neutralised (no executable markup), matching the behaviour of the Phase 4 routes.
+
+## Import-coverage check
+- [ ] `meetings.ts`, `portfolio.ts`, `milestones.ts`, `jobInterests.ts`, `agreements.ts`, `openaiChat.ts` all import `sanitiseText`
+- [ ] Grep for `sanitiseText` now lists these six files in addition to the original Phase 4 routes
+
+## Per-route behaviour
+- [ ] Meetings: script payload in title/agenda/notes neutralised on `POST` AND `PATCH /api/meetings/:id`
+- [ ] Portfolio: script payload in title/description neutralised on create AND update; `url`/`imageUrl`/`tags` unaffected
+- [ ] Milestones: script payload in title/description neutralised
+- [ ] Job Interests: script payload in `message` neutralised; length cap still enforced; sanitise applied before trim/slice
+- [ ] Agreement signing: script payload in `signatureName` neutralised; "name or image required" validation still triggers when both blank
+- [ ] AI chat: script payload in conversation `title` and user message `content` neutralised; assistant message content unchanged
+
+## Regression
+- [ ] Normal (non-malicious) text round-trips unchanged on all six routes (no over-escaping/double-encoding)
+- [ ] Existing AuthHardening guards (if applied to these routes) still enforced
+- [ ] `pnpm run typecheck` passes with zero new errors
+
+## Addendum Sign-Off
+
+| Phase | All Checks Pass | Signed Off By | Date |
+|---|---|---|---|
+| Phase 6 — Sanitisation coverage | ⬜ Pending implementation | — | — |

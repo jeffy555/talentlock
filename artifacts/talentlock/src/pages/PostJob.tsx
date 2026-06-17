@@ -12,6 +12,9 @@ import { ArrowLeft, Briefcase, Calendar, DollarSign, Sparkles, Target } from "lu
 import { format } from "date-fns";
 import { FIELDS_OF_WORK } from "@/lib/fields";
 import JobDescriptionAssistant from "@/components/JobDescriptionAssistant";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { rateUnitLabel } from "@/lib/rateFormatUtils";
+import type { ProfessionCategory, RateType } from "@workspace/api-client-react";
 
 export default function PostJob() {
   const [, setLocation] = useLocation();
@@ -28,6 +31,8 @@ export default function PostJob() {
   const [startDate, setStartDate] = useState(format(new Date(), "yyyy-MM-dd"));
   const [endDate, setEndDate] = useState("");
   const [isAssistantOpen, setIsAssistantOpen] = useState(false);
+  const [professionCategory, setProfessionCategory] = useState<ProfessionCategory>("technology");
+  const [rateType, setRateType] = useState<RateType>("hourly");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -49,6 +54,8 @@ export default function PostJob() {
           budget: budget ? parseInt(budget, 10) : null,
           startDate: new Date(startDate).toISOString(),
           endDate: new Date(endDate).toISOString(),
+          professionCategory,
+          rateType: professionCategory === "education" ? rateType : "hourly",
         }
       });
 
@@ -166,6 +173,24 @@ export default function PostJob() {
             </div>
 
             <div className="space-y-2.5 border-t border-border/50 pt-8">
+              <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Profession Category</Label>
+              <RadioGroup
+                value={professionCategory}
+                onValueChange={(v) => setProfessionCategory(v as ProfessionCategory)}
+                className="flex gap-4"
+              >
+                <div className="flex items-center gap-2">
+                  <RadioGroupItem value="technology" id="prof-technology" />
+                  <Label htmlFor="prof-technology" className="font-normal cursor-pointer">Technology</Label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <RadioGroupItem value="education" id="prof-education" />
+                  <Label htmlFor="prof-education" className="font-normal cursor-pointer">Education</Label>
+                </div>
+              </RadioGroup>
+            </div>
+
+            <div className="space-y-2.5 border-t border-border/50 pt-8">
               <Label htmlFor="skills" className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Required Skills <span className="text-[10px] font-medium opacity-70 lowercase ml-1">(comma separated)</span></Label>
               <Input 
                 id="skills" 
@@ -190,6 +215,33 @@ export default function PostJob() {
               </div>
             </CardHeader>
             <CardContent className="space-y-6 pt-6">
+              {professionCategory === "education" && (
+                <div className="space-y-2.5">
+                  <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Rate type</Label>
+                  <RadioGroup
+                    value={rateType}
+                    onValueChange={(v) => setRateType(v as RateType)}
+                    className="flex gap-3 flex-wrap"
+                  >
+                    <div className="flex items-center gap-2">
+                      <RadioGroupItem value="hourly" id="rate-hourly" />
+                      <Label htmlFor="rate-hourly" className="font-normal cursor-pointer">Hourly</Label>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <RadioGroupItem value="per_day" id="rate-per-day" />
+                      <Label htmlFor="rate-per-day" className="font-normal cursor-pointer">Per day</Label>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <RadioGroupItem value="per_session" id="rate-per-session" />
+                      <Label htmlFor="rate-per-session" className="font-normal cursor-pointer">Per session</Label>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <RadioGroupItem value="per_course" id="rate-per-course" />
+                      <Label htmlFor="rate-per-course" className="font-normal cursor-pointer">Per course</Label>
+                    </div>
+                  </RadioGroup>
+                </div>
+              )}
               <div className="space-y-2.5">
                 <Label htmlFor="paymentType" className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Structure</Label>
                 <Select value={paymentType} onValueChange={setPaymentType}>
@@ -207,17 +259,22 @@ export default function PostJob() {
                 <Label htmlFor="budget" className="text-xs font-bold uppercase tracking-widest text-muted-foreground flex justify-between">
                   Budget (USD) <span className="font-normal opacity-70 lowercase">optional</span>
                 </Label>
-                <div className="relative">
-                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground font-medium">$</span>
-                  <Input 
-                    id="budget" 
-                    type="number" 
-                    min="0" 
-                    placeholder="e.g. 15000" 
-                    value={budget} 
-                    onChange={e => setBudget(e.target.value)}
-                    className="h-11 pl-8 bg-secondary/20 shadow-sm border-border"
-                  />
+                <div className="flex items-center gap-2">
+                  <div className="relative flex-1">
+                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground font-medium">$</span>
+                    <Input 
+                      id="budget" 
+                      type="number" 
+                      min="0" 
+                      placeholder="e.g. 15000" 
+                      value={budget} 
+                      onChange={e => setBudget(e.target.value)}
+                      className="h-11 pl-8 bg-secondary/20 shadow-sm border-border"
+                    />
+                  </div>
+                  <span className="text-slate-500 text-sm whitespace-nowrap">
+                    {professionCategory === "education" ? rateUnitLabel(rateType) : "/hr"}
+                  </span>
                 </div>
               </div>
             </CardContent>

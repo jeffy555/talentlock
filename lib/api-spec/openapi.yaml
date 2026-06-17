@@ -41,7 +41,9 @@ tags:
   - name: availability
     description: Freelancer availability calendar blocks
   - name: team
-    description: Enterprise team accounts and member management
+    description: Enterprise team accounts
+  - name: cruise-mode
+    description: Freelancer Cruise Mode automation and member management
 
 paths:
   /healthz:
@@ -157,6 +159,17 @@ paths:
           schema:
             type: string
           description: Full-text keyword search across bio and skills
+        - name: professionCategory
+          in: query
+          schema:
+            type: string
+            enum: [technology, education]
+          description: Filter by profession category
+        - name: teachingSubject
+          in: query
+          schema:
+            type: string
+          description: Case-insensitive substring match on teachingSubjects (education professionals)
       responses:
         "200":
           description: List of freelancers
@@ -1169,6 +1182,114 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/AgreementSignedError"
+
+  /agreements/{id}/health-score:
+    post:
+      operationId: postAgreementsIdHealthScore
+      tags: [agreements]
+      summary: Score contract health with AI across five dimensions
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: force
+          in: query
+          schema:
+            type: boolean
+            default: false
+          description: Bypass cached score and re-run AI analysis
+      responses:
+        "200":
+          description: Health score result or parse error
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/HealthScoreResult"
+                  - $ref: "#/components/schemas/HealthScoreParseError"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "402":
+          description: Token quota exceeded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TokenLimitError"
+        "403":
+          description: Not a party to this agreement
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "500":
+          description: AI service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /agreements/{id}/summarise:
+    post:
+      operationId: postAgreementsIdSummarise
+      tags: [agreements]
+      summary: AI plain-English summary of agreement for freelancer
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: force
+          in: query
+          schema:
+            type: boolean
+            default: false
+          description: Bypass cached summary and re-run AI analysis
+      responses:
+        "200":
+          description: Summary result or parse error
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/AgreementSummaryResult"
+                  - $ref: "#/components/schemas/AgreementSummaryParseError"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "403":
+          description: Not a freelancer or not a party to this agreement
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "500":
+          description: AI service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
 
   # ── Meetings ─────────────────────────────────────────────────────────────────
   /meetings:
@@ -2340,6 +2461,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorEnvelope"
+        "503":
+          description: Email delivery failed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InviteEmailFailedError"
 
   /team/accept-invite:
     get:
@@ -2551,6 +2678,61 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorEnvelope"
 
+  /team/members/{memberId}/resend-invite:
+    post:
+      operationId: resendTeamInvite
+      tags: [team]
+      summary: Resend invitation email for a pending team member (admin only)
+      parameters:
+        - name: memberId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Invitation email resent
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResendTeamInviteResponse"
+        "400":
+          description: Not a pending invitation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "403":
+          description: Admin only
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "404":
+          description: Member not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "410":
+          description: Invite expired
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "503":
+          description: Email delivery failed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InviteEmailFailedError"
+
   /team/members/{memberId}:
     delete:
       operationId: removeTeamMember
@@ -2589,6 +2771,306 @@ paths:
                 $ref: "#/components/schemas/ErrorEnvelope"
         "404":
           description: Member not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  # ── Cruise Mode (Freelancer Pro) ──────────────────────────────────────────
+  /cruise-mode:
+    get:
+      operationId: getCruiseMode
+      tags: [cruise-mode]
+      summary: Get current Cruise Mode config
+      responses:
+        "200":
+          description: Config or null if none
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/CruiseModeConfig"
+                  - type: "null"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "403":
+          description: Freelancer profile required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+    post:
+      operationId: upsertCruiseMode
+      tags: [cruise-mode]
+      summary: Create or update Cruise Mode config
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpsertCruiseModeBody"
+      responses:
+        "200":
+          description: Updated config
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CruiseModeConfig"
+        "201":
+          description: Created config
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CruiseModeConfig"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "403":
+          description: Freelancer profile required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /cruise-mode/activate:
+    patch:
+      operationId: activateCruiseMode
+      tags: [cruise-mode]
+      summary: Activate Cruise Mode (live)
+      responses:
+        "200":
+          description: Activated config
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CruiseModeConfig"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "402":
+          description: Freelancer Pro required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlanLimitError"
+        "403":
+          description: Freelancer profile required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "404":
+          description: Config not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /cruise-mode/dry-run:
+    patch:
+      operationId: dryRunCruiseMode
+      tags: [cruise-mode]
+      summary: Activate Cruise Mode in dry run mode
+      responses:
+        "200":
+          description: Dry run config
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CruiseModeConfig"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "402":
+          description: Freelancer Pro required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlanLimitError"
+        "403":
+          description: Freelancer profile required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "404":
+          description: Config not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /cruise-mode/deactivate:
+    patch:
+      operationId: deactivateCruiseMode
+      tags: [cruise-mode]
+      summary: Deactivate Cruise Mode
+      responses:
+        "200":
+          description: Deactivated config
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CruiseModeConfig"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "403":
+          description: Freelancer profile required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "404":
+          description: Config not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /cruise-mode/parse-rules:
+    post:
+      operationId: parseCruiseModeRules
+      tags: [cruise-mode]
+      summary: Parse free-form text into structured Cruise Mode rules
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ParseCruiseModeRulesBody"
+      responses:
+        "200":
+          description: Parsed rules
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ParseCruiseModeRulesResult"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "403":
+          description: Freelancer profile required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /cruise-mode/activity:
+    get:
+      operationId: listCruiseModeActivity
+      tags: [cruise-mode]
+      summary: Paginated Cruise Mode activity feed
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: pageSize
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        "200":
+          description: Paginated activity
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaginatedCruiseModeActivityResult"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "403":
+          description: Freelancer profile required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /cruise-mode/activity/{id}/follow-up:
+    post:
+      operationId: markCruiseModeFollowUp
+      tags: [cruise-mode]
+      summary: Mark follow-up sent for a Cruise Mode activity entry
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Updated activity entry
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CruiseModeActivity"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "403":
+          description: Freelancer profile required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "404":
+          description: Activity not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /cruise-mode/stats:
+    get:
+      operationId: getCruiseModeStats
+      tags: [cruise-mode]
+      summary: Cruise Mode stats for today and current month
+      responses:
+        "200":
+          description: Stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CruiseModeStats"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "403":
+          description: Freelancer profile required
           content:
             application/json:
               schema:
@@ -2666,6 +3148,76 @@ components:
         - email
         - name
 
+    # ── Teaching Professional Profile enums ────────────────────────────────────
+    ProfessionCategory:
+      type: string
+      enum: [technology, education]
+
+    EducationProfessionType:
+      type: string
+      enum: [school_teacher, university_lecturer, tutor, researcher]
+
+    HighestDegree:
+      type: string
+      enum: [bachelors, masters, phd, postdoc]
+
+    DbsCheckStatus:
+      type: string
+      enum: [not_uploaded, uploaded, verified, expired]
+
+    PreferredTeachingMode:
+      type: string
+      enum: [in_person, online, both]
+
+    RateType:
+      type: string
+      enum: [hourly, per_day, per_session, per_course]
+
+    TeachingProfileFields:
+      type: object
+      properties:
+        professionCategory:
+          $ref: "#/components/schemas/ProfessionCategory"
+        educationProfessionType:
+          allOf:
+            - $ref: "#/components/schemas/EducationProfessionType"
+          nullable: true
+        teachingSubjects:
+          type: ["array", "null"]
+          items:
+            type: string
+        teachingLevels:
+          type: ["array", "null"]
+          items:
+            type: string
+        yearsTeachingExperience:
+          type: ["integer", "null"]
+        highestDegree:
+          allOf:
+            - $ref: "#/components/schemas/HighestDegree"
+          nullable: true
+        degreeSubject:
+          type: ["string", "null"]
+        degreeInstitution:
+          type: ["string", "null"]
+        teachingLicenceState:
+          type: ["string", "null"]
+        teachingLicenceExpiry:
+          type: ["string", "null"]
+          format: date-time
+        dbsCheckStatus:
+          allOf:
+            - $ref: "#/components/schemas/DbsCheckStatus"
+          nullable: true
+        researchPublications:
+          type: ["string", "null"]
+        preferredTeachingMode:
+          allOf:
+            - $ref: "#/components/schemas/PreferredTeachingMode"
+          nullable: true
+        location:
+          type: ["string", "null"]
+
     # ── Freelancer Profile ─────────────────────────────────────────────────────
     FreelancerProfile:
       type: object
@@ -2742,6 +3294,47 @@ components:
         completenessScore:
           type: integer
           description: Profile completeness score 0–100 (Talent Vault requires ≥ 60)
+        professionCategory:
+          $ref: "#/components/schemas/ProfessionCategory"
+        educationProfessionType:
+          allOf:
+            - $ref: "#/components/schemas/EducationProfessionType"
+          nullable: true
+        teachingSubjects:
+          type: ["array", "null"]
+          items:
+            type: string
+        teachingLevels:
+          type: ["array", "null"]
+          items:
+            type: string
+        yearsTeachingExperience:
+          type: ["integer", "null"]
+        highestDegree:
+          allOf:
+            - $ref: "#/components/schemas/HighestDegree"
+          nullable: true
+        degreeSubject:
+          type: ["string", "null"]
+        degreeInstitution:
+          type: ["string", "null"]
+        teachingLicenceState:
+          type: ["string", "null"]
+        teachingLicenceExpiry:
+          type: ["string", "null"]
+          format: date-time
+        dbsCheckStatus:
+          allOf:
+            - $ref: "#/components/schemas/DbsCheckStatus"
+          nullable: true
+        researchPublications:
+          type: ["string", "null"]
+        preferredTeachingMode:
+          allOf:
+            - $ref: "#/components/schemas/PreferredTeachingMode"
+          nullable: true
+        location:
+          type: ["string", "null"]
         createdAt:
           type: string
           format: date-time
@@ -2761,6 +3354,7 @@ components:
         - verificationLevel
         - reviewCount
         - completenessScore
+        - professionCategory
         - createdAt
 
     PatchNotificationPreferencesBody:
@@ -2834,6 +3428,47 @@ components:
         resumeAnalysis:
           $ref: "#/components/schemas/ResumeAnalysis"
           nullable: true
+        professionCategory:
+          $ref: "#/components/schemas/ProfessionCategory"
+        educationProfessionType:
+          allOf:
+            - $ref: "#/components/schemas/EducationProfessionType"
+          nullable: true
+        teachingSubjects:
+          type: ["array", "null"]
+          items:
+            type: string
+        teachingLevels:
+          type: ["array", "null"]
+          items:
+            type: string
+        yearsTeachingExperience:
+          type: ["integer", "null"]
+        highestDegree:
+          allOf:
+            - $ref: "#/components/schemas/HighestDegree"
+          nullable: true
+        degreeSubject:
+          type: ["string", "null"]
+        degreeInstitution:
+          type: ["string", "null"]
+        teachingLicenceState:
+          type: ["string", "null"]
+        teachingLicenceExpiry:
+          type: ["string", "null"]
+          format: date-time
+        dbsCheckStatus:
+          allOf:
+            - $ref: "#/components/schemas/DbsCheckStatus"
+          nullable: true
+        researchPublications:
+          type: ["string", "null"]
+        preferredTeachingMode:
+          allOf:
+            - $ref: "#/components/schemas/PreferredTeachingMode"
+          nullable: true
+        location:
+          type: ["string", "null"]
       required:
         - tagline
         - fieldOfWork
@@ -2990,6 +3625,47 @@ components:
           format: date-time
         availabilityNote:
           type: ["string", "null"]
+        professionCategory:
+          $ref: "#/components/schemas/ProfessionCategory"
+        educationProfessionType:
+          allOf:
+            - $ref: "#/components/schemas/EducationProfessionType"
+          nullable: true
+        teachingSubjects:
+          type: ["array", "null"]
+          items:
+            type: string
+        teachingLevels:
+          type: ["array", "null"]
+          items:
+            type: string
+        yearsTeachingExperience:
+          type: ["integer", "null"]
+        highestDegree:
+          allOf:
+            - $ref: "#/components/schemas/HighestDegree"
+          nullable: true
+        degreeSubject:
+          type: ["string", "null"]
+        degreeInstitution:
+          type: ["string", "null"]
+        teachingLicenceState:
+          type: ["string", "null"]
+        teachingLicenceExpiry:
+          type: ["string", "null"]
+          format: date-time
+        dbsCheckStatus:
+          allOf:
+            - $ref: "#/components/schemas/DbsCheckStatus"
+          nullable: true
+        researchPublications:
+          type: ["string", "null"]
+        preferredTeachingMode:
+          allOf:
+            - $ref: "#/components/schemas/PreferredTeachingMode"
+          nullable: true
+        location:
+          type: ["string", "null"]
 
     # ── Employer Profile ───────────────────────────────────────────────────────
     EmployerProfile:
@@ -3091,6 +3767,10 @@ components:
         status:
           type: string
           description: "open, filled, closed"
+        professionCategory:
+          $ref: "#/components/schemas/ProfessionCategory"
+        rateType:
+          $ref: "#/components/schemas/RateType"
         createdAt:
           type: string
           format: date-time
@@ -3106,6 +3786,8 @@ components:
         - startDate
         - endDate
         - status
+        - professionCategory
+        - rateType
         - createdAt
 
     CreateJobRequirementBody:
@@ -3133,6 +3815,10 @@ components:
         endDate:
           type: string
           format: date-time
+        professionCategory:
+          $ref: "#/components/schemas/ProfessionCategory"
+        rateType:
+          $ref: "#/components/schemas/RateType"
       required:
         - title
         - fieldOfWork
@@ -3166,6 +3852,10 @@ components:
           format: date-time
         status:
           type: string
+        professionCategory:
+          $ref: "#/components/schemas/ProfessionCategory"
+        rateType:
+          $ref: "#/components/schemas/RateType"
 
     # ── Booking ────────────────────────────────────────────────────────────────
     Booking:
@@ -3345,6 +4035,170 @@ components:
         - error
         - code
 
+    HealthScoreDimension:
+      type: object
+      properties:
+        score:
+          type: integer
+        verdict:
+          type: string
+          enum: [Strong, Acceptable, "Needs attention", Weak]
+        explanation:
+          type: string
+      required:
+        - score
+        - verdict
+
+    HealthScoreDimensions:
+      type: object
+      properties:
+        clarity:
+          $ref: "#/components/schemas/HealthScoreDimension"
+        fairness:
+          $ref: "#/components/schemas/HealthScoreDimension"
+        completeness:
+          $ref: "#/components/schemas/HealthScoreDimension"
+        enforceability:
+          $ref: "#/components/schemas/HealthScoreDimension"
+        industryFit:
+          $ref: "#/components/schemas/HealthScoreDimension"
+      required:
+        - clarity
+        - fairness
+        - completeness
+        - enforceability
+        - industryFit
+
+    HealthScoreResult:
+      type: object
+      properties:
+        parseError:
+          type: boolean
+          enum: [false]
+        cached:
+          type: boolean
+        truncated:
+          type: boolean
+        totalScore:
+          type: integer
+        dimensions:
+          $ref: "#/components/schemas/HealthScoreDimensions"
+        summary:
+          type: string
+        healthScoredAt:
+          type: string
+          format: date-time
+      required:
+        - parseError
+        - totalScore
+
+    HealthScoreParseError:
+      type: object
+      properties:
+        parseError:
+          type: boolean
+          enum: [true]
+        score:
+          type: ["integer", "null"]
+        dimensions:
+          type: ["object", "null"]
+      required:
+        - parseError
+
+    AgreementSummarySection:
+      type: object
+      properties:
+        title:
+          type: string
+        content:
+          type: string
+      required:
+        - title
+        - content
+
+    AgreementSummarySections:
+      type: object
+      properties:
+        whatYouDo:
+          $ref: "#/components/schemas/AgreementSummarySection"
+        howYouGetPaid:
+          $ref: "#/components/schemas/AgreementSummarySection"
+        whoOwnsTheWork:
+          $ref: "#/components/schemas/AgreementSummarySection"
+        howItCanEnd:
+          $ref: "#/components/schemas/AgreementSummarySection"
+        restrictions:
+          $ref: "#/components/schemas/AgreementSummarySection"
+        keyDates:
+          $ref: "#/components/schemas/AgreementSummarySection"
+      required:
+        - whatYouDo
+        - howYouGetPaid
+        - whoOwnsTheWork
+        - howItCanEnd
+        - restrictions
+        - keyDates
+
+    AgreementSummaryAttentionFlag:
+      type: object
+      properties:
+        heading:
+          type: string
+        detail:
+          type: string
+      required:
+        - heading
+        - detail
+
+    AgreementSummaryAttentionFlags:
+      type: object
+      properties:
+        exists:
+          type: boolean
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/AgreementSummaryAttentionFlag"
+      required:
+        - exists
+        - items
+
+    AgreementSummaryResult:
+      type: object
+      properties:
+        parseError:
+          type: boolean
+          enum: [false]
+        cached:
+          type: boolean
+        truncated:
+          type: boolean
+        freelancerSummaryScoredAt:
+          type: string
+          format: date-time
+        sections:
+          $ref: "#/components/schemas/AgreementSummarySections"
+        attentionFlags:
+          $ref: "#/components/schemas/AgreementSummaryAttentionFlags"
+        disclaimer:
+          type: string
+      required:
+        - parseError
+        - sections
+        - attentionFlags
+        - disclaimer
+
+    AgreementSummaryParseError:
+      type: object
+      properties:
+        parseError:
+          type: boolean
+          enum: [true]
+        summary:
+          type: ["object", "null"]
+      required:
+        - parseError
+
     Agreement:
       type: object
       properties:
@@ -3391,6 +4245,24 @@ components:
           type: ["string", "null"]
         employerName:
           type: ["string", "null"]
+        healthScore:
+          type: ["integer", "null"]
+          description: Cached AI contract health score (0–100), null if not yet scored
+        healthScoreDetail:
+          type: ["object", "null"]
+          description: Cached dimension breakdown JSON
+        healthScoredAt:
+          type: ["string", "null"]
+          format: date-time
+        freelancerSummary:
+          type: ["object", "null"]
+          description: Cached AI plain-English summary JSON (freelancer view only)
+        freelancerSummaryScoredAt:
+          type: ["string", "null"]
+          format: date-time
+        hasSummary:
+          type: boolean
+          description: Whether a cached freelancer summary exists
         createdAt:
           type: string
           format: date-time
@@ -4597,9 +5469,31 @@ components:
     TokenUsageBreakdown:
       type: object
       properties:
-        ai_match: { type: integer }
-        agreement_generation: { type: integer }
-      required: [ai_match, agreement_generation]
+        ai_match: { type: integer, default: 0 }
+        ai_match_explanation: { type: integer, default: 0 }
+        agreement_generation: { type: integer, default: 0 }
+        contract_redlining: { type: integer, default: 0 }
+        job_description_assistant: { type: integer, default: 0 }
+        ai_proposal: { type: integer, default: 0 }
+        document_verification: { type: integer, default: 0 }
+        rate_suggestion: { type: integer, default: 0 }
+        contract_health_score: { type: integer, default: 0 }
+        agreement_summary: { type: integer, default: 0 }
+        cruise_mode_parse: { type: integer, default: 0 }
+        cruise_mode_evaluation: { type: integer, default: 0 }
+      required:
+        - ai_match
+        - ai_match_explanation
+        - agreement_generation
+        - contract_redlining
+        - job_description_assistant
+        - ai_proposal
+        - document_verification
+        - rate_suggestion
+        - contract_health_score
+        - agreement_summary
+        - cruise_mode_parse
+        - cruise_mode_evaluation
 
     TokenUsageSummary:
       type: object
@@ -5080,6 +5974,9 @@ components:
           type: ["string", "null"]
         displayEmail:
           type: string
+        inviteUrl:
+          type: string
+          description: Admin-only — accept link for pending invites
       required: [id, role, status, invitedEmail, invitedAt, displayEmail]
 
     TeamDetails:
@@ -5138,7 +6035,10 @@ components:
         inviteExpiresAt:
           type: ["string", "null"]
           format: date-time
-      required: [id, invitedEmail, role, status, invitedAt]
+        inviteUrl:
+          type: string
+          description: Accept-invite URL (share manually if email delivery fails)
+      required: [id, invitedEmail, role, status, invitedAt, inviteUrl]
 
     AcceptTeamInviteResponse:
       type: object
@@ -5179,6 +6079,30 @@ components:
         success:
           type: boolean
       required: [success]
+
+    ResendTeamInviteResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        invitedEmail:
+          type: string
+        inviteUrl:
+          type: string
+      required: [success, invitedEmail, inviteUrl]
+
+    InviteEmailFailedError:
+      type: object
+      properties:
+        error:
+          type: string
+        code:
+          type: string
+          enum: [INVITE_EMAIL_FAILED]
+        inviteUrl:
+          type: string
+          description: Share this link manually when email cannot be delivered
+      required: [error, code]
 
     AddTeamShortlistBody:
       type: object
@@ -5334,6 +6258,22 @@ components:
           type: integer
         totalReviews:
           type: integer
+        professionCategory:
+          $ref: "#/components/schemas/ProfessionCategory"
+        educationProfessionType:
+          allOf:
+            - $ref: "#/components/schemas/EducationProfessionType"
+          nullable: true
+        teachingSubjects:
+          type: ["array", "null"]
+          items:
+            type: string
+        teachingLevels:
+          type: ["array", "null"]
+          items:
+            type: string
+        location:
+          type: ["string", "null"]
         createdAt:
           type: string
           format: date-time
@@ -5351,4 +6291,276 @@ components:
         - portfolio
         - reviews
         - totalReviews
+        - professionCategory
         - createdAt
+
+    BlackoutWindow:
+      type: object
+      properties:
+        start:
+          type: string
+        end:
+          type: string
+        days:
+          type: array
+          items:
+            type: integer
+      required: [start, end, days]
+
+    CruiseModeBlackoutWindows:
+      type: object
+      properties:
+        timezone:
+          type: string
+        windows:
+          type: array
+          items:
+            $ref: "#/components/schemas/BlackoutWindow"
+      required: [timezone, windows]
+
+    CruiseModeRules:
+      type: object
+      properties:
+        requiredSkills:
+          type: array
+          items: { type: string }
+        preferredSkills:
+          type: array
+          items: { type: string }
+        minRate:
+          type: ["number", "null"]
+        maxRate:
+          type: ["number", "null"]
+        availableFrom:
+          type: ["string", "null"]
+        availableTo:
+          type: ["string", "null"]
+        maxDurationWeeks:
+          type: ["integer", "null"]
+        minDurationWeeks:
+          type: ["integer", "null"]
+        excludedKeywords:
+          type: array
+          items: { type: string }
+        preferredFields:
+          type: array
+          items: { type: string }
+        matchThreshold:
+          type: integer
+          minimum: 0
+          maximum: 100
+        messageTone:
+          type: string
+          enum: [professional, friendly, concise]
+        blackoutWindows:
+          oneOf:
+            - $ref: "#/components/schemas/CruiseModeBlackoutWindows"
+            - type: "null"
+        dailyDigest:
+          type: boolean
+        version:
+          type: integer
+      required:
+        - requiredSkills
+        - preferredSkills
+        - excludedKeywords
+        - preferredFields
+        - matchThreshold
+        - messageTone
+        - dailyDigest
+        - version
+
+    MatchReasons:
+      type: object
+      properties:
+        matched:
+          type: array
+          items: { type: string }
+        concerns:
+          type: array
+          items: { type: string }
+        blockers:
+          type: array
+          items: { type: string }
+      required: [matched, concerns, blockers]
+
+    CruiseModeConfig:
+      type: object
+      properties:
+        id:
+          type: string
+        freelancerId:
+          type: integer
+        isActive:
+          type: boolean
+        isDryRun:
+          type: boolean
+        rules:
+          $ref: "#/components/schemas/CruiseModeRules"
+        rulesVersion:
+          type: integer
+        rawRulesText:
+          type: ["string", "null"]
+        hoursUsedToday:
+          type: number
+          format: double
+        dailyLimitHours:
+          type: number
+          format: double
+        hoursResetAt:
+          type: string
+          format: date-time
+        activatedAt:
+          type: ["string", "null"]
+          format: date-time
+        deactivatedAt:
+          type: ["string", "null"]
+          format: date-time
+        deletedAt:
+          type: ["string", "null"]
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - freelancerId
+        - isActive
+        - isDryRun
+        - rules
+        - rulesVersion
+        - hoursUsedToday
+        - dailyLimitHours
+        - hoursResetAt
+        - createdAt
+        - updatedAt
+
+    CruiseModeActivity:
+      type: object
+      properties:
+        id:
+          type: string
+        freelancerId:
+          type: integer
+        jobRequirementId:
+          type: integer
+        rulesVersion:
+          type: integer
+        score:
+          type: integer
+        decision:
+          type: string
+        matchReasons:
+          $ref: "#/components/schemas/MatchReasons"
+        proposedMessage:
+          type: ["string", "null"]
+        sentAt:
+          type: ["string", "null"]
+          format: date-time
+        skippedReason:
+          type: ["string", "null"]
+        freelancerFollowUpSent:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - freelancerId
+        - jobRequirementId
+        - rulesVersion
+        - score
+        - decision
+        - matchReasons
+        - freelancerFollowUpSent
+        - createdAt
+
+    CruiseModeActivityItem:
+      allOf:
+        - $ref: "#/components/schemas/CruiseModeActivity"
+        - type: object
+          properties:
+            jobTitle:
+              type: string
+          required: [jobTitle]
+
+    PaginatedCruiseModeActivityResult:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/CruiseModeActivityItem"
+        total:
+          type: integer
+        page:
+          type: integer
+        pageSize:
+          type: integer
+        totalPages:
+          type: integer
+      required: [data, total, page, pageSize, totalPages]
+
+    CruiseModeStats:
+      type: object
+      properties:
+        evaluatedToday:
+          type: integer
+        sentToday:
+          type: integer
+        skippedToday:
+          type: integer
+        dryRunToday:
+          type: integer
+        hoursUsedToday:
+          type: number
+          format: double
+        dailyLimitHours:
+          type: number
+          format: double
+        hoursRemainingToday:
+          type: number
+          format: double
+        hoursResetAt:
+          type: string
+          format: date-time
+      required:
+        - evaluatedToday
+        - sentToday
+        - skippedToday
+        - dryRunToday
+        - hoursUsedToday
+        - dailyLimitHours
+        - hoursRemainingToday
+        - hoursResetAt
+
+    UpsertCruiseModeBody:
+      type: object
+      properties:
+        rules:
+          $ref: "#/components/schemas/CruiseModeRules"
+        rawRulesText:
+          type: ["string", "null"]
+      required: [rules]
+
+    ParseCruiseModeRulesBody:
+      type: object
+      properties:
+        rawText:
+          type: string
+          minLength: 1
+          maxLength: 10000
+      required: [rawText]
+
+    ParseCruiseModeRulesResult:
+      type: object
+      properties:
+        rules:
+          $ref: "#/components/schemas/CruiseModeRules"
+        warnings:
+          type: array
+          items: { type: string }
+      required: [rules, warnings]

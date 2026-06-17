@@ -1,12 +1,15 @@
 import { useState } from "react";
+import { useAuth } from "@clerk/react";
 import { useListAgreements, useGetMe } from "@workspace/api-client-react";
 import { PaginationControls } from "@/components/PaginationControls";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { FileText, PenLine, CheckCircle2, Shield, ArrowRight } from "lucide-react";
-import { format } from "date-fns";
+import { FileText, PenLine, CheckCircle2, Shield, ArrowRight, Sparkles, Download, Loader2 } from "lucide-react";
+import { GradeBadge } from "@/components/ContractHealthScoreCard";
+import { useToast } from "@/hooks/use-toast";
+import { AgreementDownloadError, downloadAgreementPdf } from "@/lib/downloadUtils";
 
 const statusColors: Record<string, { bg: string, text: string, border: string }> = {
   draft: { bg: "bg-yellow-50", text: "text-yellow-700", border: "border-yellow-200" },
@@ -20,6 +23,9 @@ const statusColors: Record<string, { bg: string, text: string, border: string }>
 
 export default function AgreementsList() {
   const [page, setPage] = useState(1);
+  const [downloadingId, setDownloadingId] = useState<number | null>(null);
+  const { toast } = useToast();
+  const { getToken } = useAuth();
   const { data: me } = useGetMe();
   const { data, isLoading } = useListAgreements({ page, pageSize: 20 });
   const agreements = data?.data ?? [];
@@ -28,6 +34,21 @@ export default function AgreementsList() {
   const onPageChange = (newPage: number) => {
     setPage(newPage);
     window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const handleListDownload = async (agreementId: number) => {
+    setDownloadingId(agreementId);
+    try {
+      await downloadAgreementPdf(agreementId, getToken);
+    } catch (err) {
+      const message =
+        err instanceof AgreementDownloadError
+          ? err.message
+          : "Download failed. Please try again.";
+      toast({ title: message, variant: "destructive" });
+    } finally {
+      setDownloadingId(null);
+    }
   };
 
   if (isLoading) {
@@ -96,9 +117,37 @@ export default function AgreementsList() {
                 
                 <CardHeader className="pb-4">
                   <div className="flex items-start justify-between mb-3">
-                    <Badge className={`uppercase tracking-widest text-[10px] border shadow-sm ${colors.bg} ${colors.text} ${colors.border}`}>
-                      {(agreement.status ?? "pending").replace(/_/g, " ")}
-                    </Badge>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <Badge className={`uppercase tracking-widest text-[10px] border shadow-sm ${colors.bg} ${colors.text} ${colors.border}`}>
+                        {(agreement.status ?? "pending").replace(/_/g, " ")}
+                      </Badge>
+                      {me?.role === "freelancer" && agreement.hasSummary && (
+                        <span className="inline-flex items-center gap-1 text-xs bg-violet-100 text-violet-700 border border-violet-200 rounded px-1.5 py-0.5 shrink-0">
+                          <Sparkles className="h-3 w-3" />
+                          Summarised
+                        </span>
+                      )}
+                      {me?.role === "employer" && agreement.healthScore != null && (
+                        <GradeBadge score={agreement.healthScore} />
+                      )}
+                      {agreement.status === "fully_signed" && (
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            void handleListDownload(agreement.id);
+                          }}
+                          title="Download signed PDF"
+                          className="p-1 rounded text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 transition-colors shrink-0"
+                        >
+                          {downloadingId === agreement.id ? (
+                            <Loader2 className="h-4 w-4 animate-spin text-emerald-500" />
+                          ) : (
+                            <Download className="h-4 w-4" />
+                          )}
+                        </button>
+                      )}
+                    </div>
                     {needsMySignature && (
                       <Badge variant="destructive" className="bg-destructive/10 text-destructive border-destructive/20 text-[10px] uppercase tracking-widest shadow-none hover:bg-destructive/10">
                         Action Required

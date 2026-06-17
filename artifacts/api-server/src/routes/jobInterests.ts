@@ -12,6 +12,7 @@ import { eq, and, desc, gte, sql } from "drizzle-orm";
 import { getUserSubscription, checkLimit } from "../lib/subscriptionGating";
 import { createNotification, NotificationType, userIdFromEmployerProfileId } from "../lib/createNotification";
 import { sendNotificationEmailAsync } from "../lib/emailService";
+import { sanitiseText } from "../lib/sanitise";
 
 const router = Router();
 
@@ -21,7 +22,9 @@ router.post("/job-requirements/:id/interest", async (req, res) => {
   const jobId = parseInt(req.params.id);
   if (isNaN(jobId)) { res.status(400).json({ error: "Invalid job ID" }); return; }
 
-  const message = typeof req.body?.message === "string" ? req.body.message.trim().slice(0, 1000) : null;
+  const message = typeof req.body?.message === "string"
+    ? sanitiseText(req.body.message).trim().slice(0, 1000)
+    : null;
 
   try {
     const [freelancer] = await db.select().from(freelancerProfilesTable)

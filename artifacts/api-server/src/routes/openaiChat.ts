@@ -1,12 +1,15 @@
 import { Router } from "express";
 import { getAuth } from "@clerk/express";
 import { db } from "@workspace/db";
-import { conversations, messages, usersTable, freelancerProfilesTable } from "@workspace/db";
+import { conversations, messages, usersTable, freelancerProfilesTable, jobRequirementsTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { CreateOpenaiConversationBody, SendOpenaiMessageBody } from "@workspace/api-zod";
 import OpenAI from "openai";
 import { checkTokenQuota } from "../lib/subscriptionGating";
 import { logTokenUsage } from "../lib/tokenLogger";
+import { resolveUserByClerkId, canAccessConversation } from "../lib/accessControl";
+import { sanitiseText } from "../lib/sanitise";
+import { buildProfessionContext } from "../lib/professionContext";
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY_TALENTLOCK });
 
@@ -35,7 +38,11 @@ router.post("/openai/conversations", async (req, res) => {
     const [user] = await db.select().from(usersTable).where(eq(usersTable.clerkId, clerkId)).limit(1);
     if (!user) { res.status(400).json({ error: "User not found" }); return; }
     const [conv] = await db.insert(conversations)
-      .values({ title: parsed.data.title, userId: user.id, jobRequirementId: parsed.data.jobRequirementId ?? null } as any)
+      .values({
+        title: sanitiseText(parsed.data.title),
+        userId: user.id,
+        jobRequirementId: parsed.data.jobRequirementId ?? null,
+      } as any)
       .returning();
     res.status(201).json({ ...conv, userId: user.id, jobRequirementId: (conv as any).jobRequirementId ?? null });
   } catch (err) {
@@ -47,7 +54,16 @@ router.post("/openai/conversations", async (req, res) => {
 router.get("/openai/conversations/:id", async (req, res) => {
   const id = parseInt(req.params.id);
   if (isNaN(id)) { res.status(400).json({ error: "Invalid ID" }); return; }
+  const { userId: clerkId } = getAuth(req);
+  if (!clerkId) { res.status(401).json({ error: "Unauthorized" }); return; }
   try {
+    const user = await resolveUserByClerkId(clerkId);
+    if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
+    const access = await canAccessConversation(user.id, id);
+    if (!access.ok) {
+      res.status(access.status).json({ error: access.status === 404 ? "Conversation not found" : "Forbidden" });
+      return;
+    }
     const [conv] = await db.select().from(conversations).where(eq(conversations.id, id)).limit(1);
     if (!conv) { res.status(404).json({ error: "Conversation not found" }); return; }
     const msgs = await db.select().from(messages).where(eq(messages.conversationId, id));
@@ -61,7 +77,16 @@ router.get("/openai/conversations/:id", async (req, res) => {
 router.delete("/openai/conversations/:id", async (req, res) => {
   const id = parseInt(req.params.id);
   if (isNaN(id)) { res.status(400).json({ error: "Invalid ID" }); return; }
+  const { userId: clerkId } = getAuth(req);
+  if (!clerkId) { res.status(401).json({ error: "Unauthorized" }); return; }
   try {
+    const user = await resolveUserByClerkId(clerkId);
+    if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
+    const access = await canAccessConversation(user.id, id);
+    if (!access.ok) {
+      res.status(access.status).json({ error: access.status === 404 ? "Conversation not found" : "Forbidden" });
+      return;
+    }
     await db.delete(conversations).where(eq(conversations.id, id));
     res.status(204).send();
   } catch (err) {
@@ -84,6 +109,12 @@ router.post("/openai/conversations/:id/messages", async (req, res) => {
     const [conv] = await db.select().from(conversations).where(eq(conversations.id, id)).limit(1);
     if (!conv) { res.status(404).json({ error: "Conversation not found" }); return; }
 
+    const access = await canAccessConversation(user.id, id);
+    if (!access.ok) {
+      res.status(access.status).json({ error: access.status === 404 ? "Conversation not found" : "Forbidden" });
+      return;
+    }
+
     const quota = await checkTokenQuota(db, user.id);
     if (!quota.allowed) {
       res.status(402).json({
@@ -94,8 +125,22 @@ router.post("/openai/conversations/:id/messages", async (req, res) => {
       return;
     }
 
-    await db.insert(messages).values({ conversationId: id, role: "user", content: parsed.data.content });
+    const cleanContent = sanitiseText(parsed.data.content);
+    await db.insert(messages).values({ conversationId: id, role: "user", content: cleanContent });
     const history = await db.select().from(messages).where(eq(messages.conversationId, id));
+
+    let professionContext = "";
+    const jobRequirementId = (conv as { jobRequirementId?: number | null }).jobRequirementId;
+    if (jobRequirementId != null) {
+      const [job] = await db
+        .select()
+        .from(jobRequirementsTable)
+        .where(eq(jobRequirementsTable.id, jobRequirementId))
+        .limit(1);
+      if (job) {
+        professionContext = buildProfessionContext(job);
+      }
+    }
 
     const freelancers = await db.select().from(freelancerProfilesTable).where(eq(freelancerProfilesTable.isAvailable, true)).limit(20);
     const freelancerContext = freelancers.map(f =>
@@ -115,7 +160,7 @@ router.post("/openai/conversations/:id/messages", async (req, res) => {
       messages: [
         {
           role: "system",
-          content: `You are TalentLock's AI matching assistant. Help employers find the right freelancers from our platform.
+          content: `${professionContext}You are TalentLock's AI matching assistant. Help employers find the right freelancers from our platform.
 
 IMPORTANT MATCHING RULES:
 - Match candidates primarily on their SKILLS list, not just their Primary Field label.

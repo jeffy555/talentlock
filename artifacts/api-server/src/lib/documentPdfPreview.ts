@@ -13,12 +13,11 @@ type PdfParser = {
   destroy: () => Promise<void>;
 };
 
-const { PDFParse } = require("pdf-parse") as {
-  PDFParse: new (opts: { data: Buffer }) => PdfParser;
-};
-
 /** Render the first page of a PDF to a PNG data URL for OpenAI vision review. */
 export async function pdfFirstPageDataUrl(pdfBuffer: Buffer): Promise<string> {
+  const { PDFParse } = require("pdf-parse") as {
+    PDFParse: new (opts: { data: Buffer }) => PdfParser;
+  };
   const parser = new PDFParse({ data: pdfBuffer });
   try {
     const result = await parser.getScreenshot({
@@ -28,9 +27,7 @@ export async function pdfFirstPageDataUrl(pdfBuffer: Buffer): Promise<string> {
       imageBuffer: false,
     });
     const dataUrl = result.pages[0]?.dataUrl;
-    if (!dataUrl) {
-      throw new Error("Failed to render PDF first page");
-    }
+    if (!dataUrl) throw new Error("PDF screenshot produced no image");
     return dataUrl;
   } finally {
     await parser.destroy();

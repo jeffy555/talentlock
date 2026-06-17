@@ -10,8 +10,12 @@ import {
 } from "./objectAcl";
 import {
   createLocalSignedUrl,
+  deleteLocalObject,
+  localObjectExists,
+  readLocalObject,
   relativeKeyFromLocalUploadUrl,
   usesLocalObjectStorage,
+  writeLocalObject,
 } from "./localObjectStorage";
 
 const REPLIT_SIDECAR_ENDPOINT = "http://127.0.0.1:1106";
@@ -257,6 +261,56 @@ export class ObjectStorageService {
       objectFile,
       requestedPermission: requestedPermission ?? ObjectPermission.READ,
     });
+  }
+
+  async privateObjectExists(relativeKey: string): Promise<boolean> {
+    if (usesLocalObjectStorage()) {
+      return localObjectExists(relativeKey);
+    }
+    const { bucketName, objectName } = this.resolveRelativeObjectKey(relativeKey);
+    const [exists] = await objectStorageClient.bucket(bucketName).file(objectName).exists();
+    return exists;
+  }
+
+  async readPrivateObjectBuffer(relativeKey: string): Promise<Buffer | null> {
+    if (usesLocalObjectStorage()) {
+      try {
+        return await readLocalObject(relativeKey);
+      } catch {
+        return null;
+      }
+    }
+    const { bucketName, objectName } = this.resolveRelativeObjectKey(relativeKey);
+    const file = objectStorageClient.bucket(bucketName).file(objectName);
+    const [exists] = await file.exists();
+    if (!exists) return null;
+    const [buf] = await file.download();
+    return buf;
+  }
+
+  async writePrivateObjectBuffer(
+    relativeKey: string,
+    data: Buffer,
+    contentType: string,
+  ): Promise<void> {
+    if (usesLocalObjectStorage()) {
+      await writeLocalObject(relativeKey, data);
+      return;
+    }
+    const { bucketName, objectName } = this.resolveRelativeObjectKey(relativeKey);
+    await objectStorageClient.bucket(bucketName).file(objectName).save(data, {
+      contentType,
+      metadata: { cacheControl: "private, max-age=86400" },
+    });
+  }
+
+  async deletePrivateObject(relativeKey: string): Promise<void> {
+    if (usesLocalObjectStorage()) {
+      await deleteLocalObject(relativeKey);
+      return;
+    }
+    const { bucketName, objectName } = this.resolveRelativeObjectKey(relativeKey);
+    await objectStorageClient.bucket(bucketName).file(objectName).delete({ ignoreNotFound: true });
   }
 }
 

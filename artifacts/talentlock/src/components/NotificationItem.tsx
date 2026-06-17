@@ -6,6 +6,7 @@ import {
   Star,
   ShieldCheck,
   CheckSquare,
+  Sparkles,
 } from "lucide-react";
 import { getNotificationRoute } from "@/lib/notificationRoutes";
 import { formatRelativeTime } from "@/lib/formatRelativeTime";
@@ -41,6 +42,8 @@ function EntityIcon({ entityType }: { entityType: string }) {
       return <CheckSquare className="h-4 w-4 text-blue-500" />;
     case "job":
       return <Briefcase className="h-4 w-4 text-blue-500" />;
+    case "cruise_mode_activity":
+      return <Sparkles className="h-4 w-4 text-violet-500" />;
     default:
       return <Briefcase className="h-4 w-4 text-slate-400" />;
   }
@@ -74,7 +77,14 @@ export function NotificationItem({ notification, onRead }: NotificationItemProps
       </span>
 
       <div className="flex-1 min-w-0">
-        <p className="text-sm text-slate-700 leading-snug">{notification.message}</p>
+        <div className="flex items-start justify-between gap-2">
+          <p className="text-sm text-slate-700 leading-snug">{notification.message}</p>
+          {notification.type === "cruise_mode_interest" && (
+            <span className="shrink-0 text-xs bg-violet-100 text-violet-700 border border-violet-200 rounded px-1.5 py-0.5">
+              Cruise Mode ✦
+            </span>
+          )}
+        </div>
         <p className="text-xs text-muted-foreground mt-0.5">
           {formatRelativeTime(notification.createdAt)}
         </p>

@@ -5,6 +5,8 @@
  * TalentLock API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { ProfessionCategory } from "./professionCategory";
+import type { RateType } from "./rateType";
 
 export interface UpdateJobRequirementBody {
   title?: string;
@@ -16,4 +18,6 @@ export interface UpdateJobRequirementBody {
   startDate?: Date;
   endDate?: Date;
   status?: string;
+  professionCategory?: ProfessionCategory;
+  rateType?: RateType;
 }

@@ -14,4 +14,6 @@ export interface TeamInviteResponse {
   invitedAt: Date;
   /** @nullable */
   inviteExpiresAt?: Date | null;
+  /** Accept-invite URL (share manually if email delivery fails) */
+  inviteUrl: string;
 }

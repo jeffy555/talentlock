@@ -2,7 +2,7 @@ import { useParams, useLocation, useSearch } from "wouter";
 import {
   useGetFreelancerProfile, useGetMe, useCreateBooking, useCreateMeeting,
   useToggleSaveFreelancer, useCheckFreelancerSaved,
-  useListFreelancerPortfolio, useGetMySubscription,
+  useListFreelancerPortfolio, useGetMySubscription, useGetJobRequirement,
 } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -13,8 +13,10 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, BadgeCheck, Briefcase, Calendar, Clock, DollarSign, Lock, Star, ExternalLink, Video, Heart, Image, Info, ShieldCheck } from "lucide-react";
-import { useState } from "react";
+import { ArrowLeft, BadgeCheck, Briefcase, Calendar, Clock, DollarSign, GraduationCap, Lock, Star, ExternalLink, Video, Heart, Image, Info, ShieldCheck } from "lucide-react";
+import { formatRate, paymentTypeToRateType, profileDefaultRateType } from "@/lib/rateFormatUtils";
+import { EDUCATION_TYPE_LABELS } from "@/components/onboarding/TeachingDetailsSection";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
 import { buildGoogleCalendarUrl } from "@/lib/calendarUrl";
@@ -28,6 +30,14 @@ import MatchExplanationCard from "@/components/MatchExplanationCard";
 import RateSuggestionWidget from "@/components/RateSuggestionWidget";
 import { AvailabilitySection } from "@/components/availability/AvailabilitySection";
 import { resolveFreelancerDetailJobId } from "@/lib/aiMatchJobContext";
+
+/** Convert an ISO date/datetime to a `YYYY-MM-DD` value for `<input type="date">` without timezone drift. */
+function toDateInputValue(iso?: string | null): string {
+  if (!iso) return "";
+  if (/^\d{4}-\d{2}-\d{2}/.test(iso)) return iso.slice(0, 10);
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? "" : d.toISOString().slice(0, 10);
+}
 
 export default function FreelancerDetail() {
   const { id } = useParams<{ id: string }>();
@@ -59,6 +69,23 @@ export default function FreelancerDetail() {
   const [proposedRate, setProposedRate] = useState("");
   const [bookingMessage, setBookingMessage] = useState("");
   const [confirmedBookingId, setConfirmedBookingId] = useState<number | null>(null);
+
+  const jobIdNum = jobId ? parseInt(jobId, 10) : NaN;
+  const { data: jobRequirement } = useGetJobRequirement(jobIdNum, {
+    query: { enabled: me?.role === "employer" && Number.isFinite(jobIdNum) } as any,
+  });
+
+  const prefilledJobRef = useRef<number | null>(null);
+  useEffect(() => {
+    if (!jobRequirement) return;
+    if (prefilledJobRef.current === (jobRequirement as any).id) return;
+    prefilledJobRef.current = (jobRequirement as any).id;
+    setStartDate((prev) => prev || toDateInputValue(jobRequirement.startDate));
+    setEndDate((prev) => prev || toDateInputValue(jobRequirement.endDate));
+    if (jobRequirement.paymentType === "hourly" || jobRequirement.paymentType === "daily") {
+      setPaymentType(jobRequirement.paymentType);
+    }
+  }, [jobRequirement]);
 
   const [meetingOpen, setMeetingOpen] = useState(false);
   const [meetingTitle, setMeetingTitle] = useState("");
@@ -196,8 +223,14 @@ export default function FreelancerDetail() {
           <div className="space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
               <div>
-                <div className="flex items-center gap-3 mb-2">
+                <div className="flex items-center gap-3 mb-2 flex-wrap">
                   <h1 className="text-4xl font-serif font-bold tracking-tight text-foreground leading-tight">{freelancer.name}</h1>
+                  {freelancer.professionCategory === "education" && freelancer.educationProfessionType && (
+                    <span className="inline-flex items-center gap-1 text-xs bg-blue-50 text-blue-700 border border-blue-200 rounded px-1.5 py-0.5">
+                      <GraduationCap className="h-3 w-3" />
+                      {EDUCATION_TYPE_LABELS[freelancer.educationProfessionType]}
+                    </span>
+                  )}
                 </div>
                 <h2 className="text-lg font-medium text-primary line-clamp-2">{freelancer.tagline}</h2>
                 <div className="mt-2">
@@ -244,8 +277,12 @@ export default function FreelancerDetail() {
               </div>
               <div className="flex items-center gap-2 text-foreground font-medium">
                 <DollarSign className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                {freelancer.paymentPreference === "hourly" && freelancer.hourlyRate && `$${freelancer.hourlyRate}/hr`}
-                {freelancer.paymentPreference === "daily" && freelancer.dailyRate && `$${freelancer.dailyRate}/day`}
+                {freelancer.paymentPreference === "hourly" && freelancer.hourlyRate != null
+                  ? formatRate(Number(freelancer.hourlyRate), profileDefaultRateType(freelancer.professionCategory))
+                  : null}
+                {freelancer.paymentPreference === "daily" && freelancer.dailyRate != null
+                  ? formatRate(Number(freelancer.dailyRate), "per_day")
+                  : null}
                 {freelancer.paymentPreference === "fixed" && "Fixed Rate"}
               </div>
             </div>
@@ -265,6 +302,7 @@ export default function FreelancerDetail() {
               freelancerId={String(freelancer.id)}
               jobRequirementId={jobId}
               conversationId="direct-view"
+              rateType={jobRequirement?.rateType}
             />
           )}
 
@@ -344,7 +382,7 @@ export default function FreelancerDetail() {
                     <DialogTrigger asChild>
                       <Button className="w-full h-11 text-base shadow font-semibold bg-primary hover:bg-primary/90 text-primary-foreground"><Calendar className="h-5 w-5 mr-2 text-gold" />Book Now</Button>
                     </DialogTrigger>
-                    <DialogContent className="sm:max-w-[425px]">
+                    <DialogContent className="sm:max-w-[425px] max-h-[90vh] overflow-y-auto">
                       {confirmedBookingId ? (
                         <>
                           <DialogHeader className="text-center sm:text-center pb-4 border-b">
@@ -388,6 +426,12 @@ export default function FreelancerDetail() {
                                 <Input type="date" className="h-11 bg-secondary/20" value={endDate} onChange={e => setEndDate(e.target.value)} />
                               </div>
                             </div>
+                            {jobRequirement && (
+                              <p className="-mt-2 text-[11px] text-muted-foreground flex items-center gap-1">
+                                <Info className="h-3 w-3 flex-shrink-0" />
+                                Pre-filled from your job posting "{jobRequirement.title}". Adjust if needed.
+                              </p>
+                            )}
                             <div className="space-y-2.5">
                               <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Payment Structure</Label>
                               <Select value={paymentType} onValueChange={(v) => {
@@ -407,9 +451,12 @@ export default function FreelancerDetail() {
                             <div className="space-y-2.5">
                               <div className="flex items-center justify-between">
                                 <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Your Proposed Rate</Label>
-                                {((paymentType === "hourly" && freelancer.hourlyRate) || (paymentType === "daily" && freelancer.dailyRate)) && (
+                                {((paymentType === "hourly" && freelancer.hourlyRate != null) || (paymentType === "daily" && freelancer.dailyRate != null)) && (
                                   <span className="text-[10px] text-muted-foreground">
-                                    Listed: ${paymentType === "hourly" ? freelancer.hourlyRate : freelancer.dailyRate}/{paymentType === "hourly" ? "hr" : "day"}
+                                    Listed: {formatRate(
+                                      Number(paymentType === "hourly" ? freelancer.hourlyRate : freelancer.dailyRate),
+                                      paymentTypeToRateType(paymentType, jobRequirement?.rateType),
+                                    )}
                                   </span>
                                 )}
                               </div>
@@ -432,6 +479,7 @@ export default function FreelancerDetail() {
                                   fieldOfWork={freelancer.fieldOfWork}
                                   jobRequirementId={jobId ?? undefined}
                                   paymentType={paymentType as "hourly" | "daily" | "fixed"}
+                                  rateType={jobRequirement?.rateType}
                                   proposedRate={proposedRate}
                                   onUseSuggestion={(rate) => setProposedRate(String(rate))}
                                   userPlan={userPlan}
@@ -490,7 +538,7 @@ export default function FreelancerDetail() {
                   <DialogTrigger asChild>
                     <Button variant="outline" className="w-full h-10 shadow-sm border-border hover:bg-secondary hover:text-foreground transition-colors font-medium">Schedule Meeting</Button>
                   </DialogTrigger>
-                  <DialogContent className="sm:max-w-[425px]">
+                  <DialogContent className="sm:max-w-[425px] max-h-[90vh] overflow-y-auto">
                     {confirmedMeetingId ? (
                       <>
                         <DialogHeader className="text-center pb-4 border-b">

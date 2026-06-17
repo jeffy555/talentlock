@@ -392,3 +392,52 @@ Export:
 | Phase 1 | Database — `availability_blocks` table + `nextAvailableDate` column | ⬜ Not started |
 | Phase 2 | Backend — utility + endpoints + auto-block triggers + OpenAPI + codegen | ⬜ Not started |
 | Phase 3 | Frontend — freelancer calendar management, employer read-only views, Talent Vault filter + card | ⬜ Not started |
+
+---
+
+# P1 Follow-Up Addendum — Premature Availability Lock (added 2026-06-09)
+
+> Binding decisions for Module 8 in `features.md`. Agent reads this alongside `task.md`. No open blockers — verified against `bookings.ts` on 2026-06-09.
+
+### A1 — Where the lock is set today
+
+Confirmed in `artifacts/api-server/src/routes/bookings.ts`, inside the `POST /bookings` transaction:
+
+```ts
+await tx.update(freelancerProfilesTable)
+  .set({ isAvailable: false, currentBookingId: booking.id, bookingEndDate: parsed.data.endDate as any })
+  .where(eq(freelancerProfilesTable.id, parsed.data.freelancerId));
+```
+
+This runs while the booking status is `"pending"`.
+
+### A2 — Decision: move the lock to the `active` transition
+
+**Remove** the `freelancerProfilesTable` update from `POST /bookings`. The created booking stays `pending`, the freelancer stays `isAvailable: true`, `currentBookingId` stays null.
+
+**Add** the lock to `PATCH /bookings/:id` where the status transitions to the confirmed status (`BOOKING_CONFIRMED_STATUS = "active"`), in the same block that already creates the availability auto-block:
+
+```ts
+if (parsed.data.status === BOOKING_CONFIRMED_STATUS) {
+  await db.update(freelancerProfilesTable)
+    .set({ isAvailable: false, currentBookingId: updated.id, bookingEndDate: updated.endDate ?? null })
+    .where(eq(freelancerProfilesTable.id, updated.freelancerId));
+  // ... existing createAvailabilityBlock(...) call stays as-is
+}
+```
+
+The existing `cancelled`/`completed` reset (`isAvailable: true, currentBookingId: null, bookingEndDate: null`) is already correct and stays unchanged.
+
+### A3 — Interaction with the P0 AuthHardening spec
+
+`PATCH /bookings/:id` is also being gated by `specs/AuthHardening/` (participant check). Apply the AuthHardening guard first; this availability change lives inside the already-authorised handler. The two edits touch the same handler — coordinate so the auth guard wraps the whole mutation.
+
+### A4 — Edge case: confirming a booking for an already-booked freelancer
+
+If a freelancer is somehow confirmed onto a second overlapping booking, the last write wins on `currentBookingId`. This is pre-existing behaviour and out of scope here; the booking-exclusivity guarantee is enforced elsewhere. No change.
+
+### Addendum Sign-Off
+
+| Phase | Description | Status |
+|---|---|---|
+| Phase 4 (Addendum) | Move availability lock from pending-create to active-confirm | ⬜ Not started |

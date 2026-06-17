@@ -4,6 +4,7 @@ import { db } from "@workspace/db";
 import { portfolioItemsTable, freelancerProfilesTable, usersTable } from "@workspace/db";
 import { eq, and } from "drizzle-orm";
 import { z } from "zod/v4";
+import { sanitiseText } from "../lib/sanitise";
 
 const router = Router();
 
@@ -63,8 +64,8 @@ router.post("/portfolio", async (req, res) => {
     if (!profile) { res.status(403).json({ error: "Freelancer profile required" }); return; }
     const [item] = await db.insert(portfolioItemsTable).values({
       freelancerId: profile.id,
-      title: parsed.data.title,
-      description: parsed.data.description ?? null,
+      title: sanitiseText(parsed.data.title),
+      description: parsed.data.description != null ? sanitiseText(parsed.data.description) : null,
       url: parsed.data.url ?? null,
       imageUrl: parsed.data.imageUrl ?? null,
       tags: parsed.data.tags ?? [],
@@ -86,8 +87,14 @@ router.patch("/portfolio/:id", async (req, res) => {
   try {
     const profile = await resolveFreelancer(clerkId);
     if (!profile) { res.status(403).json({ error: "Freelancer profile required" }); return; }
+    const clean = {
+      ...parsed.data,
+      title: parsed.data.title != null ? sanitiseText(parsed.data.title) : parsed.data.title,
+      description: parsed.data.description != null ? sanitiseText(parsed.data.description) : parsed.data.description,
+    };
+
     const [updated] = await db.update(portfolioItemsTable)
-      .set({ ...parsed.data as any, updatedAt: new Date() })
+      .set({ ...clean as any, updatedAt: new Date() })
       .where(and(eq(portfolioItemsTable.id, id), eq(portfolioItemsTable.freelancerId, profile.id)))
       .returning();
     if (!updated) { res.status(404).json({ error: "Not found" }); return; }

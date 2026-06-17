@@ -10,8 +10,7 @@ import OpenAI from "openai";
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY_TALENTLOCK });
 
 const require = createRequire(import.meta.url);
-// pdf-parse v2 and mammoth are CJS-only — loaded via require to avoid ESM bundling issues
-const { PDFParse } = require("pdf-parse") as { PDFParse: new (opts: { url: string }) => { getText: () => Promise<{ text: string }> } };
+// mammoth is CJS-only — loaded via require to avoid ESM bundling issues
 const _mammothMod = require("mammoth");
 const mammoth = (_mammothMod.default ?? _mammothMod) as { extractRawText: (opts: { buffer: Buffer }) => Promise<{ value: string }> };
 
@@ -61,6 +60,9 @@ const FIELDS_OF_WORK = [
 async function extractText(file: Express.Multer.File): Promise<string> {
   const mime = file.mimetype;
   if (mime === "application/pdf") {
+    const { PDFParse } = require("pdf-parse") as {
+      PDFParse: new (opts: { url: string }) => { getText: () => Promise<{ text: string }> };
+    };
     const tmp = join(tmpdir(), `resume-${Date.now()}.pdf`);
     try {
       writeFileSync(tmp, file.buffer);

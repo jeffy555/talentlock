@@ -19,6 +19,9 @@ export const NotificationType = {
   DOCUMENT_VERIFIED: "document_verified",
   DOCUMENT_REJECTED: "document_rejected",
   JOB_INTEREST: "job_interest",
+  CRUISE_MODE_INTEREST: "cruise_mode_interest",
+  CRUISE_MODE_SENT: "cruise_mode_sent",
+  CRUISE_MODE_DAILY_LIMIT: "cruise_mode_daily_limit",
 } as const;
 
 type DbLike = Pick<typeof db, "insert">;

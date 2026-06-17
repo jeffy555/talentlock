@@ -1,5 +1,6 @@
 export * from "./users";
 export * from "./freelancerProfiles";
+export * from "./teachingProfileTypes";
 export * from "./employerProfiles";
 export * from "./jobRequirements";
 export * from "./bookings";
@@ -19,4 +20,5 @@ export * from "./milestones";
 export * from "./availabilityBlocks";
 export * from "./documents";
 export * from "./teams";
+export * from "./cruiseMode";
 export * from "../../schema";

@@ -3,6 +3,7 @@ import { subscriptionsTable, bookingsTable, jobRequirementsTable, jobInterestsTa
 import { eq, and, gte, inArray, sql } from "drizzle-orm";
 import { getPlan, type PlanDef, type PlanId } from "./plans";
 import { getSystemUserId, isSystemUserId } from "./systemUser";
+import { TOKEN_FEATURES, type TokenFeature } from "./tokenLogger";
 
 export interface UsageCounts {
   activeBookings: number;
@@ -31,9 +32,24 @@ export function getUtcTokenResetDate(now = new Date()): Date {
   ));
 }
 
-export interface TokenUsageBreakdown {
-  ai_match: number;
-  agreement_generation: number;
+export type TokenUsageBreakdown = Record<TokenFeature, number>;
+
+function emptyBreakdown(): TokenUsageBreakdown {
+  return Object.fromEntries(TOKEN_FEATURES.map((f) => [f, 0])) as TokenUsageBreakdown;
+}
+
+export function aggregateTokenUsageRows(
+  rows: { feature: string; totalTokens: number }[],
+): { tokensUsed: number; breakdown: TokenUsageBreakdown } {
+  const breakdown = emptyBreakdown();
+  let tokensUsed = 0;
+  for (const row of rows) {
+    tokensUsed += row.totalTokens;
+    if (row.feature in breakdown) {
+      breakdown[row.feature as TokenFeature] += row.totalTokens;
+    }
+  }
+  return { tokensUsed, breakdown };
 }
 
 export async function getMonthlyTokenUsage(
@@ -48,14 +64,7 @@ export async function getMonthlyTokenUsage(
     .from(tokenUsage)
     .where(and(eq(tokenUsage.userId, userId), gte(tokenUsage.createdAt, startOfMonthUtc)));
 
-  const breakdown: TokenUsageBreakdown = { ai_match: 0, agreement_generation: 0 };
-  let tokensUsed = 0;
-  for (const row of rows) {
-    tokensUsed += row.totalTokens;
-    if (row.feature === "ai_match") breakdown.ai_match += row.totalTokens;
-    else if (row.feature === "agreement_generation") breakdown.agreement_generation += row.totalTokens;
-  }
-  return { tokensUsed, breakdown };
+  return aggregateTokenUsageRows(rows);
 }
 
 function planNeededForTokenLimit(planId: PlanId): string {

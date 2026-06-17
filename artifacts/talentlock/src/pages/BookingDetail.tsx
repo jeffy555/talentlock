@@ -3,9 +3,10 @@ import {
   useGetBooking, useUpdateBooking, useCreateAgreement, useGetMe, useListAgreements,
   useListMilestones, useCreateMilestone, useUpdateMilestone,
   useCreateReview, useNegotiateBooking, useGetTokenUsageMe,
-  useGetMySubscription, useGetFreelancerProfile,
+  useGetMySubscription, useGetFreelancerProfile, useGetJobRequirement,
   type AgreementIndustry,
 } from "@workspace/api-client-react";
+import { formatRate, paymentTypeToRateType } from "@/lib/rateFormatUtils";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -77,6 +78,11 @@ export default function BookingDetail() {
   );
   const hasClauseErrors = clauseErrors.some(e => e !== null);
   const { data: booking, isLoading, refetch } = useGetBooking(parseInt(id!), { query: { enabled: !!id } } as any);
+  const jobReqId = booking?.jobRequirementId != null ? Number(booking.jobRequirementId) : NaN;
+  const { data: jobRequirement } = useGetJobRequirement(jobReqId, {
+    query: { enabled: Number.isFinite(jobReqId) } as any,
+  });
+  const bookingRateType = paymentTypeToRateType(booking?.paymentType ?? "hourly", jobRequirement?.rateType);
   const { data: agreements, refetch: refetchAgreements } = useListAgreements({ status: undefined }, { query: { enabled: !!booking } } as any);
   const updateBooking = useUpdateBooking();
   const createAgreement = useCreateAgreement();
@@ -383,7 +389,7 @@ export default function BookingDetail() {
                 <p className="text-sm text-blue-700 mt-0.5">
                   {lastProposedBy === "employer" ? "Employer" : "Freelancer"} proposes:{" "}
                   <span className="font-bold text-blue-900 text-base">
-                    ${proposedRate?.toLocaleString()}/{booking.paymentType === "hourly" ? "hr" : booking.paymentType === "daily" ? "day" : "fixed"}
+                    {proposedRate != null ? formatRate(proposedRate, bookingRateType) : "—"}
                   </span>
                 </p>
               </div>
@@ -420,7 +426,7 @@ export default function BookingDetail() {
         <div className="rounded-xl border border-green-200 bg-green-50/60 p-4 flex items-center gap-3">
           <CheckCircle2 className="h-5 w-5 text-green-600 flex-shrink-0" />
           <p className="text-sm font-medium text-green-800">
-            Rate agreed: <span className="font-bold">${Number(booking.rate).toLocaleString()}/{booking.paymentType === "hourly" ? "hr" : booking.paymentType === "daily" ? "day" : "fixed"}</span>. You can now generate the legal agreement.
+            Rate agreed: <span className="font-bold">{formatRate(Number(booking.rate), bookingRateType)}</span>. You can now generate the legal agreement.
           </p>
         </div>
       )}
@@ -571,6 +577,7 @@ export default function BookingDetail() {
                 jobRequirementId={booking.jobRequirementId != null ? String(booking.jobRequirementId) : undefined}
                 bookingId={String(booking.id)}
                 paymentType={booking.paymentType as "hourly" | "daily" | "fixed"}
+                rateType={jobRequirement?.rateType}
                 proposedRate={counterRate}
                 onUseSuggestion={(rate) => setCounterRate(String(rate))}
                 userPlan={userPlan}

@@ -8,6 +8,7 @@ import {
   useCreateTeam,
   useInviteTeamMember,
   useRemoveTeamMember,
+  useResendTeamInvite,
   getGetTeamQueryKey,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -33,8 +34,36 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Users, Loader2, X, BarChart3 } from "lucide-react";
+import { Users, Loader2, X, BarChart3, Copy, Mail } from "lucide-react";
 import type { TeamMember } from "@workspace/api-client-react";
+
+function getApiErrorMessage(err: unknown): string | undefined {
+  if (err && typeof err === "object") {
+    if ("data" in err && err.data && typeof err.data === "object" && "error" in err.data) {
+      const message = (err.data as { error?: string }).error;
+      if (message) return message;
+    }
+    if ("message" in err && typeof err.message === "string") return err.message;
+  }
+  return undefined;
+}
+
+function getInviteUrlFromError(err: unknown): string | undefined {
+  if (err && typeof err === "object" && "data" in err && err.data && typeof err.data === "object") {
+    const inviteUrl = (err.data as { inviteUrl?: string }).inviteUrl;
+    return inviteUrl || undefined;
+  }
+  return undefined;
+}
+
+async function copyInviteLink(url: string, toast: ReturnType<typeof useToast>["toast"]) {
+  try {
+    await navigator.clipboard.writeText(url);
+    toast({ title: "Invite link copied", description: "Share it with your teammate directly." });
+  } catch {
+    toast({ title: "Could not copy link", variant: "destructive" });
+  }
+}
 
 function InviteDialog({
   open,
@@ -54,20 +83,25 @@ function InviteDialog({
     const trimmed = email.trim();
     if (!trimmed) return;
     try {
-      await invite.mutateAsync({ data: { email: trimmed, role } });
-      toast({ title: `Invitation sent to ${trimmed}.` });
+      const result = await invite.mutateAsync({ data: { email: trimmed, role } });
+      toast({
+        title: `Invitation sent to ${trimmed}.`,
+        description: result.inviteUrl
+          ? "If they don't receive the email, copy the invite link from the members table."
+          : undefined,
+      });
       setEmail("");
       setRole("member");
       onOpenChange(false);
       onSuccess();
     } catch (err: unknown) {
-      const message =
-        err && typeof err === "object" && "response" in err
-          ? (err as { response?: { data?: { error?: string } } }).response?.data?.error
-          : undefined;
+      const message = getApiErrorMessage(err);
+      const inviteUrl = getInviteUrlFromError(err);
       toast({
         title: "Could not send invitation",
-        description: message ?? "Please try again.",
+        description: inviteUrl
+          ? `${message ?? "Email delivery failed."} Copy the invite link from the members table if the invite is still pending.`
+          : message ?? "Please try again.",
         variant: "destructive",
       });
     }
@@ -90,6 +124,11 @@ function InviteDialog({
               onChange={(e) => setEmail(e.target.value)}
             />
           </div>
+          <p className="text-xs text-muted-foreground">
+            With the Resend sandbox sender (<code className="text-xs">onboarding@resend.dev</code>),
+            email only delivers to your Resend account address until you verify a domain.
+            Pending invites always include a copyable link below.
+          </p>
           <div className="space-y-2">
             <Label>Role</Label>
             <div className="flex gap-4">
@@ -139,12 +178,18 @@ function MemberRow({
   isAdmin,
   currentUserId,
   onRemove,
+  onResend,
+  onCopyLink,
+  resendingId,
 }: {
   member: TeamMember;
   ownerUserId: number;
   isAdmin: boolean;
   currentUserId?: number;
   onRemove: (member: TeamMember) => void;
+  onResend: (member: TeamMember) => void;
+  onCopyLink: (url: string) => void;
+  resendingId: number | null;
 }) {
   const isTeamOwner = member.userId != null && member.userId === ownerUserId;
   const canRemove =
@@ -179,19 +224,50 @@ function MemberRow({
             : "—"}
       </td>
       <td className="py-3 text-right">
-        {canRemove ? (
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8 text-muted-foreground hover:text-destructive"
-            onClick={() => onRemove(member)}
-            aria-label="Remove member"
-          >
-            <X className="h-4 w-4" />
-          </Button>
-        ) : (
-          <span className="text-muted-foreground text-sm">—</span>
-        )}
+        <div className="flex items-center justify-end gap-1">
+          {isAdmin && member.status === "invited" && member.inviteUrl && (
+            <>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 px-2 text-xs"
+                onClick={() => onResend(member)}
+                disabled={resendingId === member.id}
+              >
+                {resendingId === member.id ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <>
+                    <Mail className="h-3.5 w-3.5 mr-1" />
+                    Resend
+                  </>
+                )}
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 px-2 text-xs"
+                onClick={() => onCopyLink(member.inviteUrl!)}
+              >
+                <Copy className="h-3.5 w-3.5 mr-1" />
+                Copy link
+              </Button>
+            </>
+          )}
+          {canRemove ? (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-muted-foreground hover:text-destructive"
+              onClick={() => onRemove(member)}
+              aria-label="Remove member"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          ) : !isAdmin || member.status !== "invited" || !member.inviteUrl ? (
+            <span className="text-muted-foreground text-sm">—</span>
+          ) : null}
+        </div>
       </td>
     </tr>
   );
@@ -226,8 +302,10 @@ export default function Team() {
 
   const createTeam = useCreateTeam();
   const removeMember = useRemoveTeamMember();
+  const resendInvite = useResendTeamInvite();
   const [inviteOpen, setInviteOpen] = useState(false);
   const [removeTarget, setRemoveTarget] = useState<TeamMember | null>(null);
+  const [resendingId, setResendingId] = useState<number | null>(null);
 
   const teamErrorStatus =
     error && typeof error === "object" && "status" in error
@@ -292,6 +370,29 @@ export default function Team() {
       setRemoveTarget(null);
     } catch {
       toast({ title: "Could not remove member", variant: "destructive" });
+    }
+  };
+
+  const handleResendInvite = async (member: TeamMember) => {
+    setResendingId(member.id);
+    try {
+      const result = await resendInvite.mutateAsync({ memberId: member.id });
+      toast({
+        title: `Invitation resent to ${result.invitedEmail}`,
+        description: "If email still doesn't arrive, use Copy link instead.",
+      });
+    } catch (err: unknown) {
+      const message = getApiErrorMessage(err);
+      const inviteUrl = getInviteUrlFromError(err);
+      toast({
+        title: "Could not resend invitation",
+        description: inviteUrl
+          ? `${message ?? "Email delivery failed."} Use Copy link to share the invite manually.`
+          : message ?? "Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setResendingId(null);
     }
   };
 
@@ -381,6 +482,9 @@ export default function Team() {
                   isAdmin={teamData.isAdmin}
                   currentUserId={user.id}
                   onRemove={setRemoveTarget}
+                  onResend={handleResendInvite}
+                  onCopyLink={(url) => void copyInviteLink(url, toast)}
+                  resendingId={resendingId}
                 />
               ))}
             </tbody>

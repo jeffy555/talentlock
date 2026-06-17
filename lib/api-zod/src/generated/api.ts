@@ -97,6 +97,16 @@ export const ListFreelancersQueryParams = zod.object({
     .string()
     .optional()
     .describe("Full-text keyword search across bio and skills"),
+  professionCategory: zod
+    .enum(["technology", "education"])
+    .optional()
+    .describe("Filter by profession category"),
+  teachingSubject: zod.coerce
+    .string()
+    .optional()
+    .describe(
+      "Case-insensitive substring match on teachingSubjects (education professionals)",
+    ),
 });
 
 export const ListFreelancersResponseItem = zod.object({
@@ -140,6 +150,24 @@ export const ListFreelancersResponseItem = zod.object({
   completenessScore: zod
     .number()
     .describe("Profile completeness score 0–100 (Talent Vault requires ≥ 60)"),
+  professionCategory: zod.enum(["technology", "education"]),
+  educationProfessionType: zod
+    .enum(["school_teacher", "university_lecturer", "tutor", "researcher"])
+    .nullish(),
+  teachingSubjects: zod.array(zod.string()).nullish(),
+  teachingLevels: zod.array(zod.string()).nullish(),
+  yearsTeachingExperience: zod.number().nullish(),
+  highestDegree: zod.enum(["bachelors", "masters", "phd", "postdoc"]).nullish(),
+  degreeSubject: zod.string().nullish(),
+  degreeInstitution: zod.string().nullish(),
+  teachingLicenceState: zod.string().nullish(),
+  teachingLicenceExpiry: zod.coerce.date().nullish(),
+  dbsCheckStatus: zod
+    .enum(["not_uploaded", "uploaded", "verified", "expired"])
+    .nullish(),
+  researchPublications: zod.string().nullish(),
+  preferredTeachingMode: zod.enum(["in_person", "online", "both"]).nullish(),
+  location: zod.string().nullish(),
   createdAt: zod.coerce.date(),
 });
 export const ListFreelancersResponse = zod.array(ListFreelancersResponseItem);
@@ -180,6 +208,24 @@ export const CreateFreelancerProfileBody = zod.object({
       languages: zod.array(zod.string()),
     })
     .nullish(),
+  professionCategory: zod.enum(["technology", "education"]).optional(),
+  educationProfessionType: zod
+    .enum(["school_teacher", "university_lecturer", "tutor", "researcher"])
+    .nullish(),
+  teachingSubjects: zod.array(zod.string()).nullish(),
+  teachingLevels: zod.array(zod.string()).nullish(),
+  yearsTeachingExperience: zod.number().nullish(),
+  highestDegree: zod.enum(["bachelors", "masters", "phd", "postdoc"]).nullish(),
+  degreeSubject: zod.string().nullish(),
+  degreeInstitution: zod.string().nullish(),
+  teachingLicenceState: zod.string().nullish(),
+  teachingLicenceExpiry: zod.coerce.date().nullish(),
+  dbsCheckStatus: zod
+    .enum(["not_uploaded", "uploaded", "verified", "expired"])
+    .nullish(),
+  researchPublications: zod.string().nullish(),
+  preferredTeachingMode: zod.enum(["in_person", "online", "both"]).nullish(),
+  location: zod.string().nullish(),
 });
 
 /**
@@ -226,6 +272,24 @@ export const GetMyFreelancerProfileResponse = zod.object({
   completenessScore: zod
     .number()
     .describe("Profile completeness score 0–100 (Talent Vault requires ≥ 60)"),
+  professionCategory: zod.enum(["technology", "education"]),
+  educationProfessionType: zod
+    .enum(["school_teacher", "university_lecturer", "tutor", "researcher"])
+    .nullish(),
+  teachingSubjects: zod.array(zod.string()).nullish(),
+  teachingLevels: zod.array(zod.string()).nullish(),
+  yearsTeachingExperience: zod.number().nullish(),
+  highestDegree: zod.enum(["bachelors", "masters", "phd", "postdoc"]).nullish(),
+  degreeSubject: zod.string().nullish(),
+  degreeInstitution: zod.string().nullish(),
+  teachingLicenceState: zod.string().nullish(),
+  teachingLicenceExpiry: zod.coerce.date().nullish(),
+  dbsCheckStatus: zod
+    .enum(["not_uploaded", "uploaded", "verified", "expired"])
+    .nullish(),
+  researchPublications: zod.string().nullish(),
+  preferredTeachingMode: zod.enum(["in_person", "online", "both"]).nullish(),
+  location: zod.string().nullish(),
   createdAt: zod.coerce.date(),
 });
 
@@ -248,6 +312,24 @@ export const UpdateMyFreelancerProfileBody = zod.object({
   isAvailable: zod.boolean().optional(),
   availableFrom: zod.coerce.date().nullish(),
   availabilityNote: zod.string().nullish(),
+  professionCategory: zod.enum(["technology", "education"]).optional(),
+  educationProfessionType: zod
+    .enum(["school_teacher", "university_lecturer", "tutor", "researcher"])
+    .nullish(),
+  teachingSubjects: zod.array(zod.string()).nullish(),
+  teachingLevels: zod.array(zod.string()).nullish(),
+  yearsTeachingExperience: zod.number().nullish(),
+  highestDegree: zod.enum(["bachelors", "masters", "phd", "postdoc"]).nullish(),
+  degreeSubject: zod.string().nullish(),
+  degreeInstitution: zod.string().nullish(),
+  teachingLicenceState: zod.string().nullish(),
+  teachingLicenceExpiry: zod.coerce.date().nullish(),
+  dbsCheckStatus: zod
+    .enum(["not_uploaded", "uploaded", "verified", "expired"])
+    .nullish(),
+  researchPublications: zod.string().nullish(),
+  preferredTeachingMode: zod.enum(["in_person", "online", "both"]).nullish(),
+  location: zod.string().nullish(),
 });
 
 export const UpdateMyFreelancerProfileResponse = zod.object({
@@ -291,6 +373,24 @@ export const UpdateMyFreelancerProfileResponse = zod.object({
   completenessScore: zod
     .number()
     .describe("Profile completeness score 0–100 (Talent Vault requires ≥ 60)"),
+  professionCategory: zod.enum(["technology", "education"]),
+  educationProfessionType: zod
+    .enum(["school_teacher", "university_lecturer", "tutor", "researcher"])
+    .nullish(),
+  teachingSubjects: zod.array(zod.string()).nullish(),
+  teachingLevels: zod.array(zod.string()).nullish(),
+  yearsTeachingExperience: zod.number().nullish(),
+  highestDegree: zod.enum(["bachelors", "masters", "phd", "postdoc"]).nullish(),
+  degreeSubject: zod.string().nullish(),
+  degreeInstitution: zod.string().nullish(),
+  teachingLicenceState: zod.string().nullish(),
+  teachingLicenceExpiry: zod.coerce.date().nullish(),
+  dbsCheckStatus: zod
+    .enum(["not_uploaded", "uploaded", "verified", "expired"])
+    .nullish(),
+  researchPublications: zod.string().nullish(),
+  preferredTeachingMode: zod.enum(["in_person", "online", "both"]).nullish(),
+  location: zod.string().nullish(),
   createdAt: zod.coerce.date(),
 });
 
@@ -345,6 +445,26 @@ export const GetFreelancerProfileResponse = zod
       .describe(
         "Profile completeness score 0–100 (Talent Vault requires ≥ 60)",
       ),
+    professionCategory: zod.enum(["technology", "education"]),
+    educationProfessionType: zod
+      .enum(["school_teacher", "university_lecturer", "tutor", "researcher"])
+      .nullish(),
+    teachingSubjects: zod.array(zod.string()).nullish(),
+    teachingLevels: zod.array(zod.string()).nullish(),
+    yearsTeachingExperience: zod.number().nullish(),
+    highestDegree: zod
+      .enum(["bachelors", "masters", "phd", "postdoc"])
+      .nullish(),
+    degreeSubject: zod.string().nullish(),
+    degreeInstitution: zod.string().nullish(),
+    teachingLicenceState: zod.string().nullish(),
+    teachingLicenceExpiry: zod.coerce.date().nullish(),
+    dbsCheckStatus: zod
+      .enum(["not_uploaded", "uploaded", "verified", "expired"])
+      .nullish(),
+    researchPublications: zod.string().nullish(),
+    preferredTeachingMode: zod.enum(["in_person", "online", "both"]).nullish(),
+    location: zod.string().nullish(),
     createdAt: zod.coerce.date(),
   })
   .and(
@@ -502,6 +622,8 @@ export const ListJobRequirementsResponseItem = zod.object({
   startDate: zod.coerce.date(),
   endDate: zod.coerce.date(),
   status: zod.string().describe("open, filled, closed"),
+  professionCategory: zod.enum(["technology", "education"]),
+  rateType: zod.enum(["hourly", "per_day", "per_session", "per_course"]),
   createdAt: zod.coerce.date(),
 });
 export const ListJobRequirementsResponse = zod.array(
@@ -521,6 +643,10 @@ export const CreateJobRequirementBody = zod.object({
   budget: zod.number().nullish(),
   startDate: zod.coerce.date(),
   endDate: zod.coerce.date(),
+  professionCategory: zod.enum(["technology", "education"]).optional(),
+  rateType: zod
+    .enum(["hourly", "per_day", "per_session", "per_course"])
+    .optional(),
 });
 
 /**
@@ -543,6 +669,8 @@ export const GetJobRequirementResponse = zod.object({
   startDate: zod.coerce.date(),
   endDate: zod.coerce.date(),
   status: zod.string().describe("open, filled, closed"),
+  professionCategory: zod.enum(["technology", "education"]),
+  rateType: zod.enum(["hourly", "per_day", "per_session", "per_course"]),
   createdAt: zod.coerce.date(),
 });
 
@@ -562,6 +690,10 @@ export const UpdateJobRequirementBody = zod.object({
   startDate: zod.coerce.date().optional(),
   endDate: zod.coerce.date().optional(),
   status: zod.string().optional(),
+  professionCategory: zod.enum(["technology", "education"]).optional(),
+  rateType: zod
+    .enum(["hourly", "per_day", "per_session", "per_course"])
+    .optional(),
 });
 
 export const UpdateJobRequirementResponse = zod.object({
@@ -577,6 +709,8 @@ export const UpdateJobRequirementResponse = zod.object({
   startDate: zod.coerce.date(),
   endDate: zod.coerce.date(),
   status: zod.string().describe("open, filled, closed"),
+  professionCategory: zod.enum(["technology", "education"]),
+  rateType: zod.enum(["hourly", "per_day", "per_session", "per_course"]),
   createdAt: zod.coerce.date(),
 });
 
@@ -778,6 +912,19 @@ export const UpgradeSubscriptionResponse = zod.object({
 /**
  * @summary Get the current employer's AI token usage for the UTC calendar month
  */
+export const getTokenUsageMeResponseBreakdownAiMatchDefault = 0;
+export const getTokenUsageMeResponseBreakdownAiMatchExplanationDefault = 0;
+export const getTokenUsageMeResponseBreakdownAgreementGenerationDefault = 0;
+export const getTokenUsageMeResponseBreakdownContractRedliningDefault = 0;
+export const getTokenUsageMeResponseBreakdownJobDescriptionAssistantDefault = 0;
+export const getTokenUsageMeResponseBreakdownAiProposalDefault = 0;
+export const getTokenUsageMeResponseBreakdownDocumentVerificationDefault = 0;
+export const getTokenUsageMeResponseBreakdownRateSuggestionDefault = 0;
+export const getTokenUsageMeResponseBreakdownContractHealthScoreDefault = 0;
+export const getTokenUsageMeResponseBreakdownAgreementSummaryDefault = 0;
+export const getTokenUsageMeResponseBreakdownCruiseModeParseDefault = 0;
+export const getTokenUsageMeResponseBreakdownCruiseModeEvaluationDefault = 0;
+
 export const GetTokenUsageMeResponse = zod.object({
   plan: zod.string(),
   monthlyTokenLimit: zod.number().nullable(),
@@ -785,8 +932,42 @@ export const GetTokenUsageMeResponse = zod.object({
   tokensRemaining: zod.number().nullable(),
   resetDate: zod.coerce.date(),
   breakdown: zod.object({
-    ai_match: zod.number(),
-    agreement_generation: zod.number(),
+    ai_match: zod
+      .number()
+      .default(getTokenUsageMeResponseBreakdownAiMatchDefault),
+    ai_match_explanation: zod
+      .number()
+      .default(getTokenUsageMeResponseBreakdownAiMatchExplanationDefault),
+    agreement_generation: zod
+      .number()
+      .default(getTokenUsageMeResponseBreakdownAgreementGenerationDefault),
+    contract_redlining: zod
+      .number()
+      .default(getTokenUsageMeResponseBreakdownContractRedliningDefault),
+    job_description_assistant: zod
+      .number()
+      .default(getTokenUsageMeResponseBreakdownJobDescriptionAssistantDefault),
+    ai_proposal: zod
+      .number()
+      .default(getTokenUsageMeResponseBreakdownAiProposalDefault),
+    document_verification: zod
+      .number()
+      .default(getTokenUsageMeResponseBreakdownDocumentVerificationDefault),
+    rate_suggestion: zod
+      .number()
+      .default(getTokenUsageMeResponseBreakdownRateSuggestionDefault),
+    contract_health_score: zod
+      .number()
+      .default(getTokenUsageMeResponseBreakdownContractHealthScoreDefault),
+    agreement_summary: zod
+      .number()
+      .default(getTokenUsageMeResponseBreakdownAgreementSummaryDefault),
+    cruise_mode_parse: zod
+      .number()
+      .default(getTokenUsageMeResponseBreakdownCruiseModeParseDefault),
+    cruise_mode_evaluation: zod
+      .number()
+      .default(getTokenUsageMeResponseBreakdownCruiseModeEvaluationDefault),
   }),
 });
 
@@ -1109,6 +1290,30 @@ export const ListAgreementsResponse = zod.object({
       employerDownloadedAt: zod.coerce.date().nullish(),
       freelancerName: zod.string().nullish(),
       employerName: zod.string().nullish(),
+      healthScore: zod
+        .number()
+        .nullish()
+        .describe(
+          "Cached AI contract health score (0–100), null if not yet scored",
+        ),
+      healthScoreDetail: zod
+        .object({})
+        .passthrough()
+        .nullish()
+        .describe("Cached dimension breakdown JSON"),
+      healthScoredAt: zod.coerce.date().nullish(),
+      freelancerSummary: zod
+        .object({})
+        .passthrough()
+        .nullish()
+        .describe(
+          "Cached AI plain-English summary JSON (freelancer view only)",
+        ),
+      freelancerSummaryScoredAt: zod.coerce.date().nullish(),
+      hasSummary: zod
+        .boolean()
+        .optional()
+        .describe("Whether a cached freelancer summary exists"),
       createdAt: zod.coerce.date(),
     }),
   ),
@@ -1173,6 +1378,28 @@ export const GetAgreementResponse = zod.object({
   employerDownloadedAt: zod.coerce.date().nullish(),
   freelancerName: zod.string().nullish(),
   employerName: zod.string().nullish(),
+  healthScore: zod
+    .number()
+    .nullish()
+    .describe(
+      "Cached AI contract health score (0–100), null if not yet scored",
+    ),
+  healthScoreDetail: zod
+    .object({})
+    .passthrough()
+    .nullish()
+    .describe("Cached dimension breakdown JSON"),
+  healthScoredAt: zod.coerce.date().nullish(),
+  freelancerSummary: zod
+    .object({})
+    .passthrough()
+    .nullish()
+    .describe("Cached AI plain-English summary JSON (freelancer view only)"),
+  freelancerSummaryScoredAt: zod.coerce.date().nullish(),
+  hasSummary: zod
+    .boolean()
+    .optional()
+    .describe("Whether a cached freelancer summary exists"),
   createdAt: zod.coerce.date(),
 });
 
@@ -1228,6 +1455,28 @@ export const SignAgreementResponse = zod.object({
   employerDownloadedAt: zod.coerce.date().nullish(),
   freelancerName: zod.string().nullish(),
   employerName: zod.string().nullish(),
+  healthScore: zod
+    .number()
+    .nullish()
+    .describe(
+      "Cached AI contract health score (0–100), null if not yet scored",
+    ),
+  healthScoreDetail: zod
+    .object({})
+    .passthrough()
+    .nullish()
+    .describe("Cached dimension breakdown JSON"),
+  healthScoredAt: zod.coerce.date().nullish(),
+  freelancerSummary: zod
+    .object({})
+    .passthrough()
+    .nullish()
+    .describe("Cached AI plain-English summary JSON (freelancer view only)"),
+  freelancerSummaryScoredAt: zod.coerce.date().nullish(),
+  hasSummary: zod
+    .boolean()
+    .optional()
+    .describe("Whether a cached freelancer summary exists"),
   createdAt: zod.coerce.date(),
 });
 
@@ -1265,6 +1514,157 @@ export const PatchAgreementsIdAcceptRedlineResponse = zod.object({
   success: zod.boolean(),
   status: zod.string(),
 });
+
+/**
+ * @summary Score contract health with AI across five dimensions
+ */
+export const PostAgreementsIdHealthScoreParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const postAgreementsIdHealthScoreQueryForceDefault = false;
+
+export const PostAgreementsIdHealthScoreQueryParams = zod.object({
+  force: zod.coerce
+    .boolean()
+    .default(postAgreementsIdHealthScoreQueryForceDefault)
+    .describe("Bypass cached score and re-run AI analysis"),
+});
+
+export const PostAgreementsIdHealthScoreResponse = zod.union([
+  zod.object({
+    parseError: zod.literal(false),
+    cached: zod.boolean().optional(),
+    truncated: zod.boolean().optional(),
+    totalScore: zod.number(),
+    dimensions: zod
+      .object({
+        clarity: zod.object({
+          score: zod.number(),
+          verdict: zod.enum([
+            "Strong",
+            "Acceptable",
+            "Needs attention",
+            "Weak",
+          ]),
+          explanation: zod.string().optional(),
+        }),
+        fairness: zod.object({
+          score: zod.number(),
+          verdict: zod.enum([
+            "Strong",
+            "Acceptable",
+            "Needs attention",
+            "Weak",
+          ]),
+          explanation: zod.string().optional(),
+        }),
+        completeness: zod.object({
+          score: zod.number(),
+          verdict: zod.enum([
+            "Strong",
+            "Acceptable",
+            "Needs attention",
+            "Weak",
+          ]),
+          explanation: zod.string().optional(),
+        }),
+        enforceability: zod.object({
+          score: zod.number(),
+          verdict: zod.enum([
+            "Strong",
+            "Acceptable",
+            "Needs attention",
+            "Weak",
+          ]),
+          explanation: zod.string().optional(),
+        }),
+        industryFit: zod.object({
+          score: zod.number(),
+          verdict: zod.enum([
+            "Strong",
+            "Acceptable",
+            "Needs attention",
+            "Weak",
+          ]),
+          explanation: zod.string().optional(),
+        }),
+      })
+      .optional(),
+    summary: zod.string().optional(),
+    healthScoredAt: zod.coerce.date().optional(),
+  }),
+  zod.object({
+    parseError: zod.literal(true),
+    score: zod.number().nullish(),
+    dimensions: zod.object({}).passthrough().nullish(),
+  }),
+]);
+
+/**
+ * @summary AI plain-English summary of agreement for freelancer
+ */
+export const PostAgreementsIdSummariseParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const postAgreementsIdSummariseQueryForceDefault = false;
+
+export const PostAgreementsIdSummariseQueryParams = zod.object({
+  force: zod.coerce
+    .boolean()
+    .default(postAgreementsIdSummariseQueryForceDefault)
+    .describe("Bypass cached summary and re-run AI analysis"),
+});
+
+export const PostAgreementsIdSummariseResponse = zod.union([
+  zod.object({
+    parseError: zod.literal(false),
+    cached: zod.boolean().optional(),
+    truncated: zod.boolean().optional(),
+    freelancerSummaryScoredAt: zod.coerce.date().optional(),
+    sections: zod.object({
+      whatYouDo: zod.object({
+        title: zod.string(),
+        content: zod.string(),
+      }),
+      howYouGetPaid: zod.object({
+        title: zod.string(),
+        content: zod.string(),
+      }),
+      whoOwnsTheWork: zod.object({
+        title: zod.string(),
+        content: zod.string(),
+      }),
+      howItCanEnd: zod.object({
+        title: zod.string(),
+        content: zod.string(),
+      }),
+      restrictions: zod.object({
+        title: zod.string(),
+        content: zod.string(),
+      }),
+      keyDates: zod.object({
+        title: zod.string(),
+        content: zod.string(),
+      }),
+    }),
+    attentionFlags: zod.object({
+      exists: zod.boolean(),
+      items: zod.array(
+        zod.object({
+          heading: zod.string(),
+          detail: zod.string(),
+        }),
+      ),
+    }),
+    disclaimer: zod.string(),
+  }),
+  zod.object({
+    parseError: zod.literal(true),
+    summary: zod.object({}).passthrough().nullish(),
+  }),
+]);
 
 /**
  * @summary List meetings for the current user
@@ -1931,6 +2331,24 @@ export const ListSavedFreelancersResponseItem = zod.object({
   completenessScore: zod
     .number()
     .describe("Profile completeness score 0–100 (Talent Vault requires ≥ 60)"),
+  professionCategory: zod.enum(["technology", "education"]),
+  educationProfessionType: zod
+    .enum(["school_teacher", "university_lecturer", "tutor", "researcher"])
+    .nullish(),
+  teachingSubjects: zod.array(zod.string()).nullish(),
+  teachingLevels: zod.array(zod.string()).nullish(),
+  yearsTeachingExperience: zod.number().nullish(),
+  highestDegree: zod.enum(["bachelors", "masters", "phd", "postdoc"]).nullish(),
+  degreeSubject: zod.string().nullish(),
+  degreeInstitution: zod.string().nullish(),
+  teachingLicenceState: zod.string().nullish(),
+  teachingLicenceExpiry: zod.coerce.date().nullish(),
+  dbsCheckStatus: zod
+    .enum(["not_uploaded", "uploaded", "verified", "expired"])
+    .nullish(),
+  researchPublications: zod.string().nullish(),
+  preferredTeachingMode: zod.enum(["in_person", "online", "both"]).nullish(),
+  location: zod.string().nullish(),
   createdAt: zod.coerce.date(),
 });
 export const ListSavedFreelancersResponse = zod.array(
@@ -2204,6 +2622,13 @@ export const GetPublicFreelancerProfileResponse = zod.object({
   averageRating: zod.number().nullish(),
   reviewCount: zod.number().optional(),
   totalReviews: zod.number(),
+  professionCategory: zod.enum(["technology", "education"]),
+  educationProfessionType: zod
+    .enum(["school_teacher", "university_lecturer", "tutor", "researcher"])
+    .nullish(),
+  teachingSubjects: zod.array(zod.string()).nullish(),
+  teachingLevels: zod.array(zod.string()).nullish(),
+  location: zod.string().nullish(),
   createdAt: zod.coerce.date(),
 });
 
@@ -2273,6 +2698,10 @@ export const GetTeamResponse = zod.object({
       joinedAt: zod.coerce.date().nullish(),
       displayName: zod.string().nullish(),
       displayEmail: zod.string(),
+      inviteUrl: zod
+        .string()
+        .optional()
+        .describe("Admin-only — accept link for pending invites"),
     }),
   ),
   isAdmin: zod.boolean(),
@@ -2311,6 +2740,10 @@ export const UpdateTeamResponse = zod.object({
       joinedAt: zod.coerce.date().nullish(),
       displayName: zod.string().nullish(),
       displayEmail: zod.string(),
+      inviteUrl: zod
+        .string()
+        .optional()
+        .describe("Admin-only — accept link for pending invites"),
     }),
   ),
   isAdmin: zod.boolean(),
@@ -2386,6 +2819,26 @@ export const ListTeamShortlistResponseItem = zod.object({
       .describe(
         "Profile completeness score 0–100 (Talent Vault requires ≥ 60)",
       ),
+    professionCategory: zod.enum(["technology", "education"]),
+    educationProfessionType: zod
+      .enum(["school_teacher", "university_lecturer", "tutor", "researcher"])
+      .nullish(),
+    teachingSubjects: zod.array(zod.string()).nullish(),
+    teachingLevels: zod.array(zod.string()).nullish(),
+    yearsTeachingExperience: zod.number().nullish(),
+    highestDegree: zod
+      .enum(["bachelors", "masters", "phd", "postdoc"])
+      .nullish(),
+    degreeSubject: zod.string().nullish(),
+    degreeInstitution: zod.string().nullish(),
+    teachingLicenceState: zod.string().nullish(),
+    teachingLicenceExpiry: zod.coerce.date().nullish(),
+    dbsCheckStatus: zod
+      .enum(["not_uploaded", "uploaded", "verified", "expired"])
+      .nullish(),
+    researchPublications: zod.string().nullish(),
+    preferredTeachingMode: zod.enum(["in_person", "online", "both"]).nullish(),
+    location: zod.string().nullish(),
     createdAt: zod.coerce.date(),
   }),
   addedByUserId: zod.number(),
@@ -2448,6 +2901,26 @@ export const AddTeamShortlistResponse = zod.object({
       .describe(
         "Profile completeness score 0–100 (Talent Vault requires ≥ 60)",
       ),
+    professionCategory: zod.enum(["technology", "education"]),
+    educationProfessionType: zod
+      .enum(["school_teacher", "university_lecturer", "tutor", "researcher"])
+      .nullish(),
+    teachingSubjects: zod.array(zod.string()).nullish(),
+    teachingLevels: zod.array(zod.string()).nullish(),
+    yearsTeachingExperience: zod.number().nullish(),
+    highestDegree: zod
+      .enum(["bachelors", "masters", "phd", "postdoc"])
+      .nullish(),
+    degreeSubject: zod.string().nullish(),
+    degreeInstitution: zod.string().nullish(),
+    teachingLicenceState: zod.string().nullish(),
+    teachingLicenceExpiry: zod.coerce.date().nullish(),
+    dbsCheckStatus: zod
+      .enum(["not_uploaded", "uploaded", "verified", "expired"])
+      .nullish(),
+    researchPublications: zod.string().nullish(),
+    preferredTeachingMode: zod.enum(["in_person", "online", "both"]).nullish(),
+    location: zod.string().nullish(),
     createdAt: zod.coerce.date(),
   }),
   addedByUserId: zod.number(),
@@ -2508,6 +2981,19 @@ export const GetTeamAnalyticsResponse = zod.object({
 });
 
 /**
+ * @summary Resend invitation email for a pending team member (admin only)
+ */
+export const ResendTeamInviteParams = zod.object({
+  memberId: zod.coerce.number(),
+});
+
+export const ResendTeamInviteResponse = zod.object({
+  success: zod.boolean(),
+  invitedEmail: zod.string(),
+  inviteUrl: zod.string(),
+});
+
+/**
  * @summary Remove or deactivate a team member (admin only)
  */
 export const RemoveTeamMemberParams = zod.object({
@@ -2516,4 +3002,476 @@ export const RemoveTeamMemberParams = zod.object({
 
 export const RemoveTeamMemberResponse = zod.object({
   success: zod.boolean(),
+});
+
+/**
+ * @summary Get current Cruise Mode config
+ */
+export const getCruiseModeResponseOneRulesMatchThresholdMin = 0;
+export const getCruiseModeResponseOneRulesMatchThresholdMax = 100;
+
+export const GetCruiseModeResponse = zod.union([
+  zod.object({
+    id: zod.string(),
+    freelancerId: zod.number(),
+    isActive: zod.boolean(),
+    isDryRun: zod.boolean(),
+    rules: zod.object({
+      requiredSkills: zod.array(zod.string()),
+      preferredSkills: zod.array(zod.string()),
+      minRate: zod.number().nullish(),
+      maxRate: zod.number().nullish(),
+      availableFrom: zod.string().nullish(),
+      availableTo: zod.string().nullish(),
+      maxDurationWeeks: zod.number().nullish(),
+      minDurationWeeks: zod.number().nullish(),
+      excludedKeywords: zod.array(zod.string()),
+      preferredFields: zod.array(zod.string()),
+      matchThreshold: zod
+        .number()
+        .min(getCruiseModeResponseOneRulesMatchThresholdMin)
+        .max(getCruiseModeResponseOneRulesMatchThresholdMax),
+      messageTone: zod.enum(["professional", "friendly", "concise"]),
+      blackoutWindows: zod
+        .union([
+          zod.object({
+            timezone: zod.string(),
+            windows: zod.array(
+              zod.object({
+                start: zod.string(),
+                end: zod.string(),
+                days: zod.array(zod.number()),
+              }),
+            ),
+          }),
+          zod.null(),
+        ])
+        .optional(),
+      dailyDigest: zod.boolean(),
+      version: zod.number(),
+    }),
+    rulesVersion: zod.number(),
+    rawRulesText: zod.string().nullish(),
+    hoursUsedToday: zod.number(),
+    dailyLimitHours: zod.number(),
+    hoursResetAt: zod.coerce.date(),
+    activatedAt: zod.coerce.date().nullish(),
+    deactivatedAt: zod.coerce.date().nullish(),
+    deletedAt: zod.coerce.date().nullish(),
+    createdAt: zod.coerce.date(),
+    updatedAt: zod.coerce.date(),
+  }),
+  zod.null(),
+]);
+
+/**
+ * @summary Create or update Cruise Mode config
+ */
+export const upsertCruiseModeBodyRulesMatchThresholdMin = 0;
+export const upsertCruiseModeBodyRulesMatchThresholdMax = 100;
+
+export const UpsertCruiseModeBody = zod.object({
+  rules: zod.object({
+    requiredSkills: zod.array(zod.string()),
+    preferredSkills: zod.array(zod.string()),
+    minRate: zod.number().nullish(),
+    maxRate: zod.number().nullish(),
+    availableFrom: zod.string().nullish(),
+    availableTo: zod.string().nullish(),
+    maxDurationWeeks: zod.number().nullish(),
+    minDurationWeeks: zod.number().nullish(),
+    excludedKeywords: zod.array(zod.string()),
+    preferredFields: zod.array(zod.string()),
+    matchThreshold: zod
+      .number()
+      .min(upsertCruiseModeBodyRulesMatchThresholdMin)
+      .max(upsertCruiseModeBodyRulesMatchThresholdMax),
+    messageTone: zod.enum(["professional", "friendly", "concise"]),
+    blackoutWindows: zod
+      .union([
+        zod.object({
+          timezone: zod.string(),
+          windows: zod.array(
+            zod.object({
+              start: zod.string(),
+              end: zod.string(),
+              days: zod.array(zod.number()),
+            }),
+          ),
+        }),
+        zod.null(),
+      ])
+      .optional(),
+    dailyDigest: zod.boolean(),
+    version: zod.number(),
+  }),
+  rawRulesText: zod.string().nullish(),
+});
+
+export const upsertCruiseModeResponseRulesMatchThresholdMin = 0;
+export const upsertCruiseModeResponseRulesMatchThresholdMax = 100;
+
+export const UpsertCruiseModeResponse = zod.object({
+  id: zod.string(),
+  freelancerId: zod.number(),
+  isActive: zod.boolean(),
+  isDryRun: zod.boolean(),
+  rules: zod.object({
+    requiredSkills: zod.array(zod.string()),
+    preferredSkills: zod.array(zod.string()),
+    minRate: zod.number().nullish(),
+    maxRate: zod.number().nullish(),
+    availableFrom: zod.string().nullish(),
+    availableTo: zod.string().nullish(),
+    maxDurationWeeks: zod.number().nullish(),
+    minDurationWeeks: zod.number().nullish(),
+    excludedKeywords: zod.array(zod.string()),
+    preferredFields: zod.array(zod.string()),
+    matchThreshold: zod
+      .number()
+      .min(upsertCruiseModeResponseRulesMatchThresholdMin)
+      .max(upsertCruiseModeResponseRulesMatchThresholdMax),
+    messageTone: zod.enum(["professional", "friendly", "concise"]),
+    blackoutWindows: zod
+      .union([
+        zod.object({
+          timezone: zod.string(),
+          windows: zod.array(
+            zod.object({
+              start: zod.string(),
+              end: zod.string(),
+              days: zod.array(zod.number()),
+            }),
+          ),
+        }),
+        zod.null(),
+      ])
+      .optional(),
+    dailyDigest: zod.boolean(),
+    version: zod.number(),
+  }),
+  rulesVersion: zod.number(),
+  rawRulesText: zod.string().nullish(),
+  hoursUsedToday: zod.number(),
+  dailyLimitHours: zod.number(),
+  hoursResetAt: zod.coerce.date(),
+  activatedAt: zod.coerce.date().nullish(),
+  deactivatedAt: zod.coerce.date().nullish(),
+  deletedAt: zod.coerce.date().nullish(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Activate Cruise Mode (live)
+ */
+export const activateCruiseModeResponseRulesMatchThresholdMin = 0;
+export const activateCruiseModeResponseRulesMatchThresholdMax = 100;
+
+export const ActivateCruiseModeResponse = zod.object({
+  id: zod.string(),
+  freelancerId: zod.number(),
+  isActive: zod.boolean(),
+  isDryRun: zod.boolean(),
+  rules: zod.object({
+    requiredSkills: zod.array(zod.string()),
+    preferredSkills: zod.array(zod.string()),
+    minRate: zod.number().nullish(),
+    maxRate: zod.number().nullish(),
+    availableFrom: zod.string().nullish(),
+    availableTo: zod.string().nullish(),
+    maxDurationWeeks: zod.number().nullish(),
+    minDurationWeeks: zod.number().nullish(),
+    excludedKeywords: zod.array(zod.string()),
+    preferredFields: zod.array(zod.string()),
+    matchThreshold: zod
+      .number()
+      .min(activateCruiseModeResponseRulesMatchThresholdMin)
+      .max(activateCruiseModeResponseRulesMatchThresholdMax),
+    messageTone: zod.enum(["professional", "friendly", "concise"]),
+    blackoutWindows: zod
+      .union([
+        zod.object({
+          timezone: zod.string(),
+          windows: zod.array(
+            zod.object({
+              start: zod.string(),
+              end: zod.string(),
+              days: zod.array(zod.number()),
+            }),
+          ),
+        }),
+        zod.null(),
+      ])
+      .optional(),
+    dailyDigest: zod.boolean(),
+    version: zod.number(),
+  }),
+  rulesVersion: zod.number(),
+  rawRulesText: zod.string().nullish(),
+  hoursUsedToday: zod.number(),
+  dailyLimitHours: zod.number(),
+  hoursResetAt: zod.coerce.date(),
+  activatedAt: zod.coerce.date().nullish(),
+  deactivatedAt: zod.coerce.date().nullish(),
+  deletedAt: zod.coerce.date().nullish(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Activate Cruise Mode in dry run mode
+ */
+export const dryRunCruiseModeResponseRulesMatchThresholdMin = 0;
+export const dryRunCruiseModeResponseRulesMatchThresholdMax = 100;
+
+export const DryRunCruiseModeResponse = zod.object({
+  id: zod.string(),
+  freelancerId: zod.number(),
+  isActive: zod.boolean(),
+  isDryRun: zod.boolean(),
+  rules: zod.object({
+    requiredSkills: zod.array(zod.string()),
+    preferredSkills: zod.array(zod.string()),
+    minRate: zod.number().nullish(),
+    maxRate: zod.number().nullish(),
+    availableFrom: zod.string().nullish(),
+    availableTo: zod.string().nullish(),
+    maxDurationWeeks: zod.number().nullish(),
+    minDurationWeeks: zod.number().nullish(),
+    excludedKeywords: zod.array(zod.string()),
+    preferredFields: zod.array(zod.string()),
+    matchThreshold: zod
+      .number()
+      .min(dryRunCruiseModeResponseRulesMatchThresholdMin)
+      .max(dryRunCruiseModeResponseRulesMatchThresholdMax),
+    messageTone: zod.enum(["professional", "friendly", "concise"]),
+    blackoutWindows: zod
+      .union([
+        zod.object({
+          timezone: zod.string(),
+          windows: zod.array(
+            zod.object({
+              start: zod.string(),
+              end: zod.string(),
+              days: zod.array(zod.number()),
+            }),
+          ),
+        }),
+        zod.null(),
+      ])
+      .optional(),
+    dailyDigest: zod.boolean(),
+    version: zod.number(),
+  }),
+  rulesVersion: zod.number(),
+  rawRulesText: zod.string().nullish(),
+  hoursUsedToday: zod.number(),
+  dailyLimitHours: zod.number(),
+  hoursResetAt: zod.coerce.date(),
+  activatedAt: zod.coerce.date().nullish(),
+  deactivatedAt: zod.coerce.date().nullish(),
+  deletedAt: zod.coerce.date().nullish(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Deactivate Cruise Mode
+ */
+export const deactivateCruiseModeResponseRulesMatchThresholdMin = 0;
+export const deactivateCruiseModeResponseRulesMatchThresholdMax = 100;
+
+export const DeactivateCruiseModeResponse = zod.object({
+  id: zod.string(),
+  freelancerId: zod.number(),
+  isActive: zod.boolean(),
+  isDryRun: zod.boolean(),
+  rules: zod.object({
+    requiredSkills: zod.array(zod.string()),
+    preferredSkills: zod.array(zod.string()),
+    minRate: zod.number().nullish(),
+    maxRate: zod.number().nullish(),
+    availableFrom: zod.string().nullish(),
+    availableTo: zod.string().nullish(),
+    maxDurationWeeks: zod.number().nullish(),
+    minDurationWeeks: zod.number().nullish(),
+    excludedKeywords: zod.array(zod.string()),
+    preferredFields: zod.array(zod.string()),
+    matchThreshold: zod
+      .number()
+      .min(deactivateCruiseModeResponseRulesMatchThresholdMin)
+      .max(deactivateCruiseModeResponseRulesMatchThresholdMax),
+    messageTone: zod.enum(["professional", "friendly", "concise"]),
+    blackoutWindows: zod
+      .union([
+        zod.object({
+          timezone: zod.string(),
+          windows: zod.array(
+            zod.object({
+              start: zod.string(),
+              end: zod.string(),
+              days: zod.array(zod.number()),
+            }),
+          ),
+        }),
+        zod.null(),
+      ])
+      .optional(),
+    dailyDigest: zod.boolean(),
+    version: zod.number(),
+  }),
+  rulesVersion: zod.number(),
+  rawRulesText: zod.string().nullish(),
+  hoursUsedToday: zod.number(),
+  dailyLimitHours: zod.number(),
+  hoursResetAt: zod.coerce.date(),
+  activatedAt: zod.coerce.date().nullish(),
+  deactivatedAt: zod.coerce.date().nullish(),
+  deletedAt: zod.coerce.date().nullish(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Parse free-form text into structured Cruise Mode rules
+ */
+export const parseCruiseModeRulesBodyRawTextMax = 10000;
+
+export const ParseCruiseModeRulesBody = zod.object({
+  rawText: zod.string().min(1).max(parseCruiseModeRulesBodyRawTextMax),
+});
+
+export const parseCruiseModeRulesResponseRulesMatchThresholdMin = 0;
+export const parseCruiseModeRulesResponseRulesMatchThresholdMax = 100;
+
+export const ParseCruiseModeRulesResponse = zod.object({
+  rules: zod.object({
+    requiredSkills: zod.array(zod.string()),
+    preferredSkills: zod.array(zod.string()),
+    minRate: zod.number().nullish(),
+    maxRate: zod.number().nullish(),
+    availableFrom: zod.string().nullish(),
+    availableTo: zod.string().nullish(),
+    maxDurationWeeks: zod.number().nullish(),
+    minDurationWeeks: zod.number().nullish(),
+    excludedKeywords: zod.array(zod.string()),
+    preferredFields: zod.array(zod.string()),
+    matchThreshold: zod
+      .number()
+      .min(parseCruiseModeRulesResponseRulesMatchThresholdMin)
+      .max(parseCruiseModeRulesResponseRulesMatchThresholdMax),
+    messageTone: zod.enum(["professional", "friendly", "concise"]),
+    blackoutWindows: zod
+      .union([
+        zod.object({
+          timezone: zod.string(),
+          windows: zod.array(
+            zod.object({
+              start: zod.string(),
+              end: zod.string(),
+              days: zod.array(zod.number()),
+            }),
+          ),
+        }),
+        zod.null(),
+      ])
+      .optional(),
+    dailyDigest: zod.boolean(),
+    version: zod.number(),
+  }),
+  warnings: zod.array(zod.string()),
+});
+
+/**
+ * @summary Paginated Cruise Mode activity feed
+ */
+export const listCruiseModeActivityQueryPageDefault = 1;
+
+export const listCruiseModeActivityQueryPageSizeDefault = 20;
+export const listCruiseModeActivityQueryPageSizeMax = 100;
+
+export const ListCruiseModeActivityQueryParams = zod.object({
+  page: zod.coerce
+    .number()
+    .min(1)
+    .default(listCruiseModeActivityQueryPageDefault),
+  pageSize: zod.coerce
+    .number()
+    .min(1)
+    .max(listCruiseModeActivityQueryPageSizeMax)
+    .default(listCruiseModeActivityQueryPageSizeDefault),
+});
+
+export const ListCruiseModeActivityResponse = zod.object({
+  data: zod.array(
+    zod
+      .object({
+        id: zod.string(),
+        freelancerId: zod.number(),
+        jobRequirementId: zod.number(),
+        rulesVersion: zod.number(),
+        score: zod.number(),
+        decision: zod.string(),
+        matchReasons: zod.object({
+          matched: zod.array(zod.string()),
+          concerns: zod.array(zod.string()),
+          blockers: zod.array(zod.string()),
+        }),
+        proposedMessage: zod.string().nullish(),
+        sentAt: zod.coerce.date().nullish(),
+        skippedReason: zod.string().nullish(),
+        freelancerFollowUpSent: zod.boolean(),
+        createdAt: zod.coerce.date(),
+      })
+      .and(
+        zod.object({
+          jobTitle: zod.string(),
+        }),
+      ),
+  ),
+  total: zod.number(),
+  page: zod.number(),
+  pageSize: zod.number(),
+  totalPages: zod.number(),
+});
+
+/**
+ * @summary Mark follow-up sent for a Cruise Mode activity entry
+ */
+export const MarkCruiseModeFollowUpParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const MarkCruiseModeFollowUpResponse = zod.object({
+  id: zod.string(),
+  freelancerId: zod.number(),
+  jobRequirementId: zod.number(),
+  rulesVersion: zod.number(),
+  score: zod.number(),
+  decision: zod.string(),
+  matchReasons: zod.object({
+    matched: zod.array(zod.string()),
+    concerns: zod.array(zod.string()),
+    blockers: zod.array(zod.string()),
+  }),
+  proposedMessage: zod.string().nullish(),
+  sentAt: zod.coerce.date().nullish(),
+  skippedReason: zod.string().nullish(),
+  freelancerFollowUpSent: zod.boolean(),
+  createdAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Cruise Mode stats for today and current month
+ */
+export const GetCruiseModeStatsResponse = zod.object({
+  evaluatedToday: zod.number(),
+  sentToday: zod.number(),
+  skippedToday: zod.number(),
+  dryRunToday: zod.number(),
+  hoursUsedToday: zod.number(),
+  dailyLimitHours: zod.number(),
+  hoursRemainingToday: zod.number(),
+  hoursResetAt: zod.coerce.date(),
 });

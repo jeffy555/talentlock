@@ -27,6 +27,7 @@ import { z } from "zod/v4";
 import { sanitiseText } from "../lib/sanitise";
 import { sendNotificationEmailAsync } from "../lib/emailService";
 import { parsePagination, paginatedResponse } from "../lib/paginationUtils";
+import { resolveUserByClerkId, canAccessBooking, profileIdsForUser } from "../lib/accessControl";
 
 const BOOKING_CONFIRMED_STATUS = "active";
 const BOOKING_CANCELLED_STATUS = "cancelled";
@@ -126,9 +127,6 @@ router.post("/bookings", async (req, res) => {
           negotiationStatus: "negotiating",
         })
         .returning();
-      await tx.update(freelancerProfilesTable)
-        .set({ isAvailable: false, currentBookingId: booking.id, bookingEndDate: parsed.data.endDate as any })
-        .where(eq(freelancerProfilesTable.id, parsed.data.freelancerId));
       return { gate: null, booking };
     });
 
@@ -168,7 +166,16 @@ router.post("/bookings", async (req, res) => {
 router.get("/bookings/:id", async (req, res) => {
   const id = parseInt(req.params.id);
   if (isNaN(id)) { res.status(400).json({ error: "Invalid ID" }); return; }
+  const { userId: clerkId } = getAuth(req);
+  if (!clerkId) { res.status(401).json({ error: "Unauthorized" }); return; }
   try {
+    const user = await resolveUserByClerkId(clerkId);
+    if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
+    const access = await canAccessBooking(user.id, id);
+    if (!access.ok) {
+      res.status(access.status).json({ error: access.status === 404 ? "Booking not found" : "Forbidden" });
+      return;
+    }
     const [b] = await db.select().from(bookingsTable).where(eq(bookingsTable.id, id)).limit(1);
     if (!b) { res.status(404).json({ error: "Booking not found" }); return; }
     const [f] = await db.select({ name: freelancerProfilesTable.name }).from(freelancerProfilesTable).where(eq(freelancerProfilesTable.id, b.freelancerId)).limit(1);
@@ -196,9 +203,18 @@ router.get("/bookings/:id", async (req, res) => {
 router.patch("/bookings/:id", async (req, res) => {
   const id = parseInt(req.params.id);
   if (isNaN(id)) { res.status(400).json({ error: "Invalid ID" }); return; }
+  const { userId: clerkId } = getAuth(req);
+  if (!clerkId) { res.status(401).json({ error: "Unauthorized" }); return; }
   const parsed = UpdateBookingBody.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
   try {
+    const user = await resolveUserByClerkId(clerkId);
+    if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
+    const access = await canAccessBooking(user.id, id);
+    if (!access.ok) {
+      res.status(access.status).json({ error: access.status === 404 ? "Booking not found" : "Forbidden" });
+      return;
+    }
     const [before] = await db.select().from(bookingsTable).where(eq(bookingsTable.id, id)).limit(1);
     if (!before) { res.status(404).json({ error: "Booking not found" }); return; }
 
@@ -216,6 +232,14 @@ router.patch("/bookings/:id", async (req, res) => {
 
     if (parsed.data.status && parsed.data.status !== before.status) {
       if (parsed.data.status === BOOKING_CONFIRMED_STATUS) {
+        await db.update(freelancerProfilesTable)
+          .set({
+            isAvailable: false,
+            currentBookingId: updated.id,
+            bookingEndDate: updated.endDate ?? null,
+          })
+          .where(eq(freelancerProfilesTable.id, updated.freelancerId));
+
         const blockStart = updated.startDate ?? null;
         const blockEnd = updated.endDate ?? null;
         if (blockStart && blockEnd) {
@@ -239,24 +263,13 @@ router.patch("/bookings/:id", async (req, res) => {
           .catch((err) => req.log.warn({ err, bookingId: id }, "auto-block deletion failed"));
       }
 
-      const { userId: clerkId } = getAuth(req);
+      const { employerId: callerEmployerId, freelancerId: callerFreelancerId } = await profileIdsForUser(user.id);
+      const isEmployer = callerEmployerId !== null && callerEmployerId === updated.employerId;
+      const isFreelancer = callerFreelancerId !== null && callerFreelancerId === updated.freelancerId;
       let recipientUserId: number | null = null;
-      if (clerkId) {
-        const [freelancer] = await db.select().from(freelancerProfilesTable)
-          .where(eq(freelancerProfilesTable.clerkId, clerkId)).limit(1);
-        const [employer] = await db.select().from(employerProfilesTable)
-          .where(eq(employerProfilesTable.clerkId, clerkId)).limit(1);
-        const isEmployer = !!employer && employer.id === updated.employerId;
-        const isFreelancer = !!freelancer && freelancer.id === updated.freelancerId;
-        if (isEmployer) recipientUserId = await userIdFromFreelancerProfileId(updated.freelancerId);
-        else if (isFreelancer) recipientUserId = await userIdFromEmployerProfileId(updated.employerId);
-      }
+      if (isEmployer) recipientUserId = await userIdFromFreelancerProfileId(updated.freelancerId);
+      else if (isFreelancer) recipientUserId = await userIdFromEmployerProfileId(updated.employerId);
       if (recipientUserId) {
-        const [freelancer] = await db.select().from(freelancerProfilesTable)
-          .where(eq(freelancerProfilesTable.clerkId, clerkId!)).limit(1);
-        const [employer] = await db.select().from(employerProfilesTable)
-          .where(eq(employerProfilesTable.clerkId, clerkId!)).limit(1);
-        const isEmployer = !!employer && employer.id === updated.employerId;
         const otherName = isEmployer
           ? await employerCompanyForProfile(updated.employerId)
           : await freelancerNameForProfile(updated.freelancerId);

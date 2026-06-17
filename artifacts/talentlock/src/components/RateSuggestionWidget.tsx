@@ -6,6 +6,7 @@ import {
 } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Loader2, Sparkles } from "lucide-react";
+import { rateUnitLabel, paymentTypeToRateType, type RateType } from "@/lib/rateFormatUtils";
 
 interface RateSuggestionWidgetProps {
   freelancerId: string;
@@ -13,6 +14,7 @@ interface RateSuggestionWidgetProps {
   jobRequirementId?: string;
   bookingId?: string;
   paymentType?: PostAiRateSuggestionBodyPaymentType;
+  rateType?: RateType | null;
   proposedRate?: string;
   onUseSuggestion: (rate: number) => void;
   userPlan: string;
@@ -32,12 +34,6 @@ function parseApiError(error: unknown): { status?: number; code?: string } {
   };
 }
 
-function rateUnit(paymentType?: PostAiRateSuggestionBodyPaymentType): string {
-  if (paymentType === "daily") return "day";
-  if (paymentType === "fixed") return "project";
-  return "hr";
-}
-
 function confidenceBadgeClass(confidence: RateSuggestionResponse["confidence"]): string {
   if (confidence === "high") return "text-xs bg-emerald-100 text-emerald-700 rounded px-1.5";
   if (confidence === "medium") return "text-xs bg-amber-100 text-amber-700 rounded px-1.5";
@@ -50,6 +46,7 @@ export default function RateSuggestionWidget({
   jobRequirementId,
   bookingId,
   paymentType = "hourly",
+  rateType,
   proposedRate,
   onUseSuggestion,
   userPlan,
@@ -61,7 +58,7 @@ export default function RateSuggestionWidget({
   const [showAiRow, setShowAiRow] = useState(false);
 
   const isStarter = userPlan === "employer_starter" || userPlan === "free";
-  const unit = rateUnit(paymentType);
+  const unit = rateUnitLabel(paymentTypeToRateType(paymentType, rateType)).replace("/", "");
 
   const buildRequestBody = useCallback(
     (includeAi: boolean) => {

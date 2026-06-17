@@ -526,3 +526,53 @@ Task 5.1 → 5.2 → 5.3 (admin CSRF) → 5.4 (profile deletion UI)
 ```
 
 CRITICAL: Task 5.3 must be completed and tested before `doubleCsrfProtection` is applied in Task 3.1. Adding CSRF protection before the frontend sends the token will lock out the admin console.
+
+---
+
+# Phase 6 (P1 Addendum) — Close Remaining Sanitisation Paths (added 2026-06-09)
+
+> Implements the extended Module 2 (`features.md`) and decisions A1–A5 (`plan.md`). Reuses the Phase 1 `sanitiseText` utility. No schema, OpenAPI, or codegen changes.
+
+### Task 6.1 — Meetings
+- File: `artifacts/api-server/src/routes/meetings.ts`
+- Import `sanitiseText`. Sanitise every free-text field (title/agenda/notes) on the create `.values({ ...data })` (~110) and update `.set({ ...parsed.data })` (~178) paths — explicitly, not via the spread.
+- **Acceptance:** A `<script>` payload in meeting title/agenda/notes is stored neutralised on both POST and PATCH.
+
+### Task 6.2 — Portfolio
+- File: `artifacts/api-server/src/routes/portfolio.ts`
+- Import `sanitiseText`. Sanitise `title` and `description` on create (~64) and update (~90).
+- **Acceptance:** Portfolio title/description are sanitised on create and update; `url`/`imageUrl`/`tags` untouched.
+
+### Task 6.3 — Milestones
+- File: `artifacts/api-server/src/routes/milestones.ts`
+- Import `sanitiseText`. Sanitise `title` and `description` on insert (~92–93) and any update path.
+- **Acceptance:** Milestone title/description stored neutralised.
+
+### Task 6.4 — Job Interests
+- File: `artifacts/api-server/src/routes/jobInterests.ts`
+- Import `sanitiseText`. For `message` (~51), apply `sanitiseText` → trim → existing length cap (per A4).
+- **Acceptance:** Job-interest message is sanitised before the trim/slice; length cap preserved.
+
+### Task 6.5 — Agreement signature name
+- File: `artifacts/api-server/src/routes/agreements.ts`
+- Import `sanitiseText`. After the existing `.trim()`/required-field validation (~791–794), sanitise `signatureName` before assigning to `employerSignatureName`/`freelancerSignatureName` (~820/~828).
+- **Acceptance:** A script payload in `signatureName` is neutralised; "name or image required" validation still works.
+
+### Task 6.6 — AI chat
+- File: `artifacts/api-server/src/routes/openaiChat.ts`
+- Import `sanitiseText`. Sanitise conversation `title` (~39) and user message `content` (~122); pass the sanitised content into the model history (per A3). Leave assistant `content` (~184) unchanged.
+- **Acceptance:** Stored conversation title and user message content are sanitised; assistant output unaffected.
+
+### Task 6.7 — Typecheck gate
+- Run `pnpm run typecheck`.
+- **Acceptance:** Zero new type errors.
+
+### Phase 6 Acceptance Checklist
+- [ ] `meetings.ts` sanitises title/agenda/notes on create + update
+- [ ] `portfolio.ts` sanitises title/description on create + update
+- [ ] `milestones.ts` sanitises title/description
+- [ ] `jobInterests.ts` sanitises message (sanitise → trim → cap)
+- [ ] `agreements.ts` sanitises signatureName after trim/validation
+- [ ] `openaiChat.ts` sanitises conversation title + user message content (assistant unchanged)
+- [ ] No double-encoding (sanitise once on write only)
+- [ ] `pnpm run typecheck` passes with zero new errors

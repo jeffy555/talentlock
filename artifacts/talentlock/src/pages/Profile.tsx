@@ -27,6 +27,7 @@ import ReviewList from "@/components/ReviewList";
 import DeleteAccountSection from "@/components/DeleteAccountSection";
 import { resolveVerificationLevel } from "@/lib/verification";
 import { useQueryClient } from "@tanstack/react-query";
+import TeachingDetailsSection, { emptyTeachingDetails, type TeachingDetailsValues } from "@/components/onboarding/TeachingDetailsSection";
 
 const BASE = import.meta.env.BASE_URL ?? "/";
 
@@ -358,6 +359,7 @@ export default function Profile() {
   const [isAvailable, setIsAvailable] = useState(freelancerProfile?.isAvailable ?? true);
   const [availableFrom, setAvailableFrom] = useState(fp?.availableFrom ? fp.availableFrom.substring(0, 10) : "");
   const [availabilityNote, setAvailabilityNote] = useState(fp?.availabilityNote ?? "");
+  const [teachingDetails, setTeachingDetails] = useState<TeachingDetailsValues>(emptyTeachingDetails());
 
   const [companyName, setCompanyName] = useState(employerProfile?.companyName ?? "");
   const [industry, setIndustry] = useState(employerProfile?.industry ?? "");
@@ -374,6 +376,25 @@ export default function Profile() {
 
   const handleSaveFreelancer = async () => {
     try {
+      const fp3 = freelancerProfile as typeof freelancerProfile & { professionCategory?: string; educationProfessionType?: string | null };
+      const teachingPayload = fp3?.professionCategory === "education"
+        ? {
+            teachingSubjects: teachingDetails.teachingSubjects.length ? teachingDetails.teachingSubjects : undefined,
+            teachingLevels: teachingDetails.teachingLevels.length ? teachingDetails.teachingLevels : undefined,
+            yearsTeachingExperience: teachingDetails.yearsTeachingExperience ?? undefined,
+            highestDegree: teachingDetails.highestDegree ?? undefined,
+            degreeSubject: teachingDetails.degreeSubject || undefined,
+            degreeInstitution: teachingDetails.degreeInstitution || undefined,
+            teachingLicenceState: teachingDetails.teachingLicenceState || undefined,
+            teachingLicenceExpiry: teachingDetails.teachingLicenceExpiry
+              ? new Date(teachingDetails.teachingLicenceExpiry).toISOString()
+              : undefined,
+            researchPublications: teachingDetails.researchPublications || undefined,
+            preferredTeachingMode: teachingDetails.preferredTeachingMode ?? undefined,
+            location: teachingDetails.location || undefined,
+          }
+        : {};
+
       await updateFreelancer.mutateAsync({
         data: {
           bio: bio || undefined, tagline: tagline || undefined,
@@ -383,6 +404,7 @@ export default function Profile() {
           isAvailable,
           availableFrom: availableFrom ? new Date(availableFrom).toISOString() : undefined,
           availabilityNote: availabilityNote || undefined,
+          ...teachingPayload,
         },
       });
       toast({ title: "Profile updated", description: "Your freelancer profile has been saved." });
@@ -413,6 +435,36 @@ export default function Profile() {
       setEmailNotificationsEnabled(dbUser.emailNotificationsEnabled);
     }
   }, [dbUser?.emailNotificationsEnabled]);
+
+  useEffect(() => {
+    if (!freelancerProfile) return;
+    const fp2 = freelancerProfile as typeof freelancerProfile & {
+      teachingSubjects?: string[] | null;
+      teachingLevels?: string[] | null;
+      yearsTeachingExperience?: number | null;
+      highestDegree?: string | null;
+      degreeSubject?: string | null;
+      degreeInstitution?: string | null;
+      teachingLicenceState?: string | null;
+      teachingLicenceExpiry?: string | null;
+      researchPublications?: string | null;
+      preferredTeachingMode?: string | null;
+      location?: string | null;
+    };
+    setTeachingDetails({
+      teachingSubjects: fp2.teachingSubjects ?? [],
+      teachingLevels: fp2.teachingLevels ?? [],
+      yearsTeachingExperience: fp2.yearsTeachingExperience ?? null,
+      highestDegree: (fp2.highestDegree as TeachingDetailsValues["highestDegree"]) ?? null,
+      degreeSubject: fp2.degreeSubject ?? "",
+      degreeInstitution: fp2.degreeInstitution ?? "",
+      teachingLicenceState: fp2.teachingLicenceState ?? "",
+      teachingLicenceExpiry: fp2.teachingLicenceExpiry ? fp2.teachingLicenceExpiry.substring(0, 10) : "",
+      researchPublications: fp2.researchPublications ?? "",
+      preferredTeachingMode: (fp2.preferredTeachingMode as TeachingDetailsValues["preferredTeachingMode"]) ?? null,
+      location: fp2.location ?? "",
+    });
+  }, [freelancerProfile?.id]);
 
   const completenessScore = freelancerProfile?.completenessScore ?? 0;
   const hasAvatar = !!(dbUser?.avatarUrl || clerkUser?.imageUrl);
@@ -531,6 +583,14 @@ export default function Profile() {
                 <Input type="url" value={portfolioUrl} onChange={e => setPortfolioUrl(e.target.value)} placeholder="https://yourportfolio.com" />
               </div>
             </div>
+
+            {(freelancerProfile as { professionCategory?: string }).professionCategory === "education" && (
+              <TeachingDetailsSection
+                educationProfessionType={(freelancerProfile as { educationProfessionType?: string | null }).educationProfessionType as import("@workspace/api-client-react").EducationProfessionType | null}
+                values={teachingDetails}
+                onChange={setTeachingDetails}
+              />
+            )}
 
             <Button onClick={handleSaveFreelancer} disabled={updateFreelancer.isPending}>
               {updateFreelancer.isPending ? "Saving..." : "Save Changes"}

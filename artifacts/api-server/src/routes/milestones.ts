@@ -15,6 +15,7 @@ import {
   freelancerNameForProfile,
 } from "../lib/createNotification";
 import { sendNotificationEmailAsync } from "../lib/emailService";
+import { sanitiseText } from "../lib/sanitise";
 
 const router = Router();
 
@@ -89,8 +90,8 @@ router.post("/bookings/:id/milestones", async (req, res) => {
     }
     const [milestone] = await db.insert(milestonesTable).values({
       bookingId,
-      title: parsed.data.title,
-      description: parsed.data.description ?? null,
+      title: sanitiseText(parsed.data.title),
+      description: parsed.data.description != null ? sanitiseText(parsed.data.description) : null,
       amount: parsed.data.amount?.toString() ?? null,
       dueDate: parsed.data.dueDate ? new Date(parsed.data.dueDate) : null,
       status: "pending",
@@ -119,8 +120,10 @@ router.patch("/milestones/:id", async (req, res) => {
       res.status(403).json({ error: "Forbidden" }); return;
     }
     const updateData: Record<string, unknown> = { updatedAt: new Date() };
-    if (parsed.data.title) updateData.title = parsed.data.title;
-    if (parsed.data.description !== undefined) updateData.description = parsed.data.description;
+    if (parsed.data.title) updateData.title = sanitiseText(parsed.data.title);
+    if (parsed.data.description !== undefined) {
+      updateData.description = parsed.data.description != null ? sanitiseText(parsed.data.description) : parsed.data.description;
+    }
     if (parsed.data.amount !== undefined) updateData.amount = parsed.data.amount?.toString();
     if (parsed.data.dueDate !== undefined) updateData.dueDate = parsed.data.dueDate ? new Date(parsed.data.dueDate) : null;
     if (parsed.data.status) {

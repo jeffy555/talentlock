@@ -222,3 +222,44 @@ Task 2.1 → 2.2 → 2.3 → 2.4 → 2.5 → 2.6
 Task 3.1 (after 2.6) → 3.2 → 3.3 → 3.4 → 3.5 → 3.6 → 3.7
 Task 4.1 (after 2.5)
 ```
+
+---
+
+# Phase 5 (P1 Addendum) — Complete Feature Breakdown (added 2026-06-09)
+
+> Implements Module 5 (`features.md`) and decisions A1–A5 (`plan.md`).
+
+### Task 5.1 — Export the feature list from `tokenLogger.ts`
+- File: `artifacts/api-server/src/lib/tokenLogger.ts`
+- Export the existing `VALID_TOKEN_FEATURES` constant as `TOKEN_FEATURES` (typed `TokenFeature[]`).
+- **Acceptance:** A single exported, typed list of all 9 features is importable by other modules.
+
+### Task 5.2 — Extend breakdown type + aggregation
+- File: `artifacts/api-server/src/lib/subscriptionGating.ts`
+- Replace the 2-key `TokenUsageBreakdown` interface with `Record<TokenFeature, number>`, add an `emptyBreakdown()` helper seeded from `TOKEN_FEATURES`, and update `getMonthlyTokenUsage` to bucket every known feature (per `plan.md` A2).
+- Keep `tokensUsed` summing **all** rows (unchanged behaviour).
+- **Acceptance:** `breakdown` contains all 9 keys; `sum(breakdown) === tokensUsed` when all rows use known features.
+
+### Task 5.3 — Update OpenAPI + regenerate
+- File: `lib/api-spec/openapi.yaml`
+- Expand the `breakdown` schema of the `GET /token-usage/me` response to all 9 integer keys (required, default 0).
+- Run the repo codegen command to regenerate React Query hooks + zod types.
+- **Acceptance:** Generated types include all 9 breakdown keys; `pnpm run typecheck` passes.
+
+### Task 5.4 — Render full breakdown in UI
+- Files: `src/components/TokenUsageWidget.tsx` (and the admin token tab from Task 4.1)
+- Render all **non-zero** breakdown features using the label map in `plan.md` A4; preserve the existing zero/empty state.
+- **Acceptance:** Billing widget and admin tab show every feature that has usage; totals visibly reconcile with the displayed total.
+
+### Task 5.5 — Typecheck gate
+- Run `pnpm run typecheck`.
+- **Acceptance:** Zero new type errors.
+
+### Phase 5 Acceptance Checklist
+- [ ] `TOKEN_FEATURES` exported from `tokenLogger.ts`
+- [ ] `TokenUsageBreakdown` is `Record<TokenFeature, number>` (all 9 keys)
+- [ ] `getMonthlyTokenUsage` aggregates all 9 features
+- [ ] `sum(breakdown) === tokensUsed` invariant holds for known-feature rows
+- [ ] OpenAPI `breakdown` schema lists all 9 keys; codegen regenerated
+- [ ] Billing widget + admin tab render all non-zero features with labels
+- [ ] `pnpm run typecheck` passes with zero new errors

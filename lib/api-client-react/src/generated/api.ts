@@ -26,6 +26,8 @@ import type {
   AddTeamShortlistBody,
   Agreement,
   AgreementSignedError,
+  AgreementSummaryParseError,
+  AgreementSummaryResult,
   AiProposalResponse,
   AnalyticsData,
   AvailabilityMeBlock,
@@ -46,6 +48,9 @@ import type {
   CreatePortfolioItemBody,
   CreateReviewBody,
   CreateTeamBody,
+  CruiseModeActivity,
+  CruiseModeConfig,
+  CruiseModeStats,
   DashboardStats,
   DeleteAvailabilityBlockResponse,
   DeletePortfolioItem200,
@@ -64,8 +69,11 @@ import type {
   FreelancerReviewsResult,
   GetDashboardHiringAnalyticsParams,
   GetTeamAnalyticsParams,
+  HealthScoreParseError,
+  HealthScoreResult,
   HealthStatus,
   HiringAnalytics,
+  InviteEmailFailedError,
   InviteTeamMemberBody,
   InviteUsedError,
   JobDescriptionResponse,
@@ -74,6 +82,7 @@ import type {
   JobRequirement,
   ListAgreementsParams,
   ListBookingsParams,
+  ListCruiseModeActivityParams,
   ListFreelancerReviewsParams,
   ListFreelancersParams,
   ListJobRequirementsParams,
@@ -94,11 +103,16 @@ import type {
   OpenaiMessage,
   PaginatedAgreementsResult,
   PaginatedBookingsResult,
+  PaginatedCruiseModeActivityResult,
   PaginatedMeetingsResult,
+  ParseCruiseModeRulesBody,
+  ParseCruiseModeRulesResult,
   PatchNotificationPreferencesBody,
   PlanDef,
   PlanLimitError,
   PortfolioItem,
+  PostAgreementsIdHealthScoreParams,
+  PostAgreementsIdSummariseParams,
   PostAiJobDescriptionBody,
   PostAiMatchExplanationBody,
   PostAiProposalBody,
@@ -110,6 +124,7 @@ import type {
   RemoveTeamMemberResponse,
   RemoveTeamShortlistResponse,
   ReplyReviewBody,
+  ResendTeamInviteResponse,
   SaveToggleResult,
   SendOpenaiMessageBody,
   SignAgreementBody,
@@ -131,6 +146,7 @@ import type {
   UpgradeSubscriptionBody,
   UploadUrlRequest,
   UploadUrlResponse,
+  UpsertCruiseModeBody,
   UpsertEmployerProfileBody,
   UpsertUserBody,
   User,
@@ -3949,6 +3965,214 @@ export const usePatchAgreementsIdAcceptRedline = <
 };
 
 /**
+ * @summary Score contract health with AI across five dimensions
+ */
+export const getPostAgreementsIdHealthScoreUrl = (
+  id: number,
+  params?: PostAgreementsIdHealthScoreParams,
+) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/agreements/${id}/health-score?${stringifiedParams}`
+    : `/api/agreements/${id}/health-score`;
+};
+
+export const postAgreementsIdHealthScore = async (
+  id: number,
+  params?: PostAgreementsIdHealthScoreParams,
+  options?: RequestInit,
+): Promise<HealthScoreResult | HealthScoreParseError> => {
+  return customFetch<HealthScoreResult | HealthScoreParseError>(
+    getPostAgreementsIdHealthScoreUrl(id, params),
+    {
+      ...options,
+      method: "POST",
+    },
+  );
+};
+
+export const getPostAgreementsIdHealthScoreMutationOptions = <
+  TError = ErrorType<ErrorEnvelope | TokenLimitError>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof postAgreementsIdHealthScore>>,
+    TError,
+    { id: number; params?: PostAgreementsIdHealthScoreParams },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof postAgreementsIdHealthScore>>,
+  TError,
+  { id: number; params?: PostAgreementsIdHealthScoreParams },
+  TContext
+> => {
+  const mutationKey = ["postAgreementsIdHealthScore"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof postAgreementsIdHealthScore>>,
+    { id: number; params?: PostAgreementsIdHealthScoreParams }
+  > = (props) => {
+    const { id, params } = props ?? {};
+
+    return postAgreementsIdHealthScore(id, params, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type PostAgreementsIdHealthScoreMutationResult = NonNullable<
+  Awaited<ReturnType<typeof postAgreementsIdHealthScore>>
+>;
+
+export type PostAgreementsIdHealthScoreMutationError = ErrorType<
+  ErrorEnvelope | TokenLimitError
+>;
+
+/**
+ * @summary Score contract health with AI across five dimensions
+ */
+export const usePostAgreementsIdHealthScore = <
+  TError = ErrorType<ErrorEnvelope | TokenLimitError>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof postAgreementsIdHealthScore>>,
+    TError,
+    { id: number; params?: PostAgreementsIdHealthScoreParams },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof postAgreementsIdHealthScore>>,
+  TError,
+  { id: number; params?: PostAgreementsIdHealthScoreParams },
+  TContext
+> => {
+  return useMutation(getPostAgreementsIdHealthScoreMutationOptions(options));
+};
+
+/**
+ * @summary AI plain-English summary of agreement for freelancer
+ */
+export const getPostAgreementsIdSummariseUrl = (
+  id: number,
+  params?: PostAgreementsIdSummariseParams,
+) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/agreements/${id}/summarise?${stringifiedParams}`
+    : `/api/agreements/${id}/summarise`;
+};
+
+export const postAgreementsIdSummarise = async (
+  id: number,
+  params?: PostAgreementsIdSummariseParams,
+  options?: RequestInit,
+): Promise<AgreementSummaryResult | AgreementSummaryParseError> => {
+  return customFetch<AgreementSummaryResult | AgreementSummaryParseError>(
+    getPostAgreementsIdSummariseUrl(id, params),
+    {
+      ...options,
+      method: "POST",
+    },
+  );
+};
+
+export const getPostAgreementsIdSummariseMutationOptions = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof postAgreementsIdSummarise>>,
+    TError,
+    { id: number; params?: PostAgreementsIdSummariseParams },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof postAgreementsIdSummarise>>,
+  TError,
+  { id: number; params?: PostAgreementsIdSummariseParams },
+  TContext
+> => {
+  const mutationKey = ["postAgreementsIdSummarise"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof postAgreementsIdSummarise>>,
+    { id: number; params?: PostAgreementsIdSummariseParams }
+  > = (props) => {
+    const { id, params } = props ?? {};
+
+    return postAgreementsIdSummarise(id, params, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type PostAgreementsIdSummariseMutationResult = NonNullable<
+  Awaited<ReturnType<typeof postAgreementsIdSummarise>>
+>;
+
+export type PostAgreementsIdSummariseMutationError = ErrorType<ErrorEnvelope>;
+
+/**
+ * @summary AI plain-English summary of agreement for freelancer
+ */
+export const usePostAgreementsIdSummarise = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof postAgreementsIdSummarise>>,
+    TError,
+    { id: number; params?: PostAgreementsIdSummariseParams },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof postAgreementsIdSummarise>>,
+  TError,
+  { id: number; params?: PostAgreementsIdSummariseParams },
+  TContext
+> => {
+  return useMutation(getPostAgreementsIdSummariseMutationOptions(options));
+};
+
+/**
  * @summary List meetings for the current user
  */
 export const getListMeetingsUrl = (params?: ListMeetingsParams) => {
@@ -7656,7 +7880,7 @@ export const inviteTeamMember = async (
 };
 
 export const getInviteTeamMemberMutationOptions = <
-  TError = ErrorType<ErrorEnvelope | PlanLimitError>,
+  TError = ErrorType<ErrorEnvelope | PlanLimitError | InviteEmailFailedError>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -7698,14 +7922,14 @@ export type InviteTeamMemberMutationResult = NonNullable<
 >;
 export type InviteTeamMemberMutationBody = BodyType<InviteTeamMemberBody>;
 export type InviteTeamMemberMutationError = ErrorType<
-  ErrorEnvelope | PlanLimitError
+  ErrorEnvelope | PlanLimitError | InviteEmailFailedError
 >;
 
 /**
  * @summary Invite a team member (admin only)
  */
 export const useInviteTeamMember = <
-  TError = ErrorType<ErrorEnvelope | PlanLimitError>,
+  TError = ErrorType<ErrorEnvelope | PlanLimitError | InviteEmailFailedError>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -8181,6 +8405,95 @@ export function useGetTeamAnalytics<
 }
 
 /**
+ * @summary Resend invitation email for a pending team member (admin only)
+ */
+export const getResendTeamInviteUrl = (memberId: number) => {
+  return `/api/team/members/${memberId}/resend-invite`;
+};
+
+export const resendTeamInvite = async (
+  memberId: number,
+  options?: RequestInit,
+): Promise<ResendTeamInviteResponse> => {
+  return customFetch<ResendTeamInviteResponse>(
+    getResendTeamInviteUrl(memberId),
+    {
+      ...options,
+      method: "POST",
+    },
+  );
+};
+
+export const getResendTeamInviteMutationOptions = <
+  TError = ErrorType<ErrorEnvelope | InviteEmailFailedError>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof resendTeamInvite>>,
+    TError,
+    { memberId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof resendTeamInvite>>,
+  TError,
+  { memberId: number },
+  TContext
+> => {
+  const mutationKey = ["resendTeamInvite"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof resendTeamInvite>>,
+    { memberId: number }
+  > = (props) => {
+    const { memberId } = props ?? {};
+
+    return resendTeamInvite(memberId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ResendTeamInviteMutationResult = NonNullable<
+  Awaited<ReturnType<typeof resendTeamInvite>>
+>;
+
+export type ResendTeamInviteMutationError = ErrorType<
+  ErrorEnvelope | InviteEmailFailedError
+>;
+
+/**
+ * @summary Resend invitation email for a pending team member (admin only)
+ */
+export const useResendTeamInvite = <
+  TError = ErrorType<ErrorEnvelope | InviteEmailFailedError>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof resendTeamInvite>>,
+    TError,
+    { memberId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof resendTeamInvite>>,
+  TError,
+  { memberId: number },
+  TContext
+> => {
+  return useMutation(getResendTeamInviteMutationOptions(options));
+};
+
+/**
  * @summary Remove or deactivate a team member (admin only)
  */
 export const getRemoveTeamMemberUrl = (memberId: number) => {
@@ -8268,3 +8581,760 @@ export const useRemoveTeamMember = <
 > => {
   return useMutation(getRemoveTeamMemberMutationOptions(options));
 };
+
+/**
+ * @summary Get current Cruise Mode config
+ */
+export const getGetCruiseModeUrl = () => {
+  return `/api/cruise-mode`;
+};
+
+export const getCruiseMode = async (
+  options?: RequestInit,
+): Promise<CruiseModeConfig | null> => {
+  return customFetch<CruiseModeConfig | null>(getGetCruiseModeUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetCruiseModeQueryKey = () => {
+  return [`/api/cruise-mode`] as const;
+};
+
+export const getGetCruiseModeQueryOptions = <
+  TData = Awaited<ReturnType<typeof getCruiseMode>>,
+  TError = ErrorType<ErrorEnvelope>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getCruiseMode>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetCruiseModeQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getCruiseMode>>> = ({
+    signal,
+  }) => getCruiseMode({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getCruiseMode>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetCruiseModeQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getCruiseMode>>
+>;
+export type GetCruiseModeQueryError = ErrorType<ErrorEnvelope>;
+
+/**
+ * @summary Get current Cruise Mode config
+ */
+
+export function useGetCruiseMode<
+  TData = Awaited<ReturnType<typeof getCruiseMode>>,
+  TError = ErrorType<ErrorEnvelope>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getCruiseMode>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetCruiseModeQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Create or update Cruise Mode config
+ */
+export const getUpsertCruiseModeUrl = () => {
+  return `/api/cruise-mode`;
+};
+
+export const upsertCruiseMode = async (
+  upsertCruiseModeBody: UpsertCruiseModeBody,
+  options?: RequestInit,
+): Promise<CruiseModeConfig> => {
+  return customFetch<CruiseModeConfig>(getUpsertCruiseModeUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(upsertCruiseModeBody),
+  });
+};
+
+export const getUpsertCruiseModeMutationOptions = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof upsertCruiseMode>>,
+    TError,
+    { data: BodyType<UpsertCruiseModeBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof upsertCruiseMode>>,
+  TError,
+  { data: BodyType<UpsertCruiseModeBody> },
+  TContext
+> => {
+  const mutationKey = ["upsertCruiseMode"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof upsertCruiseMode>>,
+    { data: BodyType<UpsertCruiseModeBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return upsertCruiseMode(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpsertCruiseModeMutationResult = NonNullable<
+  Awaited<ReturnType<typeof upsertCruiseMode>>
+>;
+export type UpsertCruiseModeMutationBody = BodyType<UpsertCruiseModeBody>;
+export type UpsertCruiseModeMutationError = ErrorType<ErrorEnvelope>;
+
+/**
+ * @summary Create or update Cruise Mode config
+ */
+export const useUpsertCruiseMode = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof upsertCruiseMode>>,
+    TError,
+    { data: BodyType<UpsertCruiseModeBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof upsertCruiseMode>>,
+  TError,
+  { data: BodyType<UpsertCruiseModeBody> },
+  TContext
+> => {
+  return useMutation(getUpsertCruiseModeMutationOptions(options));
+};
+
+/**
+ * @summary Activate Cruise Mode (live)
+ */
+export const getActivateCruiseModeUrl = () => {
+  return `/api/cruise-mode/activate`;
+};
+
+export const activateCruiseMode = async (
+  options?: RequestInit,
+): Promise<CruiseModeConfig> => {
+  return customFetch<CruiseModeConfig>(getActivateCruiseModeUrl(), {
+    ...options,
+    method: "PATCH",
+  });
+};
+
+export const getActivateCruiseModeMutationOptions = <
+  TError = ErrorType<ErrorEnvelope | PlanLimitError>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof activateCruiseMode>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof activateCruiseMode>>,
+  TError,
+  void,
+  TContext
+> => {
+  const mutationKey = ["activateCruiseMode"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof activateCruiseMode>>,
+    void
+  > = () => {
+    return activateCruiseMode(requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ActivateCruiseModeMutationResult = NonNullable<
+  Awaited<ReturnType<typeof activateCruiseMode>>
+>;
+
+export type ActivateCruiseModeMutationError = ErrorType<
+  ErrorEnvelope | PlanLimitError
+>;
+
+/**
+ * @summary Activate Cruise Mode (live)
+ */
+export const useActivateCruiseMode = <
+  TError = ErrorType<ErrorEnvelope | PlanLimitError>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof activateCruiseMode>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof activateCruiseMode>>,
+  TError,
+  void,
+  TContext
+> => {
+  return useMutation(getActivateCruiseModeMutationOptions(options));
+};
+
+/**
+ * @summary Activate Cruise Mode in dry run mode
+ */
+export const getDryRunCruiseModeUrl = () => {
+  return `/api/cruise-mode/dry-run`;
+};
+
+export const dryRunCruiseMode = async (
+  options?: RequestInit,
+): Promise<CruiseModeConfig> => {
+  return customFetch<CruiseModeConfig>(getDryRunCruiseModeUrl(), {
+    ...options,
+    method: "PATCH",
+  });
+};
+
+export const getDryRunCruiseModeMutationOptions = <
+  TError = ErrorType<ErrorEnvelope | PlanLimitError>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof dryRunCruiseMode>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof dryRunCruiseMode>>,
+  TError,
+  void,
+  TContext
+> => {
+  const mutationKey = ["dryRunCruiseMode"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof dryRunCruiseMode>>,
+    void
+  > = () => {
+    return dryRunCruiseMode(requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DryRunCruiseModeMutationResult = NonNullable<
+  Awaited<ReturnType<typeof dryRunCruiseMode>>
+>;
+
+export type DryRunCruiseModeMutationError = ErrorType<
+  ErrorEnvelope | PlanLimitError
+>;
+
+/**
+ * @summary Activate Cruise Mode in dry run mode
+ */
+export const useDryRunCruiseMode = <
+  TError = ErrorType<ErrorEnvelope | PlanLimitError>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof dryRunCruiseMode>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof dryRunCruiseMode>>,
+  TError,
+  void,
+  TContext
+> => {
+  return useMutation(getDryRunCruiseModeMutationOptions(options));
+};
+
+/**
+ * @summary Deactivate Cruise Mode
+ */
+export const getDeactivateCruiseModeUrl = () => {
+  return `/api/cruise-mode/deactivate`;
+};
+
+export const deactivateCruiseMode = async (
+  options?: RequestInit,
+): Promise<CruiseModeConfig> => {
+  return customFetch<CruiseModeConfig>(getDeactivateCruiseModeUrl(), {
+    ...options,
+    method: "PATCH",
+  });
+};
+
+export const getDeactivateCruiseModeMutationOptions = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deactivateCruiseMode>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deactivateCruiseMode>>,
+  TError,
+  void,
+  TContext
+> => {
+  const mutationKey = ["deactivateCruiseMode"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deactivateCruiseMode>>,
+    void
+  > = () => {
+    return deactivateCruiseMode(requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeactivateCruiseModeMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deactivateCruiseMode>>
+>;
+
+export type DeactivateCruiseModeMutationError = ErrorType<ErrorEnvelope>;
+
+/**
+ * @summary Deactivate Cruise Mode
+ */
+export const useDeactivateCruiseMode = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deactivateCruiseMode>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deactivateCruiseMode>>,
+  TError,
+  void,
+  TContext
+> => {
+  return useMutation(getDeactivateCruiseModeMutationOptions(options));
+};
+
+/**
+ * @summary Parse free-form text into structured Cruise Mode rules
+ */
+export const getParseCruiseModeRulesUrl = () => {
+  return `/api/cruise-mode/parse-rules`;
+};
+
+export const parseCruiseModeRules = async (
+  parseCruiseModeRulesBody: ParseCruiseModeRulesBody,
+  options?: RequestInit,
+): Promise<ParseCruiseModeRulesResult> => {
+  return customFetch<ParseCruiseModeRulesResult>(getParseCruiseModeRulesUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(parseCruiseModeRulesBody),
+  });
+};
+
+export const getParseCruiseModeRulesMutationOptions = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof parseCruiseModeRules>>,
+    TError,
+    { data: BodyType<ParseCruiseModeRulesBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof parseCruiseModeRules>>,
+  TError,
+  { data: BodyType<ParseCruiseModeRulesBody> },
+  TContext
+> => {
+  const mutationKey = ["parseCruiseModeRules"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof parseCruiseModeRules>>,
+    { data: BodyType<ParseCruiseModeRulesBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return parseCruiseModeRules(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ParseCruiseModeRulesMutationResult = NonNullable<
+  Awaited<ReturnType<typeof parseCruiseModeRules>>
+>;
+export type ParseCruiseModeRulesMutationBody =
+  BodyType<ParseCruiseModeRulesBody>;
+export type ParseCruiseModeRulesMutationError = ErrorType<ErrorEnvelope>;
+
+/**
+ * @summary Parse free-form text into structured Cruise Mode rules
+ */
+export const useParseCruiseModeRules = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof parseCruiseModeRules>>,
+    TError,
+    { data: BodyType<ParseCruiseModeRulesBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof parseCruiseModeRules>>,
+  TError,
+  { data: BodyType<ParseCruiseModeRulesBody> },
+  TContext
+> => {
+  return useMutation(getParseCruiseModeRulesMutationOptions(options));
+};
+
+/**
+ * @summary Paginated Cruise Mode activity feed
+ */
+export const getListCruiseModeActivityUrl = (
+  params?: ListCruiseModeActivityParams,
+) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/cruise-mode/activity?${stringifiedParams}`
+    : `/api/cruise-mode/activity`;
+};
+
+export const listCruiseModeActivity = async (
+  params?: ListCruiseModeActivityParams,
+  options?: RequestInit,
+): Promise<PaginatedCruiseModeActivityResult> => {
+  return customFetch<PaginatedCruiseModeActivityResult>(
+    getListCruiseModeActivityUrl(params),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getListCruiseModeActivityQueryKey = (
+  params?: ListCruiseModeActivityParams,
+) => {
+  return [`/api/cruise-mode/activity`, ...(params ? [params] : [])] as const;
+};
+
+export const getListCruiseModeActivityQueryOptions = <
+  TData = Awaited<ReturnType<typeof listCruiseModeActivity>>,
+  TError = ErrorType<ErrorEnvelope>,
+>(
+  params?: ListCruiseModeActivityParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listCruiseModeActivity>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getListCruiseModeActivityQueryKey(params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listCruiseModeActivity>>
+  > = ({ signal }) =>
+    listCruiseModeActivity(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listCruiseModeActivity>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListCruiseModeActivityQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listCruiseModeActivity>>
+>;
+export type ListCruiseModeActivityQueryError = ErrorType<ErrorEnvelope>;
+
+/**
+ * @summary Paginated Cruise Mode activity feed
+ */
+
+export function useListCruiseModeActivity<
+  TData = Awaited<ReturnType<typeof listCruiseModeActivity>>,
+  TError = ErrorType<ErrorEnvelope>,
+>(
+  params?: ListCruiseModeActivityParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listCruiseModeActivity>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListCruiseModeActivityQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Mark follow-up sent for a Cruise Mode activity entry
+ */
+export const getMarkCruiseModeFollowUpUrl = (id: string) => {
+  return `/api/cruise-mode/activity/${id}/follow-up`;
+};
+
+export const markCruiseModeFollowUp = async (
+  id: string,
+  options?: RequestInit,
+): Promise<CruiseModeActivity> => {
+  return customFetch<CruiseModeActivity>(getMarkCruiseModeFollowUpUrl(id), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getMarkCruiseModeFollowUpMutationOptions = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof markCruiseModeFollowUp>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof markCruiseModeFollowUp>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  const mutationKey = ["markCruiseModeFollowUp"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof markCruiseModeFollowUp>>,
+    { id: string }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return markCruiseModeFollowUp(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type MarkCruiseModeFollowUpMutationResult = NonNullable<
+  Awaited<ReturnType<typeof markCruiseModeFollowUp>>
+>;
+
+export type MarkCruiseModeFollowUpMutationError = ErrorType<ErrorEnvelope>;
+
+/**
+ * @summary Mark follow-up sent for a Cruise Mode activity entry
+ */
+export const useMarkCruiseModeFollowUp = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof markCruiseModeFollowUp>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof markCruiseModeFollowUp>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  return useMutation(getMarkCruiseModeFollowUpMutationOptions(options));
+};
+
+/**
+ * @summary Cruise Mode stats for today and current month
+ */
+export const getGetCruiseModeStatsUrl = () => {
+  return `/api/cruise-mode/stats`;
+};
+
+export const getCruiseModeStats = async (
+  options?: RequestInit,
+): Promise<CruiseModeStats> => {
+  return customFetch<CruiseModeStats>(getGetCruiseModeStatsUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetCruiseModeStatsQueryKey = () => {
+  return [`/api/cruise-mode/stats`] as const;
+};
+
+export const getGetCruiseModeStatsQueryOptions = <
+  TData = Awaited<ReturnType<typeof getCruiseModeStats>>,
+  TError = ErrorType<ErrorEnvelope>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getCruiseModeStats>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetCruiseModeStatsQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getCruiseModeStats>>
+  > = ({ signal }) => getCruiseModeStats({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getCruiseModeStats>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetCruiseModeStatsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getCruiseModeStats>>
+>;
+export type GetCruiseModeStatsQueryError = ErrorType<ErrorEnvelope>;
+
+/**
+ * @summary Cruise Mode stats for today and current month
+ */
+
+export function useGetCruiseModeStats<
+  TData = Awaited<ReturnType<typeof getCruiseModeStats>>,
+  TError = ErrorType<ErrorEnvelope>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getCruiseModeStats>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetCruiseModeStatsQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}

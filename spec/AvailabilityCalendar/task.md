@@ -415,3 +415,34 @@ Task 1.1 (inspect) → 1.2 → 1.3 → 1.4
 Task 2.1 → 2.2 → 2.3 → 2.4 → 2.5 → 2.6 → 2.7 (codegen + typecheck)
 Task 3.1 → 3.2 → 3.3 → 3.4 → 3.5 → 3.6 → 3.7 → 3.8 → 3.9 → 3.10 → 3.11
 ```
+
+---
+
+# Phase 4 (P1 Addendum) — Defer Availability Lock to Confirmation (added 2026-06-09)
+
+> Implements Module 8 (`features.md`) and decisions A1–A4 (`plan.md`). Coordinate with `specs/AuthHardening/` since both edit `PATCH /bookings/:id`.
+
+### Task 4.1 — Remove premature lock from `POST /bookings`
+- File: `artifacts/api-server/src/routes/bookings.ts`
+- In the create transaction, **delete** the `freelancerProfilesTable` update that sets `isAvailable: false` / `currentBookingId` / `bookingEndDate`.
+- Leave the booking insert (status `pending`) and any negotiation defaults untouched.
+- **Acceptance:** Creating a booking via `POST /bookings` leaves the target freelancer `isAvailable: true`, `currentBookingId: null`, and still visible in the Talent Vault.
+
+### Task 4.2 — Add lock to the `active` confirmation path in `PATCH /bookings/:id`
+- File: `artifacts/api-server/src/routes/bookings.ts`
+- In the branch where `status === BOOKING_CONFIRMED_STATUS` ("active"), add the `freelancerProfilesTable` update setting `isAvailable: false`, `currentBookingId: updated.id`, `bookingEndDate: updated.endDate ?? null`, in the same block as the existing `createAvailabilityBlock` call.
+- Ensure the AuthHardening participant guard (if already applied) wraps this mutation.
+- **Acceptance:** Confirming a booking (status → active) flips the freelancer to unavailable AND creates the `booked` auto-block. Cancelling/completing still restores availability (unchanged existing reset).
+
+### Task 4.3 — Typecheck gate
+- Run `pnpm run typecheck`.
+- **Acceptance:** Zero new type errors introduced by Tasks 4.1–4.2.
+
+### Phase 4 Acceptance Checklist
+- [ ] `POST /bookings` no longer mutates `freelancerProfilesTable` availability fields
+- [ ] Pending booking leaves freelancer available + Vault-visible
+- [ ] `PATCH /bookings/:id` → `active` sets `isAvailable: false` + `currentBookingId` + `bookingEndDate`
+- [ ] `active` transition still creates the `booked` availability auto-block
+- [ ] `cancelled`/`completed` still restores `isAvailable: true`
+- [ ] Coordinated with AuthHardening guard on the same handler
+- [ ] `pnpm run typecheck` passes with zero new errors

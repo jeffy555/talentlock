@@ -67,6 +67,20 @@ router.get("/freelancers", async (req, res) => {
       );
     }
 
+    if (params.professionCategory) {
+      conditions.push(eq(freelancerProfilesTable.professionCategory, params.professionCategory));
+    }
+
+    if (params.teachingSubject) {
+      const subjectPattern = `%${params.teachingSubject}%`;
+      conditions.push(
+        sql`EXISTS (
+          SELECT 1 FROM unnest(${freelancerProfilesTable.teachingSubjects}) AS subject
+          WHERE subject ILIKE ${subjectPattern}
+        )`,
+      );
+    }
+
     conditions.push(gte(freelancerProfilesTable.completenessScore, 60));
 
     const results = await db
@@ -111,6 +125,27 @@ router.patch("/freelancers/me", async (req, res) => {
   }
   if (data.availabilityNote !== undefined) {
     data.availabilityNote = data.availabilityNote === null ? null : sanitiseText(data.availabilityNote);
+  }
+  if (data.teachingSubjects !== undefined) {
+    data.teachingSubjects = data.teachingSubjects?.map((s) => sanitiseText(s)) ?? null;
+  }
+  if (data.teachingLevels !== undefined) {
+    data.teachingLevels = data.teachingLevels?.map((s) => sanitiseText(s)) ?? null;
+  }
+  if (data.degreeSubject !== undefined) {
+    data.degreeSubject = data.degreeSubject === null ? null : sanitiseText(data.degreeSubject);
+  }
+  if (data.degreeInstitution !== undefined) {
+    data.degreeInstitution = data.degreeInstitution === null ? null : sanitiseText(data.degreeInstitution);
+  }
+  if (data.teachingLicenceState !== undefined) {
+    data.teachingLicenceState = data.teachingLicenceState === null ? null : sanitiseText(data.teachingLicenceState);
+  }
+  if (data.researchPublications !== undefined) {
+    data.researchPublications = data.researchPublications === null ? null : sanitiseText(data.researchPublications);
+  }
+  if (data.location !== undefined) {
+    data.location = data.location === null ? null : sanitiseText(data.location);
   }
   try {
     const [current] = await db.select().from(freelancerProfilesTable)
@@ -175,6 +210,20 @@ router.post("/freelancers", async (req, res) => {
           hourlyRate: insertData.hourlyRate ?? null,
           subscriptionPlan: insertData.subscriptionPlan,
           resumeAnalysis: insertData.resumeAnalysis ?? null,
+          professionCategory: insertData.professionCategory,
+          educationProfessionType: insertData.educationProfessionType ?? null,
+          teachingSubjects: insertData.teachingSubjects ?? null,
+          teachingLevels: insertData.teachingLevels ?? null,
+          yearsTeachingExperience: insertData.yearsTeachingExperience ?? null,
+          highestDegree: insertData.highestDegree ?? null,
+          degreeSubject: insertData.degreeSubject ?? null,
+          degreeInstitution: insertData.degreeInstitution ?? null,
+          teachingLicenceState: insertData.teachingLicenceState ?? null,
+          teachingLicenceExpiry: insertData.teachingLicenceExpiry ?? null,
+          dbsCheckStatus: insertData.dbsCheckStatus ?? null,
+          researchPublications: insertData.researchPublications ?? null,
+          preferredTeachingMode: insertData.preferredTeachingMode ?? null,
+          location: insertData.location ?? null,
           updatedAt: new Date(),
         },
       })

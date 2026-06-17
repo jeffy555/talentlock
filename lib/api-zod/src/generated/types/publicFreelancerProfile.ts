@@ -5,7 +5,9 @@
  * TalentLock API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { EducationProfessionType } from "./educationProfessionType";
 import type { PortfolioItem } from "./portfolioItem";
+import type { ProfessionCategory } from "./professionCategory";
 import type { PublicReview } from "./publicReview";
 import type { ResumeAnalysis } from "./resumeAnalysis";
 
@@ -37,5 +39,13 @@ export interface PublicFreelancerProfile {
   averageRating?: number | null;
   reviewCount?: number;
   totalReviews: number;
+  professionCategory: ProfessionCategory;
+  educationProfessionType?: EducationProfessionType | null;
+  /** @nullable */
+  teachingSubjects?: string[] | null;
+  /** @nullable */
+  teachingLevels?: string[] | null;
+  /** @nullable */
+  location?: string | null;
   createdAt: Date;
 }

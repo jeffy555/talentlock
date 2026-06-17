@@ -31,6 +31,36 @@ import VerificationBadge from "@/components/VerificationBadge";
 import { resolveVerificationLevel } from "@/lib/verification";
 import { DatePicker } from "@/components/ui/date-picker";
 import { formatNextAvailable, nextAvailableColour, toApiDateString } from "@/lib/availabilityUtils";
+import { formatRate, profileDefaultRateType } from "@/lib/rateFormatUtils";
+import { EDUCATION_TYPE_LABELS } from "@/components/onboarding/TeachingDetailsSection";
+import { cn } from "@/lib/utils";
+import type { ProfessionCategory } from "@workspace/api-client-react";
+import { GraduationCap } from "lucide-react";
+
+function FilterChip({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        "text-sm px-3 py-1.5 rounded-full border transition-colors",
+        active
+          ? "bg-violet-600 text-white border-violet-600"
+          : "bg-slate-100 text-slate-600 border-slate-200 hover:border-slate-300",
+      )}
+    >
+      {children}
+    </button>
+  );
+}
 
 type VaultView = "search" | "team-shortlist";
 
@@ -140,7 +170,15 @@ function FreelancerCard({
         </div>
       )}
       <CardHeader className="pb-4 pt-10">
-        <CardTitle className="text-xl font-serif text-foreground pr-20 leading-tight">{freelancer.name}</CardTitle>
+        <div className="flex items-center gap-2 flex-wrap pr-20">
+          <CardTitle className="text-xl font-serif text-foreground leading-tight">{freelancer.name}</CardTitle>
+          {freelancer.professionCategory === "education" && freelancer.educationProfessionType && (
+            <span className="inline-flex items-center gap-1 text-xs bg-blue-50 text-blue-700 border border-blue-200 rounded px-1.5 py-0.5">
+              <GraduationCap className="h-3 w-3" />
+              {EDUCATION_TYPE_LABELS[freelancer.educationProfessionType]}
+            </span>
+          )}
+        </div>
         <CardDescription className="text-primary font-medium text-sm mt-1.5 line-clamp-1">{freelancer.tagline}</CardDescription>
         {freelancer.averageRating != null && (freelancer.reviewCount ?? 0) > 0 && (
           <span className="inline-flex items-center gap-0.5 text-xs text-slate-600 mt-1.5">
@@ -180,8 +218,12 @@ function FreelancerCard({
           <div>
             <span className="text-muted-foreground block text-[10px] font-bold uppercase tracking-widest mb-1">Rate</span>
             <span className="font-semibold text-foreground">
-              {freelancer.paymentPreference === "hourly" && freelancer.hourlyRate && `$${freelancer.hourlyRate}/hr`}
-              {freelancer.paymentPreference === "daily" && freelancer.dailyRate && `$${freelancer.dailyRate}/day`}
+              {freelancer.paymentPreference === "hourly" && freelancer.hourlyRate != null
+                ? formatRate(Number(freelancer.hourlyRate), profileDefaultRateType(freelancer.professionCategory))
+                : null}
+              {freelancer.paymentPreference === "daily" && freelancer.dailyRate != null
+                ? formatRate(Number(freelancer.dailyRate), "per_day")
+                : null}
               {freelancer.paymentPreference === "fixed" && "Fixed Rate"}
             </span>
           </div>
@@ -234,11 +276,15 @@ export default function FreelancersList() {
   const [showSavedOnly, setShowSavedOnly] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [availableFromDate, setAvailableFromDate] = useState<Date | undefined>();
+  const [professionCategoryFilter, setProfessionCategoryFilter] = useState<ProfessionCategory | undefined>(undefined);
+  const [teachingSubject, setTeachingSubject] = useState("");
 
   const listParams = {
     ...(verifiedOnly ? { verified: true } : {}),
     ...(availableFromDate ? { availableFrom: toApiDateString(availableFromDate) } : {}),
     ...(debouncedQuery ? { q: debouncedQuery } : {}),
+    ...(professionCategoryFilter ? { professionCategory: professionCategoryFilter } : {}),
+    ...(professionCategoryFilter === "education" && teachingSubject ? { teachingSubject } : {}),
   };
   const { data: freelancers, isLoading } = useListFreelancers(listParams, {
     query: { enabled: vaultView === "search" } as any,
@@ -279,10 +325,10 @@ export default function FreelancersList() {
     return true;
   });
 
-  const hasActiveFilters = fieldFilter !== "all" || minRate || maxRate || availableOnly || verifiedOnly || showSavedOnly || availableFromDate || debouncedQuery;
+  const hasActiveFilters = fieldFilter !== "all" || minRate || maxRate || availableOnly || verifiedOnly || showSavedOnly || availableFromDate || debouncedQuery || professionCategoryFilter || teachingSubject;
 
   const clearFilters = () => {
-    setFieldFilter("all"); setMinRate(""); setMaxRate(""); setAvailableOnly(false); setVerifiedOnly(false); setShowSavedOnly(false); setAvailableFromDate(undefined); setSearchQuery("");
+    setFieldFilter("all"); setMinRate(""); setMaxRate(""); setAvailableOnly(false); setVerifiedOnly(false); setShowSavedOnly(false); setAvailableFromDate(undefined); setSearchQuery(""); setProfessionCategoryFilter(undefined); setTeachingSubject("");
   };
 
   const shortlistCount = isTeamMember ? (teamShortlist?.length ?? 0) : (saved?.length ?? 0);
@@ -354,6 +400,27 @@ export default function FreelancersList() {
 
       {showSearchPanel && (
         <>
+          <div className="flex gap-2 mb-3">
+            <FilterChip active={professionCategoryFilter === undefined} onClick={() => setProfessionCategoryFilter(undefined)}>
+              All
+            </FilterChip>
+            <FilterChip active={professionCategoryFilter === "technology"} onClick={() => setProfessionCategoryFilter("technology")}>
+              Technology
+            </FilterChip>
+            <FilterChip active={professionCategoryFilter === "education"} onClick={() => setProfessionCategoryFilter("education")}>
+              Education
+            </FilterChip>
+          </div>
+          {professionCategoryFilter === "education" && (
+            <div className="mb-3">
+              <Input
+                placeholder="Filter by subject (e.g. Mathematics)"
+                value={teachingSubject}
+                onChange={(e) => setTeachingSubject(e.target.value)}
+                className="max-w-xs"
+              />
+            </div>
+          )}
           <div className="relative mb-4">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <input

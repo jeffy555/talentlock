@@ -14,7 +14,9 @@ import {
   employerCompanyForProfile,
 } from "../lib/createNotification";
 import { sendNotificationEmailAsync } from "../lib/emailService";
+import { resolveUserByClerkId, canAccessMeeting, profileIdsForUser } from "../lib/accessControl";
 import { parsePagination, paginatedResponse } from "../lib/paginationUtils";
+import { sanitiseText } from "../lib/sanitise";
 
 const router = Router();
 
@@ -105,8 +107,14 @@ router.post("/meetings", async (req, res) => {
       data.meetingLink = generateJitsiLink();
     }
 
+    const clean = {
+      ...data,
+      title: sanitiseText(data.title),
+      agenda: data.agenda != null ? sanitiseText(data.agenda) : data.agenda,
+    };
+
     const [meeting] = await db.insert(meetingsTable)
-      .values({ ...data, employerId: employer.id, status: "pending" })
+      .values({ ...clean, employerId: employer.id, status: "pending" })
       .returning();
 
     const freelancerUserId = await userIdFromFreelancerProfileId(meeting.freelancerId);
@@ -136,7 +144,16 @@ router.post("/meetings", async (req, res) => {
 router.get("/meetings/:id", async (req, res) => {
   const id = parseInt(req.params.id);
   if (isNaN(id)) { res.status(400).json({ error: "Invalid ID" }); return; }
+  const { userId: clerkId } = getAuth(req);
+  if (!clerkId) { res.status(401).json({ error: "Unauthorized" }); return; }
   try {
+    const user = await resolveUserByClerkId(clerkId);
+    if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
+    const access = await canAccessMeeting(user.id, id);
+    if (!access.ok) {
+      res.status(access.status).json({ error: access.status === 404 ? "Meeting not found" : "Forbidden" });
+      return;
+    }
     const [m] = await db.select().from(meetingsTable).where(eq(meetingsTable.id, id)).limit(1);
     if (!m) { res.status(404).json({ error: "Meeting not found" }); return; }
     res.json(await enrichMeeting(m));
@@ -149,35 +166,45 @@ router.get("/meetings/:id", async (req, res) => {
 router.patch("/meetings/:id", async (req, res) => {
   const id = parseInt(req.params.id);
   if (isNaN(id)) { res.status(400).json({ error: "Invalid ID" }); return; }
+  const { userId: clerkId } = getAuth(req);
+  if (!clerkId) { res.status(401).json({ error: "Unauthorized" }); return; }
   const parsed = UpdateMeetingBody.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
   try {
+    const user = await resolveUserByClerkId(clerkId);
+    if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
+    const access = await canAccessMeeting(user.id, id);
+    if (!access.ok) {
+      res.status(access.status).json({ error: access.status === 404 ? "Meeting not found" : "Forbidden" });
+      return;
+    }
     const [before] = await db.select().from(meetingsTable).where(eq(meetingsTable.id, id)).limit(1);
     if (!before) { res.status(404).json({ error: "Meeting not found" }); return; }
 
+    const clean = {
+      ...parsed.data,
+      title: parsed.data.title != null ? sanitiseText(parsed.data.title) : parsed.data.title,
+      agenda: parsed.data.agenda != null ? sanitiseText(parsed.data.agenda) : parsed.data.agenda,
+    };
+
     const [updated] = await db.update(meetingsTable)
-      .set({ ...parsed.data as any, updatedAt: new Date() })
+      .set({ ...clean as any, updatedAt: new Date() })
       .where(eq(meetingsTable.id, id))
       .returning();
     if (!updated) { res.status(404).json({ error: "Meeting not found" }); return; }
 
     if (parsed.data.status && parsed.data.status !== before.status) {
-      const { userId: clerkId } = getAuth(req);
+      const { employerId: callerEmployerId, freelancerId: callerFreelancerId } = await profileIdsForUser(user.id);
+      const isEmployer = callerEmployerId !== null && callerEmployerId === updated.employerId;
+      const isFreelancer = callerFreelancerId !== null && callerFreelancerId === updated.freelancerId;
       let recipientUserId: number | null = null;
       let otherName = "the other party";
-      if (clerkId) {
-        const [freelancer] = await db.select().from(freelancerProfilesTable)
-          .where(eq(freelancerProfilesTable.clerkId, clerkId)).limit(1);
-        const [employer] = await db.select().from(employerProfilesTable)
-          .where(eq(employerProfilesTable.clerkId, clerkId)).limit(1);
-        const isEmployer = !!employer && employer.id === updated.employerId;
-        if (isEmployer) {
-          recipientUserId = await userIdFromFreelancerProfileId(updated.freelancerId);
-          otherName = await employerCompanyForProfile(updated.employerId);
-        } else if (freelancer && freelancer.id === updated.freelancerId) {
-          recipientUserId = await userIdFromEmployerProfileId(updated.employerId);
-          otherName = await freelancerNameForProfile(updated.freelancerId);
-        }
+      if (isEmployer) {
+        recipientUserId = await userIdFromFreelancerProfileId(updated.freelancerId);
+        otherName = await employerCompanyForProfile(updated.employerId);
+      } else if (isFreelancer) {
+        recipientUserId = await userIdFromEmployerProfileId(updated.employerId);
+        otherName = await freelancerNameForProfile(updated.freelancerId);
       }
       if (recipientUserId) {
         const meetStatusMsg = `Your meeting with ${otherName} has been ${parsed.data.status}`;

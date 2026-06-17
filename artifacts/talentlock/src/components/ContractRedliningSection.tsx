@@ -93,7 +93,7 @@ export default function ContractRedliningSection({
   const isStarter = userPlan === "employer_starter" || userPlan === "free";
   if (isStarter) {
     return (
-      <div className="rounded-md border border-dashed border-slate-300 bg-slate-50 p-4">
+      <div id="contract-redlining" className="rounded-md border border-dashed border-slate-300 bg-slate-50 p-4">
         <p className="text-sm font-semibold text-slate-500">🔒 AI Contract Review — Growth plan feature</p>
         <p className="text-sm text-slate-500 mt-1">Review contracts with AI before signing.</p>
         <Link href="/pricing" className="text-sm font-medium text-slate-700 underline mt-2 inline-block">
@@ -151,7 +151,16 @@ export default function ContractRedliningSection({
           queryClient.setQueryData(
             getGetAgreementQueryKey(agreementId),
             (old: Agreement | undefined) =>
-              old ? { ...old, content: newContent, status: "redlined" } : old,
+              old
+                ? {
+                    ...old,
+                    content: newContent,
+                    status: "redlined",
+                    healthScore: null,
+                    healthScoreDetail: null,
+                    healthScoredAt: null,
+                  }
+                : old,
           );
 
           toast({
@@ -170,7 +179,7 @@ export default function ContractRedliningSection({
 
   if (parseError && !redlineMutation.isPending) {
     return (
-      <div className="rounded-md border border-slate-200 bg-slate-50 p-4 flex items-center justify-between gap-2">
+      <div id="contract-redlining" className="rounded-md border border-slate-200 bg-slate-50 p-4 flex items-center justify-between gap-2">
         <p className="text-sm text-muted-foreground">Could not parse AI review response.</p>
         <Button variant="ghost" size="sm" onClick={handleRequestRedline}>
           Try Again
@@ -181,7 +190,7 @@ export default function ContractRedliningSection({
 
   if (!hasLoaded && !redlineMutation.isPending) {
     return (
-      <div className="rounded-md border border-slate-200 bg-slate-50 p-4">
+      <div id="contract-redlining" className="rounded-md border border-slate-200 bg-slate-50 p-4">
         <p className="text-sm font-semibold text-slate-700">🔍 AI Contract Review</p>
         <p className="text-sm text-slate-500 mt-1">Get AI suggestions before signing.</p>
         <div className="flex items-center justify-between mt-3 flex-wrap gap-2">
@@ -204,7 +213,7 @@ export default function ContractRedliningSection({
 
   if (redlineMutation.isPending) {
     return (
-      <div className="rounded-md border border-slate-200 bg-slate-50 p-4">
+      <div id="contract-redlining" className="rounded-md border border-slate-200 bg-slate-50 p-4">
         <Button variant="outline" size="sm" disabled>
           <Loader2 className="h-4 w-4 animate-spin mr-1" />
           Analysing contract...
@@ -215,7 +224,7 @@ export default function ContractRedliningSection({
 
   if (displaySuggestions.length === 0) {
     return (
-      <div className="rounded-md border border-slate-200 bg-slate-50 p-4 text-center py-4">
+      <div id="contract-redlining" className="rounded-md border border-slate-200 bg-slate-50 p-4 text-center py-4">
         <CheckCircle2 className="h-5 w-5 text-emerald-500 mx-auto mb-1" />
         <p className="text-sm text-muted-foreground">✓ All suggestions reviewed.</p>
         <p className="text-sm text-muted-foreground">The agreement is ready for signing.</p>
@@ -226,7 +235,7 @@ export default function ContractRedliningSection({
   const total = suggestions.length;
 
   return (
-    <div className="space-y-4">
+    <div id="contract-redlining" className="space-y-4">
       <p className="text-sm font-semibold text-slate-700">
         {pendingCount === 0
           ? "AI Contract Review · all suggestions reviewed"

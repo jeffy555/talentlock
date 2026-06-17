@@ -9,6 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
+import { nonZeroBreakdownEntries } from "@/lib/tokenUsageUtils";
 
 export interface TokenUsageWidgetProps {
   variant?: "full" | "compact";
@@ -105,20 +106,21 @@ function BreakdownRows({
   breakdown: TokenUsageSummary["breakdown"];
   isUnlimited: boolean;
 }) {
+  const entries = nonZeroBreakdownEntries(breakdown);
+  if (entries.length === 0) {
+    return null;
+  }
+
   return (
     <dl className="space-y-2 text-sm">
-      <div className="flex items-center justify-between gap-4">
-        <dt className="text-muted-foreground">AI Talent Matching</dt>
-        <dd className="font-medium tabular-nums">
-          {isUnlimited ? "No limit" : `${breakdown.ai_match.toLocaleString()} tokens`}
-        </dd>
-      </div>
-      <div className="flex items-center justify-between gap-4">
-        <dt className="text-muted-foreground">Agreement Generation</dt>
-        <dd className="font-medium tabular-nums">
-          {isUnlimited ? "No limit" : `${breakdown.agreement_generation.toLocaleString()} tokens`}
-        </dd>
-      </div>
+      {entries.map(({ key, label, tokens }) => (
+        <div key={key} className="flex items-center justify-between gap-4">
+          <dt className="text-muted-foreground">{label}</dt>
+          <dd className="font-medium tabular-nums">
+            {isUnlimited ? "No limit" : `${tokens.toLocaleString()} tokens`}
+          </dd>
+        </div>
+      ))}
     </dl>
   );
 }

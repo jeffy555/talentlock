@@ -15,6 +15,7 @@ import { PostAiMatchExplanationBody } from "@workspace/api-zod";
 import { checkTokenQuota } from "../lib/subscriptionGating";
 import { logTokenUsage } from "../lib/tokenLogger";
 import { normaliseSkills } from "../lib/skillsUtils";
+import { buildProfessionContext } from "../lib/professionContext";
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY_TALENTLOCK });
 
@@ -132,10 +133,14 @@ router.post("/ai/match-explanation", async (req, res) => {
       job ? `Required start date: ${job.startDate.toISOString()}` : null,
     ].filter((line): line is string => line != null).join("\n");
 
+    const systemPrompt = job
+      ? `${buildProfessionContext(job)}${MATCH_EXPLANATION_SYSTEM_PROMPT}`
+      : MATCH_EXPLANATION_SYSTEM_PROMPT;
+
     const completion = await openai.chat.completions.create({
       model: "gpt-4o-mini",
       messages: [
-        { role: "system", content: MATCH_EXPLANATION_SYSTEM_PROMPT },
+        { role: "system", content: systemPrompt },
         { role: "user", content: userMessage },
       ],
       max_completion_tokens: 600,

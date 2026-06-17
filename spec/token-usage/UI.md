@@ -477,3 +477,38 @@ The compact widget's click-to-navigate behaviour (`/billing`) is preserved on al
 | `src/pages/AiMatch.tsx` | Modified | 3.5, 3.6 |
 | `src/pages/Agreement.tsx` | Modified | 3.7 |
 | Admin dashboard (token tab) | Modified | 4.1 |
+
+---
+
+# P1 Follow-Up Addendum — Complete Feature Breakdown UI (added 2026-06-09)
+
+> UI guidance for Module 5 (`features.md`) / Phase 5 (`task.md`). The widget previously displayed only 2 features; it must now display all features that have usage.
+
+## Breakdown list behaviour
+
+- The breakdown section (in `TokenUsageWidget.tsx` and the admin token tab) iterates over the `breakdown` object returned by `GET /api/token-usage/me`.
+- **Render only non-zero features** — most employers use 2–3 of the 9. Sort descending by token count so the heaviest usage is on top.
+- Each row: human-readable label (left) + token count (right), using the label map below.
+- If every feature is zero, fall back to the existing empty/zero state (no list, no "0 tokens" rows).
+
+## Feature label map
+
+| Breakdown key | Display label |
+|---|---|
+| `ai_match` | AI Match |
+| `ai_match_explanation` | Match Explanation |
+| `agreement_generation` | Agreement Generation |
+| `contract_redlining` | Contract Redlining |
+| `job_description_assistant` | Job Description Assistant |
+| `ai_proposal` | AI Proposal |
+| `document_verification` | Document Verification |
+| `rate_suggestion` | Rate Suggestion |
+| `contract_health_score` | Contract Health Score |
+
+## Reconciliation cue
+
+The sum of the displayed rows must visibly match the headline "tokens used" figure. Because the backend now buckets all 9 features, no usage is silently dropped — the list always reconciles with the total.
+
+## Responsive
+
+Reuse the existing widget layout; the breakdown is a vertical list that stacks naturally on mobile. No new breakpoints introduced.

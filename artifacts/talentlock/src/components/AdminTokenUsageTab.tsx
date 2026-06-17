@@ -4,6 +4,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
+import type { TokenUsageBreakdown } from "@workspace/api-client-react";
+import { nonZeroBreakdownEntries } from "@/lib/tokenUsageUtils";
 
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
 const PAGE_SIZE = 20;
@@ -16,6 +18,7 @@ type TokenUsageRow = {
   monthlyTokenLimit: number | null;
   tokensUsed: number;
   percentUsed: number | null;
+  breakdown: TokenUsageBreakdown;
 };
 
 type TokenUsageResponse = {
@@ -32,6 +35,23 @@ function utcMonthHeading(): string {
     year: "numeric",
     timeZone: "UTC",
   });
+}
+
+function BreakdownCell({ breakdown }: { breakdown: TokenUsageBreakdown }) {
+  const entries = nonZeroBreakdownEntries(breakdown);
+  if (entries.length === 0) {
+    return <span className="text-muted-foreground">—</span>;
+  }
+
+  return (
+    <ul className="space-y-0.5 text-xs">
+      {entries.map(({ key, label, tokens }) => (
+        <li key={key}>
+          {label}: {tokens.toLocaleString()}
+        </li>
+      ))}
+    </ul>
+  );
 }
 
 function formatPercentUsed(row: TokenUsageRow): { text: string; className: string; icon: string | null } {
@@ -149,12 +169,13 @@ export default function AdminTokenUsageTab({ onUnauthorized }: { onUnauthorized:
                   <th className="py-2 pr-4">MTD Tokens</th>
                   <th className="py-2 pr-4">Limit</th>
                   <th className="py-2 pr-4">% Used</th>
+                  <th className="py-2 pr-4">Breakdown</th>
                 </tr>
               </thead>
               <tbody>
                 {Array.from({ length: PAGE_SIZE }).map((_, i) => (
                   <tr key={i} className="border-b last:border-0">
-                    {Array.from({ length: 5 }).map((__, j) => (
+                    {Array.from({ length: 6 }).map((__, j) => (
                       <td key={j} className="py-2 pr-4">
                         <Skeleton className="h-4 w-full max-w-[120px]" />
                       </td>
@@ -187,6 +208,7 @@ export default function AdminTokenUsageTab({ onUnauthorized }: { onUnauthorized:
                   <th className="py-2 pr-4">MTD Tokens</th>
                   <th className="py-2 pr-4">Limit</th>
                   <th className="py-2 pr-4">% Used</th>
+                  <th className="py-2 pr-4">Breakdown</th>
                 </tr>
               </thead>
               <tbody>
@@ -205,6 +227,9 @@ export default function AdminTokenUsageTab({ onUnauthorized }: { onUnauthorized:
                       <td className={`py-2 pr-4 ${pct.className}`}>
                         {pct.text}
                         {pct.icon && <span className="ml-1">{pct.icon}</span>}
+                      </td>
+                      <td className="py-2 pr-4 align-top">
+                        <BreakdownCell breakdown={row.breakdown} />
                       </td>
                     </tr>
                   );

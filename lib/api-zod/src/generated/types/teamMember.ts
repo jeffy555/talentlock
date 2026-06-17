@@ -21,4 +21,6 @@ export interface TeamMember {
   /** @nullable */
   displayName?: string | null;
   displayEmail: string;
+  /** Admin-only — accept link for pending invites */
+  inviteUrl?: string;
 }

@@ -1,4 +1,5 @@
 import { useParams } from "wouter";
+import { useAuth } from "@clerk/react";
 import {
   useGetAgreement,
   useSignAgreement,
@@ -7,6 +8,9 @@ import {
   useGetTokenUsageMe,
 } from "@workspace/api-client-react";
 import ContractRedliningSection from "@/components/ContractRedliningSection";
+import ContractHealthScoreCard from "@/components/ContractHealthScoreCard";
+import AgreementSummaryPanel from "@/components/AgreementSummaryPanel";
+import type { HealthScoreDimensions } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -14,10 +18,11 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, CheckCircle2, Clock, FileText, PenLine, Shield, Lock, Fingerprint, Download, ShieldCheck, Upload, Loader2 } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Clock, FileText, PenLine, Shield, Lock, Fingerprint, Download, Upload, Loader2 } from "lucide-react";
 import { Link } from "wouter";
 import { format } from "date-fns";
 import { useState, useRef } from "react";
+import { AgreementDownloadError, downloadAgreementPdf } from "@/lib/downloadUtils";
 
 function LegalDocument({ content }: { content: string }) {
   const lines = content.split("\n");
@@ -128,6 +133,7 @@ async function requestSigUrl(fileName: string, contentType: string) {
 export default function AgreementDetail() {
   const { id } = useParams<{ id: string }>();
   const { toast } = useToast();
+  const { getToken } = useAuth();
   const { data: me } = useGetMe();
   const { data: subscription } = useGetMySubscription({
     query: { enabled: me?.role === "employer" } as any,
@@ -179,35 +185,20 @@ export default function AgreementDetail() {
 
   const isEmployer = me?.role === "employer";
   const isFreelancer = me?.role === "freelancer";
-  const [downloading, setDownloading] = useState(false);
-
-  const myDownloadedAt = isEmployer
-    ? (ag as any)?.employerDownloadedAt as string | null | undefined
-    : (ag as any)?.freelancerDownloadedAt as string | null | undefined;
+  const [isDownloading, setIsDownloading] = useState(false);
 
   const handleDownload = async () => {
-    if (myDownloadedAt) return;
-    setDownloading(true);
+    setIsDownloading(true);
     try {
-      const res = await fetch(`/api/agreements/${id}/download`, { credentials: "include" });
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        toast({ title: "Download failed", description: body.error ?? "Could not download.", variant: "destructive" });
-        return;
-      }
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `TalentLock-Agreement-${id}.txt`;
-      a.click();
-      URL.revokeObjectURL(url);
-      toast({ title: "Document downloaded", description: "Your copy has been saved. This download cannot be repeated." });
-      refetch();
-    } catch {
-      toast({ title: "Download failed", variant: "destructive" });
+      await downloadAgreementPdf(id!, getToken);
+    } catch (err) {
+      const message =
+        err instanceof AgreementDownloadError
+          ? err.message
+          : "Download failed. Please try again.";
+      toast({ title: message, variant: "destructive" });
     } finally {
-      setDownloading(false);
+      setIsDownloading(false);
     }
   };
 
@@ -439,6 +430,33 @@ export default function AgreementDetail() {
         )}
       </div>
 
+      {ag.status === "fully_signed" && (
+        <div className="flex items-center gap-3 py-3 border-y border-slate-100">
+          <Button
+            onClick={handleDownload}
+            disabled={isDownloading}
+            variant="outline"
+            size="sm"
+            className="border-emerald-300 text-emerald-700 hover:bg-emerald-50 gap-1.5"
+          >
+            {isDownloading ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Generating PDF...
+              </>
+            ) : (
+              <>
+                <Download className="h-4 w-4" />
+                Download Signed Agreement
+              </>
+            )}
+          </Button>
+          <span className="text-xs text-muted-foreground">
+            Signed PDF · TalentLock certified document
+          </span>
+        </div>
+      )}
+
       {fullyExecuted && (
         <div className="flex items-start gap-4 rounded-xl border border-green-200 bg-green-50/80 p-6">
           <div className="h-10 w-10 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
@@ -566,50 +584,37 @@ export default function AgreementDetail() {
             />
           )}
 
+          {isEmployer && ag && (
+            <ContractHealthScoreCard
+              agreementId={ag.id}
+              userRole="employer"
+              userPlan={subscription?.plan?.id ?? "employer_starter"}
+              initialScore={ag.healthScore}
+              initialDetail={ag.healthScoreDetail as { dimensions?: HealthScoreDimensions; summary?: string } | null}
+              onRunRedlining={() => {
+                document.getElementById("contract-redlining")?.scrollIntoView({ behavior: "smooth", block: "start" });
+              }}
+            />
+          )}
+
           {isFreelancer && ag.status === "redlined" && (
             <div className="rounded-md border border-violet-200 bg-violet-50 p-3 text-sm text-violet-700">
               ℹ This agreement was revised with AI assistance before signing.
             </div>
           )}
+
+          {isFreelancer && (
+            <div className="mt-6">
+              <AgreementSummaryPanel
+                agreementId={ag.id}
+                cachedSummary={(ag.freelancerSummary as Record<string, unknown> | null) ?? null}
+                cachedAt={ag.freelancerSummaryScoredAt ?? null}
+              />
+            </div>
+          )}
         </div>
 
         <div className="space-y-6">
-          {/* TalentLock Vault - one-time download */}
-          {fullyExecuted && (
-            <Card className={`shadow-sm border-2 overflow-hidden ${myDownloadedAt ? "border-muted-foreground/20 bg-muted/30" : "border-primary/30 bg-primary/5"}`}>
-              <div className={`h-1.5 w-full ${myDownloadedAt ? "bg-muted-foreground/20" : "bg-primary"}`} />
-              <CardHeader className="pb-3">
-                <CardTitle className="font-serif text-lg flex items-center gap-2">
-                  <Lock className={`h-4 w-4 ${myDownloadedAt ? "text-muted-foreground" : "text-primary"}`} />
-                  TalentLock Vault
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="pt-0 space-y-3">
-                {myDownloadedAt ? (
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2 text-xs font-medium text-green-700 bg-green-50 border border-green-100 px-3 py-2 rounded-lg">
-                      <CheckCircle2 className="h-3.5 w-3.5 flex-shrink-0" />Downloaded {format(new Date(myDownloadedAt), "MMM d, yyyy")}
-                    </div>
-                    <p className="text-xs text-muted-foreground leading-relaxed">Your one-time download has been used. The document is stored securely in this vault.</p>
-                    <Button variant="outline" disabled className="w-full h-9 text-xs font-medium gap-1.5 opacity-50 cursor-not-allowed">
-                      <Download className="h-3.5 w-3.5" />Already Downloaded
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    <div className="text-xs text-muted-foreground leading-relaxed">
-                      <p className="font-semibold text-foreground mb-1">Signed contract ready</p>
-                      Download your certified copy of this executed agreement. <span className="font-semibold text-primary">This download can only be used once.</span>
-                    </div>
-                    <Button onClick={handleDownload} disabled={downloading} className="w-full h-10 font-semibold shadow-sm gap-2">
-                      <Download className="h-4 w-4" />{downloading ? "Preparing…" : "Download My Copy"}
-                    </Button>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          )}
-
           {/* Signing Progress Tracker */}
           <Card className="shadow-sm border-border bg-card sticky top-24">
             <CardHeader className="pb-4 border-b border-border/30 bg-muted/5">

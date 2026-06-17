@@ -87,7 +87,11 @@ function buildShortlistItem(
   };
 }
 
-async function enrichMembers(teamId: string) {
+function buildInviteUrl(inviteToken: string): string {
+  return `${appBaseUrl()}/team/accept-invite?token=${inviteToken}`;
+}
+
+async function enrichMembers(teamId: string, includeInviteLinks = false) {
   const members = await db.select().from(teamMembersTable).where(eq(teamMembersTable.teamId, teamId));
   const userIds = members.map((m) => m.userId).filter((id): id is number => id != null);
   const usersById = new Map<number, { name: string; email: string }>();
@@ -100,6 +104,10 @@ async function enrichMembers(teamId: string) {
 
   return members.map((m) => {
     const user = m.userId != null ? usersById.get(m.userId) : null;
+    const inviteUrl =
+      includeInviteLinks && m.status === "invited" && m.inviteToken
+        ? buildInviteUrl(m.inviteToken)
+        : undefined;
     return {
       id: m.id,
       userId: m.userId,
@@ -110,6 +118,7 @@ async function enrichMembers(teamId: string) {
       joinedAt: m.joinedAt,
       displayName: user?.name ?? null,
       displayEmail: user?.email ?? m.invitedEmail,
+      ...(inviteUrl ? { inviteUrl } : {}),
     };
   });
 }
@@ -138,18 +147,36 @@ function buildInviteEmailHtml(teamName: string, inviteUrl: string): string {
   `;
 }
 
-async function sendTeamInviteEmail(teamName: string, email: string, inviteToken: string, log: { warn: (obj: object, msg: string) => void }): Promise<void> {
-  if (!resend) return;
-  const inviteUrl = `${appBaseUrl()}/team/accept-invite?token=${inviteToken}`;
+type InviteEmailResult = { ok: true } | { ok: false; error: string };
+
+async function sendTeamInviteEmail(
+  teamName: string,
+  email: string,
+  inviteToken: string,
+  log: { warn: (obj: object, msg: string) => void },
+): Promise<InviteEmailResult> {
+  if (!resend) {
+    return { ok: false, error: "Email service is not configured (RESEND_API_KEY missing)." };
+  }
+
+  const inviteUrl = buildInviteUrl(inviteToken);
   try {
-    await resend.emails.send({
+    const result = await resend.emails.send({
       from: process.env.EMAIL_FROM || "noreply@talentlock.io",
       to: email,
       subject: `You've been invited to join ${teamName} on TalentLock`,
       html: buildInviteEmailHtml(teamName, inviteUrl),
     });
+
+    if (result.error) {
+      log.warn({ err: result.error, email }, "team invite email rejected by provider");
+      return { ok: false, error: result.error.message };
+    }
+
+    return { ok: true };
   } catch (err) {
     log.warn({ err, email }, "team invite email failed");
+    return { ok: false, error: err instanceof Error ? err.message : "Failed to send invitation email" };
   }
 }
 
@@ -205,7 +232,7 @@ router.post("/team", async (req, res) => {
     });
 
     const [team] = await db.select().from(teamsTable).where(eq(teamsTable.id, teamId)).limit(1);
-    const members = await enrichMembers(teamId);
+    const members = await enrichMembers(teamId, true);
     res.status(201).json({ team, members, isAdmin: true, isOwner: true });
   } catch (err) {
     req.log.error({ err }, "Failed to create team");
@@ -223,11 +250,12 @@ router.get("/team", async (req, res) => {
       res.status(404).json({ error: "Team not found" });
       return;
     }
-    const members = await enrichMembers(team.id);
+    const isAdmin = member.role === "admin";
+    const members = await enrichMembers(team.id, isAdmin);
     res.json({
       team,
       members,
-      isAdmin: member.role === "admin",
+      isAdmin,
       isOwner: member.userId != null && team.ownerUserId === member.userId,
     });
   } catch (err) {
@@ -255,7 +283,7 @@ router.put("/team", async (req, res) => {
 
     await db.update(teamsTable).set({ name }).where(eq(teamsTable.id, admin.teamId));
     const [team] = await db.select().from(teamsTable).where(eq(teamsTable.id, admin.teamId)).limit(1);
-    const members = await enrichMembers(admin.teamId);
+    const members = await enrichMembers(admin.teamId, true);
     res.json({
       team,
       members,
@@ -309,7 +337,16 @@ router.post("/team/invite", async (req, res) => {
       inviteExpiresAt,
     }).returning();
 
-    sendTeamInviteEmail(team.name, email, inviteToken, req.log);
+    const emailResult = await sendTeamInviteEmail(team.name, email, inviteToken, req.log);
+    if (!emailResult.ok) {
+      await db.delete(teamMembersTable).where(eq(teamMembersTable.id, invited.id));
+      res.status(503).json({
+        error: emailResult.error,
+        code: "INVITE_EMAIL_FAILED",
+        inviteUrl: buildInviteUrl(inviteToken),
+      });
+      return;
+    }
 
     res.status(201).json({
       id: invited.id,
@@ -318,6 +355,7 @@ router.post("/team/invite", async (req, res) => {
       status: invited.status,
       invitedAt: invited.invitedAt,
       inviteExpiresAt: invited.inviteExpiresAt,
+      inviteUrl: buildInviteUrl(inviteToken),
     });
   } catch (err) {
     req.log.error({ err }, "Failed to invite team member");
@@ -582,6 +620,60 @@ router.get("/team/analytics", async (req, res) => {
     res.json(data);
   } catch (err) {
     req.log.error({ err }, "Failed to get team analytics");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.post("/team/members/:memberId/resend-invite", async (req, res) => {
+  const admin = await requireTeamAdmin(req, res);
+  if (!admin) return;
+
+  const memberId = parseInt(req.params.memberId, 10);
+  if (Number.isNaN(memberId)) {
+    res.status(400).json({ error: "Invalid member ID" });
+    return;
+  }
+
+  try {
+    const [member] = await db.select().from(teamMembersTable)
+      .where(and(eq(teamMembersTable.id, memberId), eq(teamMembersTable.teamId, admin.teamId)))
+      .limit(1);
+    if (!member) {
+      res.status(404).json({ error: "Member not found" });
+      return;
+    }
+    if (member.status !== "invited" || !member.inviteToken) {
+      res.status(400).json({ error: "Only pending invitations can be resent" });
+      return;
+    }
+    if (member.inviteExpiresAt && member.inviteExpiresAt < new Date()) {
+      res.status(410).json({ error: "Invite expired — send a new invitation instead" });
+      return;
+    }
+
+    const [team] = await db.select().from(teamsTable).where(eq(teamsTable.id, admin.teamId)).limit(1);
+    if (!team) {
+      res.status(404).json({ error: "Team not found" });
+      return;
+    }
+
+    const emailResult = await sendTeamInviteEmail(team.name, member.invitedEmail, member.inviteToken, req.log);
+    if (!emailResult.ok) {
+      res.status(503).json({
+        error: emailResult.error,
+        code: "INVITE_EMAIL_FAILED",
+        inviteUrl: buildInviteUrl(member.inviteToken),
+      });
+      return;
+    }
+
+    res.status(200).json({
+      success: true,
+      invitedEmail: member.invitedEmail,
+      inviteUrl: buildInviteUrl(member.inviteToken),
+    });
+  } catch (err) {
+    req.log.error({ err }, "Failed to resend team invite");
     res.status(500).json({ error: "Internal server error" });
   }
 });

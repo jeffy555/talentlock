@@ -5,6 +5,7 @@
  * TalentLock API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { ListFreelancersProfessionCategory } from "./listFreelancersProfessionCategory";
 
 export type ListFreelancersParams = {
   /**
@@ -35,4 +36,12 @@ export type ListFreelancersParams = {
    * Full-text keyword search across bio and skills
    */
   q?: string;
+  /**
+   * Filter by profession category
+   */
+  professionCategory?: ListFreelancersProfessionCategory;
+  /**
+   * Case-insensitive substring match on teachingSubjects (education professionals)
+   */
+  teachingSubject?: string;
 };

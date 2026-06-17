@@ -288,3 +288,84 @@ Mark each phase complete only after its acceptance criteria in `task.md` are ful
 | Phase 4 | Admin — token usage tab + endpoint | ⬜ Not started |
 
 Update this table as phases complete.
+
+---
+
+# P1 Follow-Up Addendum — Complete Feature Breakdown (added 2026-06-09)
+
+> Binding decisions for Module 5 in `features.md`. Verified against `subscriptionGating.ts` and `tokenLogger.ts` on 2026-06-09. No open blockers.
+
+### A1 — Single source of truth for the feature list
+
+Derive the breakdown shape from the existing `TokenFeature` union so backend logging and reporting can never drift. Export the list from `tokenLogger.ts` (it already has `VALID_TOKEN_FEATURES`) and reuse it.
+
+```ts
+// tokenLogger.ts — export the existing constant
+export const TOKEN_FEATURES = VALID_TOKEN_FEATURES; // all 9, typed TokenFeature[]
+```
+
+### A2 — Breakdown type + aggregation (subscriptionGating.ts)
+
+Replace the 2-key interface with a complete, generated record:
+
+```ts
+import { TOKEN_FEATURES, type TokenFeature } from "./tokenLogger";
+
+export type TokenUsageBreakdown = Record<TokenFeature, number>;
+
+function emptyBreakdown(): TokenUsageBreakdown {
+  return Object.fromEntries(TOKEN_FEATURES.map(f => [f, 0])) as TokenUsageBreakdown;
+}
+
+export async function getMonthlyTokenUsage(
+  userId: number,
+  startOfMonthUtc = startOfMonth(),
+): Promise<{ tokensUsed: number; breakdown: TokenUsageBreakdown }> {
+  const rows = await db.select({ feature: tokenUsage.feature, totalTokens: tokenUsage.totalTokens })
+    .from(tokenUsage)
+    .where(and(eq(tokenUsage.userId, userId), gte(tokenUsage.createdAt, startOfMonthUtc)));
+
+  const breakdown = emptyBreakdown();
+  let tokensUsed = 0;
+  for (const row of rows) {
+    tokensUsed += row.totalTokens;
+    // row.feature is a string column; guard against any legacy/unknown values
+    if (row.feature in breakdown) breakdown[row.feature as TokenFeature] += row.totalTokens;
+  }
+  return { tokensUsed, breakdown };
+}
+```
+
+Unknown/legacy feature strings still count toward `tokensUsed` but are not bucketed — preserving the existing total while keeping the typed breakdown safe. (If a legacy `other` bucket is desired, add it explicitly; default decision is **no** extra bucket.)
+
+### A3 — API & OpenAPI contract
+
+`GET /api/token-usage/me` already returns `breakdown` verbatim — the response simply gains 7 more numeric keys. Update `lib/api-spec/openapi.yaml` so the `breakdown` schema lists all 9 keys (all `integer`, all required, default 0), then regenerate hooks/zod (`pnpm --filter @workspace/api-spec run gen` or the repo codegen command). This is additive and backward compatible.
+
+### A4 — Frontend rendering decision
+
+The breakdown widget renders only **non-zero** features (most employers use 2–3). Map raw feature keys to human labels:
+
+| Key | Label |
+|---|---|
+| `ai_match` | AI Match |
+| `ai_match_explanation` | Match Explanation |
+| `agreement_generation` | Agreement Generation |
+| `contract_redlining` | Contract Redlining |
+| `job_description_assistant` | Job Description Assistant |
+| `ai_proposal` | AI Proposal |
+| `document_verification` | Document Verification |
+| `rate_suggestion` | Rate Suggestion |
+| `contract_health_score` | Contract Health Score |
+
+If all features are zero, show the existing empty/zero state.
+
+### A5 — Invariant test
+
+After aggregation, `Object.values(breakdown).reduce((a,b)=>a+b,0)` must equal `tokensUsed` for any user whose rows all carry known feature labels. Use this as the validation check.
+
+### Addendum Sign-Off
+
+| Phase | Description | Status |
+|---|---|---|
+| Phase 5 (Addendum) | Full 9-feature breakdown (type + aggregation + OpenAPI + UI labels) | ⬜ Not started |

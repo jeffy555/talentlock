@@ -43,6 +43,87 @@ export interface UpsertUserBody {
   signatureImageUrl?: string | null;
 }
 
+export type ProfessionCategory =
+  (typeof ProfessionCategory)[keyof typeof ProfessionCategory];
+
+export const ProfessionCategory = {
+  technology: "technology",
+  education: "education",
+} as const;
+
+export type EducationProfessionType =
+  (typeof EducationProfessionType)[keyof typeof EducationProfessionType];
+
+export const EducationProfessionType = {
+  school_teacher: "school_teacher",
+  university_lecturer: "university_lecturer",
+  tutor: "tutor",
+  researcher: "researcher",
+} as const;
+
+export type HighestDegree = (typeof HighestDegree)[keyof typeof HighestDegree];
+
+export const HighestDegree = {
+  bachelors: "bachelors",
+  masters: "masters",
+  phd: "phd",
+  postdoc: "postdoc",
+} as const;
+
+export type DbsCheckStatus =
+  (typeof DbsCheckStatus)[keyof typeof DbsCheckStatus];
+
+export const DbsCheckStatus = {
+  not_uploaded: "not_uploaded",
+  uploaded: "uploaded",
+  verified: "verified",
+  expired: "expired",
+} as const;
+
+export type PreferredTeachingMode =
+  (typeof PreferredTeachingMode)[keyof typeof PreferredTeachingMode];
+
+export const PreferredTeachingMode = {
+  in_person: "in_person",
+  online: "online",
+  both: "both",
+} as const;
+
+export type RateType = (typeof RateType)[keyof typeof RateType];
+
+export const RateType = {
+  hourly: "hourly",
+  per_day: "per_day",
+  per_session: "per_session",
+  per_course: "per_course",
+} as const;
+
+export interface TeachingProfileFields {
+  professionCategory?: ProfessionCategory;
+  educationProfessionType?: EducationProfessionType | null;
+  /** @nullable */
+  teachingSubjects?: string[] | null;
+  /** @nullable */
+  teachingLevels?: string[] | null;
+  /** @nullable */
+  yearsTeachingExperience?: number | null;
+  highestDegree?: HighestDegree | null;
+  /** @nullable */
+  degreeSubject?: string | null;
+  /** @nullable */
+  degreeInstitution?: string | null;
+  /** @nullable */
+  teachingLicenceState?: string | null;
+  /** @nullable */
+  teachingLicenceExpiry?: string | null;
+  dbsCheckStatus?: DbsCheckStatus | null;
+  /** @nullable */
+  researchPublications?: string | null;
+  preferredTeachingMode?: PreferredTeachingMode | null;
+  /** @nullable */
+  location?: string | null;
+}
+
 export interface FreelancerProfile {
   id: number;
   userId: number;
@@ -94,6 +175,29 @@ export interface FreelancerProfile {
   reviewCount: number;
   /** Profile completeness score 0–100 (Talent Vault requires ≥ 60) */
   completenessScore: number;
+  professionCategory: ProfessionCategory;
+  educationProfessionType?: EducationProfessionType | null;
+  /** @nullable */
+  teachingSubjects?: string[] | null;
+  /** @nullable */
+  teachingLevels?: string[] | null;
+  /** @nullable */
+  yearsTeachingExperience?: number | null;
+  highestDegree?: HighestDegree | null;
+  /** @nullable */
+  degreeSubject?: string | null;
+  /** @nullable */
+  degreeInstitution?: string | null;
+  /** @nullable */
+  teachingLicenceState?: string | null;
+  /** @nullable */
+  teachingLicenceExpiry?: string | null;
+  dbsCheckStatus?: DbsCheckStatus | null;
+  /** @nullable */
+  researchPublications?: string | null;
+  preferredTeachingMode?: PreferredTeachingMode | null;
+  /** @nullable */
+  location?: string | null;
   createdAt: string;
 }
 
@@ -155,6 +259,29 @@ export interface CreateFreelancerProfileBody {
   achievements?: string | null;
   subscriptionPlan: string;
   resumeAnalysis?: ResumeAnalysis | null;
+  professionCategory?: ProfessionCategory;
+  educationProfessionType?: EducationProfessionType | null;
+  /** @nullable */
+  teachingSubjects?: string[] | null;
+  /** @nullable */
+  teachingLevels?: string[] | null;
+  /** @nullable */
+  yearsTeachingExperience?: number | null;
+  highestDegree?: HighestDegree | null;
+  /** @nullable */
+  degreeSubject?: string | null;
+  /** @nullable */
+  degreeInstitution?: string | null;
+  /** @nullable */
+  teachingLicenceState?: string | null;
+  /** @nullable */
+  teachingLicenceExpiry?: string | null;
+  dbsCheckStatus?: DbsCheckStatus | null;
+  /** @nullable */
+  researchPublications?: string | null;
+  preferredTeachingMode?: PreferredTeachingMode | null;
+  /** @nullable */
+  location?: string | null;
 }
 
 export type AvailabilityBlockReason =
@@ -245,6 +372,29 @@ export interface UpdateFreelancerProfileBody {
   availableFrom?: string | null;
   /** @nullable */
   availabilityNote?: string | null;
+  professionCategory?: ProfessionCategory;
+  educationProfessionType?: EducationProfessionType | null;
+  /** @nullable */
+  teachingSubjects?: string[] | null;
+  /** @nullable */
+  teachingLevels?: string[] | null;
+  /** @nullable */
+  yearsTeachingExperience?: number | null;
+  highestDegree?: HighestDegree | null;
+  /** @nullable */
+  degreeSubject?: string | null;
+  /** @nullable */
+  degreeInstitution?: string | null;
+  /** @nullable */
+  teachingLicenceState?: string | null;
+  /** @nullable */
+  teachingLicenceExpiry?: string | null;
+  dbsCheckStatus?: DbsCheckStatus | null;
+  /** @nullable */
+  researchPublications?: string | null;
+  preferredTeachingMode?: PreferredTeachingMode | null;
+  /** @nullable */
+  location?: string | null;
 }
 
 export interface EmployerProfile {
@@ -297,6 +447,8 @@ export interface JobRequirement {
   endDate: string;
   /** open, filled, closed */
   status: string;
+  professionCategory: ProfessionCategory;
+  rateType: RateType;
   createdAt: string;
 }
 
@@ -311,6 +463,8 @@ export interface CreateJobRequirementBody {
   budget?: number | null;
   startDate: string;
   endDate: string;
+  professionCategory?: ProfessionCategory;
+  rateType?: RateType;
 }
 
 export interface UpdateJobRequirementBody {
@@ -323,6 +477,8 @@ export interface UpdateJobRequirementBody {
   startDate?: string;
   endDate?: string;
   status?: string;
+  professionCategory?: ProfessionCategory;
+  rateType?: RateType;
 }
 
 export interface PublicReview {
@@ -455,6 +611,112 @@ export interface AgreementSignedError {
   code: AgreementSignedErrorCode;
 }
 
+export type HealthScoreDimensionVerdict =
+  (typeof HealthScoreDimensionVerdict)[keyof typeof HealthScoreDimensionVerdict];
+
+export const HealthScoreDimensionVerdict = {
+  Strong: "Strong",
+  Acceptable: "Acceptable",
+  Needs_attention: "Needs attention",
+  Weak: "Weak",
+} as const;
+
+export interface HealthScoreDimension {
+  score: number;
+  verdict: HealthScoreDimensionVerdict;
+  explanation?: string;
+}
+
+export interface HealthScoreDimensions {
+  clarity: HealthScoreDimension;
+  fairness: HealthScoreDimension;
+  completeness: HealthScoreDimension;
+  enforceability: HealthScoreDimension;
+  industryFit: HealthScoreDimension;
+}
+
+export interface HealthScoreResult {
+  parseError: boolean;
+  cached?: boolean;
+  truncated?: boolean;
+  totalScore: number;
+  dimensions?: HealthScoreDimensions;
+  summary?: string;
+  healthScoredAt?: string;
+}
+
+/**
+ * @nullable
+ */
+export type HealthScoreParseErrorDimensions = { [key: string]: unknown } | null;
+
+export interface HealthScoreParseError {
+  parseError: boolean;
+  /** @nullable */
+  score?: number | null;
+  /** @nullable */
+  dimensions?: HealthScoreParseErrorDimensions;
+}
+
+export interface AgreementSummarySection {
+  title: string;
+  content: string;
+}
+
+export interface AgreementSummarySections {
+  whatYouDo: AgreementSummarySection;
+  howYouGetPaid: AgreementSummarySection;
+  whoOwnsTheWork: AgreementSummarySection;
+  howItCanEnd: AgreementSummarySection;
+  restrictions: AgreementSummarySection;
+  keyDates: AgreementSummarySection;
+}
+
+export interface AgreementSummaryAttentionFlag {
+  heading: string;
+  detail: string;
+}
+
+export interface AgreementSummaryAttentionFlags {
+  exists: boolean;
+  items: AgreementSummaryAttentionFlag[];
+}
+
+export interface AgreementSummaryResult {
+  parseError: boolean;
+  cached?: boolean;
+  truncated?: boolean;
+  freelancerSummaryScoredAt?: string;
+  sections: AgreementSummarySections;
+  attentionFlags: AgreementSummaryAttentionFlags;
+  disclaimer: string;
+}
+
+/**
+ * @nullable
+ */
+export type AgreementSummaryParseErrorSummary = {
+  [key: string]: unknown;
+} | null;
+
+export interface AgreementSummaryParseError {
+  parseError: boolean;
+  /** @nullable */
+  summary?: AgreementSummaryParseErrorSummary;
+}
+
+/**
+ * Cached dimension breakdown JSON
+ * @nullable
+ */
+export type AgreementHealthScoreDetail = { [key: string]: unknown } | null;
+
+/**
+ * Cached AI plain-English summary JSON (freelancer view only)
+ * @nullable
+ */
+export type AgreementFreelancerSummary = { [key: string]: unknown } | null;
+
 export interface Agreement {
   id: number;
   bookingId: number;
@@ -488,6 +750,27 @@ export interface Agreement {
   freelancerName?: string | null;
   /** @nullable */
   employerName?: string | null;
+  /**
+   * Cached AI contract health score (0–100), null if not yet scored
+   * @nullable
+   */
+  healthScore?: number | null;
+  /**
+   * Cached dimension breakdown JSON
+   * @nullable
+   */
+  healthScoreDetail?: AgreementHealthScoreDetail;
+  /** @nullable */
+  healthScoredAt?: string | null;
+  /**
+   * Cached AI plain-English summary JSON (freelancer view only)
+   * @nullable
+   */
+  freelancerSummary?: AgreementFreelancerSummary;
+  /** @nullable */
+  freelancerSummaryScoredAt?: string | null;
+  /** Whether a cached freelancer summary exists */
+  hasSummary?: boolean;
   createdAt: string;
 }
 
@@ -1222,7 +1505,17 @@ export interface PlanDef {
 
 export interface TokenUsageBreakdown {
   ai_match: number;
+  ai_match_explanation: number;
   agreement_generation: number;
+  contract_redlining: number;
+  job_description_assistant: number;
+  ai_proposal: number;
+  document_verification: number;
+  rate_suggestion: number;
+  contract_health_score: number;
+  agreement_summary: number;
+  cruise_mode_parse: number;
+  cruise_mode_evaluation: number;
 }
 
 export interface TokenUsageSummary {
@@ -1456,6 +1749,8 @@ export interface TeamMember {
   /** @nullable */
   displayName?: string | null;
   displayEmail: string;
+  /** Admin-only — accept link for pending invites */
+  inviteUrl?: string;
 }
 
 export interface TeamDetails {
@@ -1494,6 +1789,8 @@ export interface TeamInviteResponse {
   invitedAt: string;
   /** @nullable */
   inviteExpiresAt?: string | null;
+  /** Accept-invite URL (share manually if email delivery fails) */
+  inviteUrl: string;
 }
 
 export interface AcceptTeamInviteResponse {
@@ -1529,6 +1826,26 @@ export interface InviteUsedError {
 
 export interface RemoveTeamMemberResponse {
   success: boolean;
+}
+
+export interface ResendTeamInviteResponse {
+  success: boolean;
+  invitedEmail: string;
+  inviteUrl: string;
+}
+
+export type InviteEmailFailedErrorCode =
+  (typeof InviteEmailFailedErrorCode)[keyof typeof InviteEmailFailedErrorCode];
+
+export const InviteEmailFailedErrorCode = {
+  INVITE_EMAIL_FAILED: "INVITE_EMAIL_FAILED",
+} as const;
+
+export interface InviteEmailFailedError {
+  error: string;
+  code: InviteEmailFailedErrorCode;
+  /** Share this link manually when email cannot be delivered */
+  inviteUrl?: string;
 }
 
 export interface AddTeamShortlistBody {
@@ -1615,7 +1932,151 @@ export interface PublicFreelancerProfile {
   averageRating?: number | null;
   reviewCount?: number;
   totalReviews: number;
+  professionCategory: ProfessionCategory;
+  educationProfessionType?: EducationProfessionType | null;
+  /** @nullable */
+  teachingSubjects?: string[] | null;
+  /** @nullable */
+  teachingLevels?: string[] | null;
+  /** @nullable */
+  location?: string | null;
   createdAt: string;
+}
+
+export interface BlackoutWindow {
+  start: string;
+  end: string;
+  days: number[];
+}
+
+export interface CruiseModeBlackoutWindows {
+  timezone: string;
+  windows: BlackoutWindow[];
+}
+
+export type CruiseModeRulesMessageTone =
+  (typeof CruiseModeRulesMessageTone)[keyof typeof CruiseModeRulesMessageTone];
+
+export const CruiseModeRulesMessageTone = {
+  professional: "professional",
+  friendly: "friendly",
+  concise: "concise",
+} as const;
+
+export interface CruiseModeRules {
+  requiredSkills: string[];
+  preferredSkills: string[];
+  /** @nullable */
+  minRate?: number | null;
+  /** @nullable */
+  maxRate?: number | null;
+  /** @nullable */
+  availableFrom?: string | null;
+  /** @nullable */
+  availableTo?: string | null;
+  /** @nullable */
+  maxDurationWeeks?: number | null;
+  /** @nullable */
+  minDurationWeeks?: number | null;
+  excludedKeywords: string[];
+  preferredFields: string[];
+  /**
+   * @minimum 0
+   * @maximum 100
+   */
+  matchThreshold: number;
+  messageTone: CruiseModeRulesMessageTone;
+  blackoutWindows?: CruiseModeBlackoutWindows | null;
+  dailyDigest: boolean;
+  version: number;
+}
+
+export interface MatchReasons {
+  matched: string[];
+  concerns: string[];
+  blockers: string[];
+}
+
+export interface CruiseModeConfig {
+  id: string;
+  freelancerId: number;
+  isActive: boolean;
+  isDryRun: boolean;
+  rules: CruiseModeRules;
+  rulesVersion: number;
+  /** @nullable */
+  rawRulesText?: string | null;
+  hoursUsedToday: number;
+  dailyLimitHours: number;
+  hoursResetAt: string;
+  /** @nullable */
+  activatedAt?: string | null;
+  /** @nullable */
+  deactivatedAt?: string | null;
+  /** @nullable */
+  deletedAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CruiseModeActivity {
+  id: string;
+  freelancerId: number;
+  jobRequirementId: number;
+  rulesVersion: number;
+  score: number;
+  decision: string;
+  matchReasons: MatchReasons;
+  /** @nullable */
+  proposedMessage?: string | null;
+  /** @nullable */
+  sentAt?: string | null;
+  /** @nullable */
+  skippedReason?: string | null;
+  freelancerFollowUpSent: boolean;
+  createdAt: string;
+}
+
+export type CruiseModeActivityItem = CruiseModeActivity & {
+  jobTitle: string;
+};
+
+export interface PaginatedCruiseModeActivityResult {
+  data: CruiseModeActivityItem[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+}
+
+export interface CruiseModeStats {
+  evaluatedToday: number;
+  sentToday: number;
+  skippedToday: number;
+  dryRunToday: number;
+  hoursUsedToday: number;
+  dailyLimitHours: number;
+  hoursRemainingToday: number;
+  hoursResetAt: string;
+}
+
+export interface UpsertCruiseModeBody {
+  rules: CruiseModeRules;
+  /** @nullable */
+  rawRulesText?: string | null;
+}
+
+export interface ParseCruiseModeRulesBody {
+  /**
+   * @minLength 1
+   * @maxLength 10000
+   */
+  rawText: string;
+}
+
+export interface ParseCruiseModeRulesResult {
+  rules: CruiseModeRules;
+  warnings: string[];
 }
 
 export type ListFreelancersParams = {
@@ -1647,7 +2108,23 @@ export type ListFreelancersParams = {
    * Full-text keyword search across bio and skills
    */
   q?: string;
+  /**
+   * Filter by profession category
+   */
+  professionCategory?: ListFreelancersProfessionCategory;
+  /**
+   * Case-insensitive substring match on teachingSubjects (education professionals)
+   */
+  teachingSubject?: string;
 };
+
+export type ListFreelancersProfessionCategory =
+  (typeof ListFreelancersProfessionCategory)[keyof typeof ListFreelancersProfessionCategory];
+
+export const ListFreelancersProfessionCategory = {
+  technology: "technology",
+  education: "education",
+} as const;
 
 export type ListJobRequirementsParams = {
   /**
@@ -1707,6 +2184,20 @@ export type ListAgreementsParams = {
   pageSize?: number;
 };
 
+export type PostAgreementsIdHealthScoreParams = {
+  /**
+   * Bypass cached score and re-run AI analysis
+   */
+  force?: boolean;
+};
+
+export type PostAgreementsIdSummariseParams = {
+  /**
+   * Bypass cached summary and re-run AI analysis
+   */
+  force?: boolean;
+};
+
 export type ListMeetingsParams = {
   page?: number;
   pageSize?: number;
@@ -1757,3 +2248,15 @@ export const GetTeamAnalyticsWindow = {
   "90d": "90d",
   "12m": "12m",
 } as const;
+
+export type ListCruiseModeActivityParams = {
+  /**
+   * @minimum 1
+   */
+  page?: number;
+  /**
+   * @minimum 1
+   * @maximum 100
+   */
+  pageSize?: number;
+};

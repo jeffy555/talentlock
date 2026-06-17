@@ -9,18 +9,28 @@ export type TokenFeature =
   | "job_description_assistant"
   | "ai_proposal"
   | "document_verification"
-  | "rate_suggestion";
+  | "rate_suggestion"
+  | "contract_health_score"
+  | "agreement_summary"
+  | "cruise_mode_parse"
+  | "cruise_mode_evaluation";
 
-const VALID_TOKEN_FEATURES: TokenFeature[] = [
+export const TOKEN_FEATURES: TokenFeature[] = [
   "ai_match",
   "ai_match_explanation",
   "agreement_generation",
   "contract_redlining",
+  "contract_health_score",
+  "agreement_summary",
   "job_description_assistant",
   "ai_proposal",
   "document_verification",
   "rate_suggestion",
+  "cruise_mode_parse",
+  "cruise_mode_evaluation",
 ];
+
+const VALID_TOKEN_FEATURES = TOKEN_FEATURES;
 
 export interface TokenUsageInput {
   prompt_tokens: number;

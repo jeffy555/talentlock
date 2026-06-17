@@ -1,5 +1,5 @@
 import crypto from "node:crypto";
-import { access, mkdir, readFile, writeFile } from "node:fs/promises";
+import { access, mkdir, readFile, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 const DEFAULT_SECRET = "talentlock-dev-secret-do-not-use-in-prod";
@@ -100,6 +100,14 @@ export async function localObjectExists(relativeKey: string): Promise<boolean> {
     return true;
   } catch {
     return false;
+  }
+}
+
+export async function deleteLocalObject(relativeKey: string): Promise<void> {
+  try {
+    await unlink(resolveLocalPath(relativeKey));
+  } catch {
+    // ignore missing files
   }
 }
 

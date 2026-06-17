@@ -10,6 +10,8 @@ import {
 } from "@workspace/api-zod";
 import { getUserSubscription, checkLimit } from "../lib/subscriptionGating";
 import { sanitiseText } from "../lib/sanitise";
+import { resolveUserByClerkId, canAccessJobRequirement } from "../lib/accessControl";
+import { evaluateCruiseModeForNewJob } from "../lib/cruiseModeEvaluator";
 
 const router = Router();
 
@@ -71,7 +73,12 @@ router.post("/job-requirements", async (req, res) => {
       res.status(402).json({ error: result.gate.reason, planNeeded: result.gate.planNeeded, code: "PLAN_LIMIT" });
       return;
     }
-    res.status(201).json(mapJob(result.job!));
+    const newJob = result.job!;
+    // Fire-and-forget — never awaited, never delays the response
+    evaluateCruiseModeForNewJob(db, newJob.id, req.log).catch((err) =>
+      req.log.warn({ err, jobId: newJob.id }, "cruise-mode evaluation hook failed"),
+    );
+    res.status(201).json(mapJob(newJob));
   } catch (err) {
     req.log.error({ err }, "Failed to create job requirement");
     res.status(500).json({ error: "Internal server error" });
@@ -94,12 +101,21 @@ router.get("/job-requirements/:id", async (req, res) => {
 router.patch("/job-requirements/:id", async (req, res) => {
   const id = parseInt(req.params.id);
   if (isNaN(id)) { res.status(400).json({ error: "Invalid ID" }); return; }
+  const { userId: clerkId } = getAuth(req);
+  if (!clerkId) { res.status(401).json({ error: "Unauthorized" }); return; }
   const parsed = UpdateJobRequirementBody.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
   const data = { ...parsed.data } as Record<string, unknown>;
   if (parsed.data.title !== undefined) data.title = sanitiseText(parsed.data.title);
   if (parsed.data.description !== undefined) data.description = sanitiseText(parsed.data.description);
   try {
+    const user = await resolveUserByClerkId(clerkId);
+    if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
+    const access = await canAccessJobRequirement(user.id, id);
+    if (!access.ok) {
+      res.status(access.status).json({ error: access.status === 404 ? "Job requirement not found" : "Forbidden" });
+      return;
+    }
     const [updated] = await db.update(jobRequirementsTable)
       .set({ ...data, updatedAt: new Date() })
       .where(eq(jobRequirementsTable.id, id))
@@ -115,7 +131,16 @@ router.patch("/job-requirements/:id", async (req, res) => {
 router.delete("/job-requirements/:id", async (req, res) => {
   const id = parseInt(req.params.id);
   if (isNaN(id)) { res.status(400).json({ error: "Invalid ID" }); return; }
+  const { userId: clerkId } = getAuth(req);
+  if (!clerkId) { res.status(401).json({ error: "Unauthorized" }); return; }
   try {
+    const user = await resolveUserByClerkId(clerkId);
+    if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
+    const access = await canAccessJobRequirement(user.id, id);
+    if (!access.ok) {
+      res.status(access.status).json({ error: access.status === 404 ? "Job requirement not found" : "Forbidden" });
+      return;
+    }
     await db.delete(jobRequirementsTable).where(eq(jobRequirementsTable.id, id));
     res.status(204).send();
   } catch (err) {

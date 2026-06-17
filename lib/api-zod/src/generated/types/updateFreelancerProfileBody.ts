@@ -5,6 +5,11 @@
  * TalentLock API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { DbsCheckStatus } from "./dbsCheckStatus";
+import type { EducationProfessionType } from "./educationProfessionType";
+import type { HighestDegree } from "./highestDegree";
+import type { PreferredTeachingMode } from "./preferredTeachingMode";
+import type { ProfessionCategory } from "./professionCategory";
 
 export interface UpdateFreelancerProfileBody {
   tagline?: string;
@@ -30,4 +35,27 @@ export interface UpdateFreelancerProfileBody {
   availableFrom?: Date | null;
   /** @nullable */
   availabilityNote?: string | null;
+  professionCategory?: ProfessionCategory;
+  educationProfessionType?: EducationProfessionType | null;
+  /** @nullable */
+  teachingSubjects?: string[] | null;
+  /** @nullable */
+  teachingLevels?: string[] | null;
+  /** @nullable */
+  yearsTeachingExperience?: number | null;
+  highestDegree?: HighestDegree | null;
+  /** @nullable */
+  degreeSubject?: string | null;
+  /** @nullable */
+  degreeInstitution?: string | null;
+  /** @nullable */
+  teachingLicenceState?: string | null;
+  /** @nullable */
+  teachingLicenceExpiry?: Date | null;
+  dbsCheckStatus?: DbsCheckStatus | null;
+  /** @nullable */
+  researchPublications?: string | null;
+  preferredTeachingMode?: PreferredTeachingMode | null;
+  /** @nullable */
+  location?: string | null;
 }

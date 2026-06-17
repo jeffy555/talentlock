@@ -14,6 +14,8 @@ export function getNotificationRoute(entityType: string, entityId: string): stri
       return `/bookings/${entityId}`;
     case "job":
       return `/jobs/${entityId}`;
+    case "cruise_mode_activity":
+      return "/cruise-mode?tab=activity";
     default:
       return "/dashboard";
   }

@@ -15,6 +15,8 @@ export const jobRequirementsTable = pgTable("job_requirements", {
   startDate: timestamp("start_date", { withTimezone: true }).notNull(),
   endDate: timestamp("end_date", { withTimezone: true }).notNull(),
   status: text("status").notNull().default("open"), // open | filled | closed
+  professionCategory: text("profession_category").notNull().default("technology"),
+  rateType: text("rate_type").notNull().default("hourly"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });

@@ -1,4 +1,4 @@
-import { pgTable, text, serial, timestamp, integer } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, timestamp, integer, jsonb } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
@@ -18,6 +18,11 @@ export const agreementsTable = pgTable("agreements", {
   employerSignatureImageUrl: text("employer_signature_image_url"),
   freelancerDownloadedAt: timestamp("freelancer_downloaded_at", { withTimezone: true }),
   employerDownloadedAt: timestamp("employer_downloaded_at", { withTimezone: true }),
+  healthScore: integer("health_score"),
+  healthScoreDetail: jsonb("health_score_detail"),
+  healthScoredAt: timestamp("health_scored_at", { withTimezone: true }),
+  freelancerSummary: jsonb("freelancer_summary"),
+  freelancerSummaryScoredAt: timestamp("freelancer_summary_scored_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });

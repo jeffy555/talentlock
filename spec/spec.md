@@ -21,24 +21,10 @@ talentlock/
 │   ├── api-client-react/
 │   ├── api-zod/
 │   └── ...
-├── specs/                                    ← ALL specification files live here
-│   ├── spec.md                               ← THIS FILE — master index + execution rules
+├── specs/                                          ← ALL specification files live here
+│   ├── spec.md                                     ← THIS FILE — master index + execution rules
 │   │
-│   ├── token-usage/                          ← ✅ Complete
-│   │   ├── features.md
-│   │   ├── clarify.md
-│   │   ├── plan.md
-│   │   ├── task.md
-│   │   └── UI.md
-│   │
-│   ├── ai-enhancements/                      ← 🔄 In Progress
-│   │   ├── features.md
-│   │   ├── clarify.md
-│   │   ├── plan.md
-│   │   ├── task.md
-│   │   └── UI.md
-│   │
-│   ├── document-verification/                ← 🟡 Ready to Execute
+│   ├── token-usage/                                ← ✅ Complete
 │   │   ├── features.md
 │   │   ├── clarify.md
 │   │   ├── plan.md
@@ -46,7 +32,7 @@ talentlock/
 │   │   ├── UI.md
 │   │   └── validation.md
 │   │
-│   ├── smarter-matching/                     ← 🟡 Ready to Execute
+│   ├── ai-enhancements/                            ← ✅ Complete
 │   │   ├── features.md
 │   │   ├── clarify.md
 │   │   ├── plan.md
@@ -54,7 +40,7 @@ talentlock/
 │   │   ├── UI.md
 │   │   └── validation.md
 │   │
-│   ├── agreement-templates-redlining/        ← 🟡 Ready to Execute
+│   ├── document-verification/                      ← ✅ Complete
 │   │   ├── features.md
 │   │   ├── clarify.md
 │   │   ├── plan.md
@@ -62,7 +48,7 @@ talentlock/
 │   │   ├── UI.md
 │   │   └── validation.md
 │   │
-│   ├── job-description-assistant/            ← 🟡 Ready to Execute
+│   ├── smarter-matching/                           ← ✅ Complete
 │   │   ├── features.md
 │   │   ├── clarify.md
 │   │   ├── plan.md
@@ -70,7 +56,7 @@ talentlock/
 │   │   ├── UI.md
 │   │   └── validation.md
 │   │
-│   ├── per-conversation-token-breakdown/     ← 🟡 Ready to Execute
+│   ├── agreement-templates-redlining/              ← ✅ Complete
 │   │   ├── features.md
 │   │   ├── clarify.md
 │   │   ├── plan.md
@@ -78,7 +64,7 @@ talentlock/
 │   │   ├── UI.md
 │   │   └── validation.md
 │   │
-│   ├── reviews-ratings/                       ← 🟡 Ready to Execute
+│   ├── job-description-assistant/                  ← ✅ Complete
 │   │   ├── features.md
 │   │   ├── clarify.md
 │   │   ├── plan.md
@@ -86,7 +72,7 @@ talentlock/
 │   │   ├── UI.md
 │   │   └── validation.md
 │   │
-│   ├── notifications-centre/                 ← 🟡 Ready to Execute
+│   ├── per-conversation-token-breakdown/           ← ✅ Complete
 │   │   ├── features.md
 │   │   ├── clarify.md
 │   │   ├── plan.md
@@ -94,7 +80,7 @@ talentlock/
 │   │   ├── UI.md
 │   │   └── validation.md
 │   │
-│   ├── earnings-intelligence/                ← 🟡 Ready to Execute
+│   ├── reviews-ratings/                            ← ✅ Complete
 │   │   ├── features.md
 │   │   ├── clarify.md
 │   │   ├── plan.md
@@ -102,7 +88,7 @@ talentlock/
 │   │   ├── UI.md
 │   │   └── validation.md
 │   │
-│   ├── employer-spend-analytics/             ← 🟡 Ready to Execute
+│   ├── notifications-centre/                       ← ✅ Complete
 │   │   ├── features.md
 │   │   ├── clarify.md
 │   │   ├── plan.md
@@ -110,7 +96,7 @@ talentlock/
 │   │   ├── UI.md
 │   │   └── validation.md
 │   │
-│   ├── employer-analytics-dashboard/         ← 🟡 Ready to Execute
+│   ├── earnings-intelligence/                      ← ✅ Complete
 │   │   ├── features.md
 │   │   ├── clarify.md
 │   │   ├── plan.md
@@ -118,7 +104,7 @@ talentlock/
 │   │   ├── UI.md
 │   │   └── validation.md
 │   │
-│   ├── AvailabilityCalendar/                 ← ✅ Complete
+│   ├── employer-spend-analytics/                   ← ✅ Complete
 │   │   ├── features.md
 │   │   ├── clarify.md
 │   │   ├── plan.md
@@ -126,7 +112,7 @@ talentlock/
 │   │   ├── UI.md
 │   │   └── validation.md
 │   │
-│   ├── SecurityHardening/                    ← ✅ Complete
+│   ├── employer-analytics-dashboard/               ← ✅ Complete
 │   │   ├── features.md
 │   │   ├── clarify.md
 │   │   ├── plan.md
@@ -134,23 +120,103 @@ talentlock/
 │   │   ├── UI.md
 │   │   └── validation.md
 │   │
-│   ├── ProductGaps/                          ← ✅ Complete (validated 2026-06-08)
+│   ├── availability-calendar/                      ← ✅ Complete · 🟢 P1 follow-up (defer lock to confirmation) validated 2026-06-09
 │   │   ├── features.md
 │   │   ├── clarify.md
 │   │   ├── plan.md
 │   │   ├── task.md
 │   │   ├── UI.md
-│   │   └── validation.md                     ← sign-off complete
+│   │   └── validation.md
 │   │
-│   ├── ai-proposal-generator/                ← ✅ Complete (validated 2026-06-08)
+│   ├── security-hardening/                         ← ✅ Complete · 🟢 P1 follow-up (sanitisation on 6 routes) validated 2026-06-09
 │   │   ├── features.md
 │   │   ├── clarify.md
 │   │   ├── plan.md
 │   │   ├── task.md
 │   │   ├── UI.md
-│   │   └── validation.md                     ← sign-off complete
+│   │   └── validation.md
 │   │
-│   └── {next-feature}/                       ← Future features follow the same pattern
+│   ├── product-gaps/                               ← ✅ Complete (validated 2026-06-08)
+│   │   ├── features.md
+│   │   ├── clarify.md
+│   │   ├── plan.md
+│   │   ├── task.md
+│   │   ├── UI.md
+│   │   └── validation.md
+│   │
+│   ├── ai-proposal-generator/                      ← ✅ Complete (validated 2026-06-08)
+│   │   ├── features.md
+│   │   ├── clarify.md
+│   │   ├── plan.md
+│   │   ├── task.md
+│   │   ├── UI.md
+│   │   └── validation.md
+│   │
+│   ├── smart-rate-suggestions/                     ← ✅ Complete
+│   │   ├── features.md
+│   │   ├── clarify.md
+│   │   ├── plan.md
+│   │   ├── task.md
+│   │   ├── UI.md
+│   │   └── validation.md
+│   │
+│   ├── team-accounts-enterprise/                   ← ✅ Complete
+│   │   ├── features.md
+│   │   ├── clarify.md
+│   │   ├── plan.md
+│   │   ├── task.md
+│   │   ├── UI.md
+│   │   └── validation.md
+│   │
+│   ├── ai-contract-health-score/                   ← ✅ Complete (validated 2026-06-09)
+│   │   ├── features.md
+│   │   ├── clarify.md
+│   │   ├── plan.md
+│   │   ├── task.md
+│   │   ├── UI.md
+│   │   └── validation.md
+│   │
+│   ├── AuthHardening/                              ← ✅ Complete (validated 2026-06-09)
+│   │   ├── features.md
+│   │   ├── clarify.md
+│   │   ├── plan.md
+│   │   ├── task.md
+│   │   ├── UI.md
+│   │   └── validation.md
+│   │
+│   ├── agreement-ai-summary/                       ← 🟡 Ready to Execute
+│   │   ├── features.md
+│   │   ├── clarify.md
+│   │   ├── plan.md
+│   │   ├── task.md
+│   │   ├── UI.md
+│   │   └── validation.md
+│   │
+│   ├── agreement-pdf-download/                     ← 🟡 Ready to Execute
+│   │   ├── features.md
+│   │   ├── clarify.md
+│   │   ├── plan.md
+│   │   ├── task.md
+│   │   ├── UI.md
+│   │   └── validation.md
+│   │
+│   ├── cruise-mode/                                ← 🟡 Ready to Execute
+│   │   ├── features.md
+│   │   ├── clarify.md
+│   │   ├── plan.md
+│   │   ├── task.md
+│   │   ├── UI.md
+│   │   └── validation.md
+│   │
+│   ├── teaching-professional-profile/             ← 🟡 Ready to Execute
+│   │   ├── features.md
+│   │   ├── clarify.md
+│   │   ├── plan.md
+│   │   ├── task.md
+│   │   ├── UI.md
+│   │   └── validation.md
+│   │
+│   └── {next-feature}/                             ← Future features follow the same pattern
 │       ├── features.md
 │       ├── clarify.md
 │       ├── plan.md
@@ -158,7 +224,7 @@ talentlock/
 │       ├── UI.md
 │       └── validation.md
 │
-├── project.md                                ← Architecture reference (keep at repo root)
+├── project.md                                      ← Architecture reference (keep at repo root)
 └── package.json
 ```
 
@@ -385,7 +451,7 @@ The `.cursor/rules/talentlock.mdc` file at the repo root enforces these rules au
 
 | Feature | Folder | Status |
 |---|---|---|
-| AI Token Consumption Dashboard | `specs/token-usage/` | ✅ Complete |
+| AI Token Consumption Dashboard | `specs/token-usage/` | ✅ Complete · 🟢 P1 follow-up (full 9-feature breakdown) validated 2026-06-09 |
 | AI Enhancements | `specs/ai-enhancements/` | ✅ Complete |
 | Document Verification | `specs/document-verification/` | ✅ Complete |
 | Smarter Matching Explanation | `specs/smarter-matching/` | ✅ Complete |
@@ -397,13 +463,47 @@ The `.cursor/rules/talentlock.mdc` file at the repo root enforces these rules au
 | Earnings Intelligence | `specs/earnings-intelligence/` | ✅ Complete |
 | Employer Spend Analytics | `specs/employer-spend-analytics/` | ✅ Complete |
 | Employer Analytics Dashboard | `specs/employer-analytics-dashboard/` | ✅ Complete |
-| Availability Calendar (Visual) | `spec/AvailabilityCalendar/` | ✅ Complete |
-| Security Hardening | `spec/SecurityHardening/` | ✅ Complete |
-| Product Gaps | `spec/ProductGaps/` | ✅ Complete (validated 2026-06-08) |
-| AI Proposal Generator | `spec/ai-proposal-generator/` | ✅ Complete (validated 2026-06-08) |
+| Availability Calendar (Visual) | `specs/availability-calendar/` | ✅ Complete · 🟢 P1 follow-up (defer lock to confirmation) validated 2026-06-09 |
+| Security Hardening | `specs/security-hardening/` | ✅ Complete · 🟢 P1 follow-up (sanitisation on 6 routes) validated 2026-06-09 |
+| Product Gaps | `specs/product-gaps/` | ✅ Complete (validated 2026-06-08) |
+| AI Proposal Generator | `specs/ai-proposal-generator/` | ✅ Complete (validated 2026-06-08) |
+| Smart Rate Suggestions | `specs/smart-rate-suggestions/` | ✅ Complete |
+| Team Accounts (Enterprise) | `specs/team-accounts-enterprise/` | ✅ Complete |
+| AI Contract Health Score | `specs/ai-contract-health-score/` | ✅ Complete (validated 2026-06-09) |
+| **Auth Hardening (Access Control)** | `specs/AuthHardening/` | ✅ Complete (validated 2026-06-09) |
+| Agreement AI Summary | `specs/agreement-ai-summary/` | 🟡 Ready to Execute |
+| Agreement PDF Download | `specs/agreement-pdf-download/` | 🟡 Ready to Execute |
+| Cruise Mode | `specs/cruise-mode/` | 🟡 Ready to Execute |
+| Teaching Professional Profile | `specs/teaching-professional-profile/` | 🟡 Ready to Execute |
 
 > Add new features to this table when their `features.md` is created.
 > Update status as work progresses: 🟡 Ready → 🔄 In Progress → ✅ Complete
+>
+> **Note:** `AuthHardening` closed the per-resource authorization gap (IDOR protection on 11 routes + storage ACL). It is independent of the completed `security-hardening` spec, which covered middleware/CSRF/sanitisation/audit/GDPR but not per-resource authorization. Automated validation: `node artifacts/api-server/validate-auth-hardening.mjs` (32/32 passed).
+
+---
+
+## Security & Production Readiness Review — Status (2026-06-09)
+
+Tracking the findings from the TalentLock Security & Production Readiness review (`TalentLock-Security-Hardening.docx`):
+
+| Priority | Item | Spec home | Status |
+|---|---|---|---|
+| 🔴 P0 | IDOR on 11 routes — `accessControl.ts` + guards | `AuthHardening/` | ✅ Implemented & validated 2026-06-09 |
+| 🔴 P0 | Auth-gate storage upload URLs + object ACL (namespace by userId) | `AuthHardening/` (Module 6) | ✅ Implemented & validated 2026-06-09 |
+| 🟠 P1 | Token breakdown — extend to all 9 features | `token-usage/` (Module 5 addendum) | ✅ Implemented & validated 2026-06-09 |
+| 🟠 P1 | Apply `sanitiseText()` to 6 missing free-text fields | `security-hardening/` (Module 2 addendum) | ✅ Implemented & validated 2026-06-09 |
+| 🟠 P1 | Fix premature availability lock | `availability-calendar/` (Module 8 addendum) | ✅ Implemented & validated 2026-06-09 |
+| 🟠 P1 | Add 4 missing endpoint groups to OpenAPI + fix raw `fetch` | `specs/OpenApiContractCleanup/` | ⬜ Not started |
+| 🟡 P2 | Automated tests (Vitest + Supertest) + wire `validate-*.mjs` to CI | `specs/api-testing/` | ⬜ Not started |
+| 🟡 P2 | Fix N+1 on bookings/meetings/agreements list endpoints | _backend perf_ | ⬜ Not started |
+| 🟡 P2 | Schema & type hygiene (FKs, `as any`, tx scope, Zod, split large routes) | _backend cleanup_ | ⬜ Not started |
+| 🟡 P2 | Stripe real checkout + webhook signature verification | `specs/stripe-billing/` | ⬜ Not started |
+| 🟡 P2 | AI match history cap + profile caching | _backend perf_ | ⬜ Not started |
+| 🟡 P2 | Booking acceptance state machine (freelancer accept/decline) | `specs/booking-acceptance/` | ⬜ Not started |
+| 🟢 P3 | Boot guard (reject default creds), CORS lockdown, trust proxy, remove demo route | `specs/production-readiness/` | ⬜ Not started |
+
+> P0 and P1 from the review are **closed**. Remaining work is P2 (important, non-blocking) and P3 (production config / enterprise). See the P2 plan tracked with the team.
 
 ---
 

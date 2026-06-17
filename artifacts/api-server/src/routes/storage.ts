@@ -1,6 +1,9 @@
 import { Router, type IRouter, type Request, type Response } from "express";
 import express from "express";
 import { Readable } from "stream";
+import { randomUUID } from "crypto";
+import { getAuth } from "@clerk/express";
+import { resolveUserByClerkId } from "../lib/accessControl";
 import {
   RequestUploadUrlBody,
   RequestUploadUrlResponse,
@@ -75,6 +78,9 @@ router.get("/storage/local-read", async (req: Request, res: Response) => {
  * Then uploads the file directly to the returned presigned URL.
  */
 router.post("/storage/uploads/request-url", async (req: Request, res: Response) => {
+  const { userId: clerkId } = getAuth(req);
+  if (!clerkId) { res.status(401).json({ error: "Unauthorized" }); return; }
+
   const parsed = RequestUploadUrlBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: "Missing or invalid required fields" });
@@ -82,18 +88,24 @@ router.post("/storage/uploads/request-url", async (req: Request, res: Response) 
   }
 
   try {
+    const user = await resolveUserByClerkId(clerkId);
+    if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
+
     const { fileName, contentType } = parsed.data;
 
-    const uploadURL = await objectStorageService.getObjectEntityUploadURL();
+    const relativeKey = `uploads/${user.id}/${randomUUID()}`;
+    const uploadURL = await objectStorageService.getSignedUploadUrlForKey(relativeKey);
     const objectPath = objectStorageService.normalizeObjectEntityPath(uploadURL);
 
-    res.json(
-      RequestUploadUrlResponse.parse({
-        uploadURL,
-        objectPath,
-        metadata: { fileName, contentType },
-      }),
-    );
+    const payload = RequestUploadUrlResponse.parse({
+      uploadUrl: uploadURL,
+      objectPath,
+    });
+    res.json({
+      ...payload,
+      uploadURL,
+      metadata: { fileName, contentType },
+    });
   } catch (error) {
     req.log.error({ err: error }, "Error generating upload URL");
     res.status(500).json({ error: "Failed to generate upload URL" });
@@ -148,6 +160,18 @@ router.get("/storage/objects/*path", async (req: Request, res: Response) => {
 
     if (wildcardPath.startsWith("documents/")) {
       if (!isAdminRequest(req)) {
+        res.status(403).json({ error: "Forbidden" });
+        return;
+      }
+    }
+
+    const uploadsMatch = wildcardPath.match(/^uploads\/(\d+)\//);
+    if (uploadsMatch) {
+      const { userId: clerkId } = getAuth(req);
+      if (!clerkId) { res.status(401).json({ error: "Unauthorized" }); return; }
+      const user = await resolveUserByClerkId(clerkId);
+      if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
+      if (Number(uploadsMatch[1]) !== user.id) {
         res.status(403).json({ error: "Forbidden" });
         return;
       }

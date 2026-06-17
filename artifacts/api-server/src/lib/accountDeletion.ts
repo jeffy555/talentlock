@@ -15,6 +15,7 @@ import {
   tokenUsage,
 } from "@workspace/db";
 import { and, eq, inArray, or, SQL } from "drizzle-orm";
+import { deleteCachedAgreementPdfsForUser } from "./agreementPdfCache";
 
 type DB = typeof db;
 
@@ -127,6 +128,10 @@ export async function anonymiseUserData(
       .update(accountDeletionRequestsTable)
       .set({ status: "processing", processedAt: new Date(), rejectionReason: null })
       .where(eq(accountDeletionRequestsTable.id, deletionRequestId));
+  });
+
+  await deleteCachedAgreementPdfsForUser(dbConn, userId).catch(() => {
+    // Best-effort — cached PDF removal must not block anonymisation
   });
 }
 

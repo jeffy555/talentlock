@@ -5,6 +5,8 @@
  * TalentLock API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { AgreementFreelancerSummary } from "./agreementFreelancerSummary";
+import type { AgreementHealthScoreDetail } from "./agreementHealthScoreDetail";
 
 export interface Agreement {
   id: number;
@@ -39,5 +41,26 @@ export interface Agreement {
   freelancerName?: string | null;
   /** @nullable */
   employerName?: string | null;
+  /**
+   * Cached AI contract health score (0–100), null if not yet scored
+   * @nullable
+   */
+  healthScore?: number | null;
+  /**
+   * Cached dimension breakdown JSON
+   * @nullable
+   */
+  healthScoreDetail?: AgreementHealthScoreDetail;
+  /** @nullable */
+  healthScoredAt?: Date | null;
+  /**
+   * Cached AI plain-English summary JSON (freelancer view only)
+   * @nullable
+   */
+  freelancerSummary?: AgreementFreelancerSummary;
+  /** @nullable */
+  freelancerSummaryScoredAt?: Date | null;
+  /** Whether a cached freelancer summary exists */
+  hasSummary?: boolean;
   createdAt: Date;
 }
