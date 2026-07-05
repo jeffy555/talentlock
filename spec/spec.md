@@ -216,6 +216,22 @@ talentlock/
 │   │   ├── UI.md
 │   │   └── validation.md
 │   │
+│   ├── talent-search/                             ← 🟡 Ready to Execute
+│   │   ├── features.md
+│   │   ├── clarify.md
+│   │   ├── plan.md
+│   │   ├── task.md
+│   │   ├── UI.md
+│   │   └── validation.md
+│   │
+│   ├── ai-meeting-brief/                          ← 🟡 Ready to Execute
+│   │   ├── features.md
+│   │   ├── clarify.md
+│   │   ├── plan.md
+│   │   ├── task.md
+│   │   ├── UI.md
+│   │   └── validation.md
+│   │
 │   └── {next-feature}/                             ← Future features follow the same pattern
 │       ├── features.md
 │       ├── clarify.md
@@ -475,6 +491,10 @@ The `.cursor/rules/talentlock.mdc` file at the repo root enforces these rules au
 | Agreement PDF Download | `specs/agreement-pdf-download/` | 🟡 Ready to Execute |
 | Cruise Mode | `specs/cruise-mode/` | 🟡 Ready to Execute |
 | Teaching Professional Profile | `specs/teaching-professional-profile/` | 🟡 Ready to Execute |
+| TalentSearch (Employer Cruise Mode) | `specs/talent-search/` | 🟡 Ready to Execute |
+| AI Meeting Brief Generator | `specs/ai-meeting-brief/` | 🟡 Ready to Execute |
+| TalentSearch (Employer Cruise Mode) | `specs/talent-search/` | 🟡 Ready to Execute |
+| AI Meeting Brief Generator | `specs/ai-meeting-brief/` | 🟡 Ready to Execute |
 
 > Add new features to this table when their `features.md` is created.
 > Update status as work progresses: 🟡 Ready → 🔄 In Progress → ✅ Complete

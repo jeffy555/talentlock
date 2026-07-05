@@ -924,6 +924,8 @@ export const getTokenUsageMeResponseBreakdownContractHealthScoreDefault = 0;
 export const getTokenUsageMeResponseBreakdownAgreementSummaryDefault = 0;
 export const getTokenUsageMeResponseBreakdownCruiseModeParseDefault = 0;
 export const getTokenUsageMeResponseBreakdownCruiseModeEvaluationDefault = 0;
+export const getTokenUsageMeResponseBreakdownTalentSearchParseDefault = 0;
+export const getTokenUsageMeResponseBreakdownTalentSearchEvaluationDefault = 0;
 
 export const GetTokenUsageMeResponse = zod.object({
   plan: zod.string(),
@@ -968,6 +970,12 @@ export const GetTokenUsageMeResponse = zod.object({
     cruise_mode_evaluation: zod
       .number()
       .default(getTokenUsageMeResponseBreakdownCruiseModeEvaluationDefault),
+    talent_search_parse: zod
+      .number()
+      .default(getTokenUsageMeResponseBreakdownTalentSearchParseDefault),
+    talent_search_evaluation: zod
+      .number()
+      .default(getTokenUsageMeResponseBreakdownTalentSearchEvaluationDefault),
   }),
 });
 
@@ -3466,6 +3474,520 @@ export const MarkCruiseModeFollowUpResponse = zod.object({
  * @summary Cruise Mode stats for today and current month
  */
 export const GetCruiseModeStatsResponse = zod.object({
+  evaluatedToday: zod.number(),
+  sentToday: zod.number(),
+  skippedToday: zod.number(),
+  dryRunToday: zod.number(),
+  hoursUsedToday: zod.number(),
+  dailyLimitHours: zod.number(),
+  hoursRemainingToday: zod.number(),
+  hoursResetAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Get current TalentSearch config
+ */
+export const getTalentSearchResponseOneRulesMatchThresholdMin = 0;
+export const getTalentSearchResponseOneRulesMatchThresholdMax = 100;
+
+export const GetTalentSearchResponse = zod.union([
+  zod.object({
+    id: zod.string(),
+    employerId: zod.number(),
+    isActive: zod.boolean(),
+    isDryRun: zod.boolean(),
+    rules: zod.object({
+      professionCategory: zod.string().nullish(),
+      educationSubType: zod.string().nullish(),
+      requiredSkills: zod.array(zod.string()),
+      preferredSkills: zod.array(zod.string()),
+      minRate: zod.number().nullish(),
+      maxRate: zod.number().nullish(),
+      rateType: zod.enum(["hourly", "per_day", "per_session", "per_course"]),
+      availableFrom: zod.string().nullish(),
+      locationRequired: zod.boolean(),
+      location: zod.string().nullish(),
+      locationRadiusKm: zod.number().nullish(),
+      excludedKeywords: zod.array(zod.string()),
+      requireVerifiedCredentials: zod.boolean(),
+      requireDbs: zod.boolean(),
+      preferredFields: zod.array(zod.string()),
+      matchThreshold: zod
+        .number()
+        .min(getTalentSearchResponseOneRulesMatchThresholdMin)
+        .max(getTalentSearchResponseOneRulesMatchThresholdMax),
+      messageTone: zod.enum(["professional", "friendly", "concise"]),
+      blackoutWindows: zod
+        .union([
+          zod.object({
+            timezone: zod.string(),
+            windows: zod.array(
+              zod.object({
+                start: zod.string(),
+                end: zod.string(),
+                days: zod.array(zod.number()),
+              }),
+            ),
+          }),
+          zod.null(),
+        ])
+        .optional(),
+      dryRun: zod.boolean(),
+      dailyDigest: zod.boolean(),
+      version: zod.number(),
+    }),
+    rulesVersion: zod.number(),
+    rawRulesText: zod.string().nullish(),
+    hoursUsedToday: zod.number(),
+    dailyLimitHours: zod.number(),
+    hoursResetAt: zod.coerce.date(),
+    activatedAt: zod.coerce.date().nullish(),
+    deactivatedAt: zod.coerce.date().nullish(),
+    deletedAt: zod.coerce.date().nullish(),
+    createdAt: zod.coerce.date(),
+    updatedAt: zod.coerce.date(),
+  }),
+  zod.null(),
+]);
+
+/**
+ * @summary Create or update TalentSearch config
+ */
+export const upsertTalentSearchBodyRulesMatchThresholdMin = 0;
+export const upsertTalentSearchBodyRulesMatchThresholdMax = 100;
+
+export const UpsertTalentSearchBody = zod.object({
+  rules: zod.object({
+    professionCategory: zod.string().nullish(),
+    educationSubType: zod.string().nullish(),
+    requiredSkills: zod.array(zod.string()),
+    preferredSkills: zod.array(zod.string()),
+    minRate: zod.number().nullish(),
+    maxRate: zod.number().nullish(),
+    rateType: zod.enum(["hourly", "per_day", "per_session", "per_course"]),
+    availableFrom: zod.string().nullish(),
+    locationRequired: zod.boolean(),
+    location: zod.string().nullish(),
+    locationRadiusKm: zod.number().nullish(),
+    excludedKeywords: zod.array(zod.string()),
+    requireVerifiedCredentials: zod.boolean(),
+    requireDbs: zod.boolean(),
+    preferredFields: zod.array(zod.string()),
+    matchThreshold: zod
+      .number()
+      .min(upsertTalentSearchBodyRulesMatchThresholdMin)
+      .max(upsertTalentSearchBodyRulesMatchThresholdMax),
+    messageTone: zod.enum(["professional", "friendly", "concise"]),
+    blackoutWindows: zod
+      .union([
+        zod.object({
+          timezone: zod.string(),
+          windows: zod.array(
+            zod.object({
+              start: zod.string(),
+              end: zod.string(),
+              days: zod.array(zod.number()),
+            }),
+          ),
+        }),
+        zod.null(),
+      ])
+      .optional(),
+    dryRun: zod.boolean(),
+    dailyDigest: zod.boolean(),
+    version: zod.number(),
+  }),
+  rawRulesText: zod.string().nullish(),
+});
+
+export const upsertTalentSearchResponseRulesMatchThresholdMin = 0;
+export const upsertTalentSearchResponseRulesMatchThresholdMax = 100;
+
+export const UpsertTalentSearchResponse = zod.object({
+  id: zod.string(),
+  employerId: zod.number(),
+  isActive: zod.boolean(),
+  isDryRun: zod.boolean(),
+  rules: zod.object({
+    professionCategory: zod.string().nullish(),
+    educationSubType: zod.string().nullish(),
+    requiredSkills: zod.array(zod.string()),
+    preferredSkills: zod.array(zod.string()),
+    minRate: zod.number().nullish(),
+    maxRate: zod.number().nullish(),
+    rateType: zod.enum(["hourly", "per_day", "per_session", "per_course"]),
+    availableFrom: zod.string().nullish(),
+    locationRequired: zod.boolean(),
+    location: zod.string().nullish(),
+    locationRadiusKm: zod.number().nullish(),
+    excludedKeywords: zod.array(zod.string()),
+    requireVerifiedCredentials: zod.boolean(),
+    requireDbs: zod.boolean(),
+    preferredFields: zod.array(zod.string()),
+    matchThreshold: zod
+      .number()
+      .min(upsertTalentSearchResponseRulesMatchThresholdMin)
+      .max(upsertTalentSearchResponseRulesMatchThresholdMax),
+    messageTone: zod.enum(["professional", "friendly", "concise"]),
+    blackoutWindows: zod
+      .union([
+        zod.object({
+          timezone: zod.string(),
+          windows: zod.array(
+            zod.object({
+              start: zod.string(),
+              end: zod.string(),
+              days: zod.array(zod.number()),
+            }),
+          ),
+        }),
+        zod.null(),
+      ])
+      .optional(),
+    dryRun: zod.boolean(),
+    dailyDigest: zod.boolean(),
+    version: zod.number(),
+  }),
+  rulesVersion: zod.number(),
+  rawRulesText: zod.string().nullish(),
+  hoursUsedToday: zod.number(),
+  dailyLimitHours: zod.number(),
+  hoursResetAt: zod.coerce.date(),
+  activatedAt: zod.coerce.date().nullish(),
+  deactivatedAt: zod.coerce.date().nullish(),
+  deletedAt: zod.coerce.date().nullish(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Activate TalentSearch (live)
+ */
+export const activateTalentSearchResponseRulesMatchThresholdMin = 0;
+export const activateTalentSearchResponseRulesMatchThresholdMax = 100;
+
+export const ActivateTalentSearchResponse = zod.object({
+  id: zod.string(),
+  employerId: zod.number(),
+  isActive: zod.boolean(),
+  isDryRun: zod.boolean(),
+  rules: zod.object({
+    professionCategory: zod.string().nullish(),
+    educationSubType: zod.string().nullish(),
+    requiredSkills: zod.array(zod.string()),
+    preferredSkills: zod.array(zod.string()),
+    minRate: zod.number().nullish(),
+    maxRate: zod.number().nullish(),
+    rateType: zod.enum(["hourly", "per_day", "per_session", "per_course"]),
+    availableFrom: zod.string().nullish(),
+    locationRequired: zod.boolean(),
+    location: zod.string().nullish(),
+    locationRadiusKm: zod.number().nullish(),
+    excludedKeywords: zod.array(zod.string()),
+    requireVerifiedCredentials: zod.boolean(),
+    requireDbs: zod.boolean(),
+    preferredFields: zod.array(zod.string()),
+    matchThreshold: zod
+      .number()
+      .min(activateTalentSearchResponseRulesMatchThresholdMin)
+      .max(activateTalentSearchResponseRulesMatchThresholdMax),
+    messageTone: zod.enum(["professional", "friendly", "concise"]),
+    blackoutWindows: zod
+      .union([
+        zod.object({
+          timezone: zod.string(),
+          windows: zod.array(
+            zod.object({
+              start: zod.string(),
+              end: zod.string(),
+              days: zod.array(zod.number()),
+            }),
+          ),
+        }),
+        zod.null(),
+      ])
+      .optional(),
+    dryRun: zod.boolean(),
+    dailyDigest: zod.boolean(),
+    version: zod.number(),
+  }),
+  rulesVersion: zod.number(),
+  rawRulesText: zod.string().nullish(),
+  hoursUsedToday: zod.number(),
+  dailyLimitHours: zod.number(),
+  hoursResetAt: zod.coerce.date(),
+  activatedAt: zod.coerce.date().nullish(),
+  deactivatedAt: zod.coerce.date().nullish(),
+  deletedAt: zod.coerce.date().nullish(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Activate TalentSearch in dry run mode
+ */
+export const dryRunTalentSearchResponseRulesMatchThresholdMin = 0;
+export const dryRunTalentSearchResponseRulesMatchThresholdMax = 100;
+
+export const DryRunTalentSearchResponse = zod.object({
+  id: zod.string(),
+  employerId: zod.number(),
+  isActive: zod.boolean(),
+  isDryRun: zod.boolean(),
+  rules: zod.object({
+    professionCategory: zod.string().nullish(),
+    educationSubType: zod.string().nullish(),
+    requiredSkills: zod.array(zod.string()),
+    preferredSkills: zod.array(zod.string()),
+    minRate: zod.number().nullish(),
+    maxRate: zod.number().nullish(),
+    rateType: zod.enum(["hourly", "per_day", "per_session", "per_course"]),
+    availableFrom: zod.string().nullish(),
+    locationRequired: zod.boolean(),
+    location: zod.string().nullish(),
+    locationRadiusKm: zod.number().nullish(),
+    excludedKeywords: zod.array(zod.string()),
+    requireVerifiedCredentials: zod.boolean(),
+    requireDbs: zod.boolean(),
+    preferredFields: zod.array(zod.string()),
+    matchThreshold: zod
+      .number()
+      .min(dryRunTalentSearchResponseRulesMatchThresholdMin)
+      .max(dryRunTalentSearchResponseRulesMatchThresholdMax),
+    messageTone: zod.enum(["professional", "friendly", "concise"]),
+    blackoutWindows: zod
+      .union([
+        zod.object({
+          timezone: zod.string(),
+          windows: zod.array(
+            zod.object({
+              start: zod.string(),
+              end: zod.string(),
+              days: zod.array(zod.number()),
+            }),
+          ),
+        }),
+        zod.null(),
+      ])
+      .optional(),
+    dryRun: zod.boolean(),
+    dailyDigest: zod.boolean(),
+    version: zod.number(),
+  }),
+  rulesVersion: zod.number(),
+  rawRulesText: zod.string().nullish(),
+  hoursUsedToday: zod.number(),
+  dailyLimitHours: zod.number(),
+  hoursResetAt: zod.coerce.date(),
+  activatedAt: zod.coerce.date().nullish(),
+  deactivatedAt: zod.coerce.date().nullish(),
+  deletedAt: zod.coerce.date().nullish(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Deactivate TalentSearch
+ */
+export const deactivateTalentSearchResponseRulesMatchThresholdMin = 0;
+export const deactivateTalentSearchResponseRulesMatchThresholdMax = 100;
+
+export const DeactivateTalentSearchResponse = zod.object({
+  id: zod.string(),
+  employerId: zod.number(),
+  isActive: zod.boolean(),
+  isDryRun: zod.boolean(),
+  rules: zod.object({
+    professionCategory: zod.string().nullish(),
+    educationSubType: zod.string().nullish(),
+    requiredSkills: zod.array(zod.string()),
+    preferredSkills: zod.array(zod.string()),
+    minRate: zod.number().nullish(),
+    maxRate: zod.number().nullish(),
+    rateType: zod.enum(["hourly", "per_day", "per_session", "per_course"]),
+    availableFrom: zod.string().nullish(),
+    locationRequired: zod.boolean(),
+    location: zod.string().nullish(),
+    locationRadiusKm: zod.number().nullish(),
+    excludedKeywords: zod.array(zod.string()),
+    requireVerifiedCredentials: zod.boolean(),
+    requireDbs: zod.boolean(),
+    preferredFields: zod.array(zod.string()),
+    matchThreshold: zod
+      .number()
+      .min(deactivateTalentSearchResponseRulesMatchThresholdMin)
+      .max(deactivateTalentSearchResponseRulesMatchThresholdMax),
+    messageTone: zod.enum(["professional", "friendly", "concise"]),
+    blackoutWindows: zod
+      .union([
+        zod.object({
+          timezone: zod.string(),
+          windows: zod.array(
+            zod.object({
+              start: zod.string(),
+              end: zod.string(),
+              days: zod.array(zod.number()),
+            }),
+          ),
+        }),
+        zod.null(),
+      ])
+      .optional(),
+    dryRun: zod.boolean(),
+    dailyDigest: zod.boolean(),
+    version: zod.number(),
+  }),
+  rulesVersion: zod.number(),
+  rawRulesText: zod.string().nullish(),
+  hoursUsedToday: zod.number(),
+  dailyLimitHours: zod.number(),
+  hoursResetAt: zod.coerce.date(),
+  activatedAt: zod.coerce.date().nullish(),
+  deactivatedAt: zod.coerce.date().nullish(),
+  deletedAt: zod.coerce.date().nullish(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Parse free-form text into structured TalentSearch rules
+ */
+export const parseTalentSearchRulesBodyRawTextMax = 10000;
+
+export const ParseTalentSearchRulesBody = zod.object({
+  rawText: zod.string().min(1).max(parseTalentSearchRulesBodyRawTextMax),
+});
+
+export const parseTalentSearchRulesResponseRulesMatchThresholdMin = 0;
+export const parseTalentSearchRulesResponseRulesMatchThresholdMax = 100;
+
+export const ParseTalentSearchRulesResponse = zod.object({
+  rules: zod.object({
+    professionCategory: zod.string().nullish(),
+    educationSubType: zod.string().nullish(),
+    requiredSkills: zod.array(zod.string()),
+    preferredSkills: zod.array(zod.string()),
+    minRate: zod.number().nullish(),
+    maxRate: zod.number().nullish(),
+    rateType: zod.enum(["hourly", "per_day", "per_session", "per_course"]),
+    availableFrom: zod.string().nullish(),
+    locationRequired: zod.boolean(),
+    location: zod.string().nullish(),
+    locationRadiusKm: zod.number().nullish(),
+    excludedKeywords: zod.array(zod.string()),
+    requireVerifiedCredentials: zod.boolean(),
+    requireDbs: zod.boolean(),
+    preferredFields: zod.array(zod.string()),
+    matchThreshold: zod
+      .number()
+      .min(parseTalentSearchRulesResponseRulesMatchThresholdMin)
+      .max(parseTalentSearchRulesResponseRulesMatchThresholdMax),
+    messageTone: zod.enum(["professional", "friendly", "concise"]),
+    blackoutWindows: zod
+      .union([
+        zod.object({
+          timezone: zod.string(),
+          windows: zod.array(
+            zod.object({
+              start: zod.string(),
+              end: zod.string(),
+              days: zod.array(zod.number()),
+            }),
+          ),
+        }),
+        zod.null(),
+      ])
+      .optional(),
+    dryRun: zod.boolean(),
+    dailyDigest: zod.boolean(),
+    version: zod.number(),
+  }),
+  warnings: zod.array(zod.string()),
+});
+
+/**
+ * @summary Paginated TalentSearch activity feed
+ */
+export const listTalentSearchActivityQueryPageDefault = 1;
+
+export const listTalentSearchActivityQueryPageSizeDefault = 20;
+export const listTalentSearchActivityQueryPageSizeMax = 100;
+
+export const ListTalentSearchActivityQueryParams = zod.object({
+  page: zod.coerce
+    .number()
+    .min(1)
+    .default(listTalentSearchActivityQueryPageDefault),
+  pageSize: zod.coerce
+    .number()
+    .min(1)
+    .max(listTalentSearchActivityQueryPageSizeMax)
+    .default(listTalentSearchActivityQueryPageSizeDefault),
+});
+
+export const ListTalentSearchActivityResponse = zod.object({
+  data: zod.array(
+    zod
+      .object({
+        id: zod.string(),
+        employerId: zod.number(),
+        freelancerId: zod.number(),
+        rulesVersion: zod.number(),
+        score: zod.number(),
+        decision: zod.string(),
+        matchReasons: zod.object({
+          matched: zod.array(zod.string()),
+          concerns: zod.array(zod.string()),
+          blockers: zod.array(zod.string()),
+        }),
+        proposedMessage: zod.string().nullish(),
+        sentAt: zod.coerce.date().nullish(),
+        skippedReason: zod.string().nullish(),
+        employerFollowUpSent: zod.boolean(),
+        createdAt: zod.coerce.date(),
+      })
+      .and(
+        zod.object({
+          freelancerName: zod.string(),
+        }),
+      ),
+  ),
+  total: zod.number(),
+  page: zod.number(),
+  pageSize: zod.number(),
+  totalPages: zod.number(),
+});
+
+/**
+ * @summary Mark follow-up sent for a TalentSearch activity entry
+ */
+export const MarkTalentSearchFollowUpParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const MarkTalentSearchFollowUpResponse = zod.object({
+  id: zod.string(),
+  employerId: zod.number(),
+  freelancerId: zod.number(),
+  rulesVersion: zod.number(),
+  score: zod.number(),
+  decision: zod.string(),
+  matchReasons: zod.object({
+    matched: zod.array(zod.string()),
+    concerns: zod.array(zod.string()),
+    blockers: zod.array(zod.string()),
+  }),
+  proposedMessage: zod.string().nullish(),
+  sentAt: zod.coerce.date().nullish(),
+  skippedReason: zod.string().nullish(),
+  employerFollowUpSent: zod.boolean(),
+  createdAt: zod.coerce.date(),
+});
+
+/**
+ * @summary TalentSearch stats for today
+ */
+export const GetTalentSearchStatsResponse = zod.object({
   evaluatedToday: zod.number(),
   sentToday: zod.number(),
   skippedToday: zod.number(),

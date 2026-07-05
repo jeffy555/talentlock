@@ -89,6 +89,7 @@ import type {
   ListMeetingsParams,
   ListNotificationsParams,
   ListPlansParams,
+  ListTalentSearchActivityParams,
   MatchExplanation,
   Meeting,
   Milestone,
@@ -105,8 +106,11 @@ import type {
   PaginatedBookingsResult,
   PaginatedCruiseModeActivityResult,
   PaginatedMeetingsResult,
+  PaginatedTalentSearchActivityResult,
   ParseCruiseModeRulesBody,
   ParseCruiseModeRulesResult,
+  ParseTalentSearchRulesBody,
+  ParseTalentSearchRulesResult,
   PatchNotificationPreferencesBody,
   PlanDef,
   PlanLimitError,
@@ -130,6 +134,9 @@ import type {
   SignAgreementBody,
   SpendAnalytics,
   SubscriptionSummary,
+  TalentSearchActivity,
+  TalentSearchConfig,
+  TalentSearchStats,
   TeamAnalytics,
   TeamDetails,
   TeamInviteResponse,
@@ -148,6 +155,7 @@ import type {
   UploadUrlResponse,
   UpsertCruiseModeBody,
   UpsertEmployerProfileBody,
+  UpsertTalentSearchBody,
   UpsertUserBody,
   User,
 } from "./api.schemas";
@@ -9331,6 +9339,762 @@ export function useGetCruiseModeStats<
   request?: SecondParameter<typeof customFetch>;
 }): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
   const queryOptions = getGetCruiseModeStatsQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Get current TalentSearch config
+ */
+export const getGetTalentSearchUrl = () => {
+  return `/api/talent-search`;
+};
+
+export const getTalentSearch = async (
+  options?: RequestInit,
+): Promise<TalentSearchConfig | null> => {
+  return customFetch<TalentSearchConfig | null>(getGetTalentSearchUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetTalentSearchQueryKey = () => {
+  return [`/api/talent-search`] as const;
+};
+
+export const getGetTalentSearchQueryOptions = <
+  TData = Awaited<ReturnType<typeof getTalentSearch>>,
+  TError = ErrorType<ErrorEnvelope>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getTalentSearch>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetTalentSearchQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getTalentSearch>>> = ({
+    signal,
+  }) => getTalentSearch({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getTalentSearch>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetTalentSearchQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getTalentSearch>>
+>;
+export type GetTalentSearchQueryError = ErrorType<ErrorEnvelope>;
+
+/**
+ * @summary Get current TalentSearch config
+ */
+
+export function useGetTalentSearch<
+  TData = Awaited<ReturnType<typeof getTalentSearch>>,
+  TError = ErrorType<ErrorEnvelope>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getTalentSearch>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetTalentSearchQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Create or update TalentSearch config
+ */
+export const getUpsertTalentSearchUrl = () => {
+  return `/api/talent-search`;
+};
+
+export const upsertTalentSearch = async (
+  upsertTalentSearchBody: UpsertTalentSearchBody,
+  options?: RequestInit,
+): Promise<TalentSearchConfig> => {
+  return customFetch<TalentSearchConfig>(getUpsertTalentSearchUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(upsertTalentSearchBody),
+  });
+};
+
+export const getUpsertTalentSearchMutationOptions = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof upsertTalentSearch>>,
+    TError,
+    { data: BodyType<UpsertTalentSearchBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof upsertTalentSearch>>,
+  TError,
+  { data: BodyType<UpsertTalentSearchBody> },
+  TContext
+> => {
+  const mutationKey = ["upsertTalentSearch"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof upsertTalentSearch>>,
+    { data: BodyType<UpsertTalentSearchBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return upsertTalentSearch(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpsertTalentSearchMutationResult = NonNullable<
+  Awaited<ReturnType<typeof upsertTalentSearch>>
+>;
+export type UpsertTalentSearchMutationBody = BodyType<UpsertTalentSearchBody>;
+export type UpsertTalentSearchMutationError = ErrorType<ErrorEnvelope>;
+
+/**
+ * @summary Create or update TalentSearch config
+ */
+export const useUpsertTalentSearch = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof upsertTalentSearch>>,
+    TError,
+    { data: BodyType<UpsertTalentSearchBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof upsertTalentSearch>>,
+  TError,
+  { data: BodyType<UpsertTalentSearchBody> },
+  TContext
+> => {
+  return useMutation(getUpsertTalentSearchMutationOptions(options));
+};
+
+/**
+ * @summary Activate TalentSearch (live)
+ */
+export const getActivateTalentSearchUrl = () => {
+  return `/api/talent-search/activate`;
+};
+
+export const activateTalentSearch = async (
+  options?: RequestInit,
+): Promise<TalentSearchConfig> => {
+  return customFetch<TalentSearchConfig>(getActivateTalentSearchUrl(), {
+    ...options,
+    method: "PATCH",
+  });
+};
+
+export const getActivateTalentSearchMutationOptions = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof activateTalentSearch>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof activateTalentSearch>>,
+  TError,
+  void,
+  TContext
+> => {
+  const mutationKey = ["activateTalentSearch"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof activateTalentSearch>>,
+    void
+  > = () => {
+    return activateTalentSearch(requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ActivateTalentSearchMutationResult = NonNullable<
+  Awaited<ReturnType<typeof activateTalentSearch>>
+>;
+
+export type ActivateTalentSearchMutationError = ErrorType<ErrorEnvelope>;
+
+/**
+ * @summary Activate TalentSearch (live)
+ */
+export const useActivateTalentSearch = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof activateTalentSearch>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof activateTalentSearch>>,
+  TError,
+  void,
+  TContext
+> => {
+  return useMutation(getActivateTalentSearchMutationOptions(options));
+};
+
+/**
+ * @summary Activate TalentSearch in dry run mode
+ */
+export const getDryRunTalentSearchUrl = () => {
+  return `/api/talent-search/dry-run`;
+};
+
+export const dryRunTalentSearch = async (
+  options?: RequestInit,
+): Promise<TalentSearchConfig> => {
+  return customFetch<TalentSearchConfig>(getDryRunTalentSearchUrl(), {
+    ...options,
+    method: "PATCH",
+  });
+};
+
+export const getDryRunTalentSearchMutationOptions = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof dryRunTalentSearch>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof dryRunTalentSearch>>,
+  TError,
+  void,
+  TContext
+> => {
+  const mutationKey = ["dryRunTalentSearch"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof dryRunTalentSearch>>,
+    void
+  > = () => {
+    return dryRunTalentSearch(requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DryRunTalentSearchMutationResult = NonNullable<
+  Awaited<ReturnType<typeof dryRunTalentSearch>>
+>;
+
+export type DryRunTalentSearchMutationError = ErrorType<ErrorEnvelope>;
+
+/**
+ * @summary Activate TalentSearch in dry run mode
+ */
+export const useDryRunTalentSearch = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof dryRunTalentSearch>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof dryRunTalentSearch>>,
+  TError,
+  void,
+  TContext
+> => {
+  return useMutation(getDryRunTalentSearchMutationOptions(options));
+};
+
+/**
+ * @summary Deactivate TalentSearch
+ */
+export const getDeactivateTalentSearchUrl = () => {
+  return `/api/talent-search/deactivate`;
+};
+
+export const deactivateTalentSearch = async (
+  options?: RequestInit,
+): Promise<TalentSearchConfig> => {
+  return customFetch<TalentSearchConfig>(getDeactivateTalentSearchUrl(), {
+    ...options,
+    method: "PATCH",
+  });
+};
+
+export const getDeactivateTalentSearchMutationOptions = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deactivateTalentSearch>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deactivateTalentSearch>>,
+  TError,
+  void,
+  TContext
+> => {
+  const mutationKey = ["deactivateTalentSearch"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deactivateTalentSearch>>,
+    void
+  > = () => {
+    return deactivateTalentSearch(requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeactivateTalentSearchMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deactivateTalentSearch>>
+>;
+
+export type DeactivateTalentSearchMutationError = ErrorType<ErrorEnvelope>;
+
+/**
+ * @summary Deactivate TalentSearch
+ */
+export const useDeactivateTalentSearch = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deactivateTalentSearch>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deactivateTalentSearch>>,
+  TError,
+  void,
+  TContext
+> => {
+  return useMutation(getDeactivateTalentSearchMutationOptions(options));
+};
+
+/**
+ * @summary Parse free-form text into structured TalentSearch rules
+ */
+export const getParseTalentSearchRulesUrl = () => {
+  return `/api/talent-search/parse-rules`;
+};
+
+export const parseTalentSearchRules = async (
+  parseTalentSearchRulesBody: ParseTalentSearchRulesBody,
+  options?: RequestInit,
+): Promise<ParseTalentSearchRulesResult> => {
+  return customFetch<ParseTalentSearchRulesResult>(
+    getParseTalentSearchRulesUrl(),
+    {
+      ...options,
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(parseTalentSearchRulesBody),
+    },
+  );
+};
+
+export const getParseTalentSearchRulesMutationOptions = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof parseTalentSearchRules>>,
+    TError,
+    { data: BodyType<ParseTalentSearchRulesBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof parseTalentSearchRules>>,
+  TError,
+  { data: BodyType<ParseTalentSearchRulesBody> },
+  TContext
+> => {
+  const mutationKey = ["parseTalentSearchRules"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof parseTalentSearchRules>>,
+    { data: BodyType<ParseTalentSearchRulesBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return parseTalentSearchRules(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ParseTalentSearchRulesMutationResult = NonNullable<
+  Awaited<ReturnType<typeof parseTalentSearchRules>>
+>;
+export type ParseTalentSearchRulesMutationBody =
+  BodyType<ParseTalentSearchRulesBody>;
+export type ParseTalentSearchRulesMutationError = ErrorType<ErrorEnvelope>;
+
+/**
+ * @summary Parse free-form text into structured TalentSearch rules
+ */
+export const useParseTalentSearchRules = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof parseTalentSearchRules>>,
+    TError,
+    { data: BodyType<ParseTalentSearchRulesBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof parseTalentSearchRules>>,
+  TError,
+  { data: BodyType<ParseTalentSearchRulesBody> },
+  TContext
+> => {
+  return useMutation(getParseTalentSearchRulesMutationOptions(options));
+};
+
+/**
+ * @summary Paginated TalentSearch activity feed
+ */
+export const getListTalentSearchActivityUrl = (
+  params?: ListTalentSearchActivityParams,
+) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/talent-search/activity?${stringifiedParams}`
+    : `/api/talent-search/activity`;
+};
+
+export const listTalentSearchActivity = async (
+  params?: ListTalentSearchActivityParams,
+  options?: RequestInit,
+): Promise<PaginatedTalentSearchActivityResult> => {
+  return customFetch<PaginatedTalentSearchActivityResult>(
+    getListTalentSearchActivityUrl(params),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getListTalentSearchActivityQueryKey = (
+  params?: ListTalentSearchActivityParams,
+) => {
+  return [`/api/talent-search/activity`, ...(params ? [params] : [])] as const;
+};
+
+export const getListTalentSearchActivityQueryOptions = <
+  TData = Awaited<ReturnType<typeof listTalentSearchActivity>>,
+  TError = ErrorType<ErrorEnvelope>,
+>(
+  params?: ListTalentSearchActivityParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listTalentSearchActivity>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getListTalentSearchActivityQueryKey(params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listTalentSearchActivity>>
+  > = ({ signal }) =>
+    listTalentSearchActivity(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listTalentSearchActivity>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListTalentSearchActivityQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listTalentSearchActivity>>
+>;
+export type ListTalentSearchActivityQueryError = ErrorType<ErrorEnvelope>;
+
+/**
+ * @summary Paginated TalentSearch activity feed
+ */
+
+export function useListTalentSearchActivity<
+  TData = Awaited<ReturnType<typeof listTalentSearchActivity>>,
+  TError = ErrorType<ErrorEnvelope>,
+>(
+  params?: ListTalentSearchActivityParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listTalentSearchActivity>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListTalentSearchActivityQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Mark follow-up sent for a TalentSearch activity entry
+ */
+export const getMarkTalentSearchFollowUpUrl = (id: string) => {
+  return `/api/talent-search/activity/${id}/follow-up`;
+};
+
+export const markTalentSearchFollowUp = async (
+  id: string,
+  options?: RequestInit,
+): Promise<TalentSearchActivity> => {
+  return customFetch<TalentSearchActivity>(getMarkTalentSearchFollowUpUrl(id), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getMarkTalentSearchFollowUpMutationOptions = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof markTalentSearchFollowUp>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof markTalentSearchFollowUp>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  const mutationKey = ["markTalentSearchFollowUp"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof markTalentSearchFollowUp>>,
+    { id: string }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return markTalentSearchFollowUp(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type MarkTalentSearchFollowUpMutationResult = NonNullable<
+  Awaited<ReturnType<typeof markTalentSearchFollowUp>>
+>;
+
+export type MarkTalentSearchFollowUpMutationError = ErrorType<ErrorEnvelope>;
+
+/**
+ * @summary Mark follow-up sent for a TalentSearch activity entry
+ */
+export const useMarkTalentSearchFollowUp = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof markTalentSearchFollowUp>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof markTalentSearchFollowUp>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  return useMutation(getMarkTalentSearchFollowUpMutationOptions(options));
+};
+
+/**
+ * @summary TalentSearch stats for today
+ */
+export const getGetTalentSearchStatsUrl = () => {
+  return `/api/talent-search/stats`;
+};
+
+export const getTalentSearchStats = async (
+  options?: RequestInit,
+): Promise<TalentSearchStats> => {
+  return customFetch<TalentSearchStats>(getGetTalentSearchStatsUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetTalentSearchStatsQueryKey = () => {
+  return [`/api/talent-search/stats`] as const;
+};
+
+export const getGetTalentSearchStatsQueryOptions = <
+  TData = Awaited<ReturnType<typeof getTalentSearchStats>>,
+  TError = ErrorType<ErrorEnvelope>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getTalentSearchStats>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetTalentSearchStatsQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getTalentSearchStats>>
+  > = ({ signal }) => getTalentSearchStats({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getTalentSearchStats>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetTalentSearchStatsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getTalentSearchStats>>
+>;
+export type GetTalentSearchStatsQueryError = ErrorType<ErrorEnvelope>;
+
+/**
+ * @summary TalentSearch stats for today
+ */
+
+export function useGetTalentSearchStats<
+  TData = Awaited<ReturnType<typeof getTalentSearchStats>>,
+  TError = ErrorType<ErrorEnvelope>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getTalentSearchStats>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetTalentSearchStatsQueryOptions(options);
 
   const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
     queryKey: QueryKey;

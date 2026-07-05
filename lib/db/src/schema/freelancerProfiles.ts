@@ -54,6 +54,8 @@ export const freelancerProfilesTable = pgTable("freelancer_profiles", {
   researchPublications: text("research_publications"),
   preferredTeachingMode: text("preferred_teaching_mode"),
   location: text("location"),
+  talentSearchNotificationsToday: integer("talent_search_notifications_today").notNull().default(0),
+  talentSearchNotificationsResetAt: timestamp("talent_search_notifications_reset_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });

@@ -6,6 +6,7 @@ import { eq, and, or, isNull, lte, gte, sql, SQL, exists } from "drizzle-orm";
 import { refreshNextAvailableDate, toDateString } from "../lib/availabilityUtils";
 import { sanitiseSearchQuery } from "../lib/searchUtils";
 import { calculateCompletenessScore } from "../lib/completenessUtils";
+import { evaluateTalentSearchForUpdatedProfile } from "../lib/talentSearchEvaluator";
 import {
   CreateFreelancerProfileBody,
   UpdateMyFreelancerProfileBody,
@@ -174,6 +175,16 @@ router.patch("/freelancers/me", async (req, res) => {
       .where(eq(freelancerProfilesTable.clerkId, clerkId))
       .returning();
     if (!updated) { res.status(404).json({ error: "Profile not found" }); return; }
+
+    // Fire-and-forget TalentSearch evaluation — runs before both res.json exits below,
+    // never awaited, never delays the response. Only matchable, Talent-Vault-visible
+    // profiles (completeness >= 60) are evaluated.
+    if (updated.completenessScore >= 60) {
+      evaluateTalentSearchForUpdatedProfile(db, updated.id, req.log).catch((err) =>
+        req.log.warn({ err, freelancerId: updated.id }, "talent-search evaluation hook failed"),
+      );
+    }
+
     if (data.isAvailable !== undefined || data.availableFrom !== undefined) {
       await refreshNextAvailableDate(db, updated.id);
       const [refreshed] = await db.select().from(freelancerProfilesTable)

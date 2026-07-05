@@ -44,6 +44,8 @@ tags:
     description: Enterprise team accounts
   - name: cruise-mode
     description: Freelancer Cruise Mode automation and member management
+  - name: talent-search
+    description: Employer TalentSearch automation (employer-side Cruise Mode)
 
 paths:
   /healthz:
@@ -3076,6 +3078,293 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorEnvelope"
 
+  /talent-search:
+    get:
+      operationId: getTalentSearch
+      tags: [talent-search]
+      summary: Get current TalentSearch config
+      responses:
+        "200":
+          description: Config or null if none
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/TalentSearchConfig"
+                  - type: "null"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "403":
+          description: Employer profile required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+    post:
+      operationId: upsertTalentSearch
+      tags: [talent-search]
+      summary: Create or update TalentSearch config
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpsertTalentSearchBody"
+      responses:
+        "200":
+          description: Updated config
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TalentSearchConfig"
+        "201":
+          description: Created config
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TalentSearchConfig"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "403":
+          description: Employer profile required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /talent-search/activate:
+    patch:
+      operationId: activateTalentSearch
+      tags: [talent-search]
+      summary: Activate TalentSearch (live)
+      responses:
+        "200":
+          description: Activated config
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TalentSearchConfig"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "403":
+          description: Employer profile required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "404":
+          description: Config not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /talent-search/dry-run:
+    patch:
+      operationId: dryRunTalentSearch
+      tags: [talent-search]
+      summary: Activate TalentSearch in dry run mode
+      responses:
+        "200":
+          description: Dry run config
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TalentSearchConfig"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "403":
+          description: Employer profile required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "404":
+          description: Config not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /talent-search/deactivate:
+    patch:
+      operationId: deactivateTalentSearch
+      tags: [talent-search]
+      summary: Deactivate TalentSearch
+      responses:
+        "200":
+          description: Deactivated config
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TalentSearchConfig"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "403":
+          description: Employer profile required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "404":
+          description: Config not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /talent-search/parse-rules:
+    post:
+      operationId: parseTalentSearchRules
+      tags: [talent-search]
+      summary: Parse free-form text into structured TalentSearch rules
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ParseTalentSearchRulesBody"
+      responses:
+        "200":
+          description: Parsed rules
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ParseTalentSearchRulesResult"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "403":
+          description: Employer profile required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /talent-search/activity:
+    get:
+      operationId: listTalentSearchActivity
+      tags: [talent-search]
+      summary: Paginated TalentSearch activity feed
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: pageSize
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        "200":
+          description: Paginated activity
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaginatedTalentSearchActivityResult"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "403":
+          description: Employer profile required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /talent-search/activity/{id}/follow-up:
+    post:
+      operationId: markTalentSearchFollowUp
+      tags: [talent-search]
+      summary: Mark follow-up sent for a TalentSearch activity entry
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Updated activity entry
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TalentSearchActivity"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "403":
+          description: Employer profile required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "404":
+          description: Activity not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /talent-search/stats:
+    get:
+      operationId: getTalentSearchStats
+      tags: [talent-search]
+      summary: TalentSearch stats for today
+      responses:
+        "200":
+          description: Stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TalentSearchStats"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "403":
+          description: Employer profile required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
 components:
   schemas:
     HealthStatus:
@@ -5481,6 +5770,8 @@ components:
         agreement_summary: { type: integer, default: 0 }
         cruise_mode_parse: { type: integer, default: 0 }
         cruise_mode_evaluation: { type: integer, default: 0 }
+        talent_search_parse: { type: integer, default: 0 }
+        talent_search_evaluation: { type: integer, default: 0 }
       required:
         - ai_match
         - ai_match_explanation
@@ -5494,6 +5785,8 @@ components:
         - agreement_summary
         - cruise_mode_parse
         - cruise_mode_evaluation
+        - talent_search_parse
+        - talent_search_evaluation
 
     TokenUsageSummary:
       type: object
@@ -6560,6 +6853,257 @@ components:
       properties:
         rules:
           $ref: "#/components/schemas/CruiseModeRules"
+        warnings:
+          type: array
+          items: { type: string }
+      required: [rules, warnings]
+
+    TalentSearchRules:
+      type: object
+      properties:
+        professionCategory:
+          type: ["string", "null"]
+        educationSubType:
+          type: ["string", "null"]
+        requiredSkills:
+          type: array
+          items: { type: string }
+        preferredSkills:
+          type: array
+          items: { type: string }
+        minRate:
+          type: ["number", "null"]
+        maxRate:
+          type: ["number", "null"]
+        rateType:
+          type: string
+          enum: [hourly, per_day, per_session, per_course]
+        availableFrom:
+          type: ["string", "null"]
+        locationRequired:
+          type: boolean
+        location:
+          type: ["string", "null"]
+        locationRadiusKm:
+          type: ["number", "null"]
+        excludedKeywords:
+          type: array
+          items: { type: string }
+        requireVerifiedCredentials:
+          type: boolean
+        requireDbs:
+          type: boolean
+        preferredFields:
+          type: array
+          items: { type: string }
+        matchThreshold:
+          type: integer
+          minimum: 0
+          maximum: 100
+        messageTone:
+          type: string
+          enum: [professional, friendly, concise]
+        blackoutWindows:
+          oneOf:
+            - $ref: "#/components/schemas/CruiseModeBlackoutWindows"
+            - type: "null"
+        dryRun:
+          type: boolean
+        dailyDigest:
+          type: boolean
+        version:
+          type: integer
+      required:
+        - requiredSkills
+        - preferredSkills
+        - rateType
+        - locationRequired
+        - excludedKeywords
+        - requireVerifiedCredentials
+        - requireDbs
+        - preferredFields
+        - matchThreshold
+        - messageTone
+        - dryRun
+        - dailyDigest
+        - version
+
+    TalentSearchConfig:
+      type: object
+      properties:
+        id:
+          type: string
+        employerId:
+          type: integer
+        isActive:
+          type: boolean
+        isDryRun:
+          type: boolean
+        rules:
+          $ref: "#/components/schemas/TalentSearchRules"
+        rulesVersion:
+          type: integer
+        rawRulesText:
+          type: ["string", "null"]
+        hoursUsedToday:
+          type: number
+          format: double
+        dailyLimitHours:
+          type: number
+          format: double
+        hoursResetAt:
+          type: string
+          format: date-time
+        activatedAt:
+          type: ["string", "null"]
+          format: date-time
+        deactivatedAt:
+          type: ["string", "null"]
+          format: date-time
+        deletedAt:
+          type: ["string", "null"]
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - employerId
+        - isActive
+        - isDryRun
+        - rules
+        - rulesVersion
+        - hoursUsedToday
+        - dailyLimitHours
+        - hoursResetAt
+        - createdAt
+        - updatedAt
+
+    TalentSearchActivity:
+      type: object
+      properties:
+        id:
+          type: string
+        employerId:
+          type: integer
+        freelancerId:
+          type: integer
+        rulesVersion:
+          type: integer
+        score:
+          type: integer
+        decision:
+          type: string
+        matchReasons:
+          $ref: "#/components/schemas/MatchReasons"
+        proposedMessage:
+          type: ["string", "null"]
+        sentAt:
+          type: ["string", "null"]
+          format: date-time
+        skippedReason:
+          type: ["string", "null"]
+        employerFollowUpSent:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - employerId
+        - freelancerId
+        - rulesVersion
+        - score
+        - decision
+        - matchReasons
+        - employerFollowUpSent
+        - createdAt
+
+    TalentSearchActivityItem:
+      allOf:
+        - $ref: "#/components/schemas/TalentSearchActivity"
+        - type: object
+          properties:
+            freelancerName:
+              type: string
+          required: [freelancerName]
+
+    PaginatedTalentSearchActivityResult:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/TalentSearchActivityItem"
+        total:
+          type: integer
+        page:
+          type: integer
+        pageSize:
+          type: integer
+        totalPages:
+          type: integer
+      required: [data, total, page, pageSize, totalPages]
+
+    TalentSearchStats:
+      type: object
+      properties:
+        evaluatedToday:
+          type: integer
+        sentToday:
+          type: integer
+        skippedToday:
+          type: integer
+        dryRunToday:
+          type: integer
+        hoursUsedToday:
+          type: number
+          format: double
+        dailyLimitHours:
+          type: number
+          format: double
+        hoursRemainingToday:
+          type: number
+          format: double
+        hoursResetAt:
+          type: string
+          format: date-time
+      required:
+        - evaluatedToday
+        - sentToday
+        - skippedToday
+        - dryRunToday
+        - hoursUsedToday
+        - dailyLimitHours
+        - hoursRemainingToday
+        - hoursResetAt
+
+    UpsertTalentSearchBody:
+      type: object
+      properties:
+        rules:
+          $ref: "#/components/schemas/TalentSearchRules"
+        rawRulesText:
+          type: ["string", "null"]
+      required: [rules]
+
+    ParseTalentSearchRulesBody:
+      type: object
+      properties:
+        rawText:
+          type: string
+          minLength: 1
+          maxLength: 10000
+      required: [rawText]
+
+    ParseTalentSearchRulesResult:
+      type: object
+      properties:
+        rules:
+          $ref: "#/components/schemas/TalentSearchRules"
         warnings:
           type: array
           items: { type: string }

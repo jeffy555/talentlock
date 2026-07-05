@@ -22,6 +22,8 @@ export const NotificationType = {
   CRUISE_MODE_INTEREST: "cruise_mode_interest",
   CRUISE_MODE_SENT: "cruise_mode_sent",
   CRUISE_MODE_DAILY_LIMIT: "cruise_mode_daily_limit",
+  TALENT_SEARCH_INTEREST: "talent_search_interest",
+  TALENT_SEARCH_SENT: "talent_search_sent",
 } as const;
 
 type DbLike = Pick<typeof db, "insert">;

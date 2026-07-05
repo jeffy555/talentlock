@@ -45,9 +45,17 @@ The Vite dev server has a proxy rule that forwards `/api` calls to `localhost:80
 | `team_members` | Team membership with roles (admin/member), invite tokens, and status. |
 | `team_shortlist` | Shared freelancer shortlist for enterprise teams. |
 | `cruise_mode_configs` | One per freelancer. Has `isActive`, `isDryRun`, `rules` (jsonb), `rulesVersion`, `messagesThisMonth`, `messagesResetAt` columns. |
-| `cruise_mode_activity` | Per-job evaluation log. Has `freelancerId`, `jobRequirementId`, `score`, `decision`, `matchReasons`, `proposedMessage`, `sentAt` columns. |
+| `cruise_mode_activity` | Per-job evaluation log.
+| `talent_search_configs` | One per employer. Mirror of `cruise_mode_configs`. Has `isActive`, `isDryRun`, `rules` (jsonb), `rulesVersion`, `hoursUsedToday`, `dailyLimitHours`, `hoursResetAt` columns. UNIQUE on `employerId`. |
+| `talent_search_activity` | Per-freelancer evaluation log. Has `employerId`, `freelancerId`, `score`, `decision`, `matchReasons`, `proposedMessage`, `sentAt` columns. | Has `freelancerId`
+
+`meetings` gains `briefContent` (jsonb nullable — `MeetingBrief` type) and `briefGeneratedAt` (timestamptz nullable). Brief is generated fire-and-forget when meeting `status` changes to `confirmed`. Cached on the meeting row. Regeneratable via `POST /api/meetings/:id/brief`., `jobRequirementId`, `score`, `decision`, `matchReasons`, `proposedMessage`, `sentAt` columns. |
+| `talent_search_configs` | One per employer. Has `isActive`, `isDryRun`, `rules` (jsonb), `rulesVersion`, `hoursUsedToday`, `dailyLimitHours`, `hoursResetAt`. UNIQUE on `employerId`. |
+| `talent_search_activity` | Per-freelancer evaluation log. Has `employerId`, `freelancerId`, `rulesVersion`, `score`, `decision`, `matchReasons`, `proposedMessage`, `sentAt`, `freelancerResponded`, `freelancerOptedOut`. |
 
 ### Teaching Professional Profile additions (additive, non-breaking)
+
+`freelancer_profiles` gains `talentSearchNotificationsToday` (integer DEFAULT 0) and `talentSearchNotificationsResetAt` (timestamptz) for freelancer daily notification cap (max 3 TalentSearch notifications per day).
 
 `freelancer_profiles` gains `professionCategory` (text, NOT NULL DEFAULT 'technology') and 12 nullable education fields: `educationProfessionType`, `teachingSubjects`, `teachingLevels`, `yearsTeachingExperience`, `highestDegree`, `degreeSubject`, `degreeInstitution`, `teachingLicenceState`, `teachingLicenceExpiry`, `dbsCheckStatus`, `researchPublications`, `preferredTeachingMode`, `location`.
 
@@ -203,6 +211,27 @@ GET  /api/subscriptions/plans                     Plan list
 GET  /api/subscriptions/me                        My plan + usage
 POST /api/subscriptions/upgrade                   Upgrade plan (simulated checkout — shaped for Stripe)
 
+GET  /api/talent-search                          Employer TalentSearch config (null if none)
+POST /api/talent-search                          Create or update TalentSearch config
+PATCH /api/talent-search/activate                Activate live mode (employer only)
+PATCH /api/talent-search/dry-run                 Activate dry run mode
+PATCH /api/talent-search/deactivate              Deactivate
+POST /api/talent-search/parse-rules              AI parses free-form employer rules into structured TalentSearchRules
+GET  /api/talent-search/activity                 Paginated activity feed (freelancers evaluated, scores, decisions)
+PATCH /api/talent-search/activity/:id/responded  Mark freelancer as responded
+POST /api/talent-search/opt-out/:employerId      Freelancer opts out of notifications from specific employer
+GET  /api/talent-search/stats                    Today stats + hours used
+
+GET  /api/talent-search                          Employer TalentSearch config (null if none)
+POST /api/talent-search                          Create or update TalentSearch config
+PATCH /api/talent-search/activate                Activate live mode (employer only)
+PATCH /api/talent-search/dry-run                 Activate dry run mode
+PATCH /api/talent-search/deactivate              Deactivate
+POST /api/talent-search/parse-rules              AI parses free-form text into TalentSearchRules
+GET  /api/talent-search/activity                 Paginated activity feed (freelancers evaluated)
+POST /api/talent-search/activity/:id/follow-up   Mark employer follow-up sent
+GET  /api/talent-search/stats                    Today and monthly stats
+
 GET  /api/cruise-mode                            Freelancer Cruise Mode config (null if none)
 POST /api/cruise-mode                            Create or update Cruise Mode config
 PATCH /api/cruise-mode/activate                  Activate live mode (freelancer_pro only)
@@ -210,9 +239,31 @@ PATCH /api/cruise-mode/dry-run                   Activate dry run mode
 PATCH /api/cruise-mode/pause                     Pause Cruise Mode
 PATCH /api/cruise-mode/deactivate                Deactivate and clear
 POST /api/cruise-mode/parse-rules                AI parses free-form text into structured rules
+GET  /api/talent-search                          Employer TalentSearch config (null if none)
+POST /api/talent-search                          Create or update TalentSearch config
+PATCH /api/talent-search/activate                Activate live mode (employer only)
+PATCH /api/talent-search/dry-run                 Activate dry run mode
+PATCH /api/talent-search/deactivate              Deactivate
+POST /api/talent-search/parse-rules              AI parses free-form text into TalentSearchRules
+GET  /api/talent-search/activity                 Paginated activity feed (freelancers evaluated)
+POST /api/talent-search/activity/:id/follow-up   Mark employer follow-up sent
+GET  /api/talent-search/stats                    Today and monthly stats
+
 GET  /api/cruise-mode/activity                   Paginated activity feed (jobs evaluated, scores, decisions, messages)
 POST /api/cruise-mode/activity/:id/follow-up     Mark follow-up sent for an activity entry
+GET  /api/talent-search                          Employer TalentSearch config (null if none)
+POST /api/talent-search                          Create or update TalentSearch config
+PATCH /api/talent-search/activate                Activate live mode (employer only)
+PATCH /api/talent-search/dry-run                 Activate dry run mode
+PATCH /api/talent-search/deactivate              Deactivate
+POST /api/talent-search/parse-rules              AI parses free-form text into TalentSearchRules
+GET  /api/talent-search/activity                 Paginated activity feed (freelancers evaluated)
+POST /api/talent-search/activity/:id/follow-up   Mark employer follow-up sent
+GET  /api/talent-search/stats                    Today and monthly stats
+
 GET  /api/cruise-mode/stats                      Today and monthly stats
+
+POST /api/meetings/:id/brief                      Generate or regenerate AI meeting brief (employer only, confirmed meetings only, returns 202 Accepted)
 
 POST /api/storage/uploads/request-url             Request presigned GCS upload URL
 GET  /api/storage/objects/*path                   Serve stored object
@@ -280,7 +331,13 @@ POST /api/admin/logout                            Admin: logout
 34. **Agreement PDF Download**
 35. **Cruise Mode** — `freelancer_pro` feature; freelancer defines rules (skills, rate range, exclusions, blackout windows) via form or free-form text/file; AI evaluates every new job post against the rules and sends a personalised interest message to the employer on the freelancer's behalf when score ≥ threshold; two-stage filter (pre-filter + AI evaluation); dry run mode; daily digest option; activity feed with match scores and sent messages; monthly quota of 10 messages; employer sees a "Cruise Mode ✦" badge; `cruise_mode_evaluation` token label — `GET /api/agreements/:id/download` returns a professionally formatted PDF for fully signed agreements; rendered via `@react-pdf/renderer` with both signature images (or cursive typed names), signing timestamps, metadata block, and TalentLock footer; cached in GCS after first generation; available to both parties on all plans; GDPR deletion removes cached PDFs — Freelancer-only "✦ Summarise for me" button on `/agreements/:id`; AI produces 6-section plain-English summary (what you do, payment, IP, termination, restrictions, key dates) + up to 3 attention flags; disclaimer always first; cached on agreements table (`freelancerSummary`, `freelancerSummaryScoredAt`); invalidated on redline accept alongside health score; `agreement_summary` token label; 403 for employers
 
+37. **TalentSearch (Employer Cruise Mode)** — mirror of Cruise Mode for employers; fires on `PUT /api/freelancers/me` (not job post); two-stage pre-filter + AI evaluation against `talent_search_configs` rules; sends Express Interest notification to matching freelancers on employer's behalf; freelancer daily cap (3 notifications/day); 30-day duplicate window per employer–freelancer pair; 6h/day budget same model as Cruise Mode; `talent_search_evaluation` token label; `TalentSearch ✦` badge on freelancer notification; employer-only `/talent-search` page with teal accent
+
 36. **Teaching Professional Profile** — `professionCategory` (`technology`|`education`, NOT NULL DEFAULT 'technology') on `freelancer_profiles` and `job_requirements`; `rateType` (`hourly`|`per_day`|`per_session`|`per_course`, NOT NULL DEFAULT 'hourly') on `job_requirements`; 12 nullable education fields (subjects, levels, degree, teaching licence, DBS status, research profile, location) on `freelancer_profiles` for `educationProfessionType` (`school_teacher`|`university_lecturer`|`tutor`|`researcher`); onboarding gains a conditional profession-category step for freelancers (employers unaffected); Talent Vault gains `professionCategory`/`teachingSubject` filters (additive, default behaviour unchanged); AI matching prompt gains profession-context injection that is byte-identical (empty string) for technology jobs; `formatRate()`/`rateUnitLabel()` utility centralises rate unit display across 9 call sites
+
+37. **TalentSearch (Employer Cruise Mode)** — mirror of Cruise Mode for employers; fires on `PUT /api/freelancers/me` when matchable profile fields change (hash-based detection via `profileMatchHash`); employer sets profession/skill/rate/location/required-document rules; AI evaluates freelancer profile fit 0–100; sends personalised "TalentSearch ✦" Express Interest notification to freelancer when score >= threshold; per-`rulesVersion` duplicate prevention; freelancer opt-out per employer; 2 new tables (`talent_search_configs`, `talent_search_activity`); 1 new column on `freelancer_profiles` (`profileMatchHash`); `talent_search_evaluation` token label; employer-only `/talent-search` page
+
+38. **AI Meeting Brief Generator** — fires fire-and-forget when meeting `status → confirmed`; generates 5-section brief for employer: candidate snapshot (name/field/rate/credentials/reviews), why they match (3 specific reasons), suggested questions (5–8 tailored to job + candidate), rate context (vs market median + employer historical avg + budget check), watch points; cached as `briefContent` jsonb on `meetings` table; manual regeneration via `POST /api/meetings/:id/brief` (202 Accepted); employer-only — freelancers never see it; plan-gated questions (Growth+ only in UI, always generated server-side); `meeting_brief` token label charged to employer; amber accent UI card on meeting detail page
 
 ### Dashboard analytics panels
 
@@ -293,7 +350,26 @@ POST /api/admin/logout                            Admin: logout
 Shared server utilities: `artifacts/api-server/src/lib/earningsUtils.ts` (`getLast6Months`, `fillZeroMonths`, `formatCurrency`, `getWindowDates`, `safeAverage`, `getLifecycleTrend`).
 
 
-### Cursor notes — Teaching Professional Profile
+### Cursor notes — AI Meeting Brief
+
+- Brief generation fires fire-and-forget on `PATCH /api/meetings/:id` when `status` changes from non-`confirmed` to `confirmed` — capture `previousStatus` BEFORE the `db.update()` call
+- Re-fetch meeting at start of `generateMeetingBrief()` and exit early if `status !== confirmed` (guards against race where meeting is cancelled immediately after being confirmed)
+- `briefContent` is cached on the `meetings` row — no separate table, no version history, regeneration overwrites
+- Token `meeting_brief` is charged to the EMPLOYER account (not freelancer)
+- `POST /api/meetings/:id/brief` returns 202 Accepted — client polls `GET /api/meetings/:id` until `briefGeneratedAt` is populated
+- Plan gating is UI-only — server always generates full brief including questions regardless of plan
+- `rateSuggestionUtils.ts` functions called at brief generation time — read-only, no modification
+
+### Cursor notes — TalentSearch
+
+- `profileMatchHash` (nullable text) added to `freelancer_profiles` — computed SHA-256 of matchable fields; TalentSearch evaluation only fires when this hash changes (bio/photo updates do not trigger evaluation)
+- TalentSearch fires on `PUT /api/freelancers/me` (profile update) — fire-and-forget, never awaited, never delays response
+- Duplicate prevention: per `(employerId, freelancerId, rulesVersion)` — changing rules version allows re-evaluation of same freelancer
+- Freelancer opt-out: `POST /api/talent-search/opt-out/:employerId` — permanently skips all future evaluations for that pair
+- Reuses `isInBlackoutWindow()` and `getNextMidnightUTC()` from `cruiseModeUtils.ts` directly
+- Teaching Professional Profile spec MUST be implemented before TalentSearch Phase 2 — evaluator reads education columns
+
+Cursor notes — Teaching Professional Profile
 
 - `professionCategory` and `rateType` are NOT NULL with DB defaults (`'technology'` / `'hourly'`) — never write `?? 'technology'` fallback checks, the column guarantees a value
 - The 12 education fields are genuinely nullable — guard all education-specific UI on `educationProfessionType !== null`, never on `professionCategory` alone
@@ -306,7 +382,19 @@ Shared server utilities: `artifacts/api-server/src/lib/earningsUtils.ts` (`getLa
 | File | Purpose |
 |---|---|
 | `artifacts/api-server/src/lib/availabilityUtils.ts` | `calculateNextAvailableDate`, `refreshNextAvailableDate`, `createAvailabilityBlock`, `deleteAvailabilityBlockByBookingId` |
+| `artifacts/api-server/src/lib/meetingBriefGenerator.ts` | `generateMeetingBrief(db, meetingId, log)` — fire-and-forget brief generation; `resolveJobRequirement()` — 3-path job resolution; `buildMeetingBriefPrompt()` — verbatim prompt builder |
+| `artifacts/talentlock/src/components/meetings/MeetingBriefCard.tsx` | Brief card with 4 states: not-generated, generating (polling), loaded, error |
+| `artifacts/api-server/src/lib/talentSearchUtils.ts` | `talentSearchPreFilter()`, `normaliseFreelancer()`, `buildTalentSearchEvaluationPrompt()`, `validateTalentSearchResponse()` |
+| `artifacts/api-server/src/lib/talentSearchEvaluator.ts` | `evaluateTalentSearchForUpdatedProfile()` — background evaluation pipeline; fires after profile update |
+| `artifacts/api-server/src/routes/talentSearch.ts` | All `/api/talent-search/*` routes |
+| `artifacts/talentlock/src/components/talent-search/` | `TalentSearchStatusBar`, `TalentSearchRuleBuilder`, `TalentSearchActivityFeed` |
 | `artifacts/talentlock/src/lib/rateFormatUtils.ts` | `formatRate(amount, rateType, currencySymbol)`, `rateUnitLabel(rateType)` — centralised rate display for hourly/per_day/per_session/per_course |
+| `artifacts/api-server/src/lib/meetingBriefGenerator.ts` | `generateMeetingBrief(db, meetingId, log)` — fire-and-forget brief generation; `resolveJobRequirement()` — 3-path job resolution; `buildMeetingBriefPrompt()` — verbatim prompt builder |
+| `artifacts/talentlock/src/components/meetings/MeetingBriefCard.tsx` | Brief card with 4 states: not-generated, generating (polling), loaded, error |
+| `artifacts/api-server/src/lib/talentSearchUtils.ts` | `employerPreFilter()`, `computeProfileMatchHash()`, `buildTalentSearchPrompt()`, `validateTalentSearchResponse()` |
+| `artifacts/api-server/src/lib/talentSearchEvaluator.ts` | `evaluateTalentSearchForUpdatedProfile()` — background pipeline; fires on profile update |
+| `artifacts/api-server/src/routes/talentSearch.ts` | All `/api/talent-search/*` routes |
+| `artifacts/talentlock/src/components/talent-search/` | `TalentSearchStatusBar`, `TalentSearchRuleBuilder`, `TalentSearchActivityFeed` |
 | `artifacts/talentlock/src/components/onboarding/TeachingDetailsSection.tsx` | Conditional onboarding/profile section for `professionCategory: 'education'` freelancers |
 | `lib/db/src/schema/` — `REQUIRED_DOCUMENTS_BY_EDUCATION_TYPE` | Static lookup: required/recommended documents per `educationProfessionType` |
 | `artifacts/api-server/src/lib/sanitise.ts` | `sanitiseText()`, `sanitiseRichText()` — strip HTML from all free-text writes |

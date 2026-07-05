@@ -13,6 +13,8 @@ export const TOKEN_FEATURE_LABELS: Record<keyof TokenUsageBreakdown, string> = {
   agreement_summary: "Agreement Summary",
   cruise_mode_parse: "Cruise Mode Parse",
   cruise_mode_evaluation: "Cruise Mode Evaluation",
+  talent_search_parse: "TalentSearch Parse",
+  talent_search_evaluation: "TalentSearch Evaluation",
 };
 
 export interface TokenBreakdownEntry {

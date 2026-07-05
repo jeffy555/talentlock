@@ -31,6 +31,7 @@ import availabilityRouter from "./availability";
 import accountRouter from "./account";
 import teamRouter from "./team";
 import cruiseModeRouter from "./cruiseMode";
+import talentSearchRouter from "./talentSearch";
 
 const router: IRouter = Router();
 
@@ -66,5 +67,6 @@ router.use(dashboardRouter);
 router.use(documentsRouter);
 router.use(teamRouter);
 router.use(cruiseModeRouter);
+router.use(talentSearchRouter);
 
 export default router;

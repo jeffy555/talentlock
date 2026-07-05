@@ -19,4 +19,6 @@ export interface TokenUsageBreakdown {
   agreement_summary: number;
   cruise_mode_parse: number;
   cruise_mode_evaluation: number;
+  talent_search_parse: number;
+  talent_search_evaluation: number;
 }

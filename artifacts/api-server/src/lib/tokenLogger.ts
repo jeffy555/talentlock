@@ -13,7 +13,9 @@ export type TokenFeature =
   | "contract_health_score"
   | "agreement_summary"
   | "cruise_mode_parse"
-  | "cruise_mode_evaluation";
+  | "cruise_mode_evaluation"
+  | "talent_search_parse"
+  | "talent_search_evaluation";
 
 export const TOKEN_FEATURES: TokenFeature[] = [
   "ai_match",
@@ -28,6 +30,8 @@ export const TOKEN_FEATURES: TokenFeature[] = [
   "rate_suggestion",
   "cruise_mode_parse",
   "cruise_mode_evaluation",
+  "talent_search_parse",
+  "talent_search_evaluation",
 ];
 
 const VALID_TOKEN_FEATURES = TOKEN_FEATURES;

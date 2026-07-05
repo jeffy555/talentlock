@@ -1516,6 +1516,8 @@ export interface TokenUsageBreakdown {
   agreement_summary: number;
   cruise_mode_parse: number;
   cruise_mode_evaluation: number;
+  talent_search_parse: number;
+  talent_search_evaluation: number;
 }
 
 export interface TokenUsageSummary {
@@ -2079,6 +2081,142 @@ export interface ParseCruiseModeRulesResult {
   warnings: string[];
 }
 
+export type TalentSearchRulesRateType =
+  (typeof TalentSearchRulesRateType)[keyof typeof TalentSearchRulesRateType];
+
+export const TalentSearchRulesRateType = {
+  hourly: "hourly",
+  per_day: "per_day",
+  per_session: "per_session",
+  per_course: "per_course",
+} as const;
+
+export type TalentSearchRulesMessageTone =
+  (typeof TalentSearchRulesMessageTone)[keyof typeof TalentSearchRulesMessageTone];
+
+export const TalentSearchRulesMessageTone = {
+  professional: "professional",
+  friendly: "friendly",
+  concise: "concise",
+} as const;
+
+export interface TalentSearchRules {
+  /** @nullable */
+  professionCategory?: string | null;
+  /** @nullable */
+  educationSubType?: string | null;
+  requiredSkills: string[];
+  preferredSkills: string[];
+  /** @nullable */
+  minRate?: number | null;
+  /** @nullable */
+  maxRate?: number | null;
+  rateType: TalentSearchRulesRateType;
+  /** @nullable */
+  availableFrom?: string | null;
+  locationRequired: boolean;
+  /** @nullable */
+  location?: string | null;
+  /** @nullable */
+  locationRadiusKm?: number | null;
+  excludedKeywords: string[];
+  requireVerifiedCredentials: boolean;
+  requireDbs: boolean;
+  preferredFields: string[];
+  /**
+   * @minimum 0
+   * @maximum 100
+   */
+  matchThreshold: number;
+  messageTone: TalentSearchRulesMessageTone;
+  blackoutWindows?: CruiseModeBlackoutWindows | null;
+  dryRun: boolean;
+  dailyDigest: boolean;
+  version: number;
+}
+
+export interface TalentSearchConfig {
+  id: string;
+  employerId: number;
+  isActive: boolean;
+  isDryRun: boolean;
+  rules: TalentSearchRules;
+  rulesVersion: number;
+  /** @nullable */
+  rawRulesText?: string | null;
+  hoursUsedToday: number;
+  dailyLimitHours: number;
+  hoursResetAt: string;
+  /** @nullable */
+  activatedAt?: string | null;
+  /** @nullable */
+  deactivatedAt?: string | null;
+  /** @nullable */
+  deletedAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface TalentSearchActivity {
+  id: string;
+  employerId: number;
+  freelancerId: number;
+  rulesVersion: number;
+  score: number;
+  decision: string;
+  matchReasons: MatchReasons;
+  /** @nullable */
+  proposedMessage?: string | null;
+  /** @nullable */
+  sentAt?: string | null;
+  /** @nullable */
+  skippedReason?: string | null;
+  employerFollowUpSent: boolean;
+  createdAt: string;
+}
+
+export type TalentSearchActivityItem = TalentSearchActivity & {
+  freelancerName: string;
+};
+
+export interface PaginatedTalentSearchActivityResult {
+  data: TalentSearchActivityItem[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+}
+
+export interface TalentSearchStats {
+  evaluatedToday: number;
+  sentToday: number;
+  skippedToday: number;
+  dryRunToday: number;
+  hoursUsedToday: number;
+  dailyLimitHours: number;
+  hoursRemainingToday: number;
+  hoursResetAt: string;
+}
+
+export interface UpsertTalentSearchBody {
+  rules: TalentSearchRules;
+  /** @nullable */
+  rawRulesText?: string | null;
+}
+
+export interface ParseTalentSearchRulesBody {
+  /**
+   * @minLength 1
+   * @maxLength 10000
+   */
+  rawText: string;
+}
+
+export interface ParseTalentSearchRulesResult {
+  rules: TalentSearchRules;
+  warnings: string[];
+}
+
 export type ListFreelancersParams = {
   /**
    * Filter by field of work
@@ -2250,6 +2388,18 @@ export const GetTeamAnalyticsWindow = {
 } as const;
 
 export type ListCruiseModeActivityParams = {
+  /**
+   * @minimum 1
+   */
+  page?: number;
+  /**
+   * @minimum 1
+   * @maximum 100
+   */
+  pageSize?: number;
+};
+
+export type ListTalentSearchActivityParams = {
   /**
    * @minimum 1
    */

@@ -21,4 +21,5 @@ export * from "./availabilityBlocks";
 export * from "./documents";
 export * from "./teams";
 export * from "./cruiseMode";
+export * from "./talentSearch";
 export * from "../../schema";

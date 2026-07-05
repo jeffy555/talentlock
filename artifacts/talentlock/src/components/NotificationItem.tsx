@@ -7,6 +7,7 @@ import {
   ShieldCheck,
   CheckSquare,
   Sparkles,
+  Search,
 } from "lucide-react";
 import { getNotificationRoute } from "@/lib/notificationRoutes";
 import { formatRelativeTime } from "@/lib/formatRelativeTime";
@@ -44,6 +45,8 @@ function EntityIcon({ entityType }: { entityType: string }) {
       return <Briefcase className="h-4 w-4 text-blue-500" />;
     case "cruise_mode_activity":
       return <Sparkles className="h-4 w-4 text-violet-500" />;
+    case "talent_search_activity":
+      return <Search className="h-4 w-4 text-teal-500" />;
     default:
       return <Briefcase className="h-4 w-4 text-slate-400" />;
   }
@@ -82,6 +85,11 @@ export function NotificationItem({ notification, onRead }: NotificationItemProps
           {notification.type === "cruise_mode_interest" && (
             <span className="shrink-0 text-xs bg-violet-100 text-violet-700 border border-violet-200 rounded px-1.5 py-0.5">
               Cruise Mode ✦
+            </span>
+          )}
+          {notification.type === "talent_search_interest" && (
+            <span className="shrink-0 text-xs bg-teal-100 text-teal-700 border border-teal-200 rounded px-1.5 py-0.5">
+              TalentSearch ✦
             </span>
           )}
         </div>

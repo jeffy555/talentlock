@@ -5,10 +5,10 @@ import { useGetMe, useGetMySubscription } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { Shield, LayoutDashboard, Users, UsersRound, Briefcase, Calendar, FileText, Bot, User as UserIcon, LogOut, Video, Menu, X, CreditCard, Sparkles, Rocket } from "lucide-react";
+import { Shield, LayoutDashboard, Users, UsersRound, Briefcase, Calendar, FileText, Bot, User as UserIcon, LogOut, Video, Menu, X, CreditCard, Sparkles, Rocket, Search } from "lucide-react";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { NotificationBell } from "@/components/NotificationBell";
-import { useGetCruiseMode } from "@workspace/api-client-react";
+import { useGetCruiseMode, useGetTalentSearch } from "@workspace/api-client-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -33,6 +33,10 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     query: { enabled: isFreelancer } as any,
   });
   const cruiseModeActive = cruiseConfig?.isActive === true;
+  const { data: talentSearchConfig } = useGetTalentSearch({
+    query: { enabled: isEmployer } as any,
+  });
+  const talentSearchActive = talentSearchConfig?.isActive === true;
 
   const handleSignOut = async () => {
     queryClient.clear();
@@ -108,6 +112,30 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                     </TooltipTrigger>
                     <TooltipContent side="bottom" className="xl:hidden bg-gold text-primary border-gold/50 font-medium">
                       AI Match
+                    </TooltipContent>
+                  </Tooltip>
+                )}
+
+                {isEmployer && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Link
+                        href="/talent-search"
+                        className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-all duration-200 ml-2 ${
+                          location.startsWith("/talent-search")
+                            ? "bg-teal-600/20 text-teal-200 border border-teal-400/40"
+                            : "text-white/60 hover:text-white hover:bg-white/5 border border-transparent"
+                        }`}
+                      >
+                        <Search className="h-4 w-4 flex-shrink-0" />
+                        <span className="hidden xl:inline">TalentSearch</span>
+                        {talentSearchActive && (
+                          <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse hidden xl:inline-block" />
+                        )}
+                      </Link>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom" className="xl:hidden bg-primary text-white border-white/10">
+                      TalentSearch
                     </TooltipContent>
                   </Tooltip>
                 )}
@@ -247,6 +275,25 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                   >
                     <Bot className="h-5 w-5" />
                     AI Match
+                  </Link>
+                </div>
+              )}
+              {isEmployer && (
+                <div className="pt-2 mt-2 border-t border-white/10">
+                  <Link
+                    href="/talent-search"
+                    className={`flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-all ${
+                      location.startsWith("/talent-search")
+                        ? "bg-teal-600/30 text-teal-100"
+                        : "text-white/70 hover:bg-white/5 hover:text-white"
+                    }`}
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    <Search className="h-5 w-5" />
+                    TalentSearch
+                    {talentSearchActive && (
+                      <span className="ml-auto h-2 w-2 rounded-full bg-emerald-400 animate-pulse" />
+                    )}
                   </Link>
                 </div>
               )}

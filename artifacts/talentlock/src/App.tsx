@@ -33,6 +33,7 @@ import Team from "@/pages/Team";
 import TeamAnalytics from "@/pages/TeamAnalytics";
 import AcceptInvite from "@/pages/AcceptInvite";
 import CruiseMode from "@/pages/CruiseMode";
+import TalentSearch from "@/pages/TalentSearch";
 
 const clerkPubKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY as string | undefined;
 const clerkProxyUrl = import.meta.env.VITE_CLERK_PROXY_URL as string | undefined;
@@ -410,6 +411,7 @@ function ClerkProviderWithRoutes() {
           <Route path="/team/analytics" component={() => <ProtectedRoute component={TeamAnalytics} />} />
           <Route path="/team/accept-invite" component={AcceptInvite} />
           <Route path="/cruise-mode" component={() => <ProtectedRoute component={CruiseMode} />} />
+          <Route path="/talent-search" component={() => <ProtectedRoute component={TalentSearch} />} />
 
           <Route path="/f/:id" component={PublicProfile} />
 

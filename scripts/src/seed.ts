@@ -1,6 +1,5 @@
 import { db } from "@workspace/db";
 import { usersTable, freelancerProfilesTable } from "@workspace/db";
-import { onConflictDoNothing } from "drizzle-orm/pg-core";
 import { eq } from "drizzle-orm";
 
 const SYSTEM_USER_CLERK_ID = "system";
