@@ -297,7 +297,7 @@ POST /api/admin/logout                            Admin: logout
 
 1. **Dual Role System** — Register as freelancer or employer via onboarding
 2. **Talent Vault** — Browse/filter freelancers by field, rate, availability, available-from date, and keyword search (`?q=`); shortlist with heart icon; completeness gate ≥ 60%
-3. **Exclusive Bookings** — Booked freelancers get a Lock badge and become unavailable
+3. **Exclusive Bookings** — Booked freelancers get a Lock badge and become unavailable. Lock fires only when booking status becomes `active` (primary path: agreement `fully_signed` via `POST /api/agreements/:id/sign`; secondary: `PATCH /api/bookings/:id`). Pending booking requests do **not** lock. `POST /api/bookings` returns `409 FREELANCER_UNAVAILABLE` if the talent is already locked or has an active booking. Shared helper: `lockFreelancerForActiveBooking()` in `availabilityUtils.ts`.
 4. **Rate Negotiation** — Employer proposes a rate; freelancer accepts or counter-proposes; agreement generation gated until both agree
 5. **AI Talent Matching** — GPT-powered chat that recommends matching freelancers
 6. **AI Agreement Generation** — GPT-4 generates legal engagement contracts from booking details
@@ -381,7 +381,7 @@ Cursor notes — Teaching Professional Profile
 
 | File | Purpose |
 |---|---|
-| `artifacts/api-server/src/lib/availabilityUtils.ts` | `calculateNextAvailableDate`, `refreshNextAvailableDate`, `createAvailabilityBlock`, `deleteAvailabilityBlockByBookingId` |
+| `artifacts/api-server/src/lib/availabilityUtils.ts` | `calculateNextAvailableDate`, `refreshNextAvailableDate`, `createAvailabilityBlock`, `deleteAvailabilityBlockByBookingId`, `lockFreelancerForActiveBooking` |
 | `artifacts/api-server/src/lib/meetingBriefGenerator.ts` | `generateMeetingBrief(db, meetingId, log)` — fire-and-forget brief generation; `resolveJobRequirement()` — 3-path job resolution; `buildMeetingBriefPrompt()` — verbatim prompt builder |
 | `artifacts/talentlock/src/components/meetings/MeetingBriefCard.tsx` | Brief card with 4 states: not-generated, generating (polling), loaded, error |
 | `artifacts/api-server/src/lib/talentSearchUtils.ts` | `talentSearchPreFilter()`, `normaliseFreelancer()`, `buildTalentSearchEvaluationPrompt()`, `validateTalentSearchResponse()` |
@@ -517,6 +517,7 @@ pnpm --filter @workspace/talentlock run dev
 
 ## Notes for Cursor
 
+- **Exclusive booking lock** — `lockFreelancerForActiveBooking()` must run on every booking → `active` transition. Primary path is agreement `fully_signed` (`activateBookingWithExclusivityLock` in `agreements.ts`); secondary is `PATCH /bookings/:id`. Never lock on pending create. `POST /bookings` must return `409 FREELANCER_UNAVAILABLE` when `isAvailable === false` or an active booking exists for that freelancer.
 - **pnpm workspace** — always use `pnpm --filter @workspace/<name>` to target a package
 - **Never edit generated files** in `lib/api-client-react/src/` or `lib/api-zod/src/`
 - **Pino logging** — use `req.log` in route handlers, never `console.log`

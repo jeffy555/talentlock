@@ -1389,6 +1389,48 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorEnvelope"
 
+  /meetings/{id}/brief:
+    post:
+      operationId: generateMeetingBrief
+      tags: [meetings]
+      summary: Generate or regenerate the AI meeting brief (employer only, confirmed meetings)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "202":
+          description: Brief generation started
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                required:
+                  - message
+        "403":
+          description: Forbidden — employer only
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "422":
+          description: Meeting not confirmed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
   # ── AI Matching (OpenAI) ─────────────────────────────────────────────────────
   /openai/conversations:
     get:
@@ -4623,6 +4665,13 @@ components:
           type: ["string", "null"]
         employerName:
           type: ["string", "null"]
+        briefContent:
+          oneOf:
+            - type: "null"
+            - $ref: "#/components/schemas/MeetingBrief"
+        briefGeneratedAt:
+          type: ["string", "null"]
+          format: date-time
         createdAt:
           type: string
           format: date-time
@@ -4635,6 +4684,73 @@ components:
         - durationMinutes
         - status
         - createdAt
+
+    MeetingBrief:
+      type: object
+      description: AI pre-meeting brief for the employer.
+      properties:
+        candidateSnapshot:
+          type: object
+          properties:
+            name: { type: string }
+            field: { type: string }
+            experience: { type: string }
+            rate: { type: number }
+            rateType: { type: string }
+            completenessScore: { type: integer }
+            averageRating: { type: number }
+            reviewCount: { type: integer }
+            verifiedCredentials:
+              type: array
+              items: { type: string }
+          required:
+            - name
+            - field
+            - experience
+            - rate
+            - rateType
+            - completenessScore
+            - averageRating
+            - reviewCount
+            - verifiedCredentials
+        whyTheyMatch:
+          type: array
+          items: { type: string }
+        suggestedQuestions:
+          type: array
+          items: { type: string }
+        rateContext:
+          type: object
+          properties:
+            proposedRate: { type: number }
+            jobBudgetMin: { type: ["number", "null"] }
+            jobBudgetMax: { type: ["number", "null"] }
+            marketMedian: { type: number }
+            platformPercentile: { type: number }
+            employerHistoricalAvg: { type: number }
+            assessment: { type: string }
+            withinBudget: { type: boolean }
+          required:
+            - proposedRate
+            - jobBudgetMin
+            - jobBudgetMax
+            - marketMedian
+            - platformPercentile
+            - employerHistoricalAvg
+            - assessment
+            - withinBudget
+        watchPoints:
+          type: array
+          items: { type: string }
+        generatedAt:
+          type: string
+      required:
+        - candidateSnapshot
+        - whyTheyMatch
+        - suggestedQuestions
+        - rateContext
+        - watchPoints
+        - generatedAt
 
     CreateMeetingBody:
       type: object

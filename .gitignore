@@ -36,6 +36,10 @@ node_modules
 !.vscode/extensions.json
 
 # misc
+# Local build/run logs and internal notes — must never be committed.
+.tmp-*.log
+*.tmp.log
+_sec.txt
 /.sass-cache
 /connect.lock
 /coverage

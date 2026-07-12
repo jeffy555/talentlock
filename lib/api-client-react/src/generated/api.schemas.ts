@@ -793,6 +793,43 @@ export interface SignAgreementBody {
   signatureImageUrl?: string;
 }
 
+export type MeetingBriefCandidateSnapshot = {
+  name: string;
+  field: string;
+  experience: string;
+  rate: number;
+  rateType: string;
+  completenessScore: number;
+  averageRating: number;
+  reviewCount: number;
+  verifiedCredentials: string[];
+};
+
+export type MeetingBriefRateContext = {
+  proposedRate: number;
+  /** @nullable */
+  jobBudgetMin: number | null;
+  /** @nullable */
+  jobBudgetMax: number | null;
+  marketMedian: number;
+  platformPercentile: number;
+  employerHistoricalAvg: number;
+  assessment: string;
+  withinBudget: boolean;
+};
+
+/**
+ * AI pre-meeting brief for the employer.
+ */
+export interface MeetingBrief {
+  candidateSnapshot: MeetingBriefCandidateSnapshot;
+  whyTheyMatch: string[];
+  suggestedQuestions: string[];
+  rateContext: MeetingBriefRateContext;
+  watchPoints: string[];
+  generatedAt: string;
+}
+
 export interface Meeting {
   id: number;
   freelancerId: number;
@@ -810,6 +847,9 @@ export interface Meeting {
   freelancerName?: string | null;
   /** @nullable */
   employerName?: string | null;
+  briefContent?: null | MeetingBrief;
+  /** @nullable */
+  briefGeneratedAt?: string | null;
   createdAt: string;
 }
 
@@ -2339,6 +2379,10 @@ export type PostAgreementsIdSummariseParams = {
 export type ListMeetingsParams = {
   page?: number;
   pageSize?: number;
+};
+
+export type GenerateMeetingBrief202 = {
+  message: string;
 };
 
 export type GetDashboardHiringAnalyticsParams = {

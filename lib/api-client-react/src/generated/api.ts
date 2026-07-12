@@ -67,6 +67,7 @@ import type {
   FreelancerProfile,
   FreelancerProfileDetail,
   FreelancerReviewsResult,
+  GenerateMeetingBrief202,
   GetDashboardHiringAnalyticsParams,
   GetTeamAnalyticsParams,
   HealthScoreParseError,
@@ -4532,6 +4533,90 @@ export const useUpdateMeeting = <
   TContext
 > => {
   return useMutation(getUpdateMeetingMutationOptions(options));
+};
+
+/**
+ * @summary Generate or regenerate the AI meeting brief (employer only, confirmed meetings)
+ */
+export const getGenerateMeetingBriefUrl = (id: number) => {
+  return `/api/meetings/${id}/brief`;
+};
+
+export const generateMeetingBrief = async (
+  id: number,
+  options?: RequestInit,
+): Promise<GenerateMeetingBrief202> => {
+  return customFetch<GenerateMeetingBrief202>(getGenerateMeetingBriefUrl(id), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getGenerateMeetingBriefMutationOptions = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof generateMeetingBrief>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof generateMeetingBrief>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  const mutationKey = ["generateMeetingBrief"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof generateMeetingBrief>>,
+    { id: number }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return generateMeetingBrief(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type GenerateMeetingBriefMutationResult = NonNullable<
+  Awaited<ReturnType<typeof generateMeetingBrief>>
+>;
+
+export type GenerateMeetingBriefMutationError = ErrorType<ErrorEnvelope>;
+
+/**
+ * @summary Generate or regenerate the AI meeting brief (employer only, confirmed meetings)
+ */
+export const useGenerateMeetingBrief = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof generateMeetingBrief>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof generateMeetingBrief>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  return useMutation(getGenerateMeetingBriefMutationOptions(options));
 };
 
 /**

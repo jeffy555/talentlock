@@ -18,8 +18,14 @@ const app: Express = express();
 
 app.use(helmet());
 
-// Uncomment when deployed behind a reverse proxy (e.g. Railway, Render, nginx):
-// app.set('trust proxy', 1);
+// When deployed behind a reverse proxy (Railway, Render, nginx, …) the real
+// client IP is in X-Forwarded-For. Without trusting the proxy, `req.ip` is the
+// proxy address for every request, which collapses the admin login rate limiter
+// and pollutes audit logs. Enable via TRUST_PROXY (hop count or "true").
+const trustProxy = process.env.TRUST_PROXY;
+if (trustProxy) {
+  app.set("trust proxy", /^\d+$/.test(trustProxy) ? Number(trustProxy) : trustProxy === "true");
+}
 
 app.use(
   pinoHttp({
@@ -43,7 +49,28 @@ app.use(
 
 app.use(CLERK_PROXY_PATH, clerkProxyMiddleware());
 
-app.use(cors({ credentials: true, origin: true }));
+// SECURITY: `origin: true` reflects ANY requesting origin while also allowing
+// credentials, which lets any website issue authenticated cross-origin requests
+// against this API. Restrict to an explicit allowlist (ALLOWED_ORIGINS, comma
+// separated; APP_URL is included by default). In non-production with no
+// allowlist configured we permit all origins for local dev convenience.
+const allowedOrigins = (process.env.ALLOWED_ORIGINS ?? process.env.APP_URL ?? "")
+  .split(",")
+  .map((o) => o.trim())
+  .filter(Boolean);
+const isProduction = process.env.NODE_ENV === "production";
+app.use(
+  cors({
+    credentials: true,
+    origin(origin, callback) {
+      // Same-origin / non-browser requests have no Origin header.
+      if (!origin) return callback(null, true);
+      if (allowedOrigins.includes(origin)) return callback(null, true);
+      if (!isProduction && allowedOrigins.length === 0) return callback(null, true);
+      return callback(null, false);
+    },
+  }),
+);
 app.use(cookieParser());
 app.use(express.json({ limit: "1mb" }));
 app.use(express.urlencoded({ extended: true, limit: "1mb" }));

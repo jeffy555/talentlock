@@ -57,8 +57,22 @@ import {
   readCachedAgreementPdf,
   writeCachedAgreementPdf,
 } from "../lib/agreementPdfCache";
+import { lockFreelancerForActiveBooking } from "../lib/availabilityUtils";
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY_TALENTLOCK });
+
+async function activateBookingWithExclusivityLock(
+  bookingId: number,
+  log: { warn: (obj: Record<string, unknown>, msg: string) => void; info?: (obj: Record<string, unknown>, msg: string) => void },
+): Promise<void> {
+  await db.update(bookingsTable).set({ status: "active" }).where(eq(bookingsTable.id, bookingId));
+  const [booking] = await db.select().from(bookingsTable).where(eq(bookingsTable.id, bookingId)).limit(1);
+  if (!booking) {
+    log.warn({ bookingId }, "booking not found after activating — exclusivity lock skipped");
+    return;
+  }
+  await lockFreelancerForActiveBooking(db, booking, log);
+}
 
 const REDLINE_SYSTEM_PROMPT = `You are a legal contract reviewer for a freelance platform.
 Review the following contract and identify up to 10 improvements.
@@ -987,7 +1001,7 @@ router.post("/agreements/:id/sign", async (req, res) => {
           })
           .where(eq(agreementsTable.id, id))
           .returning();
-        await db.update(bookingsTable).set({ status: "active" }).where(eq(bookingsTable.id, updated.bookingId));
+        await activateBookingWithExclusivityLock(updated.bookingId, req.log);
         req.log.info({ agreementId: id, freelancerClerkId: freelancerProfile.clerkId }, "Auto-signed agreement on behalf of demo freelancer");
         const fullMsg = "Agreement fully signed — your document is ready to download";
         const empUid = await userIdFromEmployerProfileId(autoSigned.employerId);
@@ -1022,7 +1036,7 @@ router.post("/agreements/:id/sign", async (req, res) => {
         .set({ status: "fully_signed" })
         .where(eq(agreementsTable.id, id))
         .returning();
-      await db.update(bookingsTable).set({ status: "active" }).where(eq(bookingsTable.id, updated.bookingId));
+      await activateBookingWithExclusivityLock(updated.bookingId, req.log);
       const fullMsg = "Agreement fully signed — your document is ready to download";
       const empUid = await userIdFromEmployerProfileId(fullySignedAgreement.employerId);
       const flUid = await userIdFromFreelancerProfileId(fullySignedAgreement.freelancerId);

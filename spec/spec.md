@@ -120,7 +120,7 @@ talentlock/
 │   │   ├── UI.md
 │   │   └── validation.md
 │   │
-│   ├── availability-calendar/                      ← ✅ Complete · 🟢 P1 follow-up (defer lock to confirmation) validated 2026-06-09
+│   ├── availability-calendar/                      ← ✅ Complete · Module 8 + Phase 4b (agreement lock) 2026-07-12
 │   │   ├── features.md
 │   │   ├── clarify.md
 │   │   ├── plan.md
@@ -479,7 +479,7 @@ The `.cursor/rules/talentlock.mdc` file at the repo root enforces these rules au
 | Earnings Intelligence | `specs/earnings-intelligence/` | ✅ Complete |
 | Employer Spend Analytics | `specs/employer-spend-analytics/` | ✅ Complete |
 | Employer Analytics Dashboard | `specs/employer-analytics-dashboard/` | ✅ Complete |
-| Availability Calendar (Visual) | `specs/availability-calendar/` | ✅ Complete · 🟢 P1 follow-up (defer lock to confirmation) validated 2026-06-09 |
+| Availability Calendar (Visual) | `specs/availability-calendar/` | ✅ Complete · Module 8 + Phase 4b (agreement fully-signed lock + create guard) 2026-07-12 |
 | Security Hardening | `specs/security-hardening/` | ✅ Complete · 🟢 P1 follow-up (sanitisation on 6 routes) validated 2026-06-09 |
 | Product Gaps | `specs/product-gaps/` | ✅ Complete (validated 2026-06-08) |
 | AI Proposal Generator | `specs/ai-proposal-generator/` | ✅ Complete (validated 2026-06-08) |
@@ -513,7 +513,7 @@ Tracking the findings from the TalentLock Security & Production Readiness review
 | 🔴 P0 | Auth-gate storage upload URLs + object ACL (namespace by userId) | `AuthHardening/` (Module 6) | ✅ Implemented & validated 2026-06-09 |
 | 🟠 P1 | Token breakdown — extend to all 9 features | `token-usage/` (Module 5 addendum) | ✅ Implemented & validated 2026-06-09 |
 | 🟠 P1 | Apply `sanitiseText()` to 6 missing free-text fields | `security-hardening/` (Module 2 addendum) | ✅ Implemented & validated 2026-06-09 |
-| 🟠 P1 | Fix premature availability lock | `availability-calendar/` (Module 8 addendum) | ✅ Implemented & validated 2026-06-09 |
+| 🟠 P1 | Fix premature availability lock | `availability-calendar/` (Module 8 + Phase 4b) | ✅ Done 2026-07-12 (PATCH + agreement fully-signed + create 409 guard) |
 | 🟠 P1 | Add 4 missing endpoint groups to OpenAPI + fix raw `fetch` | `specs/OpenApiContractCleanup/` | ⬜ Not started |
 | 🟡 P2 | Automated tests (Vitest + Supertest) + wire `validate-*.mjs` to CI | `specs/api-testing/` | ⬜ Not started |
 | 🟡 P2 | Fix N+1 on bookings/meetings/agreements list endpoints | _backend perf_ | ⬜ Not started |

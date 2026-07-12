@@ -1699,6 +1699,41 @@ export const ListMeetingsResponse = zod.object({
       meetingLink: zod.string().nullish(),
       freelancerName: zod.string().nullish(),
       employerName: zod.string().nullish(),
+      briefContent: zod
+        .union([
+          zod.null(),
+          zod
+            .object({
+              candidateSnapshot: zod.object({
+                name: zod.string(),
+                field: zod.string(),
+                experience: zod.string(),
+                rate: zod.number(),
+                rateType: zod.string(),
+                completenessScore: zod.number(),
+                averageRating: zod.number(),
+                reviewCount: zod.number(),
+                verifiedCredentials: zod.array(zod.string()),
+              }),
+              whyTheyMatch: zod.array(zod.string()),
+              suggestedQuestions: zod.array(zod.string()),
+              rateContext: zod.object({
+                proposedRate: zod.number(),
+                jobBudgetMin: zod.number().nullable(),
+                jobBudgetMax: zod.number().nullable(),
+                marketMedian: zod.number(),
+                platformPercentile: zod.number(),
+                employerHistoricalAvg: zod.number(),
+                assessment: zod.string(),
+                withinBudget: zod.boolean(),
+              }),
+              watchPoints: zod.array(zod.string()),
+              generatedAt: zod.string(),
+            })
+            .describe("AI pre-meeting brief for the employer."),
+        ])
+        .optional(),
+      briefGeneratedAt: zod.coerce.date().nullish(),
       createdAt: zod.coerce.date(),
     }),
   ),
@@ -1739,6 +1774,41 @@ export const GetMeetingResponse = zod.object({
   meetingLink: zod.string().nullish(),
   freelancerName: zod.string().nullish(),
   employerName: zod.string().nullish(),
+  briefContent: zod
+    .union([
+      zod.null(),
+      zod
+        .object({
+          candidateSnapshot: zod.object({
+            name: zod.string(),
+            field: zod.string(),
+            experience: zod.string(),
+            rate: zod.number(),
+            rateType: zod.string(),
+            completenessScore: zod.number(),
+            averageRating: zod.number(),
+            reviewCount: zod.number(),
+            verifiedCredentials: zod.array(zod.string()),
+          }),
+          whyTheyMatch: zod.array(zod.string()),
+          suggestedQuestions: zod.array(zod.string()),
+          rateContext: zod.object({
+            proposedRate: zod.number(),
+            jobBudgetMin: zod.number().nullable(),
+            jobBudgetMax: zod.number().nullable(),
+            marketMedian: zod.number(),
+            platformPercentile: zod.number(),
+            employerHistoricalAvg: zod.number(),
+            assessment: zod.string(),
+            withinBudget: zod.boolean(),
+          }),
+          watchPoints: zod.array(zod.string()),
+          generatedAt: zod.string(),
+        })
+        .describe("AI pre-meeting brief for the employer."),
+    ])
+    .optional(),
+  briefGeneratedAt: zod.coerce.date().nullish(),
   createdAt: zod.coerce.date(),
 });
 
@@ -1770,7 +1840,49 @@ export const UpdateMeetingResponse = zod.object({
   meetingLink: zod.string().nullish(),
   freelancerName: zod.string().nullish(),
   employerName: zod.string().nullish(),
+  briefContent: zod
+    .union([
+      zod.null(),
+      zod
+        .object({
+          candidateSnapshot: zod.object({
+            name: zod.string(),
+            field: zod.string(),
+            experience: zod.string(),
+            rate: zod.number(),
+            rateType: zod.string(),
+            completenessScore: zod.number(),
+            averageRating: zod.number(),
+            reviewCount: zod.number(),
+            verifiedCredentials: zod.array(zod.string()),
+          }),
+          whyTheyMatch: zod.array(zod.string()),
+          suggestedQuestions: zod.array(zod.string()),
+          rateContext: zod.object({
+            proposedRate: zod.number(),
+            jobBudgetMin: zod.number().nullable(),
+            jobBudgetMax: zod.number().nullable(),
+            marketMedian: zod.number(),
+            platformPercentile: zod.number(),
+            employerHistoricalAvg: zod.number(),
+            assessment: zod.string(),
+            withinBudget: zod.boolean(),
+          }),
+          watchPoints: zod.array(zod.string()),
+          generatedAt: zod.string(),
+        })
+        .describe("AI pre-meeting brief for the employer."),
+    ])
+    .optional(),
+  briefGeneratedAt: zod.coerce.date().nullish(),
   createdAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Generate or regenerate the AI meeting brief (employer only, confirmed meetings)
+ */
+export const GenerateMeetingBriefParams = zod.object({
+  id: zod.coerce.number(),
 });
 
 /**

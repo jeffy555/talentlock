@@ -439,10 +439,47 @@ Task 3.1 → 3.2 → 3.3 → 3.4 → 3.5 → 3.6 → 3.7 → 3.8 → 3.9 → 3.1
 - **Acceptance:** Zero new type errors introduced by Tasks 4.1–4.2.
 
 ### Phase 4 Acceptance Checklist
-- [ ] `POST /bookings` no longer mutates `freelancerProfilesTable` availability fields
-- [ ] Pending booking leaves freelancer available + Vault-visible
-- [ ] `PATCH /bookings/:id` → `active` sets `isAvailable: false` + `currentBookingId` + `bookingEndDate`
-- [ ] `active` transition still creates the `booked` availability auto-block
-- [ ] `cancelled`/`completed` still restores `isAvailable: true`
-- [ ] Coordinated with AuthHardening guard on the same handler
-- [ ] `pnpm run typecheck` passes with zero new errors
+- [x] `POST /bookings` no longer mutates `freelancerProfilesTable` availability fields
+- [x] Pending booking leaves freelancer available + Vault-visible
+- [x] `PATCH /bookings/:id` → `active` sets `isAvailable: false` + `currentBookingId` + `bookingEndDate`
+- [x] `active` transition still creates the `booked` availability auto-block
+- [x] `cancelled`/`completed` still restores `isAvailable: true`
+- [x] Coordinated with AuthHardening guard on the same handler
+- [x] `pnpm run typecheck` passes with zero new errors
+
+---
+
+# Phase 4b (P1 Addendum) — Align Lock with Agreement Fully-Signed Path (added 2026-07-12)
+
+> Extends Module 8 / decisions A2–A4 (`plan.md`). The primary confirmation path is agreement signing, not PATCH.
+
+### Task 4b.1 — Shared lock helper
+- File: `artifacts/api-server/src/lib/availabilityUtils.ts`
+- Add `lockFreelancerForActiveBooking(dbConn, booking, log?)` that:
+  1. Updates `freelancer_profiles`: `isAvailable: false`, `currentBookingId`, `bookingEndDate`
+  2. Fire-and-forget `createAvailabilityBlock` when `startDate` and `endDate` exist (`reason: "booked"`)
+- Refactor `PATCH /bookings/:id` active branch to call this helper (behaviour unchanged).
+- **Acceptance:** Helper is the single source of lock + auto-block for `active` transitions.
+
+### Task 4b.2 — Lock on agreement fully signed
+- File: `artifacts/api-server/src/routes/agreements.ts`
+- After every `db.update(bookingsTable).set({ status: "active" })` on fully signed (normal dual-sign **and** demo auto-sign), load the booking row if needed and `await lockFreelancerForActiveBooking(db, booking, req.log)`.
+- **Acceptance:** Completing e-sign → `fully_signed` → booking `active` flips the freelancer unavailable and creates the `booked` auto-block.
+
+### Task 4b.3 — Exclusivity guard on `POST /bookings`
+- File: `artifacts/api-server/src/routes/bookings.ts`
+- Inside the create transaction: if `isAvailable === false` OR an `active` booking exists for `freelancerId`, abort and return `409` `{ error, code: "FREELANCER_UNAVAILABLE" }`.
+- Pending bookings do not block create.
+- **Acceptance:** A second employer cannot create a booking against a locked / actively engaged freelancer.
+
+### Task 4b.4 — Typecheck gate
+- Run `pnpm --filter @workspace/api-server run typecheck` (or workspace typecheck).
+- **Acceptance:** Zero new type errors.
+
+### Phase 4b Acceptance Checklist
+- [x] `lockFreelancerForActiveBooking` exists and is used by PATCH active + agreement sign paths
+- [x] Agreement fully signed → booking active → `isAvailable: false` + auto-block
+- [x] Demo auto-sign path also locks
+- [x] `POST /bookings` returns 409 `FREELANCER_UNAVAILABLE` when talent is locked/active
+- [x] Pending create still leaves talent available
+- [x] Typecheck passes

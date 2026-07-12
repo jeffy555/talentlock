@@ -130,6 +130,15 @@ export default function FreelancerDetail() {
         setTimeout(() => setLocation("/pricing"), 1200);
         return;
       }
+      if (status === 409 || body?.code === "FREELANCER_UNAVAILABLE") {
+        toast({
+          title: "Talent unavailable",
+          description: body?.error ?? "This freelancer is locked in an exclusive engagement.",
+          variant: "destructive",
+        });
+        setBookingOpen(false);
+        return;
+      }
       const msg = body?.error ?? (err instanceof Error ? err.message : "Could not create the booking.");
       toast({ title: "Booking failed", description: msg, variant: "destructive" });
     }

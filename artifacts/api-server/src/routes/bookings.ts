@@ -20,8 +20,8 @@ import {
 } from "@workspace/api-zod";
 import { getUserSubscription, checkLimit } from "../lib/subscriptionGating";
 import {
-  createAvailabilityBlock,
   deleteAvailabilityBlockByBookingId,
+  lockFreelancerForActiveBooking,
 } from "../lib/availabilityUtils";
 import { z } from "zod/v4";
 import { sanitiseText } from "../lib/sanitise";
@@ -110,7 +110,28 @@ router.post("/bookings", async (req, res) => {
       const activeRows = await tx.select({ id: bookingsTable.id }).from(bookingsTable)
         .where(and(eq(bookingsTable.employerId, employer.id), inArray(bookingsTable.status, ["pending", "active"])));
       const gate = checkLimit(sub.plan, "activeBookings", activeRows.length);
-      if (!gate.allowed) return { gate, booking: null };
+      if (!gate.allowed) return { gate, booking: null as null, unavailable: false as const };
+
+      const [freelancer] = await tx.select({
+        id: freelancerProfilesTable.id,
+        isAvailable: freelancerProfilesTable.isAvailable,
+      }).from(freelancerProfilesTable)
+        .where(eq(freelancerProfilesTable.id, parsed.data.freelancerId))
+        .limit(1);
+      if (!freelancer) {
+        return { gate: null, booking: null as null, unavailable: "not_found" as const };
+      }
+
+      const [existingActive] = await tx.select({ id: bookingsTable.id }).from(bookingsTable)
+        .where(and(
+          eq(bookingsTable.freelancerId, freelancer.id),
+          eq(bookingsTable.status, "active"),
+        ))
+        .limit(1);
+
+      if (!freelancer.isAvailable || existingActive) {
+        return { gate: null, booking: null as null, unavailable: true as const };
+      }
 
       const proposedRate = parsed.data.rate != null ? String(parsed.data.rate) : null;
 
@@ -127,8 +148,20 @@ router.post("/bookings", async (req, res) => {
           negotiationStatus: "negotiating",
         })
         .returning();
-      return { gate: null, booking };
+      return { gate: null, booking, unavailable: false as const };
     });
+
+    if (result.unavailable === "not_found") {
+      res.status(404).json({ error: "Freelancer not found", code: "FREELANCER_NOT_FOUND" });
+      return;
+    }
+    if (result.unavailable) {
+      res.status(409).json({
+        error: "This freelancer is currently locked in an exclusive engagement and cannot be booked.",
+        code: "FREELANCER_UNAVAILABLE",
+      });
+      return;
+    }
 
     if (result.gate) {
       res.status(402).json({ error: result.gate.reason, planNeeded: result.gate.planNeeded, code: "PLAN_LIMIT" });
@@ -232,27 +265,7 @@ router.patch("/bookings/:id", async (req, res) => {
 
     if (parsed.data.status && parsed.data.status !== before.status) {
       if (parsed.data.status === BOOKING_CONFIRMED_STATUS) {
-        await db.update(freelancerProfilesTable)
-          .set({
-            isAvailable: false,
-            currentBookingId: updated.id,
-            bookingEndDate: updated.endDate ?? null,
-          })
-          .where(eq(freelancerProfilesTable.id, updated.freelancerId));
-
-        const blockStart = updated.startDate ?? null;
-        const blockEnd = updated.endDate ?? null;
-        if (blockStart && blockEnd) {
-          createAvailabilityBlock(db, {
-            freelancerId: updated.freelancerId,
-            startDate: blockStart,
-            endDate: blockEnd,
-            reason: "booked",
-            bookingId: updated.id,
-          }).catch((err) => req.log.warn({ err, bookingId: id }, "auto-block creation failed"));
-        } else {
-          req.log.warn({ bookingId: id }, "auto-block skipped — no date range on booking");
-        }
+        await lockFreelancerForActiveBooking(db, updated, req.log);
       }
 
       if (

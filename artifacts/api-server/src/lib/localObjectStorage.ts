@@ -2,10 +2,18 @@ import crypto from "node:crypto";
 import { access, mkdir, readFile, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 
-const DEFAULT_SECRET = "talentlock-dev-secret-do-not-use-in-prod";
+// SECURITY: signed local-storage URLs must not be signable with a value that
+// exists in source control, otherwise anyone can forge upload/read URLs. Fall
+// back to a random per-process secret when SESSION_SECRET is unset.
+let ephemeralSecret: string | null = null;
 
 function signingSecret(): string {
-  return process.env.SESSION_SECRET || DEFAULT_SECRET;
+  const configured = process.env.SESSION_SECRET;
+  if (configured) return configured;
+  if (!ephemeralSecret) {
+    ephemeralSecret = crypto.randomBytes(32).toString("hex");
+  }
+  return ephemeralSecret;
 }
 
 /** Use on-disk storage when Replit/GCS object storage is not configured. */

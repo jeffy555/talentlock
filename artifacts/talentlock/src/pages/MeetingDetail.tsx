@@ -1,5 +1,6 @@
 import { useParams, useLocation } from "wouter";
-import { useGetMeeting, useUpdateMeeting, useGetMe } from "@workspace/api-client-react";
+import { useGetMeeting, useUpdateMeeting, useGetMe, useGetMySubscription } from "@workspace/api-client-react";
+import { MeetingBriefCard } from "@/components/meetings/MeetingBriefCard";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -30,6 +31,10 @@ export default function MeetingDetail() {
   const updateMeeting = useUpdateMeeting();
 
   const isEmployer = me?.role === "employer";
+  const { data: subscription } = useGetMySubscription({
+    query: { enabled: isEmployer } as any,
+  });
+  const userPlan = subscription?.plan?.id ?? "employer_starter";
 
   const handleStatus = async (status: string) => {
     try {
@@ -163,6 +168,20 @@ export default function MeetingDetail() {
               </div>
             )}
           </div>
+
+          {/* AI Meeting Brief — employer-only, confirmed meetings */}
+          {isEmployer && meeting.status === "confirmed" && (
+            <MeetingBriefCard
+              brief={meeting.briefContent}
+              briefGeneratedAt={meeting.briefGeneratedAt}
+              meetingId={meeting.id}
+              userPlan={userPlan}
+              refetchMeeting={async () => {
+                const r = await refetch();
+                return { data: r.data };
+              }}
+            />
+          )}
 
           {/* Calendar export — quick access to all major calendar apps */}
           {!isCancelled && (

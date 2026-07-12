@@ -411,18 +411,23 @@ await tx.update(freelancerProfilesTable)
 
 This runs while the booking status is `"pending"`.
 
-### A2 — Decision: move the lock to the `active` transition
+### A2 — Decision: move the lock to the `active` transition (all confirmation paths)
 
 **Remove** the `freelancerProfilesTable` update from `POST /bookings`. The created booking stays `pending`, the freelancer stays `isAvailable: true`, `currentBookingId` stays null.
 
-**Add** the lock to `PATCH /bookings/:id` where the status transitions to the confirmed status (`BOOKING_CONFIRMED_STATUS = "active"`), in the same block that already creates the availability auto-block:
+**Shared helper** (binding): extract `lockFreelancerForActiveBooking(db, booking, log?)` in `artifacts/api-server/src/lib/availabilityUtils.ts` that:
+
+1. Sets `isAvailable: false`, `currentBookingId: booking.id`, `bookingEndDate: booking.endDate ?? null`
+2. Fire-and-forget `createAvailabilityBlock(...)` when start/end dates exist (same `.catch()` pattern as today)
+
+**Call sites that must invoke the helper whenever booking → `active`:**
+
+1. **Primary:** `POST /api/agreements/:id/sign` — both places that run `db.update(bookingsTable).set({ status: "active" })` after `fully_signed` (normal dual-sign and demo-freelancer auto-sign).
+2. **Secondary:** `PATCH /bookings/:id` when `status === BOOKING_CONFIRMED_STATUS` (`"active"`).
 
 ```ts
 if (parsed.data.status === BOOKING_CONFIRMED_STATUS) {
-  await db.update(freelancerProfilesTable)
-    .set({ isAvailable: false, currentBookingId: updated.id, bookingEndDate: updated.endDate ?? null })
-    .where(eq(freelancerProfilesTable.id, updated.freelancerId));
-  // ... existing createAvailabilityBlock(...) call stays as-is
+  await lockFreelancerForActiveBooking(db, updated, req.log);
 }
 ```
 
@@ -430,14 +435,25 @@ The existing `cancelled`/`completed` reset (`isAvailable: true, currentBookingId
 
 ### A3 — Interaction with the P0 AuthHardening spec
 
-`PATCH /bookings/:id` is also being gated by `specs/AuthHardening/` (participant check). Apply the AuthHardening guard first; this availability change lives inside the already-authorised handler. The two edits touch the same handler — coordinate so the auth guard wraps the whole mutation.
+`PATCH /bookings/:id` and `POST /agreements/:id/sign` are gated by `specs/AuthHardening/`. Apply the AuthHardening guard first; the availability lock lives inside the already-authorised handler.
 
-### A4 — Edge case: confirming a booking for an already-booked freelancer
+### A4 — Edge case: exclusivity guard on create (updated 2026-07-12)
 
-If a freelancer is somehow confirmed onto a second overlapping booking, the last write wins on `currentBookingId`. This is pre-existing behaviour and out of scope here; the booking-exclusivity guarantee is enforced elsewhere. No change.
+`POST /api/bookings` must reject when the target freelancer is already exclusive:
+
+```ts
+// inside the create transaction, after resolving freelancerId
+if (!freelancer.isAvailable || hasActiveBooking) {
+  return { gate: null, booking: null, unavailable: true };
+}
+// respond 409 { error: "...", code: "FREELANCER_UNAVAILABLE" }
+```
+
+Pending bookings do **not** block create. Double-confirm race (two agreements signing concurrently) remains a residual edge; the create guard + `isAvailable` flip closes the product gap.
 
 ### Addendum Sign-Off
 
 | Phase | Description | Status |
 |---|---|---|
-| Phase 4 (Addendum) | Move availability lock from pending-create to active-confirm | ⬜ Not started |
+| Phase 4 (Addendum) | Move availability lock from pending-create to active-confirm (PATCH path) | ✅ Done 2026-06-09 |
+| Phase 4b (Addendum) | Align lock with agreement fully-signed → active + create exclusivity guard | ✅ Done 2026-07-12 |

@@ -165,3 +165,59 @@ export async function deleteAvailabilityBlockByBookingId(
 
   await refreshNextAvailableDate(dbConn, existing.freelancerId);
 }
+
+/**
+ * Exclusive lock when a booking becomes active (confirmation).
+ * Primary call site: agreement fully signed → booking status active.
+ * Secondary: PATCH /bookings/:id with status active.
+ */
+export async function lockFreelancerForActiveBooking(
+  dbConn: DB,
+  booking: {
+    id: number;
+    freelancerId: number;
+    startDate?: Date | string | null;
+    endDate?: Date | string | null;
+  },
+  log?: { warn: (obj: Record<string, unknown>, msg: string) => void },
+): Promise<void> {
+  const endDate =
+    booking.endDate == null
+      ? null
+      : booking.endDate instanceof Date
+        ? booking.endDate
+        : new Date(booking.endDate);
+
+  await dbConn
+    .update(freelancerProfilesTable)
+    .set({
+      isAvailable: false,
+      currentBookingId: booking.id,
+      bookingEndDate: endDate,
+      updatedAt: new Date(),
+    })
+    .where(eq(freelancerProfilesTable.id, booking.freelancerId));
+
+  const blockStart = booking.startDate ?? null;
+  const blockEnd = booking.endDate ?? null;
+  if (blockStart && blockEnd) {
+    createAvailabilityBlock(dbConn, {
+      freelancerId: booking.freelancerId,
+      startDate: blockStart,
+      endDate: blockEnd,
+      reason: "booked",
+      bookingId: booking.id,
+    }).catch((err) =>
+      log?.warn(
+        { err, bookingId: booking.id },
+        "auto-block creation failed",
+      ),
+    );
+  } else {
+    log?.warn(
+      { bookingId: booking.id },
+      "auto-block skipped — no date range on booking",
+    );
+    await refreshNextAvailableDate(dbConn, booking.freelancerId);
+  }
+}

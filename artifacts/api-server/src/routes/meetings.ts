@@ -17,6 +17,7 @@ import { sendNotificationEmailAsync } from "../lib/emailService";
 import { resolveUserByClerkId, canAccessMeeting, profileIdsForUser } from "../lib/accessControl";
 import { parsePagination, paginatedResponse } from "../lib/paginationUtils";
 import { sanitiseText } from "../lib/sanitise";
+import { generateMeetingBrief } from "../lib/meetingBriefGenerator";
 
 const router = Router();
 
@@ -223,8 +224,49 @@ router.patch("/meetings/:id", async (req, res) => {
     }
 
     res.json(await enrichMeeting(updated));
+
+    // Fire-and-forget AI meeting brief when a meeting first becomes confirmed.
+    // Never awaited — must not delay or affect the PATCH response.
+    if (updated.status === "confirmed" && before.status !== "confirmed") {
+      generateMeetingBrief(db, id, req.log)
+        .catch((err) => req.log.warn({ err, meetingId: id }, "meeting brief generation failed"));
+    }
   } catch (err) {
     req.log.error({ err }, "Failed to update meeting");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// POST /api/meetings/:id/brief — employer-only manual (re)generation.
+// Returns 202; the client polls GET /api/meetings/:id until briefGeneratedAt is set.
+router.post("/meetings/:id/brief", async (req, res) => {
+  const id = parseInt(req.params.id);
+  if (isNaN(id)) { res.status(400).json({ error: "Invalid ID" }); return; }
+  const { userId: clerkId } = getAuth(req);
+  if (!clerkId) { res.status(401).json({ error: "Unauthorized" }); return; }
+  try {
+    const user = await resolveUserByClerkId(clerkId);
+    if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
+
+    const [meeting] = await db.select().from(meetingsTable).where(eq(meetingsTable.id, id)).limit(1);
+    if (!meeting) { res.status(404).json({ error: "Meeting not found" }); return; }
+
+    const { employerId } = await profileIdsForUser(user.id);
+    if (employerId === null || employerId !== meeting.employerId) {
+      res.status(403).json({ error: "Only the employer on this meeting can generate a brief" });
+      return;
+    }
+    if (meeting.status !== "confirmed") {
+      res.status(422).json({ error: "Meeting must be confirmed to generate a brief" });
+      return;
+    }
+
+    res.status(202).json({ message: "Brief generation started" });
+
+    generateMeetingBrief(db, id, req.log)
+      .catch((err) => req.log.warn({ err, meetingId: id }, "meeting brief manual generation failed"));
+  } catch (err) {
+    req.log.error({ err }, "Failed to start meeting brief generation");
     res.status(500).json({ error: "Internal server error" });
   }
 });

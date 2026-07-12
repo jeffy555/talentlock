@@ -5,6 +5,7 @@
  * TalentLock API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { MeetingBrief } from "./meetingBrief";
 
 export interface Meeting {
   id: number;
@@ -23,5 +24,8 @@ export interface Meeting {
   freelancerName?: string | null;
   /** @nullable */
   employerName?: string | null;
+  briefContent?: null | MeetingBrief;
+  /** @nullable */
+  briefGeneratedAt?: Date | null;
   createdAt: Date;
 }

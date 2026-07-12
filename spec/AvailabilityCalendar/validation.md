@@ -273,6 +273,15 @@ Includes: Neon schema, demo Clerk ID alignment, public/freelancer/employer API, 
 - [ ] Same transition creates the `booked` availability block (existing behaviour preserved)
 - [ ] Freelancer is now excluded from / flagged in the Talent Vault as expected
 
+## Agreement fully-signed confirmation (Phase 4b — added 2026-07-12)
+- [ ] `POST /api/agreements/:id/sign` that completes `fully_signed` sets the booking to `active`
+- [ ] Same path sets freelancer `isAvailable: false`, `currentBookingId`, `bookingEndDate`
+- [ ] Same path creates the `booked` availability auto-block when dates exist
+- [ ] Demo freelancer auto-sign path also locks exclusivity
+- [ ] `POST /api/bookings` against a locked freelancer returns `409` with `code: "FREELANCER_UNAVAILABLE"`
+- [ ] `POST /api/bookings` against a freelancer with an `active` booking returns the same `409`
+- [ ] `POST /api/bookings` against a freelancer with only a `pending` booking still succeeds (no lock yet)
+
 ## Cancellation / completion restores
 - [ ] `PATCH /api/bookings/:id` → `cancelled` restores `isAvailable: true`, clears `currentBookingId`/`bookingEndDate`
 - [ ] `PATCH /api/bookings/:id` → `completed` restores availability
@@ -286,4 +295,5 @@ Includes: Neon schema, demo Clerk ID alignment, public/freelancer/employer API, 
 
 | Phase | All Checks Pass | Signed Off By | Date |
 |---|---|---|---|
-| Phase 4 — Defer availability lock | ⬜ Pending implementation | — | — |
+| Phase 4 — Defer availability lock | ✅ PATCH path | Agent | 2026-06-09 |
+| Phase 4b — Agreement fully-signed lock + create guard | ✅ Implemented + typecheck | Agent | 2026-07-12 |

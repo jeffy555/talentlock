@@ -138,12 +138,32 @@ This contradicts Module 2 of this spec ("Auto-Block From Confirmed Bookings"), w
 
 ## Module 8 — Defer Availability Lock to Confirmation
 
-**Fix:** Move the `isAvailable = false` / `currentBookingId` / `bookingEndDate` mutation out of `POST /api/bookings` (pending creation) and into the booking-confirmation path in `PATCH /api/bookings/:id` (status → `active`), alongside the existing auto-block creation. On `pending` creation, the freelancer remains available and visible in the Vault. On confirmation, availability flips false and the auto-block is created (existing behaviour). On `cancelled`/`completed`, availability is restored (existing behaviour at the `isAvailable: true` reset).
+**Fix:** Move the `isAvailable = false` / `currentBookingId` / `bookingEndDate` mutation out of `POST /api/bookings` (pending creation) and into **every** booking-confirmation path that transitions status → `active`, alongside auto-block creation.
 
-**Result:** Availability state and the calendar auto-block become fully consistent — both driven by the `active` transition, never by a pending request.
+### Confirmation paths (binding)
+
+The real product confirmation path is **agreement fully signed**, not a manual PATCH:
+
+| Path | When | Must lock + auto-block |
+|---|---|---|
+| `POST /api/agreements/:id/sign` | Both parties signed → agreement `fully_signed` → booking set to `active` | **Yes — primary path** |
+| `PATCH /api/bookings/:id` | Caller sets `status: "active"` | Yes — secondary / admin-compatible path |
+
+On `pending` creation, the freelancer remains available and visible in the Vault. On confirmation (`active`), availability flips false and the `booked` auto-block is created. On `cancelled`/`completed`, availability is restored (`isAvailable: true` reset).
+
+### Exclusivity guard on create
+
+`POST /api/bookings` must reject a new booking when the freelancer is already exclusive:
+
+- `freelancer_profiles.isAvailable === false`, **or**
+- an existing booking for that freelancer with `status = 'active'`
+
+Return `409` with `{ error, code: "FREELANCER_UNAVAILABLE" }`. Pending bookings with other employers do **not** block create (no accept/decline state machine in this addendum).
+
+**Result:** Availability state and the calendar auto-block become fully consistent — both driven by the `active` transition (whichever route causes it), never by a pending request. A locked talent cannot be booked again until the active engagement is cancelled or completed.
 
 ## Non-Goals (Addendum)
 
 - No change to the rate-negotiation flow itself (`POST /bookings/:id/negotiate`).
-- No new "freelancer accept/decline" booking state machine — that is a separate `booking-acceptance` spec (P2). This addendum only fixes *when* the availability flag flips.
+- No new "freelancer accept/decline" booking state machine — that is a separate `booking-acceptance` spec (P2). This addendum only fixes *when* the availability flag flips and enforces exclusivity for `active` engagements.
 - No schema change.

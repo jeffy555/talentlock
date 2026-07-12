@@ -158,15 +158,20 @@ router.get("/storage/objects/*path", async (req: Request, res: Response) => {
     const raw = req.params.path;
     const wildcardPath = Array.isArray(raw) ? raw.join("/") : raw;
 
+    // Deny-by-default: this endpoint serves private objects, so a path must
+    // match a known, access-controlled prefix. Anything else (e.g. cached
+    // agreement PDFs under `agreements/…`) must NOT be reachable here — those
+    // are gated by their own routes. Without this guard any authenticated or
+    // unauthenticated caller could enumerate and download private objects.
+    const uploadsMatch = wildcardPath.match(/^uploads\/(\d+)\//);
     if (wildcardPath.startsWith("documents/")) {
+      // Identity/credential documents — admin session only.
       if (!isAdminRequest(req)) {
         res.status(403).json({ error: "Forbidden" });
         return;
       }
-    }
-
-    const uploadsMatch = wildcardPath.match(/^uploads\/(\d+)\//);
-    if (uploadsMatch) {
+    } else if (uploadsMatch) {
+      // User-namespaced uploads — only the owning user may read them.
       const { userId: clerkId } = getAuth(req);
       if (!clerkId) { res.status(401).json({ error: "Unauthorized" }); return; }
       const user = await resolveUserByClerkId(clerkId);
@@ -175,6 +180,10 @@ router.get("/storage/objects/*path", async (req: Request, res: Response) => {
         res.status(403).json({ error: "Forbidden" });
         return;
       }
+    } else {
+      // Unknown / non-user-scoped private path — refuse.
+      res.status(403).json({ error: "Forbidden" });
+      return;
     }
 
     if (usesLocalObjectStorage()) {
