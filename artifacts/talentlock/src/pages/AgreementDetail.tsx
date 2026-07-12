@@ -598,7 +598,7 @@ export default function AgreementDetail() {
           )}
 
           {isFreelancer && ag.status === "redlined" && (
-            <div className="rounded-md border border-violet-200 bg-violet-50 p-3 text-sm text-violet-700">
+            <div className="rounded-md border border-primary/20 bg-primary/5 p-3 text-sm text-primary">
               ℹ This agreement was revised with AI assistance before signing.
             </div>
           )}

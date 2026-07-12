@@ -47,9 +47,9 @@ export default function TeachingDetailsSection({
   };
 
   return (
-    <div className="rounded-lg border border-violet-200 overflow-hidden">
-      <div className="bg-violet-50 px-5 py-3 border-b border-violet-200">
-        <h3 className="text-sm font-semibold text-violet-800 flex items-center gap-2">
+    <div className="rounded-lg border border-primary/20 overflow-hidden">
+      <div className="bg-primary/5 px-5 py-3 border-b border-primary/20">
+        <h3 className="text-sm font-semibold text-primary flex items-center gap-2">
           <GraduationCap className="h-4 w-4" />
           Teaching Details
         </h3>

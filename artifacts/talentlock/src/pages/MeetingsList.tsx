@@ -7,6 +7,14 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Calendar, Clock, Users, Video, ArrowRight, PlusCircle, Search } from "lucide-react";
 import { Link } from "wouter";
 import { format } from "date-fns";
+import {
+  Empty,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+  EmptyDescription,
+  EmptyContent,
+} from "@/components/ui/empty";
 
 const statusColors: Record<string, string> = {
   pending:   "bg-yellow-50 text-yellow-700 border-yellow-200",
@@ -73,24 +81,26 @@ export default function MeetingsList() {
       </div>
 
       {sorted.length === 0 ? (
-        <Card className="flex flex-col items-center justify-center py-24 text-center bg-card shadow-sm border-border border-dashed">
-          <div className="h-16 w-16 bg-muted/50 rounded-full flex items-center justify-center mb-6">
-            <Calendar className="h-8 w-8 text-muted-foreground" />
-          </div>
-          <h3 className="text-xl font-serif font-bold text-foreground mb-2">No meetings yet</h3>
-          <p className="text-muted-foreground font-light max-w-sm mb-8">
-            {isEmployer
-              ? "Browse the Talent Vault and click Schedule Meeting on any profile to start your first discovery call."
-              : "When an employer books a discovery call with you, it'll show up here with a video link and calendar invite."}
-          </p>
+        <Empty className="border border-dashed border-border bg-card py-16">
+          <EmptyHeader>
+            <EmptyMedia variant="icon">
+              <Calendar className="text-muted-foreground" />
+            </EmptyMedia>
+            <EmptyTitle className="font-serif">No meetings scheduled</EmptyTitle>
+            <EmptyDescription>
+              Discovery meetings with talent will show up here.
+            </EmptyDescription>
+          </EmptyHeader>
           {isEmployer && (
-            <Button asChild className="font-semibold shadow-sm gap-2 h-11 px-8">
-              <Link href="/freelancers">
-                <Search className="h-4 w-4" /> Browse Talent
-              </Link>
-            </Button>
+            <EmptyContent>
+              <Button asChild className="font-semibold shadow-sm gap-2 h-11 px-8">
+                <Link href="/freelancers">
+                  <Search className="h-4 w-4" /> Browse Talent
+                </Link>
+              </Button>
+            </EmptyContent>
           )}
-        </Card>
+        </Empty>
       ) : (
         <div className="space-y-3">
           {sorted.map((meeting, index) => (

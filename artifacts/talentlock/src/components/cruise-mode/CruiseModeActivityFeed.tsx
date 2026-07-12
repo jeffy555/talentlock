@@ -70,12 +70,12 @@ function ActivityEntry({
 
         {proposedMessage && (
           <Collapsible open={open} onOpenChange={setOpen}>
-            <CollapsibleTrigger className="text-xs text-violet-600 mt-1 flex items-center gap-1 hover:underline">
+            <CollapsibleTrigger className="text-xs text-primary mt-1 flex items-center gap-1 hover:underline">
               <ChevronDown className={`h-3 w-3 transition-transform ${open ? "rotate-180" : ""}`} />
               View message
             </CollapsibleTrigger>
             <CollapsibleContent>
-              <div className="mt-2 rounded border-l-4 border-violet-300 bg-violet-50 px-3 py-2 text-sm text-slate-700 italic">
+              <div className="mt-2 rounded border-l-4 border-primary/40 bg-primary/5 px-3 py-2 text-sm text-slate-700 italic">
                 {proposedMessage}
               </div>
             </CollapsibleContent>

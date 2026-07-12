@@ -263,7 +263,7 @@ export default function ContractRedliningSection({
               <p className="text-sm text-slate-600 italic mb-3">&ldquo;{s.originalText}&rdquo;</p>
 
               <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-1">Suggested</p>
-              <div className="rounded border-l-4 border-violet-400 bg-violet-50 p-3 text-sm text-slate-700 mb-3">
+              <div className="rounded border-l-4 border-gold bg-primary/5 p-3 text-sm text-slate-700 mb-3">
                 &ldquo;{s.suggestedText}&rdquo;
               </div>
 

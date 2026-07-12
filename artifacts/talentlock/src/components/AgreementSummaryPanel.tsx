@@ -47,14 +47,14 @@ function PanelHeader({
   showRegenerate?: boolean;
 }) {
   return (
-    <div className="bg-violet-600 px-5 py-3 flex items-center justify-between">
+    <div className="bg-primary px-5 py-3 flex items-center justify-between">
       <div className="flex items-center gap-2">
-        <Sparkles className="h-4 w-4 text-violet-200" />
+        <Sparkles className="h-4 w-4 text-gold" />
         <span className="text-sm font-semibold text-white">AI Agreement Summary</span>
       </div>
       <div className="flex items-center gap-2">
         {cached && (
-          <span className="text-xs text-violet-300 flex items-center gap-1">
+          <span className="text-xs text-primary-foreground/70 flex items-center gap-1">
             <CheckCircle2 className="h-3 w-3" />
             Cached
           </span>
@@ -63,14 +63,14 @@ function PanelHeader({
           <Button
             variant="ghost"
             size="sm"
-            className="text-violet-300 hover:text-white hover:bg-violet-700 h-7 px-2 text-xs"
+            className="text-primary-foreground/70 hover:text-white hover:bg-primary/90 h-7 px-2 text-xs"
             onClick={onRegenerate}
           >
             Regenerate
           </Button>
         )}
         {!showRegenerate && (
-          <span className="text-xs text-violet-300 bg-violet-700 px-2 py-0.5 rounded">Freelancer</span>
+          <span className="text-xs text-primary-foreground/70 bg-primary px-2 py-0.5 rounded">Freelancer</span>
         )}
       </div>
     </div>
@@ -159,14 +159,14 @@ export default function AgreementSummaryPanel({
     }
   }, [cachedSummary, cachedAt, hasRequested]);
 
-  const containerClass = "rounded-lg border border-violet-200 overflow-hidden";
+  const containerClass = "rounded-lg border border-primary/20 overflow-hidden";
 
   if (panelState === "loading") {
     return (
       <div className={containerClass}>
         <PanelHeader cached={false} />
         <div className="p-5 flex items-center gap-3 bg-white">
-          <Loader2 className="h-5 w-5 animate-spin text-violet-500" />
+          <Loader2 className="h-5 w-5 animate-spin text-gold" />
           <span className="text-sm text-slate-500">Reading and summarising your agreement...</span>
         </div>
       </div>
@@ -270,7 +270,7 @@ export default function AgreementSummaryPanel({
             onClick={() => fetchSummary(false)}
             variant="outline"
             size="sm"
-            className="border-violet-300 text-violet-700 hover:bg-violet-50"
+            className="border-primary/20 text-primary hover:bg-primary/5"
           >
             <Sparkles className="h-4 w-4 mr-1.5" />
             Summarise for me

@@ -82,7 +82,14 @@
   to { opacity: 1; transform: translateY(0); }
 }
 
-/* LIGHT MODE — Navy + Gold */
+/* LIGHT MODE — Navy + Gold
+ * Brand tokens: navy (--primary) = primary actions / chrome;
+ * gold (--gold) = brand accent (Shield, highlights);
+ * cream (--background) = page canvas.
+ * Do not use violet/purple utilities in app chrome.
+ * Pre-impl notes: primary 222 47% 11%, gold 44 52% 52%, background 40 30% 98%;
+ * fonts Playfair (serif) + Plus Jakarta (sans); --color-gold exposed to Tailwind.
+ */
 :root {
   --button-outline: rgba(0,0,0, .10);
   --badge-outline: rgba(0,0,0, .05);

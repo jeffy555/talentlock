@@ -28,6 +28,14 @@ import { Search, Lock, Briefcase, Heart, SlidersHorizontal, X, Star } from "luci
 import { FIELDS_OF_WORK } from "@/lib/fields";
 import { useQueryClient } from "@tanstack/react-query";
 import VerificationBadge from "@/components/VerificationBadge";
+import {
+  Empty,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+  EmptyDescription,
+  EmptyContent,
+} from "@/components/ui/empty";
 import { resolveVerificationLevel } from "@/lib/verification";
 import { DatePicker } from "@/components/ui/date-picker";
 import { formatNextAvailable, nextAvailableColour, toApiDateString } from "@/lib/availabilityUtils";
@@ -53,8 +61,8 @@ function FilterChip({
       className={cn(
         "text-sm px-3 py-1.5 rounded-full border transition-colors",
         active
-          ? "bg-violet-600 text-white border-violet-600"
-          : "bg-slate-100 text-slate-600 border-slate-200 hover:border-slate-300",
+          ? "bg-primary text-primary-foreground border-primary"
+          : "bg-secondary text-secondary-foreground border-border hover:border-primary/30",
       )}
     >
       {children}
@@ -350,9 +358,9 @@ export default function FreelancersList() {
     <div className="space-y-6 animate-fade-in">
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
         <div>
-          <h1 className="text-3xl font-serif font-bold tracking-tight text-foreground">Talent Vault</h1>
-          <p className="text-muted-foreground mt-1 font-light max-w-xl">
-            Our curated roster of elite, vetted professionals. Ready for exclusive engagements.
+          <h1 className="text-3xl md:text-4xl font-serif font-bold tracking-tight text-foreground">Talent Vault</h1>
+          <p className="text-muted-foreground mt-2 font-light max-w-xl">
+            Browse verified professionals ready for exclusive engagements.
           </p>
         </div>
         <div className="flex items-center gap-3 flex-wrap">
@@ -539,20 +547,24 @@ export default function FreelancersList() {
               ))}
             </div>
           ) : !filteredFreelancers.length ? (
-            <Card className="flex flex-col items-center justify-center py-24 text-center bg-card shadow-sm border-border border-dashed">
-              <div className="h-16 w-16 bg-muted/50 rounded-full flex items-center justify-center mb-6">
-                <Search className="h-8 w-8 text-muted-foreground" />
-              </div>
-              <h3 className="text-xl font-serif font-bold text-foreground">
-                {debouncedQuery ? "No freelancers match your search." : "No professionals found"}
-              </h3>
-              <p className="text-muted-foreground mt-2 max-w-sm font-light">
-                {debouncedQuery ? "Try different keywords or clear your search." : "Try adjusting your filter criteria."}
-              </p>
+            <Empty className="border border-dashed border-border bg-card py-16">
+              <EmptyHeader>
+                <EmptyMedia variant="icon">
+                  <Search className="text-muted-foreground" />
+                </EmptyMedia>
+                <EmptyTitle className="font-serif">No talent matched</EmptyTitle>
+                <EmptyDescription>
+                  Try adjusting filters or keyword search. Profiles below 60% completeness stay hidden.
+                </EmptyDescription>
+              </EmptyHeader>
               {(searchQuery || hasActiveFilters) && (
-                <Button variant="outline" className="mt-6" onClick={() => { setSearchQuery(""); clearFilters(); }}>Clear All Filters</Button>
+                <EmptyContent>
+                  <Button variant="outline" onClick={() => { setSearchQuery(""); clearFilters(); }}>
+                    Clear All Filters
+                  </Button>
+                </EmptyContent>
               )}
-            </Card>
+            </Empty>
           ) : (
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
               {filteredFreelancers.map((freelancer, index) => (

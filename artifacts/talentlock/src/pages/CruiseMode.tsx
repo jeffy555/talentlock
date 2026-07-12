@@ -128,7 +128,7 @@ export default function CruiseMode() {
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 border-b border-border/50 pb-6">
         <div>
           <h1 className="text-2xl font-bold text-slate-800 flex items-center gap-2 font-serif">
-            <Rocket className="h-6 w-6 text-violet-600" />
+            <Rocket className="h-6 w-6 text-primary" />
             Cruise Mode
           </h1>
           <p className="text-muted-foreground mt-1 text-sm">

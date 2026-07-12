@@ -124,7 +124,7 @@ export function CruiseModeStatusBar({ config, stats, hasConfig }: CruiseModeStat
             <span className="text-sm text-muted-foreground">
               {formatHours(hoursUsed)} / {formatHours(dailyLimit)} used today
             </span>
-            <Button size="sm" className="bg-violet-600 hover:bg-violet-700" disabled={busy} onClick={() => setConfirmLive(true)}>
+            <Button size="sm" className="bg-primary hover:bg-primary/90" disabled={busy} onClick={() => setConfirmLive(true)}>
               Go Live
             </Button>
             <Button size="sm" variant="outline" disabled={busy} onClick={runDeactivate}>
@@ -161,7 +161,7 @@ export function CruiseModeStatusBar({ config, stats, hasConfig }: CruiseModeStat
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              className="bg-violet-600 hover:bg-violet-700"
+              className="bg-primary hover:bg-primary/90"
               onClick={(e) => {
                 e.preventDefault();
                 guardConfig(runActivate);

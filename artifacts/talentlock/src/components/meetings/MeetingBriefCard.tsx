@@ -217,7 +217,7 @@ export function MeetingBriefCard({
               <p className="text-sm text-slate-600 mb-2">
                 AI-generated interview questions are available on the Growth plan.
               </p>
-              <a href="/pricing" className="text-sm font-medium text-violet-600 hover:underline">
+              <a href="/pricing" className="text-sm font-medium text-primary hover:underline">
                 Upgrade to Growth →
               </a>
             </div>

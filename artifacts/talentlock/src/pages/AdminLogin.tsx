@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
+import { BrandLogo } from "@/components/BrandLogo";
 
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
 
@@ -56,10 +57,10 @@ export default function AdminLogin() {
 
   return (
     <div className="min-h-[100dvh] flex items-center justify-center bg-background px-4 py-12">
-      <Card className="w-full max-w-md border-border shadow-2xl">
-        <CardHeader className="space-y-1 text-center">
-          <div className="mx-auto h-12 w-12 rounded-xl bg-primary flex items-center justify-center mb-2">
-            <span className="text-gold font-serif font-bold text-xl">A</span>
+      <Card className="w-full max-w-md border-primary/10 shadow-2xl">
+        <CardHeader className="space-y-3 text-center">
+          <div className="mx-auto mb-1">
+            <BrandLogo variant="onLight" size="lg" />
           </div>
           <CardTitle className="font-serif text-2xl">Admin Console</CardTitle>
           <CardDescription>Sign in to view platform activity</CardDescription>

@@ -10,10 +10,17 @@ import { FileText, PenLine, CheckCircle2, Shield, ArrowRight, Sparkles, Download
 import { GradeBadge } from "@/components/ContractHealthScoreCard";
 import { useToast } from "@/hooks/use-toast";
 import { AgreementDownloadError, downloadAgreementPdf } from "@/lib/downloadUtils";
+import {
+  Empty,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+  EmptyDescription,
+} from "@/components/ui/empty";
 
 const statusColors: Record<string, { bg: string, text: string, border: string }> = {
   draft: { bg: "bg-yellow-50", text: "text-yellow-700", border: "border-yellow-200" },
-  redlined: { bg: "bg-violet-50", text: "text-violet-700", border: "border-violet-200" },
+  redlined: { bg: "bg-primary/5", text: "text-primary", border: "border-primary/20" },
   partially_signed: { bg: "bg-amber-50", text: "text-amber-700", border: "border-amber-200" },
   fully_signed: { bg: "bg-green-50", text: "text-green-700", border: "border-green-200" },
   // legacy values (pre-backfill)
@@ -82,18 +89,17 @@ export default function AgreementsList() {
       </div>
 
       {agreements.length === 0 ? (
-        <Card className="flex flex-col items-center justify-center py-24 text-center bg-card shadow-sm border-border border-dashed">
-          <div className="h-16 w-16 bg-muted/50 rounded-full flex items-center justify-center mb-6">
-            <FileText className="h-8 w-8 text-muted-foreground" />
-          </div>
-          <h3 className="text-xl font-serif font-bold text-foreground mb-2">No agreements yet</h3>
-          <p className="text-muted-foreground font-light max-w-md mb-8">
-            Agreements are generated automatically from confirmed bookings. They enforce exclusivity and terms.
-          </p>
-          <Button asChild className="font-semibold shadow-sm">
-            <Link href="/bookings">View Bookings</Link>
-          </Button>
-        </Card>
+        <Empty className="border border-dashed border-border bg-card py-16">
+          <EmptyHeader>
+            <EmptyMedia variant="icon">
+              <FileText className="text-muted-foreground" />
+            </EmptyMedia>
+            <EmptyTitle className="font-serif">No agreements yet</EmptyTitle>
+            <EmptyDescription>
+              Agreements are created from bookings once rates are agreed.
+            </EmptyDescription>
+          </EmptyHeader>
+        </Empty>
       ) : (
         <div className="grid md:grid-cols-2 gap-6">
           {agreements.map((agreement, index) => {
@@ -122,7 +128,7 @@ export default function AgreementsList() {
                         {(agreement.status ?? "pending").replace(/_/g, " ")}
                       </Badge>
                       {me?.role === "freelancer" && agreement.hasSummary && (
-                        <span className="inline-flex items-center gap-1 text-xs bg-violet-100 text-violet-700 border border-violet-200 rounded px-1.5 py-0.5 shrink-0">
+                        <span className="inline-flex items-center gap-1 text-xs bg-primary/10 text-primary border border-primary/20 rounded px-1.5 py-0.5 shrink-0">
                           <Sparkles className="h-3 w-3" />
                           Summarised
                         </span>

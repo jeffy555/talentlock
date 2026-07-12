@@ -32,7 +32,7 @@ function EntityIcon({ entityType }: { entityType: string }) {
     case "booking":
       return <Briefcase className="h-4 w-4 text-blue-500" />;
     case "agreement":
-      return <FileText className="h-4 w-4 text-violet-500" />;
+      return <FileText className="h-4 w-4 text-gold" />;
     case "meeting":
       return <Calendar className="h-4 w-4 text-emerald-500" />;
     case "review":
@@ -44,7 +44,7 @@ function EntityIcon({ entityType }: { entityType: string }) {
     case "job":
       return <Briefcase className="h-4 w-4 text-blue-500" />;
     case "cruise_mode_activity":
-      return <Sparkles className="h-4 w-4 text-violet-500" />;
+      return <Sparkles className="h-4 w-4 text-gold" />;
     case "talent_search_activity":
       return <Search className="h-4 w-4 text-teal-500" />;
     default:
@@ -83,7 +83,7 @@ export function NotificationItem({ notification, onRead }: NotificationItemProps
         <div className="flex items-start justify-between gap-2">
           <p className="text-sm text-slate-700 leading-snug">{notification.message}</p>
           {notification.type === "cruise_mode_interest" && (
-            <span className="shrink-0 text-xs bg-violet-100 text-violet-700 border border-violet-200 rounded px-1.5 py-0.5">
+            <span className="shrink-0 text-xs bg-primary/10 text-primary border border-primary/20 rounded px-1.5 py-0.5">
               Cruise Mode ✦
             </span>
           )}

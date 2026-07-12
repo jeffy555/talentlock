@@ -5,7 +5,8 @@ import { useGetMe, useGetMySubscription } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { Shield, LayoutDashboard, Users, UsersRound, Briefcase, Calendar, FileText, Bot, User as UserIcon, LogOut, Video, Menu, X, CreditCard, Sparkles, Rocket, Search } from "lucide-react";
+import { LayoutDashboard, Users, UsersRound, Briefcase, Calendar, FileText, Bot, User as UserIcon, LogOut, Video, Menu, X, CreditCard, Sparkles, Rocket, Search } from "lucide-react";
+import { BrandLogo } from "@/components/BrandLogo";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { NotificationBell } from "@/components/NotificationBell";
 import { useGetCruiseMode, useGetTalentSearch } from "@workspace/api-client-react";
@@ -61,9 +62,8 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       >
         <div className="container mx-auto px-4 h-16 flex items-center justify-between gap-2">
           {/* Logo */}
-          <Link href={dbUser ? "/dashboard" : "/"} className="flex items-center gap-2 flex-shrink-0">
-            <Shield className="h-5 w-5 text-gold" />
-            <span className="font-serif font-bold text-lg tracking-tight text-white">TalentLock</span>
+          <Link href={dbUser ? "/dashboard" : "/"} className="flex items-center flex-shrink-0">
+            <BrandLogo variant="onDark" size="md" />
           </Link>
 
           {dbUser && (
@@ -147,7 +147,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                         href="/cruise-mode"
                         className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-all duration-200 ml-2 ${
                           location.startsWith("/cruise-mode")
-                            ? "bg-violet-600/20 text-violet-200 border border-violet-400/40"
+                            ? "bg-gold/20 text-gold border border-gold/40"
                             : "text-white/60 hover:text-white hover:bg-white/5 border border-transparent"
                         }`}
                       >
@@ -303,7 +303,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
                     href="/cruise-mode"
                     className={`flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-all ${
                       location.startsWith("/cruise-mode")
-                        ? "bg-violet-600/30 text-violet-100"
+                        ? "bg-gold/30 text-gold"
                         : "text-white/70 hover:bg-white/5 hover:text-white"
                     }`}
                     onClick={() => setMobileMenuOpen(false)}

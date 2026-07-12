@@ -55,7 +55,8 @@ if (!clerkPubKey) {
 const clerkAppearance = {
   cssLayerName: "clerk",
   options: {
-    logoPlacement: "inside" as const,
+    // Brand mark + page title live in AuthPageWrapper — hide Clerk's duplicate chrome
+    logoPlacement: "none" as const,
     logoLinkUrl: basePath || "/",
   },
   variables: {
@@ -68,62 +69,109 @@ const clerkAppearance = {
     colorInputForeground: "hsl(222, 47%, 11%)",
     colorNeutral: "hsl(40, 10%, 90%)",
     fontFamily: "'Plus Jakarta Sans', sans-serif",
-    borderRadius: "0.375rem",
+    borderRadius: "0.5rem",
   },
   elements: {
     rootBox: "w-full flex justify-center",
-    cardBox: "bg-white rounded-xl w-[440px] max-w-full overflow-hidden shadow-2xl border border-border",
-    card: "!shadow-none !border-0 !bg-transparent !rounded-none p-8",
-    headerTitle: "font-serif text-2xl text-foreground",
-    headerSubtitle: "text-muted-foreground",
-    socialButtonsBlockButton: "rounded-md border border-border bg-white text-foreground hover:bg-secondary hover:text-secondary-foreground transition-colors",
-    dividerLine: "bg-border",
-    dividerText: "text-muted-foreground bg-white",
-    formFieldLabel: "text-foreground font-medium",
-    formFieldInput: "rounded-md border-border bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring focus-visible:border-primary disabled:cursor-not-allowed disabled:opacity-50",
-    formButtonPrimary: "rounded-md bg-primary text-primary-foreground shadow hover:bg-primary/90 h-10 px-4 py-2 w-full transition-colors",
-    footerActionLink: "text-primary hover:text-primary/90 hover:underline",
-    footer: "!shadow-none !border-0 !bg-secondary/30 !rounded-none p-4",
+    cardBox:
+      "w-full max-w-[420px] overflow-hidden rounded-2xl border border-[hsl(40_10%_88%)] bg-white shadow-[0_18px_50px_-24px_rgba(13,31,60,0.35)]",
+    card: "!shadow-none !border-0 !bg-transparent !rounded-none px-7 pt-7 pb-5",
+    // Page-level title already provided — suppress Clerk header stack
+    logoBox: "hidden",
+    header: "hidden",
+    headerTitle: "hidden",
+    headerSubtitle: "hidden",
+    socialButtonsBlockButton:
+      "h-11 rounded-lg border border-[hsl(40_10%_88%)] bg-white text-[hsl(222_47%_11%)] font-medium hover:bg-[hsl(40_20%_96%)] transition-colors",
+    socialButtonsBlockButtonText: "text-sm font-medium",
+    dividerLine: "bg-[hsl(40_10%_88%)]",
+    dividerText: "text-[hsl(222_12%_48%)] text-[11px] uppercase tracking-[0.14em] bg-white",
+    formFieldLabel: "text-[hsl(222_47%_11%)] text-sm font-medium mb-1.5",
+    formFieldInput:
+      "h-11 rounded-lg border border-[hsl(40_10%_88%)] bg-white px-3.5 text-sm text-[hsl(222_47%_11%)] placeholder:text-[hsl(222_12%_55%)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(222_47%_11%_/_0.15)] focus-visible:border-[hsl(222_47%_11%)]",
+    formButtonPrimary:
+      "h-11 rounded-lg bg-[hsl(222_47%_11%)] text-white font-semibold shadow-sm hover:bg-[hsl(222_47%_16%)] w-full transition-colors",
+    footer: "!shadow-none !border-t !border-[hsl(40_10%_90%)] !bg-[hsl(40_30%_98%)] !rounded-none px-7 py-4",
+    footerAction: "w-full justify-center",
+    footerActionText: "text-sm text-[hsl(222_12%_48%)]",
+    footerActionLink: "text-sm font-semibold text-[hsl(222_47%_11%)] hover:text-[hsl(44_52%_42%)] hover:underline",
+    identityPreviewEditButton: "text-[hsl(222_47%_11%)]",
+    formFieldSuccessText: "text-emerald-600",
+    formFieldErrorText: "text-red-600",
+    alertText: "text-sm",
   },
 };
 
-function AuthPageWrapper({ children }: { children: React.ReactNode }) {
+function AuthPageWrapper({
+  mode,
+  children,
+}: {
+  mode: "sign-in" | "sign-up";
+  children: React.ReactNode;
+}) {
   const [, setLocation] = useLocation();
+  const isSignIn = mode === "sign-in";
+  const title = isSignIn ? "Sign in" : "Create your account";
+  const subtitle = isSignIn
+    ? "Welcome back. Access your TalentLock workspace."
+    : "Join TalentLock to hire exclusive talent — or get booked.";
+
   return (
-    <div className="relative flex min-h-[100dvh] flex-col bg-background font-sans">
-      <header
-        className="flex items-center justify-between px-6 py-4"
-        style={{ borderBottom: "1px solid rgba(0,0,0,0.05)" }}
-      >
+    <div
+      className="relative flex min-h-[100dvh] flex-col font-sans"
+      style={{
+        background:
+          "radial-gradient(1200px 600px at 50% -10%, hsl(44 52% 52% / 0.12), transparent 55%), linear-gradient(180deg, hsl(40 30% 98%) 0%, hsl(40 22% 95%) 100%)",
+      }}
+    >
+      <header className="flex items-center justify-between px-5 sm:px-8 py-4">
         <button
+          type="button"
           onClick={() => setLocation("/")}
-          className="flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+          className="flex items-center gap-2.5 group"
+          aria-label="TalentLock home"
         >
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M19 12H5M12 5l-7 7 7 7" />
-          </svg>
-          Back to home
+          <div className="h-9 w-9 rounded-lg bg-[hsl(222_47%_11%)] flex items-center justify-center shadow-md">
+            <svg
+              className="h-4 w-4 text-[hsl(44_52%_52%)]"
+              xmlns="http://www.w3.org/2000/svg"
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z" />
+            </svg>
+          </div>
+          <span className="font-serif text-lg font-semibold tracking-tight text-[hsl(222_47%_11%)] group-hover:opacity-80 transition-opacity">
+            TalentLock
+          </span>
         </button>
         <button
-          onClick={() => setLocation("/")}
-          aria-label="Close"
-          className="flex items-center justify-center h-8 w-8 rounded-full text-muted-foreground hover:text-foreground hover:bg-secondary transition-colors"
+          type="button"
+          onClick={() => setLocation(isSignIn ? "/sign-up" : "/sign-in")}
+          className="text-sm font-medium text-[hsl(222_12%_40%)] hover:text-[hsl(222_47%_11%)] transition-colors"
         >
-          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M18 6L6 18M6 6l12 12" />
-          </svg>
+          {isSignIn ? "Create account" : "Sign in"}
         </button>
       </header>
-      <div className="flex flex-1 items-center justify-center px-4 py-12 animate-fade-in">
-        <div className="w-full max-w-[440px] space-y-6">
-          <div className="text-center space-y-2 mb-6">
-            <div className="flex items-center justify-center gap-2 mb-4">
-              <div className="h-10 w-10 bg-primary rounded-xl flex items-center justify-center shadow-lg">
-                <svg className="h-5 w-5 text-gold" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/></svg>
-              </div>
-            </div>
-            <h1 className="font-serif text-3xl font-bold tracking-tight text-foreground">Welcome to TalentLock</h1>
-            <p className="text-sm text-muted-foreground font-light">Secure access to the premium talent network.</p>
+
+      <div className="flex flex-1 items-center justify-center px-4 py-8 sm:py-12 animate-fade-in">
+        <div className="w-full max-w-[420px] space-y-5">
+          <div className="text-center space-y-2 px-1">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[hsl(44_52%_42%)]">
+              {isSignIn ? "Welcome back" : "Get started"}
+            </p>
+            <h1 className="font-serif text-[2rem] sm:text-[2.15rem] font-bold tracking-tight text-[hsl(222_47%_11%)] leading-tight">
+              {title}
+            </h1>
+            <p className="text-sm text-[hsl(222_12%_48%)] font-light leading-relaxed max-w-[34ch] mx-auto">
+              {subtitle}
+            </p>
           </div>
           {children}
         </div>
@@ -185,62 +233,56 @@ function DemoLoginPanel() {
     {
       role: "employer",
       label: "Employer",
-      email: "employer@talentlock.com",
-      description: "TalentLock Demo Corp",
-      color: "hsl(var(--primary))",
-      textColor: "hsl(var(--gold))",
-      bgClass: "bg-primary/5 hover:bg-primary/10 border-primary/20",
+      description: "Hire & lock exclusive talent",
+      bgClass: "bg-[hsl(222_47%_11%)]/5 hover:bg-[hsl(222_47%_11%)]/10 border-[hsl(222_47%_11%)]/15",
+      accent: "hsl(44, 52%, 42%)",
     },
     {
       role: "freelancer",
       label: "Freelancer",
-      email: "employee@talentlock.com",
-      description: "Full-Stack Dev · $95/hr",
-      color: "hsl(var(--foreground))",
-      textColor: "hsl(var(--foreground))",
-      bgClass: "bg-secondary/50 hover:bg-secondary border-border",
+      description: "Get booked on exclusive work",
+      bgClass: "bg-white hover:bg-[hsl(40_20%_96%)] border-[hsl(40_10%_88%)]",
+      accent: "hsl(222, 47%, 11%)",
     },
   ];
 
   return (
-    <div className="w-full mt-8 animate-fade-in" style={{ animationDelay: "150ms", animationFillMode: "both" }}>
-      <div className="relative mb-6">
+    <div className="w-full mt-2 animate-fade-in" style={{ animationDelay: "120ms", animationFillMode: "both" }}>
+      <div className="relative mb-4">
         <div className="absolute inset-0 flex items-center">
-          <span className="w-full border-t border-border" />
+          <span className="w-full border-t border-[hsl(40_10%_88%)]" />
         </div>
         <div className="relative flex justify-center">
-          <span className="bg-background px-4 text-[11px] text-muted-foreground font-semibold uppercase tracking-[0.2em]">
-            Or proceed with demo
+          <span className="bg-transparent px-3 text-[10px] text-[hsl(222_12%_48%)] font-semibold uppercase tracking-[0.18em]">
+            Dev demo
           </span>
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-2 gap-3">
         {accounts.map((acc) => (
           <button
             key={acc.label}
+            type="button"
             onClick={() => loginAs(acc.role, acc.label)}
             disabled={!!loading}
-            className={`group flex flex-col gap-3 rounded-xl border p-5 text-left transition-all duration-300 disabled:opacity-50 active:scale-[0.98] ${acc.bgClass}`}
+            className={`group flex flex-col gap-2 rounded-xl border p-4 text-left transition-all duration-200 disabled:opacity-50 active:scale-[0.98] ${acc.bgClass}`}
           >
             <div className="flex items-center justify-between w-full">
-              <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: acc.textColor }}>
-                {loading === acc.label ? "Authenticating…" : acc.label}
+              <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: acc.accent }}>
+                {loading === acc.label ? "Signing in…" : acc.label}
               </span>
               {loading === acc.label && (
-                <div className="h-3.5 w-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" style={{ color: acc.textColor }} />
+                <div className="h-3.5 w-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" style={{ color: acc.accent }} />
               )}
             </div>
-            <div>
-              <p className="text-sm font-medium text-foreground">{acc.email}</p>
-              <p className="text-xs text-muted-foreground mt-1 font-light">{acc.description}</p>
-            </div>
+            <p className="text-xs text-[hsl(222_12%_40%)] leading-snug">{acc.description}</p>
           </button>
         ))}
       </div>
 
       {error && (
-        <div className="mt-4 p-3 rounded-md bg-destructive/10 border border-destructive/20 text-xs text-destructive text-center">
+        <div className="mt-3 p-3 rounded-lg bg-destructive/10 border border-destructive/20 text-xs text-destructive text-center">
           {error}
         </div>
       )}
@@ -254,8 +296,13 @@ const SHOW_DEMO_LOGIN = import.meta.env.DEV;
 
 function SignInPage() {
   return (
-    <AuthPageWrapper>
-      <SignIn routing="path" path={`${basePath}/sign-in`} signUpUrl={`${basePath}/sign-up`} />
+    <AuthPageWrapper mode="sign-in">
+      <SignIn
+        routing="path"
+        path={`${basePath}/sign-in`}
+        signUpUrl={`${basePath}/sign-up`}
+        fallbackRedirectUrl={`${basePath}/dashboard`}
+      />
       {SHOW_DEMO_LOGIN && <DemoLoginPanel />}
     </AuthPageWrapper>
   );
@@ -263,8 +310,13 @@ function SignInPage() {
 
 function SignUpPage() {
   return (
-    <AuthPageWrapper>
-      <SignUp routing="path" path={`${basePath}/sign-up`} signInUrl={`${basePath}/sign-in`} />
+    <AuthPageWrapper mode="sign-up">
+      <SignUp
+        routing="path"
+        path={`${basePath}/sign-up`}
+        signInUrl={`${basePath}/sign-in`}
+        fallbackRedirectUrl={`${basePath}/onboarding`}
+      />
       {SHOW_DEMO_LOGIN && <DemoLoginPanel />}
     </AuthPageWrapper>
   );

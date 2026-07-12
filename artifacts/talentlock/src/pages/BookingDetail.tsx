@@ -28,7 +28,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Calendar, CheckCircle2, FileText, XCircle, Sparkles, ShieldCheck, Clock, DollarSign, Lock, Flag, Plus, Check, ArrowLeftRight, RefreshCw } from "lucide-react";
+import { ArrowLeft, Calendar, CheckCircle2, FileText, XCircle, Sparkles, ShieldCheck, Clock, DollarSign, Flag, Plus, Check, ArrowLeftRight, RefreshCw } from "lucide-react";
 import ReviewPrompt from "@/components/ReviewPrompt";
 import ReviewCard from "@/components/ReviewCard";
 import ProposalGeneratorDrawer, { AcceptedProposalBlock } from "@/components/ProposalGeneratorDrawer";
@@ -38,6 +38,7 @@ import { Link } from "wouter";
 import { format } from "date-fns";
 import { buildGoogleCalendarUrl } from "@/lib/calendarUrl";
 import { useState, useEffect } from "react";
+import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { useQueryClient } from "@tanstack/react-query";
 
 const statusColors: Record<string, { bg: string, text: string, border: string }> = {
@@ -95,10 +96,15 @@ export default function BookingDetail() {
   const [reviewDismissed, setReviewDismissed] = useState(false);
   const [isProposalDrawerOpen, setIsProposalDrawerOpen] = useState(false);
   const [acceptedProposal, setAcceptedProposal] = useState<string | null>(null);
+  const isMdUp = useMediaQuery("(min-width: 768px)");
 
   useEffect(() => {
     setReviewDismissed(isReviewPromptDismissed(bookingId));
   }, [bookingId]);
+
+  useEffect(() => {
+    if (!isMdUp) setIsProposalDrawerOpen(false);
+  }, [isMdUp]);
 
   const negotiateBooking = useNegotiateBooking();
   const [counterOpen, setCounterOpen] = useState(false);
@@ -305,7 +311,7 @@ export default function BookingDetail() {
             ) : booking.status === 'completed' ? (
               <><CheckCircle2 className="h-5 w-5" /> Engagement Complete</>
             ) : (
-              <><Lock className="h-5 w-5" /> Pending Exclusivity</>
+              <><Clock className="h-5 w-5" /> Exclusivity Pending</>
             )}
           </p>
         </div>
@@ -339,7 +345,7 @@ export default function BookingDetail() {
               className="h-9 font-medium shadow-sm w-full"
               onClick={() => setIsProposalDrawerOpen(true)}
             >
-              <Sparkles className="h-4 w-4 mr-1 text-violet-500" />
+              <Sparkles className="h-4 w-4 mr-1 text-gold" />
               Write proposal
             </Button>
           )}

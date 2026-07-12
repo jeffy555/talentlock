@@ -124,7 +124,7 @@ export default function MatchExplanationCard({
 
   if (cardState === "loading") {
     return (
-      <div className="rounded-md border border-violet-200 bg-violet-50 p-4 border-l-4 border-l-violet-300 mt-2">
+      <div className="rounded-md border border-primary/20 bg-primary/5 p-4 border-l-4 border-l-primary/40 mt-2">
         <Skeleton className="h-4 w-32 mb-3" />
         <Skeleton className="h-6 w-full mb-2" />
         <Skeleton className="h-10 w-full" />
@@ -169,8 +169,8 @@ export default function MatchExplanationCard({
   const showRateFit = rateFit != null && rateFit.assessment !== "unknown";
 
   return (
-    <div className="rounded-md border border-violet-200 bg-violet-50 p-4 border-l-4 border-l-violet-400 mt-2">
-      <p className="text-xs font-semibold text-violet-700 mb-3">✦ Why this match</p>
+    <div className="rounded-md border border-primary/20 bg-primary/5 p-4 border-l-4 border-l-gold mt-2">
+      <p className="text-xs font-semibold text-primary mb-3">✦ Why this match</p>
 
       <div className="mb-3">
         <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-1.5">Skills Alignment</p>
@@ -234,7 +234,7 @@ export default function MatchExplanationCard({
         </div>
       </div>
 
-      <p className="text-sm text-slate-700 italic mt-3 pt-3 border-t border-violet-200">
+      <p className="text-sm text-slate-700 italic mt-3 pt-3 border-t border-primary/20">
         &ldquo;{overallSummary}&rdquo;
       </p>
     </div>

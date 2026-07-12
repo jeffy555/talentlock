@@ -13,7 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, BadgeCheck, Briefcase, Calendar, Clock, DollarSign, GraduationCap, Lock, Star, ExternalLink, Video, Heart, Image, Info, ShieldCheck } from "lucide-react";
+import { ArrowLeft, BadgeCheck, Briefcase, Calendar, CheckCircle2, Clock, DollarSign, GraduationCap, Lock, Star, ExternalLink, Video, Heart, Image, Info } from "lucide-react";
 import { formatRate, paymentTypeToRateType, profileDefaultRateType } from "@/lib/rateFormatUtils";
 import { EDUCATION_TYPE_LABELS } from "@/components/onboarding/TeachingDetailsSection";
 import { useEffect, useRef, useState } from "react";
@@ -379,7 +379,7 @@ export default function FreelancerDetail() {
               <div className="h-1.5 w-full bg-gold"></div>
               <CardHeader className="pb-4 bg-primary/5">
                 <CardTitle className="font-serif text-xl">Engage Talent</CardTitle>
-                <CardDescription className="text-sm">Secure this professional exclusively for your engagement.</CardDescription>
+                <CardDescription className="text-sm">Request an exclusive engagement with this professional.</CardDescription>
               </CardHeader>
               <CardContent className="pt-6">
                 {freelancer.isAvailable ? (
@@ -395,9 +395,9 @@ export default function FreelancerDetail() {
                       {confirmedBookingId ? (
                         <>
                           <DialogHeader className="text-center sm:text-center pb-4 border-b">
-                            <div className="mx-auto w-12 h-12 bg-green-100 text-green-600 rounded-full flex items-center justify-center mb-4"><ShieldCheck className="h-6 w-6" /></div>
+                            <div className="mx-auto w-12 h-12 bg-green-100 text-green-600 rounded-full flex items-center justify-center mb-4"><CheckCircle2 className="h-6 w-6" /></div>
                             <DialogTitle className="text-2xl font-serif">Booking Confirmed</DialogTitle>
-                            <DialogDescription className="text-base mt-2">{freelancer.name} is now locked in exclusively.</DialogDescription>
+                            <DialogDescription className="text-base mt-2">{freelancer.name} — booking request sent. Exclusivity locks after both parties sign the agreement.</DialogDescription>
                           </DialogHeader>
                           <div className="py-6 space-y-6">
                             <div className="rounded-xl border bg-secondary/30 p-5 text-sm space-y-3">
@@ -422,7 +422,7 @@ export default function FreelancerDetail() {
                         <>
                           <DialogHeader className="pb-4 border-b">
                             <DialogTitle className="font-serif text-2xl">Book {freelancer.name}</DialogTitle>
-                            <DialogDescription>Set engagement dates and payment terms to lock in this talent exclusively.</DialogDescription>
+                            <DialogDescription>Set engagement dates and payment terms. Exclusivity activates when the agreement is fully signed.</DialogDescription>
                           </DialogHeader>
                           <div className="space-y-5 py-6">
                             <div className="grid grid-cols-2 gap-4">
@@ -516,7 +516,7 @@ export default function FreelancerDetail() {
                           <DialogFooter className="border-t pt-4">
                             <Button variant="ghost" onClick={() => setBookingOpen(false)}>Cancel</Button>
                             <Button className="font-semibold shadow-sm" onClick={handleBook} disabled={createBooking.isPending || !startDate || !endDate}>
-                              {createBooking.isPending ? "Confirming..." : "Confirm & Lock In"}
+                              {createBooking.isPending ? "Confirming..." : "Confirm Booking Request"}
                             </Button>
                           </DialogFooter>
                         </>
@@ -528,7 +528,7 @@ export default function FreelancerDetail() {
                     <Lock className="h-4 w-4 mr-2" />Currently Unavailable
                   </Button>
                 )}
-                <p className="text-center text-xs text-muted-foreground mt-4 font-light px-2">Booking generates a binding exclusivity agreement automatically.</p>
+                <p className="text-center text-xs text-muted-foreground mt-4 font-light px-2">Booking creates an agreement draft. Exclusivity locks once both parties have signed.</p>
               </CardContent>
             </Card>
 

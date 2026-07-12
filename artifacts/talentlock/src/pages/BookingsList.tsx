@@ -3,17 +3,26 @@ import { useListBookings, useGetMe } from "@workspace/api-client-react";
 import { PaginationControls } from "@/components/PaginationControls";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Calendar, Clock, DollarSign, ArrowRight, ShieldCheck, Search } from "lucide-react";
 import { format } from "date-fns";
+import {
+  Empty,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+  EmptyDescription,
+  EmptyContent,
+} from "@/components/ui/empty";
+import { StatusBadge, type StatusKind } from "@/components/StatusBadge";
 
-const statusColors: Record<string, { bg: string, text: string, border: string }> = {
-  pending: { bg: "bg-yellow-50", text: "text-yellow-700", border: "border-yellow-200" },
-  active: { bg: "bg-green-50", text: "text-green-700", border: "border-green-200" },
-  completed: { bg: "bg-blue-50", text: "text-blue-700", border: "border-blue-200" },
-  cancelled: { bg: "bg-red-50", text: "text-red-700", border: "border-red-200" },
-};
+function bookingStatusKind(status: string): StatusKind {
+  if (status === "active") return "active";
+  if (status === "completed") return "completed";
+  if (status === "cancelled") return "cancelled";
+  if (status === "negotiating") return "negotiating";
+  return "pending";
+}
 
 export default function BookingsList() {
   const [page, setPage] = useState(1);
@@ -53,41 +62,48 @@ export default function BookingsList() {
       <div className="border-b border-border/50 pb-6">
         <h1 className="text-3xl font-serif font-bold tracking-tight text-foreground">Bookings</h1>
         <p className="text-muted-foreground mt-2 font-light max-w-xl">
-          Manage your exclusive engagements. A booking locks in talent and initiates the legal agreement process.
+          Manage your exclusive engagements. Bookings create an agreement draft; exclusivity locks once both parties have signed.
         </p>
       </div>
 
       {bookings.length === 0 ? (
-        <Card className="flex flex-col items-center justify-center py-24 text-center bg-card shadow-sm border-border border-dashed">
-          <div className="h-16 w-16 bg-muted/50 rounded-full flex items-center justify-center mb-6">
-            <Calendar className="h-8 w-8 text-muted-foreground" />
-          </div>
-          <h3 className="text-xl font-serif font-bold text-foreground mb-2">No bookings yet</h3>
-          <p className="text-muted-foreground font-light max-w-sm mb-8">
-            {isEmployer 
-              ? "You haven't locked in any professionals yet. Browse the Talent Vault to find your next match." 
-              : "You have no active or past engagements. Employers will book you directly from your profile."}
-          </p>
+        <Empty className="border border-dashed border-border bg-card py-16">
+          <EmptyHeader>
+            <EmptyMedia variant="icon">
+              <Calendar className="text-muted-foreground" />
+            </EmptyMedia>
+            <EmptyTitle className="font-serif">No bookings yet</EmptyTitle>
+            <EmptyDescription>
+              Exclusive engagements you request or receive will appear here.
+            </EmptyDescription>
+          </EmptyHeader>
           {isEmployer && (
-            <Button asChild className="font-semibold shadow-sm gap-2 h-11 px-8">
-              <Link href="/freelancers">
-                <Search className="h-4 w-4" /> Browse Talent
-              </Link>
-            </Button>
+            <EmptyContent>
+              <Button asChild className="font-semibold shadow-sm gap-2 h-11 px-8">
+                <Link href="/freelancers">
+                  <Search className="h-4 w-4" /> Browse Talent
+                </Link>
+              </Button>
+            </EmptyContent>
           )}
-        </Card>
+        </Empty>
       ) : (
         <div className="space-y-4">
           {bookings.map((booking, index) => {
-            const colors = statusColors[booking.status] || { bg: "bg-secondary", text: "text-muted-foreground", border: "border-border" };
-            
+            const kind = bookingStatusKind(booking.status);
+            const rail =
+              kind === "active" ? "bg-primary"
+              : kind === "completed" ? "bg-emerald-500"
+              : kind === "cancelled" ? "bg-destructive"
+              : "bg-amber-400";
+
             return (
               <Card 
                 key={booking.id} 
                 className="group hover:shadow-md transition-all duration-300 border-border bg-card relative overflow-hidden animate-fade-in"
                 style={{ animationDelay: `${index * 50}ms`, animationFillMode: "both" }}
               >
-                <div className={`absolute top-0 left-0 w-1.5 h-full ${colors.bg.replace('bg-', 'bg-').replace('-50', '-500')} opacity-70`}></div>
+                <div className={`absolute top-0 left-0 w-1.5 h-full ${rail} opacity-70`}></div>
                 
                 <CardContent className="p-0">
                   <div className="flex flex-col md:flex-row md:items-center">
@@ -102,13 +118,13 @@ export default function BookingsList() {
                             {isEmployer ? booking.freelancerName : booking.employerName}
                           </h3>
                         </div>
-                        <Badge className={`uppercase tracking-widest text-[10px] border shadow-sm ${colors.bg} ${colors.text} ${colors.border}`}>
+                        <StatusBadge status={kind} className="uppercase tracking-widest text-[10px] shadow-sm">
                           {booking.status}
-                        </Badge>
+                        </StatusBadge>
                       </div>
                       
                       {booking.status === "active" && (
-                        <div className="inline-flex items-center gap-1.5 text-xs font-medium text-green-700 bg-green-50 px-2.5 py-1 rounded-md border border-green-200">
+                        <div className="inline-flex items-center gap-1.5 text-xs font-medium text-primary bg-primary/5 px-2.5 py-1 rounded-md border border-primary/20">
                           <ShieldCheck className="h-3.5 w-3.5" /> Exclusivity Locked
                         </div>
                       )}

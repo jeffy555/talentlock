@@ -46,8 +46,8 @@ export function AcceptedProposalBlock({ proposal }: { proposal: string }) {
   };
 
   return (
-    <div className="rounded-md border border-violet-200 bg-violet-50 p-4">
-      <p className="text-xs font-semibold text-violet-700 mb-2">✦ Your AI-generated proposal</p>
+    <div className="rounded-md border border-primary/20 bg-primary/5 p-4">
+      <p className="text-xs font-semibold text-primary mb-2">✦ Your AI-generated proposal</p>
       <p className="text-sm text-slate-700 whitespace-pre-wrap">{proposal}</p>
       <div className="flex justify-end mt-3">
         <Button variant="ghost" size="sm" onClick={handleCopy}>
@@ -121,7 +121,7 @@ export default function ProposalGeneratorDrawer({
       <SheetContent side="right" className="w-[480px] sm:max-w-full flex flex-col">
         <SheetHeader>
           <SheetTitle className="flex items-center gap-2">
-            <Sparkles className="h-4 w-4 text-violet-500" />
+            <Sparkles className="h-4 w-4 text-gold" />
             Write Proposal
           </SheetTitle>
         </SheetHeader>
@@ -175,7 +175,7 @@ export default function ProposalGeneratorDrawer({
           {proposalOutput && !mutation.isPending && (
             <div className="space-y-2">
               <Label className="text-sm font-medium">Your Proposal</Label>
-              <div className="rounded border-l-4 border-violet-400 bg-violet-50 p-4 text-sm text-slate-700 whitespace-pre-wrap max-h-[400px] overflow-y-auto">
+              <div className="rounded border-l-4 border-gold bg-primary/5 p-4 text-sm text-slate-700 whitespace-pre-wrap max-h-[400px] overflow-y-auto">
                 {proposalOutput}
               </div>
               <div className="flex flex-wrap gap-2 justify-end pt-2">
@@ -187,7 +187,7 @@ export default function ProposalGeneratorDrawer({
                 </Button>
                 <Button
                   size="sm"
-                  className="bg-violet-600 hover:bg-violet-700 text-white"
+                  className="bg-primary hover:bg-primary/90 text-primary-foreground"
                   onClick={handleAccept}
                 >
                   Accept Proposal

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLocation, Link } from "wouter";
 import { useCreateJobRequirement } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
@@ -15,11 +15,13 @@ import JobDescriptionAssistant from "@/components/JobDescriptionAssistant";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { rateUnitLabel } from "@/lib/rateFormatUtils";
 import type { ProfessionCategory, RateType } from "@workspace/api-client-react";
+import { useMediaQuery } from "@/hooks/useMediaQuery";
 
 export default function PostJob() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const createJob = useCreateJobRequirement();
+  const isMdUp = useMediaQuery("(min-width: 768px)");
 
   const [title, setTitle] = useState("");
   const [fieldOfWork, setFieldOfWork] = useState("");
@@ -33,6 +35,10 @@ export default function PostJob() {
   const [isAssistantOpen, setIsAssistantOpen] = useState(false);
   const [professionCategory, setProfessionCategory] = useState<ProfessionCategory>("technology");
   const [rateType, setRateType] = useState<RateType>("hourly");
+
+  useEffect(() => {
+    if (!isMdUp) setIsAssistantOpen(false);
+  }, [isMdUp]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -157,7 +163,7 @@ export default function PostJob() {
                   size="sm"
                   onClick={() => setIsAssistantOpen(true)}
                 >
-                  <Sparkles className="h-4 w-4 mr-1 text-violet-500" />
+                  <Sparkles className="h-4 w-4 mr-1 text-gold" />
                   AI Assist
                 </Button>
               </div>

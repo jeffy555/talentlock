@@ -53,7 +53,7 @@ function TagListEditor({
         {values.map((v) => (
           <span
             key={v}
-            className="inline-flex items-center gap-1 rounded-full bg-violet-50 text-violet-800 border border-violet-200 px-2.5 py-1 text-xs"
+            className="inline-flex items-center gap-1 rounded-full bg-primary/5 text-primary border border-primary/20 px-2.5 py-1 text-xs"
           >
             {v}
             <button type="button" onClick={() => onChange(values.filter((x) => x !== v))} aria-label={`Remove ${v}`}>
@@ -103,14 +103,14 @@ function ParsedPreview({
   ].filter(Boolean) as string[];
 
   return (
-    <Card className="border-violet-200 bg-violet-50/40">
+    <Card className="border-primary/20 bg-primary/5">
       <CardHeader className="pb-2 flex flex-row items-center justify-between">
         <CardTitle className="text-base font-semibold">AI parsed your rules</CardTitle>
         <div className="flex gap-2">
           <Button variant="ghost" size="sm" onClick={onEdit}>
             Edit
           </Button>
-          <Button size="sm" className="bg-violet-600 hover:bg-violet-700" onClick={onUse}>
+          <Button size="sm" className="bg-primary hover:bg-primary/90" onClick={onUse}>
             Use
           </Button>
         </div>
@@ -187,9 +187,9 @@ export function CruiseModeRuleBuilder({
 
   if (mode === "onboarding") {
     return (
-      <Card className="border-dashed border-violet-200 bg-violet-50/30">
+      <Card className="border-dashed border-primary/20 bg-primary/5">
         <CardContent className="pt-8 pb-8 space-y-4 text-center max-w-lg mx-auto">
-          <Rocket className="h-10 w-10 text-violet-600 mx-auto" />
+          <Rocket className="h-10 w-10 text-primary mx-auto" />
           <h2 className="text-xl font-semibold text-slate-800">Set up Cruise Mode</h2>
           <p className="text-sm text-muted-foreground">
             Define your rules once. Your AI assistant will automatically express interest in matching jobs while
@@ -200,7 +200,7 @@ export function CruiseModeRuleBuilder({
             <li>○ Paste or upload a rules file (.txt or .md)</li>
           </ul>
           <div className="flex flex-wrap justify-center gap-2 pt-2">
-            <Button className="bg-violet-600 hover:bg-violet-700" onClick={() => setMode("form")}>
+            <Button className="bg-primary hover:bg-primary/90" onClick={() => setMode("form")}>
               Get started →
             </Button>
             <Button variant="outline" onClick={() => setMode("parser")}>
@@ -242,7 +242,7 @@ export function CruiseModeRuleBuilder({
                 Upload .txt / .md
               </Button>
               <Button
-                className="bg-violet-600 hover:bg-violet-700"
+                className="bg-primary hover:bg-primary/90"
                 onClick={handleParse}
                 disabled={parseRules.isPending}
               >
@@ -286,7 +286,7 @@ export function CruiseModeRuleBuilder({
           <Button variant="outline" size="sm" onClick={() => setMode("parser")}>
             Paste / parse text
           </Button>
-          <Button size="sm" className="bg-violet-600 hover:bg-violet-700" onClick={handleSave} disabled={isSaving}>
+          <Button size="sm" className="bg-primary hover:bg-primary/90" onClick={handleSave} disabled={isSaving}>
             {isSaving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
             Save rules
           </Button>

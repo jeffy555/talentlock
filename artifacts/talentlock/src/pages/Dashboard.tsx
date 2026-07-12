@@ -127,8 +127,10 @@ export default function Dashboard() {
         <p className="text-muted-foreground mt-1 font-light">Welcome back, {user?.name}. Here is your overview.</p>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card className="bg-card shadow-sm border-border hover:shadow-md transition-shadow">
+      <section className="space-y-3" aria-label="Key metrics">
+        <h2 className="text-sm font-semibold uppercase tracking-[0.14em] text-muted-foreground">Overview</h2>
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <Card className="bg-card border-border border-l-4 border-l-primary shadow-sm hover:shadow-md transition-shadow">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Active Bookings</CardTitle>
             <Calendar className="h-4 w-4 text-gold" />
@@ -139,7 +141,7 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        <Card className="bg-card shadow-sm border-border hover:shadow-md transition-shadow">
+        <Card className="bg-card border-border shadow-sm hover:shadow-md transition-shadow">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Completed Bookings</CardTitle>
             <CheckCircle2 className="h-4 w-4 text-gold" />
@@ -152,7 +154,7 @@ export default function Dashboard() {
 
         {isEmployer ? (
           <>
-            <Card className="bg-card shadow-sm border-border hover:shadow-md transition-shadow">
+            <Card className="bg-card border-border shadow-sm hover:shadow-md transition-shadow">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium text-muted-foreground">Total Spent</CardTitle>
                 <Activity className="h-4 w-4 text-gold" />
@@ -162,7 +164,7 @@ export default function Dashboard() {
                 <p className="text-xs text-muted-foreground mt-1">Across all completed bookings</p>
               </CardContent>
             </Card>
-            <Card className="bg-card shadow-sm border-border hover:shadow-md transition-shadow">
+            <Card className="bg-card border-border shadow-sm hover:shadow-md transition-shadow">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium text-muted-foreground">Open Requirements</CardTitle>
                 <Briefcase className="h-4 w-4 text-gold" />
@@ -175,7 +177,7 @@ export default function Dashboard() {
           </>
         ) : (
           <>
-            <Card className="bg-card shadow-sm border-border hover:shadow-md transition-shadow">
+            <Card className="bg-card border-border shadow-sm hover:shadow-md transition-shadow">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium text-muted-foreground">Total Earnings</CardTitle>
                 <Activity className="h-4 w-4 text-gold" />
@@ -185,7 +187,7 @@ export default function Dashboard() {
                 <p className="text-xs text-muted-foreground mt-1">Across all completed bookings</p>
               </CardContent>
             </Card>
-            <Card className="bg-card shadow-sm border-border hover:shadow-md transition-shadow">
+            <Card className="bg-card border-border shadow-sm hover:shadow-md transition-shadow">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium text-muted-foreground">
                   {totals?.averageRating ? "Avg Rating" : "Pending Agreements"}
@@ -210,7 +212,8 @@ export default function Dashboard() {
         )}
 
         {isEmployer && <TokenUsageWidget variant="compact" />}
-      </div>
+        </div>
+      </section>
 
       {/* Analytics Chart */}
       {monthly.length > 0 && (
@@ -245,29 +248,35 @@ export default function Dashboard() {
       )}
 
       {!isEmployer && (
-        <section>
-          <h2 className="text-lg font-semibold text-slate-800 mt-8 mb-4">
+        <section className="space-y-3 pt-2">
+          <h2 className="font-serif text-xl font-semibold text-foreground">
             Earnings Intelligence
           </h2>
-          <EarningsIntelligencePanel />
+          <div className="rounded-xl border border-border/80 bg-card/50 p-1">
+            <EarningsIntelligencePanel />
+          </div>
         </section>
       )}
 
       {isEmployer && (
-        <section>
-          <h2 className="text-lg font-semibold text-slate-800 mt-8 mb-4">
+        <section className="space-y-3 pt-2">
+          <h2 className="font-serif text-xl font-semibold text-foreground">
             Spend Analytics
           </h2>
-          <SpendAnalyticsPanel />
+          <div className="rounded-xl border border-border/80 bg-card/50 p-1">
+            <SpendAnalyticsPanel />
+          </div>
         </section>
       )}
 
       {isEmployer && (
-        <section>
-          <h2 className="text-lg font-semibold text-slate-800 mt-8 mb-4">
+        <section className="space-y-3 pt-2">
+          <h2 className="font-serif text-xl font-semibold text-foreground">
             Hiring Analytics
           </h2>
-          <HiringAnalyticsPanel />
+          <div className="rounded-xl border border-border/80 bg-card/50 p-1">
+            <HiringAnalyticsPanel />
+          </div>
         </section>
       )}
 

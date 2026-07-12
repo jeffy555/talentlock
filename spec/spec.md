@@ -232,6 +232,14 @@ talentlock/
 │   │   ├── UI.md
 │   │   └── validation.md
 │   │
+│   ├── ui-ux-improvements/                        ← 🟡 Ready to Execute · P2 design polish (tokens, BrandLogo, exclusivity copy, primitives)
+│   │   ├── features.md
+│   │   ├── clarify.md
+│   │   ├── plan.md
+│   │   ├── task.md
+│   │   ├── UI.md
+│   │   └── validation.md
+│   │
 │   └── {next-feature}/                             ← Future features follow the same pattern
 │       ├── features.md
 │       ├── clarify.md
@@ -493,13 +501,14 @@ The `.cursor/rules/talentlock.mdc` file at the repo root enforces these rules au
 | Teaching Professional Profile | `specs/teaching-professional-profile/` | 🟡 Ready to Execute |
 | TalentSearch (Employer Cruise Mode) | `specs/talent-search/` | 🟡 Ready to Execute |
 | AI Meeting Brief Generator | `specs/ai-meeting-brief/` | 🟡 Ready to Execute |
-| TalentSearch (Employer Cruise Mode) | `specs/talent-search/` | 🟡 Ready to Execute |
-| AI Meeting Brief Generator | `specs/ai-meeting-brief/` | 🟡 Ready to Execute |
+| UI/UX Improvements | `spec/ui-ux-improvements/` | 🟡 Ready to Execute |
 
 > Add new features to this table when their `features.md` is created.
 > Update status as work progresses: 🟡 Ready → 🔄 In Progress → ✅ Complete
 >
 > **Note:** `AuthHardening` closed the per-resource authorization gap (IDOR protection on 11 routes + storage ACL). It is independent of the completed `security-hardening` spec, which covered middleware/CSRF/sanitisation/audit/GDPR but not per-resource authorization. Automated validation: `node artifacts/api-server/validate-auth-hardening.mjs` (32/32 passed).
+>
+> **Note:** `ui-ux-improvements` is a **P2-style design refactor** (frontend-only): token consolidation, BrandLogo, exclusivity copy aligned to Availability Calendar Module 8 Phase 4b, shared primitives, Dashboard/Vault polish, admin login brand alignment. No schema, OpenAPI, or auth-logic changes.
 
 ---
 
@@ -521,6 +530,7 @@ Tracking the findings from the TalentLock Security & Production Readiness review
 | 🟡 P2 | Stripe real checkout + webhook signature verification | `specs/stripe-billing/` | ⬜ Not started |
 | 🟡 P2 | AI match history cap + profile caching | _backend perf_ | ⬜ Not started |
 | 🟡 P2 | Booking acceptance state machine (freelancer accept/decline) | `specs/booking-acceptance/` | ⬜ Not started |
+| 🟡 P2 | UI/UX design polish (tokens, BrandLogo, exclusivity copy, primitives) | `spec/ui-ux-improvements/` | 🟡 Ready to Execute |
 | 🟢 P3 | Boot guard (reject default creds), CORS lockdown, trust proxy, remove demo route | `specs/production-readiness/` | ⬜ Not started |
 
 > P0 and P1 from the review are **closed**. Remaining work is P2 (important, non-blocking) and P3 (production config / enterprise). See the P2 plan tracked with the team.

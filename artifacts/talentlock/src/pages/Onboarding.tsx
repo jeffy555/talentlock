@@ -340,7 +340,7 @@ export default function Onboarding() {
                 className={cn(
                   "rounded-lg border-2 p-5 text-left transition-colors",
                   professionCategory === "technology"
-                    ? "border-violet-400 ring-2 ring-violet-200 bg-violet-50"
+                    ? "border-primary ring-2 ring-primary/20 bg-primary/5"
                     : "border-slate-200 hover:border-slate-300",
                 )}
               >
@@ -354,7 +354,7 @@ export default function Onboarding() {
                 className={cn(
                   "rounded-lg border-2 p-5 text-left transition-colors",
                   professionCategory === "education"
-                    ? "border-violet-400 ring-2 ring-violet-200 bg-violet-50"
+                    ? "border-primary ring-2 ring-primary/20 bg-primary/5"
                     : "border-slate-200 hover:border-slate-300",
                 )}
               >

@@ -1,7 +1,8 @@
 import { useUser } from "@clerk/react";
 import { useGetMe } from "@workspace/api-client-react";
 import { Link, Redirect, useLocation } from "wouter";
-import { Shield, Lock, FileSignature, Zap, Briefcase, Building2, ArrowRight } from "lucide-react";
+import { Lock, FileSignature, Zap, Briefcase, Building2, ArrowRight } from "lucide-react";
+import { BrandLogo } from "@/components/BrandLogo";
 
 function setIntendedRole(role: "freelancer" | "employer") {
   localStorage.setItem("talentlock_intended_role", role);
@@ -38,9 +39,8 @@ export default function Landing() {
         className="sticky top-0 z-50 px-6 h-16 flex items-center justify-between"
         style={{ backgroundColor: "hsl(var(--primary))", borderBottom: "1px solid rgba(255,255,255,0.07)" }}
       >
-        <div className="flex items-center gap-2.5">
-          <Shield className="h-5 w-5 text-gold" />
-          <span className="font-serif font-semibold text-lg tracking-tight text-white">TalentLock</span>
+        <div className="flex items-center">
+          <BrandLogo variant="onDark" size="md" />
         </div>
         <Link
           href="/sign-in"
@@ -176,9 +176,8 @@ export default function Landing() {
       {/* Footer */}
       <footer className="py-10 px-6 text-center text-sm bg-background border-t border-border text-muted-foreground">
         <div className="max-w-5xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-2">
-            <Shield className="h-4 w-4 text-gold" />
-            <span className="font-serif font-semibold text-foreground">TalentLock</span>
+          <div className="flex items-center">
+            <BrandLogo variant="onLight" size="sm" />
           </div>
           <p className="font-light">&copy; {new Date().getFullYear()} TalentLock. All rights reserved.</p>
         </div>

@@ -227,8 +227,8 @@ export default function JobDescriptionAssistant({
   );
 
   const outputActions = assistantOutput && (
-    <div className="rounded-md border-l-4 border-violet-400 bg-violet-50 p-4 space-y-3">
-      <p className="text-xs font-medium text-violet-700">
+    <div className="rounded-md border-l-4 border-gold bg-primary/5 p-4 space-y-3">
+      <p className="text-xs font-medium text-primary">
         {activeTab === "improve" ? "Improved Version" : "AI Suggestion"}
       </p>
       <div className="text-sm text-slate-700 whitespace-pre-wrap overflow-y-auto max-h-[300px]">
@@ -240,7 +240,7 @@ export default function JobDescriptionAssistant({
         </Button>
         <Button
           size="sm"
-          className="bg-violet-600 hover:bg-violet-700 text-white"
+          className="bg-primary hover:bg-primary/90 text-primary-foreground"
           onClick={handleAccept}
         >
           Accept →
@@ -255,7 +255,7 @@ export default function JobDescriptionAssistant({
         <SheetContent side="right" className="w-[480px] sm:max-w-full flex flex-col overflow-y-auto">
           <SheetHeader>
             <SheetTitle className="flex items-center gap-2">
-              <Sparkles className="h-4 w-4 text-violet-500" />
+              <Sparkles className="h-4 w-4 text-gold" />
               Job Description Assistant
             </SheetTitle>
           </SheetHeader>
