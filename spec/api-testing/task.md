@@ -396,6 +396,6 @@ Run via `pnpm run test:validate` until each row is ✅ in Vitest.
 | 4 AI (mocked) | — | ✅ Implemented (unit utils + auth guards + automation config) |
 | 5 Messaging/Docs | — | ✅ Implemented |
 | 6 Dashboard/Teams | — | ✅ Implemented |
-| 7 Frontend/E2E | — | ⬜ |
-| 8 Legacy migration | — | ⬜ |
+| 7 Frontend/E2E | — | ✅ Implemented (27 frontend unit + Playwright smoke scaffold) |
+| 8 Legacy migration | — | ✅ Implemented (legacy-map + 27 scripts + 15 new integration suites) |
 | 9 CI | — | ⬜ |

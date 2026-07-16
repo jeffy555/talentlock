@@ -7,14 +7,18 @@
     "build": "pnpm run typecheck && pnpm -r --if-present run build",
     "typecheck:libs": "tsc --build",
     "typecheck": "pnpm run typecheck:libs && pnpm -r --filter \"./artifacts/**\" --filter \"./scripts\" --if-present run typecheck",
-    "test": "pnpm --filter @workspace/api-server run test:unit",
+    "test": "pnpm run test:unit && pnpm run test:frontend",
     "test:unit": "pnpm --filter @workspace/api-server run test:unit",
+    "test:frontend": "pnpm --filter @workspace/talentlock run test:unit",
     "test:integration": "pnpm --filter @workspace/api-server run test:integration",
-    "test:validate": "node scripts/test-regression.mjs"
+    "test:validate": "node scripts/test-regression.mjs",
+    "test:e2e": "playwright test",
+    "test:all": "pnpm run test:unit && pnpm run test:frontend && pnpm --filter @workspace/api-server run test"
   },
   "private": true,
   "devDependencies": {
-    "playwright": "^1.60.0",
+    "@playwright/test": "^1.61.1",
+    "playwright": "^1.61.1",
     "prettier": "^3.8.1",
     "typescript": "~5.9.2"
   },
