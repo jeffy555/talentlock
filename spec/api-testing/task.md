@@ -364,12 +364,12 @@ Run via `pnpm run test:validate` until each row is ✅ in Vitest.
 
 ## Phase 9 — CI & regression gates
 
-- [ ] `.github/workflows/test.yml` — unit on every PR; integration on main + nightly
-- [ ] Integration job provisions Neon branch or uses persistent test DB
-- [ ] Secrets: `DATABASE_URL_TEST`, `CLERK_SECRET_KEY`, `CSRF_SECRET`, `ADMIN_PASSWORD`
-- [ ] Fail PR if `pnpm run typecheck` or `pnpm run test:unit` fails
-- [ ] Report Vitest JUnit artifact for CI dashboard
-- [ ] Branch protection: require `test:unit` pass before merge
+- [x] `.github/workflows/test.yml` — unit on every PR; integration on main + nightly
+- [x] Integration job uses `DATABASE_URL_TEST` secret (mapped to `DATABASE_URL` in tests)
+- [x] Secrets: `DATABASE_URL_TEST`, `CLERK_SECRET_KEY`, `CLERK_PUBLISHABLE_KEY`, `CSRF_SECRET`, `ADMIN_PASSWORD`
+- [x] Fail PR if `pnpm run typecheck` or `pnpm run test:unit` fails
+- [x] Report Vitest JUnit artifact for CI dashboard
+- [ ] Branch protection: require **CI** job pass before merge (configure in GitHub repo settings)
 
 ---
 
@@ -398,4 +398,4 @@ Run via `pnpm run test:validate` until each row is ✅ in Vitest.
 | 6 Dashboard/Teams | — | ✅ Implemented |
 | 7 Frontend/E2E | — | ✅ Implemented (27 frontend unit + Playwright smoke scaffold) |
 | 8 Legacy migration | — | ✅ Implemented (legacy-map + 27 scripts + 15 new integration suites) |
-| 9 CI | — | ⬜ |
+| 9 CI | — | ✅ Implemented (GitHub Actions: CI + integration/nightly) |

@@ -33,13 +33,24 @@ export function loadTestEnv() {
   if (!process.env.SESSION_SECRET) {
     process.env.SESSION_SECRET = "test-session-secret-0123456789abcdef0123456789abcdef";
   }
+  if (process.env.DATABASE_URL_TEST && !process.env.DATABASE_URL) {
+    process.env.DATABASE_URL = process.env.DATABASE_URL_TEST;
+  }
   loaded = true;
+}
+
+const PLACEHOLDER_DATABASE_URL = "postgresql://test:test@127.0.0.1:5432/talentlock_test";
+
+export function isPlaceholderDatabaseUrl(url: string | undefined): boolean {
+  return !url || url === PLACEHOLDER_DATABASE_URL;
 }
 
 export function integrationEnvReady(): boolean {
   loadTestEnv();
+  const dbUrl = process.env.DATABASE_URL ?? process.env.DATABASE_URL_TEST;
   return Boolean(
-    process.env.DATABASE_URL &&
+    dbUrl &&
+      !isPlaceholderDatabaseUrl(dbUrl) &&
       process.env.CLERK_SECRET_KEY &&
       process.env.CLERK_PUBLISHABLE_KEY,
   );

@@ -16,6 +16,7 @@
     "test:all": "pnpm run test:unit && pnpm run test:frontend && pnpm --filter @workspace/api-server run test"
   },
   "private": true,
+  "packageManager": "pnpm@10.33.3",
   "devDependencies": {
     "@playwright/test": "^1.61.1",
     "playwright": "^1.61.1",
