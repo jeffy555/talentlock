@@ -495,6 +495,7 @@ The `.cursor/rules/talentlock.mdc` file at the repo root enforces these rules au
 | AI Meeting Brief Generator | `specs/ai-meeting-brief/` | 🟡 Ready to Execute |
 | TalentSearch (Employer Cruise Mode) | `specs/talent-search/` | 🟡 Ready to Execute |
 | AI Meeting Brief Generator | `specs/ai-meeting-brief/` | 🟡 Ready to Execute |
+| **Automated API Testing (Regression)** | `spec/api-testing/` | 🔄 In progress — Phase 0 harness on `cursor/regression-tests-9a23` |
 
 > Add new features to this table when their `features.md` is created.
 > Update status as work progresses: 🟡 Ready → 🔄 In Progress → ✅ Complete
@@ -515,7 +516,7 @@ Tracking the findings from the TalentLock Security & Production Readiness review
 | 🟠 P1 | Apply `sanitiseText()` to 6 missing free-text fields | `security-hardening/` (Module 2 addendum) | ✅ Implemented & validated 2026-06-09 |
 | 🟠 P1 | Fix premature availability lock | `availability-calendar/` (Module 8 addendum) | ✅ Implemented & validated 2026-06-09 |
 | 🟠 P1 | Add 4 missing endpoint groups to OpenAPI + fix raw `fetch` | `specs/OpenApiContractCleanup/` | ⬜ Not started |
-| 🟡 P2 | Automated tests (Vitest + Supertest) + wire `validate-*.mjs` to CI | `specs/api-testing/` | ⬜ Not started |
+| 🟡 P2 | Automated tests (Vitest + Supertest) + wire `validate-*.mjs` to CI | `spec/api-testing/` | 🔄 In progress (Phase 0 on `cursor/regression-tests-9a23`) |
 | 🟡 P2 | Fix N+1 on bookings/meetings/agreements list endpoints | _backend perf_ | ⬜ Not started |
 | 🟡 P2 | Schema & type hygiene (FKs, `as any`, tx scope, Zod, split large routes) | _backend cleanup_ | ⬜ Not started |
 | 🟡 P2 | Stripe real checkout + webhook signature verification | `specs/stripe-billing/` | ⬜ Not started |
