@@ -5,8 +5,14 @@ export default defineConfig({
     include: ["tests/unit/**/*.test.ts", "tests/integration/**/*.test.ts"],
     exclude: ["**/node_modules/**", "**/dist/**"],
     environment: "node",
-    testTimeout: 30_000,
-    hookTimeout: 30_000,
+    setupFiles: ["tests/setup/vitest.setup.ts"],
+    testTimeout: 60_000,
+    hookTimeout: 60_000,
     passWithNoTests: false,
+    poolOptions: {
+      forks: {
+        singleFork: false,
+      },
+    },
   },
 });

@@ -9,23 +9,23 @@
 
 ### 0.1 Tooling & scripts
 
-- [ ] Add Vitest + Supertest to `@workspace/api-server`
-- [ ] `pnpm run test:unit` — `vitest run tests/unit`
-- [ ] `pnpm run test:integration` — `vitest run tests/integration` (requires `.env.test`)
-- [ ] `pnpm run test:watch` — local dev loop
-- [ ] `pnpm run test:validate` — runs `scripts/test-regression.mjs` (legacy bridge)
-- [ ] Root `pnpm run test` — unit + integration (integration skipped in CI if secrets missing)
+- [x] Add Vitest + Supertest to `@workspace/api-server`
+- [x] `pnpm run test:unit` — `vitest run tests/unit`
+- [x] `pnpm run test:integration` — `vitest run tests/integration` (requires `.env.test`)
+- [x] `pnpm run test:watch` — local dev loop
+- [x] `pnpm run test:validate` — runs `scripts/test-regression.mjs` (legacy bridge)
+- [x] Root `pnpm run test` — unit + integration (integration skipped in CI if secrets missing)
 
 ### 0.2 Shared helpers (`tests/helpers/`)
 
-| Helper | Purpose |
-|--------|---------|
-| `env.ts` | Load `.env.test`; fail if prod DB URL |
-| `apiClient.ts` | `request(app)`, `authAsEmployer()`, `authAsFreelancer()`, `authNone()` |
-| `db.ts` | Pool, `findDemoBooking()`, fixture insert helpers |
-| `adminSession.ts` | `POST /admin/login` + CSRF double-submit for mutations |
-| `openaiMock.ts` | Vitest mock for `@workspace/integrations-openai-ai-server` |
-| `assert402.ts` | Assert `{ error, code, planNeeded }` shape |
+| Helper | Purpose | Status |
+|--------|---------|--------|
+| `env.ts` | Load `.env.test`; fail if prod DB URL | ✅ |
+| `apiClient.ts` | Supertest wrapper + auth headers | ✅ |
+| `db.ts` | Pool, fixture loaders | ✅ |
+| `adminSession.ts` | Admin login + CSRF | ✅ |
+| `openaiMock.ts` | Vitest mock for OpenAI | ⬜ Phase 4 |
+| `assert402.ts` | Assert `{ error, code, planNeeded }` shape | ✅ |
 
 ### 0.3 Initial unit tests (committed in Phase 0)
 
