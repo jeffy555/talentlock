@@ -19,6 +19,7 @@ export * from "./portfolioItems";
 export * from "./milestones";
 export * from "./availabilityBlocks";
 export * from "./documents";
+export * from "./employerDocuments";
 export * from "./teams";
 export * from "./cruiseMode";
 export * from "./talentSearch";

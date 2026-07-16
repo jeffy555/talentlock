@@ -126,14 +126,16 @@ export const ListFreelancersResponseItem = zod.object({
   dailyRate: zod.number().nullish(),
   achievements: zod.string().nullish(),
   isVerified: zod.boolean(),
+  verificationLevel: zod.enum([
+    "unverified",
+    "partially_verified",
+    "fully_verified",
+  ]),
   verificationStatus: zod
     .string()
     .optional()
     .describe("unverified | pending | verified | rejected"),
   verificationNote: zod.string().nullish(),
-  verificationLevel: zod
-    .string()
-    .describe("unverified | partially_verified | fully_verified"),
   documentNames: zod.array(zod.string()).optional(),
   isAvailable: zod.boolean(),
   currentBookingId: zod.number().nullish(),
@@ -248,14 +250,16 @@ export const GetMyFreelancerProfileResponse = zod.object({
   dailyRate: zod.number().nullish(),
   achievements: zod.string().nullish(),
   isVerified: zod.boolean(),
+  verificationLevel: zod.enum([
+    "unverified",
+    "partially_verified",
+    "fully_verified",
+  ]),
   verificationStatus: zod
     .string()
     .optional()
     .describe("unverified | pending | verified | rejected"),
   verificationNote: zod.string().nullish(),
-  verificationLevel: zod
-    .string()
-    .describe("unverified | partially_verified | fully_verified"),
   documentNames: zod.array(zod.string()).optional(),
   isAvailable: zod.boolean(),
   currentBookingId: zod.number().nullish(),
@@ -349,14 +353,16 @@ export const UpdateMyFreelancerProfileResponse = zod.object({
   dailyRate: zod.number().nullish(),
   achievements: zod.string().nullish(),
   isVerified: zod.boolean(),
+  verificationLevel: zod.enum([
+    "unverified",
+    "partially_verified",
+    "fully_verified",
+  ]),
   verificationStatus: zod
     .string()
     .optional()
     .describe("unverified | pending | verified | rejected"),
   verificationNote: zod.string().nullish(),
-  verificationLevel: zod
-    .string()
-    .describe("unverified | partially_verified | fully_verified"),
   documentNames: zod.array(zod.string()).optional(),
   isAvailable: zod.boolean(),
   currentBookingId: zod.number().nullish(),
@@ -419,14 +425,16 @@ export const GetFreelancerProfileResponse = zod
     dailyRate: zod.number().nullish(),
     achievements: zod.string().nullish(),
     isVerified: zod.boolean(),
+    verificationLevel: zod.enum([
+      "unverified",
+      "partially_verified",
+      "fully_verified",
+    ]),
     verificationStatus: zod
       .string()
       .optional()
       .describe("unverified | pending | verified | rejected"),
     verificationNote: zod.string().nullish(),
-    verificationLevel: zod
-      .string()
-      .describe("unverified | partially_verified | fully_verified"),
     documentNames: zod.array(zod.string()).optional(),
     isAvailable: zod.boolean(),
     currentBookingId: zod.number().nullish(),
@@ -556,6 +564,11 @@ export const GetMyEmployerProfileResponse = zod.object({
   description: zod.string().nullish(),
   website: zod.string().nullish(),
   isVerified: zod.boolean(),
+  verificationLevel: zod.enum([
+    "unverified",
+    "partially_verified",
+    "fully_verified",
+  ]),
   verificationStatus: zod
     .string()
     .optional()
@@ -588,6 +601,11 @@ export const UpsertMyEmployerProfileResponse = zod.object({
   description: zod.string().nullish(),
   website: zod.string().nullish(),
   isVerified: zod.boolean(),
+  verificationLevel: zod.enum([
+    "unverified",
+    "partially_verified",
+    "fully_verified",
+  ]),
   verificationStatus: zod
     .string()
     .optional()
@@ -612,6 +630,11 @@ export const ListJobRequirementsQueryParams = zod.object({
 export const ListJobRequirementsResponseItem = zod.object({
   id: zod.number(),
   employerId: zod.number(),
+  employerVerificationLevel: zod.enum([
+    "unverified",
+    "partially_verified",
+    "fully_verified",
+  ]),
   title: zod.string(),
   fieldOfWork: zod.string(),
   description: zod.string(),
@@ -659,6 +682,11 @@ export const GetJobRequirementParams = zod.object({
 export const GetJobRequirementResponse = zod.object({
   id: zod.number(),
   employerId: zod.number(),
+  employerVerificationLevel: zod.enum([
+    "unverified",
+    "partially_verified",
+    "fully_verified",
+  ]),
   title: zod.string(),
   fieldOfWork: zod.string(),
   description: zod.string(),
@@ -699,6 +727,11 @@ export const UpdateJobRequirementBody = zod.object({
 export const UpdateJobRequirementResponse = zod.object({
   id: zod.number(),
   employerId: zod.number(),
+  employerVerificationLevel: zod.enum([
+    "unverified",
+    "partially_verified",
+    "fully_verified",
+  ]),
   title: zod.string(),
   fieldOfWork: zod.string(),
   description: zod.string(),
@@ -1050,6 +1083,9 @@ export const ListBookingsResponse = zod.object({
       negotiationStatus: zod.string().describe("'negotiating' or 'agreed'"),
       freelancerName: zod.string().nullish(),
       employerName: zod.string().nullish(),
+      employerVerificationLevel: zod
+        .enum(["unverified", "partially_verified", "fully_verified"])
+        .optional(),
       review: zod.union([
         zod.object({
           id: zod.number(),
@@ -1125,6 +1161,9 @@ export const GetBookingResponse = zod.object({
   negotiationStatus: zod.string().describe("'negotiating' or 'agreed'"),
   freelancerName: zod.string().nullish(),
   employerName: zod.string().nullish(),
+  employerVerificationLevel: zod
+    .enum(["unverified", "partially_verified", "fully_verified"])
+    .optional(),
   review: zod.union([
     zod.object({
       id: zod.number(),
@@ -1176,6 +1215,9 @@ export const UpdateBookingResponse = zod.object({
   negotiationStatus: zod.string().describe("'negotiating' or 'agreed'"),
   freelancerName: zod.string().nullish(),
   employerName: zod.string().nullish(),
+  employerVerificationLevel: zod
+    .enum(["unverified", "partially_verified", "fully_verified"])
+    .optional(),
   review: zod.union([
     zod.object({
       id: zod.number(),
@@ -1235,6 +1277,9 @@ export const NegotiateBookingResponse = zod.object({
   negotiationStatus: zod.string().describe("'negotiating' or 'agreed'"),
   freelancerName: zod.string().nullish(),
   employerName: zod.string().nullish(),
+  employerVerificationLevel: zod
+    .enum(["unverified", "partially_verified", "fully_verified"])
+    .optional(),
   review: zod.union([
     zod.object({
       id: zod.number(),
@@ -1699,6 +1744,9 @@ export const ListMeetingsResponse = zod.object({
       meetingLink: zod.string().nullish(),
       freelancerName: zod.string().nullish(),
       employerName: zod.string().nullish(),
+      employerVerificationLevel: zod
+        .enum(["unverified", "partially_verified", "fully_verified"])
+        .optional(),
       briefContent: zod
         .union([
           zod.null(),
@@ -1774,6 +1822,9 @@ export const GetMeetingResponse = zod.object({
   meetingLink: zod.string().nullish(),
   freelancerName: zod.string().nullish(),
   employerName: zod.string().nullish(),
+  employerVerificationLevel: zod
+    .enum(["unverified", "partially_verified", "fully_verified"])
+    .optional(),
   briefContent: zod
     .union([
       zod.null(),
@@ -1840,6 +1891,9 @@ export const UpdateMeetingResponse = zod.object({
   meetingLink: zod.string().nullish(),
   freelancerName: zod.string().nullish(),
   employerName: zod.string().nullish(),
+  employerVerificationLevel: zod
+    .enum(["unverified", "partially_verified", "fully_verified"])
+    .optional(),
   briefContent: zod
     .union([
       zod.null(),
@@ -1883,6 +1937,134 @@ export const UpdateMeetingResponse = zod.object({
  */
 export const GenerateMeetingBriefParams = zod.object({
   id: zod.coerce.number(),
+});
+
+/**
+ * @summary Create or retrieve a direct conversation
+ */
+export const PostConversationsDirectBody = zod.object({
+  employerId: zod.number().optional(),
+  freelancerId: zod.number().optional(),
+  bookingId: zod.number().optional(),
+  meetingId: zod.number().optional(),
+});
+
+export const PostConversationsDirectResponse = zod.object({
+  conversationId: zod.number(),
+  isNew: zod.boolean(),
+});
+
+/**
+ * @summary List direct conversations
+ */
+export const getConversationsDirectQueryPageDefault = 1;
+
+export const getConversationsDirectQueryPageSizeDefault = 20;
+export const getConversationsDirectQueryPageSizeMax = 100;
+
+export const GetConversationsDirectQueryParams = zod.object({
+  page: zod.coerce
+    .number()
+    .min(1)
+    .default(getConversationsDirectQueryPageDefault),
+  pageSize: zod.coerce
+    .number()
+    .min(1)
+    .max(getConversationsDirectQueryPageSizeMax)
+    .default(getConversationsDirectQueryPageSizeDefault),
+});
+
+export const GetConversationsDirectResponse = zod.object({
+  data: zod.array(
+    zod.object({
+      conversationId: zod.number(),
+      otherPartyName: zod.string(),
+      otherPartyAvatar: zod.string().nullish(),
+      lastMessagePreview: zod.string(),
+      lastMessageAt: zod.coerce.date(),
+      unreadCount: zod.number(),
+      bookingTitle: zod.string().optional(),
+      meetingTitle: zod.string().optional(),
+    }),
+  ),
+  total: zod.number(),
+  page: zod.number(),
+  pageSize: zod.number(),
+  totalPages: zod.number(),
+});
+
+/**
+ * @summary List messages in a direct conversation
+ */
+export const GetConversationsIdMessagesParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const getConversationsIdMessagesQueryPageDefault = 1;
+
+export const getConversationsIdMessagesQueryPageSizeDefault = 20;
+export const getConversationsIdMessagesQueryPageSizeMax = 100;
+
+export const GetConversationsIdMessagesQueryParams = zod.object({
+  page: zod.coerce
+    .number()
+    .min(1)
+    .default(getConversationsIdMessagesQueryPageDefault),
+  pageSize: zod.coerce
+    .number()
+    .min(1)
+    .max(getConversationsIdMessagesQueryPageSizeMax)
+    .default(getConversationsIdMessagesQueryPageSizeDefault),
+});
+
+export const GetConversationsIdMessagesResponse = zod.object({
+  data: zod.array(
+    zod.object({
+      id: zod.number(),
+      conversationId: zod.number(),
+      content: zod.string(),
+      senderId: zod.number().nullish(),
+      senderType: zod.string(),
+      senderName: zod.string().nullish(),
+      createdAt: zod.coerce.date(),
+      readAt: zod.coerce.date().nullish(),
+    }),
+  ),
+  total: zod.number(),
+  page: zod.number(),
+  pageSize: zod.number(),
+  totalPages: zod.number(),
+});
+
+/**
+ * @summary Send a message in a direct conversation
+ */
+export const PostConversationsIdMessagesParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const postConversationsIdMessagesBodyContentMax = 2000;
+
+export const PostConversationsIdMessagesBody = zod.object({
+  content: zod.string().min(1).max(postConversationsIdMessagesBodyContentMax),
+});
+
+/**
+ * @summary Mark a direct conversation as read
+ */
+export const PatchConversationsIdReadParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const PatchConversationsIdReadResponse = zod.object({
+  markedRead: zod.number(),
+});
+
+/**
+ * @summary Count direct conversations with unread messages
+ */
+export const GetMessagesUnreadCountResponse = zod.object({
+  count: zod.number(),
 });
 
 /**
@@ -2427,14 +2609,16 @@ export const ListSavedFreelancersResponseItem = zod.object({
   dailyRate: zod.number().nullish(),
   achievements: zod.string().nullish(),
   isVerified: zod.boolean(),
+  verificationLevel: zod.enum([
+    "unverified",
+    "partially_verified",
+    "fully_verified",
+  ]),
   verificationStatus: zod
     .string()
     .optional()
     .describe("unverified | pending | verified | rejected"),
   verificationNote: zod.string().nullish(),
-  verificationLevel: zod
-    .string()
-    .describe("unverified | partially_verified | fully_verified"),
   documentNames: zod.array(zod.string()).optional(),
   isAvailable: zod.boolean(),
   currentBookingId: zod.number().nullish(),
@@ -2798,6 +2982,176 @@ export const GetDocumentsMeResponse = zod.object({
 });
 
 /**
+ * @summary Request an employer business document upload URL
+ */
+export const PostEmployerDocumentsUploadUrlBody = zod.object({
+  documentType: zod.enum([
+    "company_registration",
+    "tax_vat_certificate",
+    "business_licence",
+    "representative_id",
+    "proof_of_business_address",
+  ]),
+  filename: zod.string(),
+  mimeType: zod.enum(["image/jpeg", "image/png", "image/webp"]),
+});
+
+export const PostEmployerDocumentsUploadUrlResponse = zod.object({
+  uploadUrl: zod.string(),
+  fileUrl: zod.string(),
+});
+
+/**
+ * @summary Confirm an employer business document upload
+ */
+export const PostEmployerDocumentsConfirmBody = zod.object({
+  documentType: zod.enum([
+    "company_registration",
+    "tax_vat_certificate",
+    "business_licence",
+    "representative_id",
+    "proof_of_business_address",
+  ]),
+  fileUrl: zod.string(),
+});
+
+/**
+ * @summary Get the current employer's safe document statuses
+ */
+export const GetEmployerDocumentsMeResponse = zod.object({
+  verificationLevel: zod.enum([
+    "unverified",
+    "partially_verified",
+    "fully_verified",
+  ]),
+  isVerified: zod.boolean(),
+  documents: zod.array(
+    zod.object({
+      documentType: zod.enum([
+        "company_registration",
+        "tax_vat_certificate",
+        "business_licence",
+        "representative_id",
+        "proof_of_business_address",
+      ]),
+      status: zod.enum(["pending", "verified", "rejected", "needs_review"]),
+      employerNotes: zod.string().nullable(),
+      updatedAt: zod.coerce.date(),
+    }),
+  ),
+});
+
+/**
+ * @summary Get a short-lived URL to view an own employer document
+ */
+export const GetEmployerDocumentsMeDocumentTypeViewUrlParams = zod.object({
+  documentType: zod.enum([
+    "company_registration",
+    "tax_vat_certificate",
+    "business_licence",
+    "representative_id",
+    "proof_of_business_address",
+  ]),
+});
+
+export const GetEmployerDocumentsMeDocumentTypeViewUrlResponse = zod.object({
+  signedUrl: zod.string(),
+  expiresInSeconds: zod.number(),
+});
+
+/**
+ * @summary List employer documents awaiting review
+ */
+export const getAdminEmployerDocumentsQueryPageDefault = 1;
+
+export const getAdminEmployerDocumentsQueryPageSizeDefault = 20;
+export const getAdminEmployerDocumentsQueryPageSizeMax = 50;
+
+export const getAdminEmployerDocumentsQueryStatusDefault = `pending,needs_review`;
+
+export const GetAdminEmployerDocumentsQueryParams = zod.object({
+  page: zod.coerce
+    .number()
+    .min(1)
+    .default(getAdminEmployerDocumentsQueryPageDefault),
+  pageSize: zod.coerce
+    .number()
+    .min(1)
+    .max(getAdminEmployerDocumentsQueryPageSizeMax)
+    .default(getAdminEmployerDocumentsQueryPageSizeDefault),
+  status: zod.coerce
+    .string()
+    .default(getAdminEmployerDocumentsQueryStatusDefault),
+});
+
+export const GetAdminEmployerDocumentsResponse = zod.object({
+  data: zod.array(
+    zod.object({
+      id: zod.number(),
+      employerName: zod.string().nullish(),
+      companyName: zod.string(),
+      documentType: zod.enum([
+        "company_registration",
+        "tax_vat_certificate",
+        "business_licence",
+        "representative_id",
+        "proof_of_business_address",
+      ]),
+      status: zod.enum(["pending", "verified", "rejected", "needs_review"]),
+      confidence: zod.number().nullish(),
+      aiNotes: zod.string().nullish(),
+      signedFileUrl: zod.string(),
+      createdAt: zod.coerce.date(),
+      reviewedAt: zod.coerce.date().nullish(),
+    }),
+  ),
+  total: zod.number(),
+  page: zod.number(),
+  pageSize: zod.number(),
+  totalPages: zod.number(),
+});
+
+/**
+ * @summary Verify an employer document
+ */
+export const PostAdminEmployerDocumentsIdVerifyParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const PostAdminEmployerDocumentsIdVerifyBody = zod.object({
+  adminNotes: zod.string().optional(),
+});
+
+export const PostAdminEmployerDocumentsIdVerifyResponse = zod.object({
+  success: zod.boolean(),
+  newVerificationLevel: zod.enum([
+    "unverified",
+    "partially_verified",
+    "fully_verified",
+  ]),
+});
+
+/**
+ * @summary Reject an employer document
+ */
+export const PostAdminEmployerDocumentsIdRejectParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const PostAdminEmployerDocumentsIdRejectBody = zod.object({
+  adminNotes: zod.string(),
+});
+
+export const PostAdminEmployerDocumentsIdRejectResponse = zod.object({
+  success: zod.boolean(),
+  newVerificationLevel: zod.enum([
+    "unverified",
+    "partially_verified",
+    "fully_verified",
+  ]),
+});
+
+/**
  * @summary Get team details and member list
  */
 export const GetTeamResponse = zod.object({
@@ -2913,14 +3267,16 @@ export const ListTeamShortlistResponseItem = zod.object({
     dailyRate: zod.number().nullish(),
     achievements: zod.string().nullish(),
     isVerified: zod.boolean(),
+    verificationLevel: zod.enum([
+      "unverified",
+      "partially_verified",
+      "fully_verified",
+    ]),
     verificationStatus: zod
       .string()
       .optional()
       .describe("unverified | pending | verified | rejected"),
     verificationNote: zod.string().nullish(),
-    verificationLevel: zod
-      .string()
-      .describe("unverified | partially_verified | fully_verified"),
     documentNames: zod.array(zod.string()).optional(),
     isAvailable: zod.boolean(),
     currentBookingId: zod.number().nullish(),
@@ -2995,14 +3351,16 @@ export const AddTeamShortlistResponse = zod.object({
     dailyRate: zod.number().nullish(),
     achievements: zod.string().nullish(),
     isVerified: zod.boolean(),
+    verificationLevel: zod.enum([
+      "unverified",
+      "partially_verified",
+      "fully_verified",
+    ]),
     verificationStatus: zod
       .string()
       .optional()
       .describe("unverified | pending | verified | rejected"),
     verificationNote: zod.string().nullish(),
-    verificationLevel: zod
-      .string()
-      .describe("unverified | partially_verified | fully_verified"),
     documentNames: zod.array(zod.string()).optional(),
     isAvailable: zod.boolean(),
     currentBookingId: zod.number().nullish(),

@@ -53,6 +53,26 @@
 
 ---
 
+### Task 1.5 — Left Sidebar App Shell (addendum 2026-07-15)
+
+**Modify:** `artifacts/talentlock/src/components/layout/AppLayout.tsx`
+
+**Actions:**
+- Replace crowded top horizontal nav with fixed left sidebar (`md+`) + slim top bar (bell + account).
+- Group items: Workspace vs Intelligence; full labels always visible in sidebar.
+- Hover / active states per `UI.md` (gold rail, translate, icon scale).
+- Mobile: left drawer + overlay; hamburger on top bar.
+- Keep Messages → chat box; BrandLogo in sidebar; floating chat box unchanged.
+
+**Acceptance:**
+- [x] Desktop does not show a dense top-nav strip of primary routes
+- [x] Every nav item shows icon + label on the left
+- [x] Hover and active states are visually distinct
+- [x] Mobile drawer opens/closes without trapping scroll incorrectly
+- [x] `pnpm --filter @workspace/talentlock run typecheck` passes
+
+---
+
 ### Task 1.4 — Remove violet from Teaching Details + Onboarding profession cards
 
 **Modify:**

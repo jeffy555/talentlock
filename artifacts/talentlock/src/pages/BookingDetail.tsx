@@ -27,11 +27,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, Calendar, CheckCircle2, FileText, XCircle, Sparkles, ShieldCheck, Clock, DollarSign, Flag, Plus, Check, ArrowLeftRight, RefreshCw } from "lucide-react";
 import ReviewPrompt from "@/components/ReviewPrompt";
 import ReviewCard from "@/components/ReviewCard";
 import ProposalGeneratorDrawer, { AcceptedProposalBlock } from "@/components/ProposalGeneratorDrawer";
+import { BookingMessageThread } from "@/components/messages/BookingMessageThread";
 import RateSuggestionWidget from "@/components/RateSuggestionWidget";
 import { dismissReviewPrompt, isReviewPromptDismissed } from "@/lib/reviewPromptStorage";
 import { Link } from "wouter";
@@ -40,6 +42,7 @@ import { buildGoogleCalendarUrl } from "@/lib/calendarUrl";
 import { useState, useEffect } from "react";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { useQueryClient } from "@tanstack/react-query";
+import { VerifiedEmployerBadge } from "@/components/employer/VerifiedEmployerBadge";
 
 const statusColors: Record<string, { bg: string, text: string, border: string }> = {
   pending: { bg: "bg-yellow-50", text: "text-yellow-700", border: "border-yellow-200" },
@@ -303,6 +306,7 @@ export default function BookingDetail() {
           <h1 className="text-4xl font-serif font-bold tracking-tight text-foreground leading-tight">
             {isEmployer ? booking.freelancerName : booking.employerName}
           </h1>
+          {!isEmployer && <VerifiedEmployerBadge verificationLevel={booking.employerVerificationLevel} size="md" />}
           <p className="text-lg text-primary font-medium flex items-center gap-2">
             {booking.status === 'active' ? (
               <><ShieldCheck className="h-5 w-5" /> Exclusivity Locked</>
@@ -381,6 +385,19 @@ export default function BookingDetail() {
           <ReviewCard review={booking.review} />
         </div>
       )}
+
+      <section className="space-y-3">
+        <Tabs defaultValue="messages">
+          <TabsList>
+            <TabsTrigger value="messages">Messages</TabsTrigger>
+          </TabsList>
+          <TabsContent value="messages" className="mt-3">
+            <div className="overflow-hidden rounded-xl border border-border bg-card">
+              <BookingMessageThread bookingId={booking.id} />
+            </div>
+          </TabsContent>
+        </Tabs>
+      </section>
 
       {/* Rate Negotiation Panel */}
       {!isCancelled && isNegotiating && (

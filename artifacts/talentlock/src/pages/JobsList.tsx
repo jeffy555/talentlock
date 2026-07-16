@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Badge } from "@/components/ui/badge";
 import { Briefcase, Calendar, DollarSign, Plus, ArrowRight, Building2 } from "lucide-react";
 import { format } from "date-fns";
+import { VerifiedEmployerBadge } from "@/components/employer/VerifiedEmployerBadge";
 
 export default function JobsList() {
   const { data: user } = useGetMe();
@@ -109,6 +110,9 @@ export default function JobsList() {
                 </div>
                 <CardTitle className="text-xl font-serif leading-snug line-clamp-2">{job.title}</CardTitle>
                 <CardDescription className="text-primary font-medium text-sm mt-2">{job.fieldOfWork}</CardDescription>
+                {!isEmployer && (
+                  <VerifiedEmployerBadge verificationLevel={job.employerVerificationLevel} size="sm" />
+                )}
               </CardHeader>
               
               <CardContent className="flex-1 space-y-5">

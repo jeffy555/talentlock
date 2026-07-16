@@ -34,6 +34,8 @@ import TeamAnalytics from "@/pages/TeamAnalytics";
 import AcceptInvite from "@/pages/AcceptInvite";
 import CruiseMode from "@/pages/CruiseMode";
 import TalentSearch from "@/pages/TalentSearch";
+import MessagesInbox from "@/pages/MessagesInbox";
+import MessageThread from "@/pages/MessageThread";
 
 const clerkPubKey = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY as string | undefined;
 const clerkProxyUrl = import.meta.env.VITE_CLERK_PROXY_URL as string | undefined;
@@ -451,6 +453,8 @@ function ClerkProviderWithRoutes() {
           <Route path="/jobs/:id" component={() => <ProtectedRoute component={JobDetail} />} />
           <Route path="/bookings" component={() => <ProtectedRoute component={BookingsList} />} />
           <Route path="/bookings/:id" component={() => <ProtectedRoute component={BookingDetail} />} />
+          <Route path="/messages" component={() => <ProtectedRoute component={MessagesInbox} />} />
+          <Route path="/messages/:id" component={() => <ProtectedRoute component={MessageThread} />} />
           <Route path="/agreements" component={() => <ProtectedRoute component={AgreementsList} />} />
           <Route path="/agreements/:id" component={() => <ProtectedRoute component={AgreementDetail} />} />
           <Route path="/ai-match" component={() => <ProtectedRoute component={AiMatch} />} />

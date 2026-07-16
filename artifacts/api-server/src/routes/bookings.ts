@@ -76,8 +76,16 @@ router.get("/bookings", async (req, res) => {
 
     const enriched = await Promise.all(rows.map(async (b) => {
       const [f] = await db.select({ name: freelancerProfilesTable.name }).from(freelancerProfilesTable).where(eq(freelancerProfilesTable.id, b.freelancerId)).limit(1);
-      const [e] = await db.select({ name: employerProfilesTable.companyName }).from(employerProfilesTable).where(eq(employerProfilesTable.id, b.employerId)).limit(1);
-      return { ...enrichRate(b), freelancerName: f?.name ?? null, employerName: e?.name ?? null };
+      const [e] = await db.select({
+        name: employerProfilesTable.companyName,
+        verificationLevel: employerProfilesTable.verificationLevel,
+      }).from(employerProfilesTable).where(eq(employerProfilesTable.id, b.employerId)).limit(1);
+      return {
+        ...enrichRate(b),
+        freelancerName: f?.name ?? null,
+        employerName: e?.name ?? null,
+        employerVerificationLevel: e?.verificationLevel ?? "unverified",
+      };
     }));
 
     const total = Number(countResult[0]?.count ?? 0);
@@ -170,7 +178,10 @@ router.post("/bookings", async (req, res) => {
     const booking = result.booking!;
     const [f] = await db.select({ name: freelancerProfilesTable.name, clerkId: freelancerProfilesTable.clerkId })
       .from(freelancerProfilesTable).where(eq(freelancerProfilesTable.id, booking.freelancerId)).limit(1);
-    const [e] = await db.select({ name: employerProfilesTable.companyName })
+    const [e] = await db.select({
+      name: employerProfilesTable.companyName,
+      verificationLevel: employerProfilesTable.verificationLevel,
+    })
       .from(employerProfilesTable).where(eq(employerProfilesTable.id, booking.employerId)).limit(1);
 
     const freelancerUserId = await userIdFromFreelancerProfileId(booking.freelancerId);
@@ -189,7 +200,12 @@ router.post("/bookings", async (req, res) => {
       );
     }
 
-    res.status(201).json({ ...enrichRate(booking), freelancerName: f?.name ?? null, employerName: e?.name ?? null });
+    res.status(201).json({
+      ...enrichRate(booking),
+      freelancerName: f?.name ?? null,
+      employerName: e?.name ?? null,
+      employerVerificationLevel: e?.verificationLevel ?? "unverified",
+    });
   } catch (err) {
     req.log.error({ err }, "Failed to create booking");
     res.status(500).json({ error: "Internal server error" });
@@ -212,7 +228,10 @@ router.get("/bookings/:id", async (req, res) => {
     const [b] = await db.select().from(bookingsTable).where(eq(bookingsTable.id, id)).limit(1);
     if (!b) { res.status(404).json({ error: "Booking not found" }); return; }
     const [f] = await db.select({ name: freelancerProfilesTable.name }).from(freelancerProfilesTable).where(eq(freelancerProfilesTable.id, b.freelancerId)).limit(1);
-    const [e] = await db.select({ name: employerProfilesTable.companyName }).from(employerProfilesTable).where(eq(employerProfilesTable.id, b.employerId)).limit(1);
+    const [e] = await db.select({
+      name: employerProfilesTable.companyName,
+      verificationLevel: employerProfilesTable.verificationLevel,
+    }).from(employerProfilesTable).where(eq(employerProfilesTable.id, b.employerId)).limit(1);
 
     const [reviewRow] = await db.select().from(reviewsTable).where(eq(reviewsTable.bookingId, id)).limit(1);
     let review = null;
@@ -225,6 +244,7 @@ router.get("/bookings/:id", async (req, res) => {
       ...enrichRate(b),
       freelancerName: f?.name ?? null,
       employerName: e?.name ?? null,
+      employerVerificationLevel: e?.verificationLevel ?? "unverified",
       review,
     });
   } catch (err) {

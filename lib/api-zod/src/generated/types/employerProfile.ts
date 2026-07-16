@@ -5,6 +5,7 @@
  * TalentLock API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { EmployerProfileVerificationLevel } from "./employerProfileVerificationLevel";
 
 export interface EmployerProfile {
   id: number;
@@ -19,6 +20,7 @@ export interface EmployerProfile {
   /** @nullable */
   website?: string | null;
   isVerified: boolean;
+  verificationLevel: EmployerProfileVerificationLevel;
   /** unverified | pending | verified | rejected */
   verificationStatus?: string;
   /** @nullable */

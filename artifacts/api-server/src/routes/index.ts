@@ -32,6 +32,8 @@ import accountRouter from "./account";
 import teamRouter from "./team";
 import cruiseModeRouter from "./cruiseMode";
 import talentSearchRouter from "./talentSearch";
+import conversationsRouter from "./conversations";
+import employerDocumentsRouter from "./employerDocuments";
 
 const router: IRouter = Router();
 
@@ -68,5 +70,7 @@ router.use(documentsRouter);
 router.use(teamRouter);
 router.use(cruiseModeRouter);
 router.use(talentSearchRouter);
+router.use(conversationsRouter);
+router.use(employerDocumentsRouter);
 
 export default router;

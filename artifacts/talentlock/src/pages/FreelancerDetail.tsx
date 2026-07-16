@@ -3,6 +3,7 @@ import {
   useGetFreelancerProfile, useGetMe, useCreateBooking, useCreateMeeting,
   useToggleSaveFreelancer, useCheckFreelancerSaved,
   useListFreelancerPortfolio, useGetMySubscription, useGetJobRequirement,
+  usePostConversationsDirect,
 } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -13,7 +14,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, BadgeCheck, Briefcase, Calendar, CheckCircle2, Clock, DollarSign, GraduationCap, Lock, Star, ExternalLink, Video, Heart, Image, Info } from "lucide-react";
+import { ArrowLeft, BadgeCheck, Briefcase, Calendar, CheckCircle2, Clock, DollarSign, GraduationCap, Lock, Star, ExternalLink, Video, Heart, Image, Info, MessageSquare, Loader2 } from "lucide-react";
 import { formatRate, paymentTypeToRateType, profileDefaultRateType } from "@/lib/rateFormatUtils";
 import { EDUCATION_TYPE_LABELS } from "@/components/onboarding/TeachingDetailsSection";
 import { useEffect, useRef, useState } from "react";
@@ -30,6 +31,7 @@ import MatchExplanationCard from "@/components/MatchExplanationCard";
 import RateSuggestionWidget from "@/components/RateSuggestionWidget";
 import { AvailabilitySection } from "@/components/availability/AvailabilitySection";
 import { resolveFreelancerDetailJobId } from "@/lib/aiMatchJobContext";
+import { useChatBox } from "@/components/messages/ChatBoxProvider";
 
 /** Convert an ISO date/datetime to a `YYYY-MM-DD` value for `<input type="date">` without timezone drift. */
 function toDateInputValue(iso?: string | null): string {
@@ -54,6 +56,7 @@ export default function FreelancerDetail() {
   const { data: freelancer, isLoading } = useGetFreelancerProfile(parseInt(id!), { query: { enabled: !!id } as any });
   const createBooking = useCreateBooking();
   const createMeeting = useCreateMeeting();
+  const createConversation = usePostConversationsDirect();
 
   const freelancerId = parseInt(id!);
   const { data: savedData, refetch: refetchSaved } = useCheckFreelancerSaved(freelancerId, { query: { enabled: !!id } } as any);
@@ -141,6 +144,21 @@ export default function FreelancerDetail() {
       }
       const msg = body?.error ?? (err instanceof Error ? err.message : "Could not create the booking.");
       toast({ title: "Booking failed", description: msg, variant: "destructive" });
+    }
+  };
+
+  const { openConversation } = useChatBox();
+
+  const handleMessage = async () => {
+    try {
+      const result = await createConversation.mutateAsync({ data: { freelancerId } });
+      openConversation(result.conversationId);
+    } catch {
+      toast({
+        title: "Could not start conversation",
+        description: "Please try again.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -382,6 +400,15 @@ export default function FreelancerDetail() {
                 <CardDescription className="text-sm">Request an exclusive engagement with this professional.</CardDescription>
               </CardHeader>
               <CardContent className="pt-6">
+                <Button
+                  variant="outline"
+                  className="mb-3 w-full h-11 gap-2"
+                  onClick={() => void handleMessage()}
+                  disabled={createConversation.isPending}
+                >
+                  {createConversation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <MessageSquare className="h-4 w-4" />}
+                  Message
+                </Button>
                 {freelancer.isAvailable ? (
                   <Dialog open={bookingOpen} onOpenChange={(open) => {
                     if (!open && confirmedBookingId) setLocation(`/bookings/${confirmedBookingId}`);

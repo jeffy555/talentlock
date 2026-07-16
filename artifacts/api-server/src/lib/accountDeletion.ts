@@ -13,15 +13,19 @@ import {
   availabilityBlocksTable,
   accountDeletionRequestsTable,
   tokenUsage,
+  messages,
+  employerDocumentsTable,
 } from "@workspace/db";
 import { and, eq, inArray, or, SQL } from "drizzle-orm";
 import { deleteCachedAgreementPdfsForUser } from "./agreementPdfCache";
+import { ObjectStorageService } from "./objectStorage";
 
 type DB = typeof db;
 
 export const BOOKING_ACTIVE_STATUSES = ["active"] as const;
 
 const DELETED_NAME = "Deleted User";
+const objectStorageService = new ObjectStorageService();
 
 export async function countActiveBookingsForUser(
   dbConn: DB,
@@ -80,6 +84,7 @@ export async function anonymiseUserData(
     .where(eq(employerProfilesTable.userId, userId))
     .limit(1);
 
+  const employerDocumentFileUrls: string[] = [];
   await dbConn.transaction(async (tx) => {
     await tx
       .update(usersTable)
@@ -111,18 +116,39 @@ export async function anonymiseUserData(
     }
 
     if (employer) {
+      const employerDocuments = await tx
+        .select({ fileUrl: employerDocumentsTable.fileUrl })
+        .from(employerDocumentsTable)
+        .where(eq(employerDocumentsTable.employerId, employer.id));
+      employerDocumentFileUrls.push(...employerDocuments.map((document) => document.fileUrl));
       await tx
         .update(employerProfilesTable)
         .set({
           companyName: DELETED_NAME,
           description: null,
+          verificationLevel: "unverified",
+          isVerified: false,
           updatedAt: new Date(),
         })
         .where(eq(employerProfilesTable.id, employer.id));
+      await tx
+        .update(employerDocumentsTable)
+        .set({
+          fileUrl: "[removed]",
+          aiNotes: "[removed]",
+          employerNotes: "[removed]",
+          adminNotes: "[removed]",
+          updatedAt: new Date(),
+        })
+        .where(eq(employerDocumentsTable.employerId, employer.id));
     }
 
     await tx.delete(notificationsTable).where(eq(notificationsTable.userId, userId));
     await tx.delete(tokenUsage).where(eq(tokenUsage.userId, userId));
+    await tx
+      .update(messages)
+      .set({ content: "[Message removed]" })
+      .where(eq(messages.senderId, userId));
 
     await tx
       .update(accountDeletionRequestsTable)
@@ -130,6 +156,11 @@ export async function anonymiseUserData(
       .where(eq(accountDeletionRequestsTable.id, deletionRequestId));
   });
 
+  await Promise.all(
+    employerDocumentFileUrls.map((fileUrl) =>
+      objectStorageService.deletePrivateObject(fileUrl).catch(() => undefined),
+    ),
+  );
   await deleteCachedAgreementPdfsForUser(dbConn, userId).catch(() => {
     // Best-effort — cached PDF removal must not block anonymisation
   });

@@ -11,6 +11,7 @@ export const employerProfilesTable = pgTable("employer_profiles", {
   companySize: text("company_size"),
   description: text("description"),
   isVerified: boolean("is_verified").notNull().default(false),
+  verificationLevel: text("verification_level").notNull().default("unverified"),
   documentUrls: text("document_urls").array().default([]),
   documentNames: text("document_names").array().default([]),
   verificationStatus: text("verification_status").notNull().default("unverified"),

@@ -37,10 +37,26 @@
 
   --color-gold: hsl(var(--gold));
   --color-gold-foreground: hsl(var(--gold-foreground));
+  --color-gold-soft: hsl(var(--gold-soft));
+  --color-gold-soft-foreground: hsl(var(--gold-soft-foreground));
+  --color-navy-soft: hsl(var(--navy-soft));
+  --color-navy-soft-foreground: hsl(var(--navy-soft-foreground));
+  --color-surface-elevated: hsl(var(--surface-elevated));
+  --color-surface-sunken: hsl(var(--surface-sunken));
+  --color-success: hsl(var(--success));
+  --color-success-foreground: hsl(var(--success-foreground));
+  --color-success-soft: hsl(var(--success-soft));
+  --color-warning: hsl(var(--warning));
+  --color-warning-foreground: hsl(var(--warning-foreground));
+  --color-warning-soft: hsl(var(--warning-soft));
+  --color-info: hsl(var(--info));
+  --color-info-foreground: hsl(var(--info-foreground));
+  --color-info-soft: hsl(var(--info-soft));
 
   --color-destructive: hsl(var(--destructive));
   --color-destructive-foreground: hsl(var(--destructive-foreground));
   --color-destructive-border: var(--destructive-border);
+  --color-destructive-soft: hsl(var(--destructive-soft));
 
   --color-chart-1: hsl(var(--chart-1));
   --color-chart-2: hsl(var(--chart-2));
@@ -143,8 +159,28 @@
   --gold: 44 52% 52%;
   --gold-foreground: 222 47% 11%;
 
-  --destructive: 0 84.2% 60.2%;
-  --destructive-foreground: 210 40% 98%;
+  /* Named combination fills (use with text-* / border companions below) */
+  --gold-soft: 44 55% 94%;
+  --gold-soft-foreground: 36 50% 28%;
+  --navy-soft: 222 40% 96%;
+  --navy-soft-foreground: 222 47% 18%;
+  --surface-elevated: 0 0% 100%;
+  --surface-sunken: 40 25% 95%;
+
+  /* Semantic status combinations */
+  --success: 160 55% 32%;
+  --success-foreground: 0 0% 100%;
+  --success-soft: 152 45% 94%;
+  --warning: 36 90% 42%;
+  --warning-foreground: 36 80% 14%;
+  --warning-soft: 40 90% 94%;
+  --info: 210 45% 40%;
+  --info-foreground: 0 0% 100%;
+  --info-soft: 210 40% 95%;
+
+  --destructive: 0 72% 48%;
+  --destructive-foreground: 0 0% 100%;
+  --destructive-soft: 0 70% 96%;
 
   --input: 40 10% 90%;
   --ring: 222 47% 11%;
@@ -231,8 +267,26 @@
   --gold: 44 52% 52%;
   --gold-foreground: 222 47% 8%;
 
-  --destructive: 0 62.8% 30.6%;
+  --gold-soft: 44 35% 18%;
+  --gold-soft-foreground: 44 60% 78%;
+  --navy-soft: 222 40% 16%;
+  --navy-soft-foreground: 40 20% 90%;
+  --surface-elevated: 222 47% 12%;
+  --surface-sunken: 222 47% 7%;
+
+  --success: 160 50% 42%;
+  --success-foreground: 0 0% 100%;
+  --success-soft: 160 30% 16%;
+  --warning: 40 85% 50%;
+  --warning-foreground: 40 90% 12%;
+  --warning-soft: 40 40% 16%;
+  --info: 210 50% 55%;
+  --info-foreground: 0 0% 100%;
+  --info-soft: 210 35% 16%;
+
+  --destructive: 0 62.8% 40%;
   --destructive-foreground: 210 40% 98%;
+  --destructive-soft: 0 40% 16%;
 
   --input: 222 40% 18%;
   --ring: 44 52% 52%;
@@ -252,5 +306,48 @@
   }
   h1, h2, h3, h4, h5, h6 {
     @apply font-serif tracking-tight text-foreground;
+  }
+}
+
+/*
+ * Named color combinations — prefer these over ad-hoc Tailwind color stacks.
+ * Usage: className="combo-gold" | "combo-navy-soft" | "combo-success" …
+ */
+@layer components {
+  .combo-shell {
+    @apply bg-primary text-primary-foreground;
+  }
+  .combo-page {
+    @apply bg-background text-foreground;
+  }
+  .combo-card {
+    @apply bg-card text-card-foreground border border-border;
+  }
+  .combo-gold {
+    @apply bg-gold text-gold-foreground;
+  }
+  .combo-gold-soft {
+    @apply bg-gold-soft text-gold-soft-foreground border border-gold/20;
+  }
+  .combo-navy-soft {
+    @apply bg-navy-soft text-navy-soft-foreground border border-primary/10;
+  }
+  .combo-success {
+    @apply bg-success-soft text-success border border-success/20;
+  }
+  .combo-warning {
+    @apply bg-warning-soft text-warning-foreground border border-warning/25;
+  }
+  .combo-info {
+    @apply bg-info-soft text-info border border-info/20;
+  }
+  .combo-danger {
+    @apply bg-destructive-soft text-destructive border border-destructive/20;
+  }
+  .combo-nav-idle {
+    @apply text-white/70 hover:bg-white/[0.07] hover:text-white;
+  }
+  .combo-nav-active {
+    @apply bg-gold/10 text-gold;
   }
 }

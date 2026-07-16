@@ -57,14 +57,19 @@ router.get("/freelancers", async (req, res) => {
       );
     }
 
-    // Full-text search: skills is text[] — array_to_string expression (see plan.md Q3/Q4)
+    // Full-text + name match (name ILIKE covers partial first/last name queries used by messaging search)
     const searchQ = params.q ? sanitiseSearchQuery(params.q) : null;
     if (searchQ) {
+      const namePattern = `%${searchQ}%`;
       conditions.push(
-        sql`to_tsvector('simple',
-          coalesce(${freelancerProfilesTable.bio}, '') || ' ' ||
-          coalesce(array_to_string(${freelancerProfilesTable.skills}, ' '), ''))
-          @@ to_tsquery('simple', ${searchQ})`,
+        or(
+          sql`to_tsvector('simple',
+            coalesce(${freelancerProfilesTable.name}, '') || ' ' ||
+            coalesce(${freelancerProfilesTable.bio}, '') || ' ' ||
+            coalesce(array_to_string(${freelancerProfilesTable.skills}, ' '), ''))
+            @@ to_tsquery('simple', ${searchQ})`,
+          sql`${freelancerProfilesTable.name} ILIKE ${namePattern}`,
+        )!,
       );
     }
 

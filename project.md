@@ -46,14 +46,35 @@ The Vite dev server has a proxy rule that forwards `/api` calls to `localhost:80
 | `team_shortlist` | Shared freelancer shortlist for enterprise teams. |
 | `cruise_mode_configs` | One per freelancer. Has `isActive`, `isDryRun`, `rules` (jsonb), `rulesVersion`, `messagesThisMonth`, `messagesResetAt` columns. |
 | `cruise_mode_activity` | Per-job evaluation log.
+| `employer_documents` | Employer business identity document uploads. Has `id`, `employerId`, `documentType`, `fileUrl`, `status` (pending|verified|rejected|needs_review), `confidence`, `aiNotes` (admin-facing — never returned to employer), `employerNotes` (employer-facing plain English), `adminNotes`, `reviewedBy`, `reviewedAt`. UNIQUE on `(employerId, documentType)`. Upsert on re-upload — single row per type. |
 | `talent_search_configs` | One per employer. Mirror of `cruise_mode_configs`. Has `isActive`, `isDryRun`, `rules` (jsonb), `rulesVersion`, `hoursUsedToday`, `dailyLimitHours`, `hoursResetAt` columns. UNIQUE on `employerId`. |
 | `talent_search_activity` | Per-freelancer evaluation log. Has `employerId`, `freelancerId`, `score`, `decision`, `matchReasons`, `proposedMessage`, `sentAt` columns. | Has `freelancerId`
 
-`meetings` gains `briefContent` (jsonb nullable — `MeetingBrief` type) and `briefGeneratedAt` (timestamptz nullable). Brief is generated fire-and-forget when meeting `status` changes to `confirmed`. Cached on the meeting row. Regeneratable via `POST /api/meetings/:id/brief`., `jobRequirementId`, `score`, `decision`, `matchReasons`, `proposedMessage`, `sentAt` columns. |
+`conversations` gains 5 new nullable columns: `type` (text NOT NULL DEFAULT 'ai_match' — 'ai_match'|'human_direct'), `employerId`, `freelancerId`, `bookingId`, `meetingId`, `lastMessageAt`. `messages` gains `senderType` (text NOT NULL DEFAULT 'ai' — 'ai'|'human') and `readAt` (timestamptz nullable). All existing rows backfilled to 'ai_match' / 'ai' via column defaults — AI chat is completely unchanged.
+
+`meetings` gains `briefContent` (jsonb nullable — `MeetingBrief` type) and `briefGeneratedAt` (timestamptz nullable). Brief is generated fire-and-forget when meeting `status` changes to `confirmed`. Cached on the meeting row. Regeneratable via `POST /api/employer-documents/upload-url              Presigned GCS upload URL for employer business document (employer only, image types only)
+POST /api/employer-documents/confirm                 Confirm employer document upload and trigger AI review fire-and-forget; upserts row
+GET  /api/employer-documents/me                      Employer own document statuses (allowlist: documentType, status, employerNotes, updatedAt — never aiNotes/fileUrl)
+GET  /api/employer-documents/me/:documentType/view-url  Short-lived 15-min signed URL for employer to preview own document
+GET  /api/admin/employer-documents                   Paginated admin queue of pending/needs_review employer documents with signed file URLs and aiNotes
+POST /api/admin/employer-documents/:id/verify        Admin verify employer document; recalculates verificationLevel; notifies employer
+POST /api/admin/employer-documents/:id/reject        Admin reject employer document; adminNotes required; notifies employer
+
+POST /api/conversations/direct                    Create or retrieve a human_direct conversation between employer and freelancer
+GET  /api/conversations/direct                    Paginated inbox of human_direct conversations for current user
+GET  /api/conversations/:id/messages              Paginated message history (human thread — marks messages read on fetch)
+POST /api/conversations/:id/messages              Send a human message (rate-limited 30/hr; 403 non-participant; 422 for ai_match conversations)
+PATCH /api/conversations/:id/read                 Mark all unread messages in this conversation as read
+GET  /api/messages/unread-count                   Count of conversations with unread messages for current user
+
+POST /api/meetings/:id/brief`., `jobRequirementId`, `score`, `decision`, `matchReasons`, `proposedMessage`, `sentAt` columns. |
+| `employer_documents` | Employer business identity document uploads. Has `id`, `employerId`, `documentType`, `fileUrl`, `status` (pending|verified|rejected|needs_review), `confidence`, `aiNotes` (admin-facing — never returned to employer), `employerNotes` (employer-facing plain English), `adminNotes`, `reviewedBy`, `reviewedAt`. UNIQUE on `(employerId, documentType)`. Upsert on re-upload — single row per type. |
 | `talent_search_configs` | One per employer. Has `isActive`, `isDryRun`, `rules` (jsonb), `rulesVersion`, `hoursUsedToday`, `dailyLimitHours`, `hoursResetAt`. UNIQUE on `employerId`. |
 | `talent_search_activity` | Per-freelancer evaluation log. Has `employerId`, `freelancerId`, `rulesVersion`, `score`, `decision`, `matchReasons`, `proposedMessage`, `sentAt`, `freelancerResponded`, `freelancerOptedOut`. |
 
 ### Teaching Professional Profile additions (additive, non-breaking)
+
+`employer_profiles` gains `verificationLevel` (text NOT NULL DEFAULT 'unverified' — 'unverified'|'partially_verified'|'fully_verified') and `isVerified` (boolean NOT NULL DEFAULT false). Both recalculated atomically in the same transaction as every `employer_documents` status change — they never drift.
 
 `freelancer_profiles` gains `talentSearchNotificationsToday` (integer DEFAULT 0) and `talentSearchNotificationsResetAt` (timestamptz) for freelancer daily notification cap (max 3 TalentSearch notifications per day).
 
@@ -118,6 +139,8 @@ Post-codegen mandatory checks:
 | `/team` | Team management (enterprise only) | `employer_enterprise` |
 | `/team/analytics` | Team-level spend and hiring analytics | `employer_enterprise` admin |
 | `/team/accept-invite` | Accept team invite via token | Public |
+| `/messages` | Messages inbox — all human_direct conversations, sorted by last message | Authenticated |
+| `/messages/:id` | Message thread — full conversation with input box and 30s polling | Authenticated |
 | `/cruise-mode` | Cruise Mode setup, activity feed, and stats | `freelancer_pro` only |
 | `/admin/login` | Admin login | Public |
 | `/admin` | Admin dashboard | Admin session only |
@@ -263,6 +286,21 @@ GET  /api/talent-search/stats                    Today and monthly stats
 
 GET  /api/cruise-mode/stats                      Today and monthly stats
 
+POST /api/employer-documents/upload-url              Presigned GCS upload URL for employer business document (employer only, image types only)
+POST /api/employer-documents/confirm                 Confirm employer document upload and trigger AI review fire-and-forget; upserts row
+GET  /api/employer-documents/me                      Employer own document statuses (allowlist: documentType, status, employerNotes, updatedAt — never aiNotes/fileUrl)
+GET  /api/employer-documents/me/:documentType/view-url  Short-lived 15-min signed URL for employer to preview own document
+GET  /api/admin/employer-documents                   Paginated admin queue of pending/needs_review employer documents with signed file URLs and aiNotes
+POST /api/admin/employer-documents/:id/verify        Admin verify employer document; recalculates verificationLevel; notifies employer
+POST /api/admin/employer-documents/:id/reject        Admin reject employer document; adminNotes required; notifies employer
+
+POST /api/conversations/direct                    Create or retrieve a human_direct conversation between employer and freelancer
+GET  /api/conversations/direct                    Paginated inbox of human_direct conversations for current user
+GET  /api/conversations/:id/messages              Paginated message history (human thread — marks messages read on fetch)
+POST /api/conversations/:id/messages              Send a human message (rate-limited 30/hr; 403 non-participant; 422 for ai_match conversations)
+PATCH /api/conversations/:id/read                 Mark all unread messages in this conversation as read
+GET  /api/messages/unread-count                   Count of conversations with unread messages for current user
+
 POST /api/meetings/:id/brief                      Generate or regenerate AI meeting brief (employer only, confirmed meetings only, returns 202 Accepted)
 
 POST /api/storage/uploads/request-url             Request presigned GCS upload URL
@@ -297,7 +335,7 @@ POST /api/admin/logout                            Admin: logout
 
 1. **Dual Role System** — Register as freelancer or employer via onboarding
 2. **Talent Vault** — Browse/filter freelancers by field, rate, availability, available-from date, and keyword search (`?q=`); shortlist with heart icon; completeness gate ≥ 60%
-3. **Exclusive Bookings** — Booked freelancers get a Lock badge and become unavailable. Lock fires only when booking status becomes `active` (primary path: agreement `fully_signed` via `POST /api/agreements/:id/sign`; secondary: `PATCH /api/bookings/:id`). Pending booking requests do **not** lock. `POST /api/bookings` returns `409 FREELANCER_UNAVAILABLE` if the talent is already locked or has an active booking. Shared helper: `lockFreelancerForActiveBooking()` in `availabilityUtils.ts`.
+3. **Exclusive Bookings** — Booked freelancers get a Lock badge and become unavailable
 4. **Rate Negotiation** — Employer proposes a rate; freelancer accepts or counter-proposes; agreement generation gated until both agree
 5. **AI Talent Matching** — GPT-powered chat that recommends matching freelancers
 6. **AI Agreement Generation** — GPT-4 generates legal engagement contracts from booking details
@@ -337,7 +375,26 @@ POST /api/admin/logout                            Admin: logout
 
 37. **TalentSearch (Employer Cruise Mode)** — mirror of Cruise Mode for employers; fires on `PUT /api/freelancers/me` when matchable profile fields change (hash-based detection via `profileMatchHash`); employer sets profession/skill/rate/location/required-document rules; AI evaluates freelancer profile fit 0–100; sends personalised "TalentSearch ✦" Express Interest notification to freelancer when score >= threshold; per-`rulesVersion` duplicate prevention; freelancer opt-out per employer; 2 new tables (`talent_search_configs`, `talent_search_activity`); 1 new column on `freelancer_profiles` (`profileMatchHash`); `talent_search_evaluation` token label; employer-only `/talent-search` page
 
-38. **AI Meeting Brief Generator** — fires fire-and-forget when meeting `status → confirmed`; generates 5-section brief for employer: candidate snapshot (name/field/rate/credentials/reviews), why they match (3 specific reasons), suggested questions (5–8 tailored to job + candidate), rate context (vs market median + employer historical avg + budget check), watch points; cached as `briefContent` jsonb on `meetings` table; manual regeneration via `POST /api/meetings/:id/brief` (202 Accepted); employer-only — freelancers never see it; plan-gated questions (Growth+ only in UI, always generated server-side); `meeting_brief` token label charged to employer; amber accent UI card on meeting detail page
+40. **Employer Verification** — parallel to freelancer document verification; new `employer_documents` table (5 document types: company_registration, tax_vat_certificate, business_licence, representative_id, proof_of_business_address); `employer_profiles` gains `verificationLevel` and `isVerified` calculated atomically on every doc status change; AI vision review (employer-specific prompt) produces admin-facing `aiNotes` and employer-facing `employerNotes` separately; upsert on re-upload (UNIQUE constraint per employer+documentType); `employer_doc_review` token label (tracked, not deducted from plan quota); admin queue extension with Employer Docs tab; Verified Employer badge (✓ / ◐ / none) shown on job posts, bookings, meetings to freelancers; aiNotes/fileUrl/confidence NEVER returned to employers or freelancers; GDPR anonymises document content and deletes GCS files; all plans
+
+39. **In-App Direct Messaging** — extends existing `conversations` (adds `type`, `employerId`, `freelancerId`, `bookingId`, `meetingId`, `lastMessageAt`) and `messages` (adds `senderType`, `readAt`) tables with additive columns; AI chat (`type='ai_match'`) completely unchanged; human threads (`type='human_direct'`) support employer↔freelancer messaging scoped to optional booking or meeting; fire-and-forget `new_message` notification + email on each message; email suppressed if recipient read in last 5 min; 30 messages/hour rate limit per user per conversation; deduplication via UNIQUE partial indexes; GDPR anonymises message content to `[Message removed]` on account deletion; `/messages` inbox + `/messages/:id` thread + Messages tab on booking + Messages section on meeting + "Message" button on freelancer profile; unread badge in nav; 30-second polling; all plans
+
+38. **AI Meeting Brief Generator** — fires fire-and-forget when meeting `status → confirmed`; generates 5-section brief for employer: candidate snapshot (name/field/rate/credentials/reviews), why they match (3 specific reasons), suggested questions (5–8 tailored to job + candidate), rate context (vs market median + employer historical avg + budget check), watch points; cached as `briefContent` jsonb on `meetings` table; manual regeneration via `POST /api/employer-documents/upload-url              Presigned GCS upload URL for employer business document (employer only, image types only)
+POST /api/employer-documents/confirm                 Confirm employer document upload and trigger AI review fire-and-forget; upserts row
+GET  /api/employer-documents/me                      Employer own document statuses (allowlist: documentType, status, employerNotes, updatedAt — never aiNotes/fileUrl)
+GET  /api/employer-documents/me/:documentType/view-url  Short-lived 15-min signed URL for employer to preview own document
+GET  /api/admin/employer-documents                   Paginated admin queue of pending/needs_review employer documents with signed file URLs and aiNotes
+POST /api/admin/employer-documents/:id/verify        Admin verify employer document; recalculates verificationLevel; notifies employer
+POST /api/admin/employer-documents/:id/reject        Admin reject employer document; adminNotes required; notifies employer
+
+POST /api/conversations/direct                    Create or retrieve a human_direct conversation between employer and freelancer
+GET  /api/conversations/direct                    Paginated inbox of human_direct conversations for current user
+GET  /api/conversations/:id/messages              Paginated message history (human thread — marks messages read on fetch)
+POST /api/conversations/:id/messages              Send a human message (rate-limited 30/hr; 403 non-participant; 422 for ai_match conversations)
+PATCH /api/conversations/:id/read                 Mark all unread messages in this conversation as read
+GET  /api/messages/unread-count                   Count of conversations with unread messages for current user
+
+POST /api/meetings/:id/brief` (202 Accepted); employer-only — freelancers never see it; plan-gated questions (Growth+ only in UI, always generated server-side); `meeting_brief` token label charged to employer; amber accent UI card on meeting detail page
 
 ### Dashboard analytics panels
 
@@ -350,13 +407,55 @@ POST /api/admin/logout                            Admin: logout
 Shared server utilities: `artifacts/api-server/src/lib/earningsUtils.ts` (`getLast6Months`, `fillZeroMonths`, `formatCurrency`, `getWindowDates`, `safeAverage`, `getLifecycleTrend`).
 
 
+### Cursor notes — Employer Verification
+
+- `employer_documents` is a SEPARATE table from `documents` — never query `documents` for employer docs
+- `POST /api/employer-documents/confirm` uses UPSERT (`ON CONFLICT (employer_id, document_type) DO UPDATE`) — re-upload resets to pending
+- `recalculateEmployerVerificationLevel(tx, employerId)` receives a transaction object — always called inside a Drizzle transaction alongside the document status update
+- `aiNotes` is NEVER returned in any employer-facing or freelancer-facing API response — it is admin-only
+- `employerNotes` is employer-safe plain English — no raw document content, no registration numbers
+- `GET /api/employer-documents/me` must use an explicit field allowlist — never SELECT *
+- Verified Employer badge renders nothing for unverified employers — no empty badge shown to freelancers
+- `verificationLevel = fully_verified` requires ALL THREE: representative_id + company_registration + tax_vat_certificate verified
+- `employer_doc_review` tokens are tracked against employer account but NOT deducted from plan token quota
+- GCS storage path: `uploads/{employerId}/employer-docs/{documentType}/` — separate from freelancer doc paths
+- Phase 1: JPEG/PNG/WebP only — PDF support is Phase 2
+- Admin reject route: adminNotes is REQUIRED — return 400 if missing
+
+### Cursor notes — In-App Direct Messaging
+
+- `conversations.type` NOT NULL DEFAULT 'ai_match' — all existing AI chat rows are backfilled; NEVER query human threads without `WHERE type = 'human_direct'`
+- AI chat routes (`/api/openai/conversations/*`) are COMPLETELY UNCHANGED — human messaging routes live at `/api/conversations/*` (different router)
+- `POST /api/conversations/:id/messages` returns 422 if called on an `ai_match` conversation — it is NOT the AI chat endpoint
+- Deduplication is enforced by two UNIQUE partial indexes (scoped to booking_id, and unscoped) — `findOrCreateConversation()` uses upsert pattern
+- `createNotification()` and `sendNotificationEmail()` are fire-and-forget `.catch()` — never awaited from the message route handler
+- Email suppression: check `messages.readAt > now() - 5 minutes` for messages TO the recipient before calling `sendNotificationEmail()`
+- Rate limit: count messages from `senderId` in `conversationId` in last 1 hour — return 429 if >= 30
+- GDPR: `accountDeletion.ts` must anonymise `messages.content` to `[Message removed]` for deleted user's messages — do NOT delete conversation rows
+- `readAt` is tracked server-side but NOT shown as read receipts to senders in Phase 1 UI
+
 ### Cursor notes — AI Meeting Brief
 
 - Brief generation fires fire-and-forget on `PATCH /api/meetings/:id` when `status` changes from non-`confirmed` to `confirmed` — capture `previousStatus` BEFORE the `db.update()` call
 - Re-fetch meeting at start of `generateMeetingBrief()` and exit early if `status !== confirmed` (guards against race where meeting is cancelled immediately after being confirmed)
 - `briefContent` is cached on the `meetings` row — no separate table, no version history, regeneration overwrites
 - Token `meeting_brief` is charged to the EMPLOYER account (not freelancer)
-- `POST /api/meetings/:id/brief` returns 202 Accepted — client polls `GET /api/meetings/:id` until `briefGeneratedAt` is populated
+- `POST /api/employer-documents/upload-url              Presigned GCS upload URL for employer business document (employer only, image types only)
+POST /api/employer-documents/confirm                 Confirm employer document upload and trigger AI review fire-and-forget; upserts row
+GET  /api/employer-documents/me                      Employer own document statuses (allowlist: documentType, status, employerNotes, updatedAt — never aiNotes/fileUrl)
+GET  /api/employer-documents/me/:documentType/view-url  Short-lived 15-min signed URL for employer to preview own document
+GET  /api/admin/employer-documents                   Paginated admin queue of pending/needs_review employer documents with signed file URLs and aiNotes
+POST /api/admin/employer-documents/:id/verify        Admin verify employer document; recalculates verificationLevel; notifies employer
+POST /api/admin/employer-documents/:id/reject        Admin reject employer document; adminNotes required; notifies employer
+
+POST /api/conversations/direct                    Create or retrieve a human_direct conversation between employer and freelancer
+GET  /api/conversations/direct                    Paginated inbox of human_direct conversations for current user
+GET  /api/conversations/:id/messages              Paginated message history (human thread — marks messages read on fetch)
+POST /api/conversations/:id/messages              Send a human message (rate-limited 30/hr; 403 non-participant; 422 for ai_match conversations)
+PATCH /api/conversations/:id/read                 Mark all unread messages in this conversation as read
+GET  /api/messages/unread-count                   Count of conversations with unread messages for current user
+
+POST /api/meetings/:id/brief` returns 202 Accepted — client polls `GET /api/meetings/:id` until `briefGeneratedAt` is populated
 - Plan gating is UI-only — server always generates full brief including questions regardless of plan
 - `rateSuggestionUtils.ts` functions called at brief generation time — read-only, no modification
 
@@ -381,7 +480,16 @@ Cursor notes — Teaching Professional Profile
 
 | File | Purpose |
 |---|---|
-| `artifacts/api-server/src/lib/availabilityUtils.ts` | `calculateNextAvailableDate`, `refreshNextAvailableDate`, `createAvailabilityBlock`, `deleteAvailabilityBlockByBookingId`, `lockFreelancerForActiveBooking` |
+| `artifacts/api-server/src/lib/availabilityUtils.ts` | `calculateNextAvailableDate`, `refreshNextAvailableDate`, `createAvailabilityBlock`, `deleteAvailabilityBlockByBookingId` |
+| `artifacts/api-server/src/lib/employerDocReviewUtils.ts` | `reviewEmployerDocument()`, `calculateVerificationLevel()`, `recalculateEmployerVerificationLevel()`, `buildEmployerDocReviewPrompt()`, `validateEmployerDocReviewResponse()`, `DOCUMENT_TYPE_LABELS`, `REQUIRED_FOR_PARTIAL`, `REQUIRED_FOR_FULL` |
+| `artifacts/api-server/src/routes/employerDocuments.ts` | All `/api/employer-documents/*` routes |
+| `artifacts/talentlock/src/components/employer/EmployerVerificationSection.tsx` | Employer profile verification section — disclaimer, status pill, 5-doc checklist, upload flow |
+| `artifacts/talentlock/src/components/employer/VerifiedEmployerBadge.tsx` | Trust badge component — renders green/amber/nothing based on verificationLevel |
+| `artifacts/api-server/src/lib/conversationsUtils.ts` | `findOrCreateConversation()`, `sendHumanMessage()`, `shouldSuppressEmail()`, `markConversationRead()`, `getUnreadConversationCount()` |
+| `artifacts/api-server/src/routes/conversations.ts` | All `/api/conversations/*` and `/api/messages/unread-count` routes |
+| `artifacts/talentlock/src/pages/MessagesInbox.tsx` | `/messages` inbox page with conversation list |
+| `artifacts/talentlock/src/pages/MessageThread.tsx` | `/messages/:id` full thread view |
+| `artifacts/talentlock/src/components/messages/` | `BookingMessageThread`, `MeetingMessageThread`, `InlineMessageThread` |
 | `artifacts/api-server/src/lib/meetingBriefGenerator.ts` | `generateMeetingBrief(db, meetingId, log)` — fire-and-forget brief generation; `resolveJobRequirement()` — 3-path job resolution; `buildMeetingBriefPrompt()` — verbatim prompt builder |
 | `artifacts/talentlock/src/components/meetings/MeetingBriefCard.tsx` | Brief card with 4 states: not-generated, generating (polling), loaded, error |
 | `artifacts/api-server/src/lib/talentSearchUtils.ts` | `talentSearchPreFilter()`, `normaliseFreelancer()`, `buildTalentSearchEvaluationPrompt()`, `validateTalentSearchResponse()` |
@@ -389,6 +497,15 @@ Cursor notes — Teaching Professional Profile
 | `artifacts/api-server/src/routes/talentSearch.ts` | All `/api/talent-search/*` routes |
 | `artifacts/talentlock/src/components/talent-search/` | `TalentSearchStatusBar`, `TalentSearchRuleBuilder`, `TalentSearchActivityFeed` |
 | `artifacts/talentlock/src/lib/rateFormatUtils.ts` | `formatRate(amount, rateType, currencySymbol)`, `rateUnitLabel(rateType)` — centralised rate display for hourly/per_day/per_session/per_course |
+| `artifacts/api-server/src/lib/employerDocReviewUtils.ts` | `reviewEmployerDocument()`, `calculateVerificationLevel()`, `recalculateEmployerVerificationLevel()`, `buildEmployerDocReviewPrompt()`, `validateEmployerDocReviewResponse()`, `DOCUMENT_TYPE_LABELS`, `REQUIRED_FOR_PARTIAL`, `REQUIRED_FOR_FULL` |
+| `artifacts/api-server/src/routes/employerDocuments.ts` | All `/api/employer-documents/*` routes |
+| `artifacts/talentlock/src/components/employer/EmployerVerificationSection.tsx` | Employer profile verification section — disclaimer, status pill, 5-doc checklist, upload flow |
+| `artifacts/talentlock/src/components/employer/VerifiedEmployerBadge.tsx` | Trust badge component — renders green/amber/nothing based on verificationLevel |
+| `artifacts/api-server/src/lib/conversationsUtils.ts` | `findOrCreateConversation()`, `sendHumanMessage()`, `shouldSuppressEmail()`, `markConversationRead()`, `getUnreadConversationCount()` |
+| `artifacts/api-server/src/routes/conversations.ts` | All `/api/conversations/*` and `/api/messages/unread-count` routes |
+| `artifacts/talentlock/src/pages/MessagesInbox.tsx` | `/messages` inbox page with conversation list |
+| `artifacts/talentlock/src/pages/MessageThread.tsx` | `/messages/:id` full thread view |
+| `artifacts/talentlock/src/components/messages/` | `BookingMessageThread`, `MeetingMessageThread`, `InlineMessageThread` |
 | `artifacts/api-server/src/lib/meetingBriefGenerator.ts` | `generateMeetingBrief(db, meetingId, log)` — fire-and-forget brief generation; `resolveJobRequirement()` — 3-path job resolution; `buildMeetingBriefPrompt()` — verbatim prompt builder |
 | `artifacts/talentlock/src/components/meetings/MeetingBriefCard.tsx` | Brief card with 4 states: not-generated, generating (polling), loaded, error |
 | `artifacts/api-server/src/lib/talentSearchUtils.ts` | `employerPreFilter()`, `computeProfileMatchHash()`, `buildTalentSearchPrompt()`, `validateTalentSearchResponse()` |
@@ -517,7 +634,6 @@ pnpm --filter @workspace/talentlock run dev
 
 ## Notes for Cursor
 
-- **Exclusive booking lock** — `lockFreelancerForActiveBooking()` must run on every booking → `active` transition. Primary path is agreement `fully_signed` (`activateBookingWithExclusivityLock` in `agreements.ts`); secondary is `PATCH /bookings/:id`. Never lock on pending create. `POST /bookings` must return `409 FREELANCER_UNAVAILABLE` when `isAvailable === false` or an active booking exists for that freelancer.
 - **pnpm workspace** — always use `pnpm --filter @workspace/<name>` to target a package
 - **Never edit generated files** in `lib/api-client-react/src/` or `lib/api-zod/src/`
 - **Pino logging** — use `req.log` in route handlers, never `console.log`

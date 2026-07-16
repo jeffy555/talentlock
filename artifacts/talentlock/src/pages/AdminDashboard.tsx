@@ -9,6 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import AdminTokenUsageTab, { AdminTokenUsageTabIcon } from "@/components/AdminTokenUsageTab";
 import AdminDocumentReviewTab, { AdminDocumentReviewTabIcon } from "@/components/AdminDocumentReviewTab";
 import { adminMutate, clearAdminCsrfToken } from "@/lib/adminCsrf";
+import { AdminEmployerDocumentTab } from "@/components/AdminEmployerDocumentTab";
 
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
 
@@ -128,13 +129,14 @@ export default function AdminDashboard() {
   const [jobs, setJobs] = useState<JobRow[]>([]);
   const [subs, setSubs] = useState<SubRow[]>([]);
   const [docReviewPending, setDocReviewPending] = useState(0);
+  const [employerDocReviewPending, setEmployerDocReviewPending] = useState(0);
   const [loading, setLoading] = useState(true);
   const [expandedBookingId, setExpandedBookingId] = useState<number | null>(null);
 
   const loadAll = useCallback(async () => {
     setLoading(true);
     try {
-      const [s, a, u, b, j, sb, docQueue] = await Promise.all([
+      const [s, a, u, b, j, sb, docQueue, employerDocQueue] = await Promise.all([
         api<Stats>("/admin/stats"),
         api<AuditRow[]>("/admin/audit?limit=200"),
         api<UserRow[]>("/admin/users?limit=200"),
@@ -142,6 +144,7 @@ export default function AdminDashboard() {
         api<JobRow[]>("/admin/jobs?limit=200"),
         api<SubRow[]>("/admin/subscriptions"),
         api<{ data: unknown[]; total: number }>("/admin/documents?page=1").catch(() => ({ data: [], total: 0 })),
+        api<{ data: unknown[]; total: number }>("/admin/employer-documents?page=1").catch(() => ({ data: [], total: 0 })),
       ]);
       setStats(s);
       setAudit(a);
@@ -150,6 +153,7 @@ export default function AdminDashboard() {
       setJobs(j);
       setSubs(sb);
       setDocReviewPending(docQueue.total);
+      setEmployerDocReviewPending(employerDocQueue.total);
     } catch (err: any) {
       if (err?.message === "UNAUTHORIZED") {
         setLocation("/admin/login");
@@ -234,6 +238,14 @@ export default function AdminDashboard() {
                 </span>
               )}
             </TabsTrigger>
+            <TabsTrigger value="employer-document-review" className="gap-1.5">
+              Employer Docs
+              {employerDocReviewPending > 0 && (
+                <span className="ml-1 rounded-full bg-amber-500 px-1.5 py-0.5 text-xs text-white">
+                  {employerDocReviewPending}
+                </span>
+              )}
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="audit" className="mt-4">
@@ -271,6 +283,10 @@ export default function AdminDashboard() {
                 </div>
               </CardContent>
             </Card>
+          </TabsContent>
+
+          <TabsContent value="employer-document-review" className="mt-4">
+            <AdminEmployerDocumentTab onCount={setEmployerDocReviewPending} />
           </TabsContent>
 
           <TabsContent value="users" className="mt-4">

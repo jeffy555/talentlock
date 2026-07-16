@@ -41,6 +41,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { freelancerProfileHref, persistJobId } from "@/lib/aiMatchJobContext";
+import { VerifiedEmployerBadge } from "@/components/employer/VerifiedEmployerBadge";
 
 export default function JobDetail() {
   const [, params] = useRoute("/jobs/:id");
@@ -173,6 +174,7 @@ export default function JobDetail() {
           </div>
           <h1 className="text-4xl font-serif font-bold tracking-tight text-foreground leading-tight">{job.title}</h1>
           <p className="text-lg text-primary font-medium">{job.fieldOfWork}</p>
+          {!isOwner && <VerifiedEmployerBadge verificationLevel={job.employerVerificationLevel} size="md" />}
         </div>
 
         {isOwner && (

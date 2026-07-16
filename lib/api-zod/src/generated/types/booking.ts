@@ -5,6 +5,7 @@
  * TalentLock API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { BookingEmployerVerificationLevel } from "./bookingEmployerVerificationLevel";
 import type { PublicReview } from "./publicReview";
 
 export interface Booking {
@@ -43,6 +44,7 @@ export interface Booking {
   freelancerName?: string | null;
   /** @nullable */
   employerName?: string | null;
+  employerVerificationLevel?: BookingEmployerVerificationLevel;
   review: PublicReview | null;
   createdAt: Date;
 }

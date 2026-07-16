@@ -7,6 +7,7 @@
  */
 import type { DbsCheckStatus } from "./dbsCheckStatus";
 import type { EducationProfessionType } from "./educationProfessionType";
+import type { FreelancerProfileVerificationLevel } from "./freelancerProfileVerificationLevel";
 import type { HighestDegree } from "./highestDegree";
 import type { PreferredTeachingMode } from "./preferredTeachingMode";
 import type { ProfessionCategory } from "./professionCategory";
@@ -35,12 +36,11 @@ export interface FreelancerProfile {
   /** @nullable */
   achievements?: string | null;
   isVerified: boolean;
+  verificationLevel: FreelancerProfileVerificationLevel;
   /** unverified | pending | verified | rejected */
   verificationStatus?: string;
   /** @nullable */
   verificationNote?: string | null;
-  /** unverified | partially_verified | fully_verified */
-  verificationLevel: string;
   documentNames?: string[];
   isAvailable: boolean;
   /** @nullable */

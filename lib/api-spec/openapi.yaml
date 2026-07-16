@@ -26,6 +26,8 @@ tags:
     description: Pre-booking discovery meeting scheduling
   - name: openai
     description: AI-powered matching chat
+  - name: messaging
+    description: In-app direct messaging between employers and freelancers
   - name: dashboard
     description: Dashboard summary and stats
   - name: Storage
@@ -1431,6 +1433,144 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorEnvelope"
 
+  # ── In-App Direct Messaging ─────────────────────────────────────────────────
+  /conversations/direct:
+    post:
+      operationId: postConversationsDirect
+      tags: [messaging]
+      summary: Create or retrieve a direct conversation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateDirectConversationBody"
+      responses:
+        "200":
+          description: Existing conversation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DirectConversationReference"
+        "201":
+          description: New conversation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DirectConversationReference"
+    get:
+      operationId: getConversationsDirect
+      tags: [messaging]
+      summary: List direct conversations
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: pageSize
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        "200":
+          description: Direct conversation inbox
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DirectConversationPage"
+
+  /conversations/{id}/messages:
+    get:
+      operationId: getConversationsIdMessages
+      tags: [messaging]
+      summary: List messages in a direct conversation
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: pageSize
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        "200":
+          description: Human message history
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HumanMessagePage"
+    post:
+      operationId: postConversationsIdMessages
+      tags: [messaging]
+      summary: Send a message in a direct conversation
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SendHumanMessageBody"
+      responses:
+        "201":
+          description: Saved human message
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HumanMessage"
+
+  /conversations/{id}/read:
+    patch:
+      operationId: patchConversationsIdRead
+      tags: [messaging]
+      summary: Mark a direct conversation as read
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Number of messages marked read
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MarkedRead"
+
+  /messages/unread-count:
+    get:
+      operationId: getMessagesUnreadCount
+      tags: [messaging]
+      summary: Count direct conversations with unread messages
+      responses:
+        "200":
+          description: Unread direct conversation count
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UnreadCount"
+
   # ── AI Matching (OpenAI) ─────────────────────────────────────────────────────
   /openai/conversations:
     get:
@@ -2360,6 +2500,191 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorEnvelope"
+
+  # ── Employer Verification ─────────────────────────────────────────────────
+  /employer-documents/upload-url:
+    post:
+      operationId: postEmployerDocumentsUploadUrl
+      tags: [employer-documents]
+      summary: Request an employer business document upload URL
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EmployerDocumentUploadUrlBody"
+      responses:
+        "200":
+          description: Presigned upload URL
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EmployerDocumentUploadUrl"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "401":
+          description: Unauthorized
+        "403":
+          description: Employer profile required
+
+  /employer-documents/confirm:
+    post:
+      operationId: postEmployerDocumentsConfirm
+      tags: [employer-documents]
+      summary: Confirm an employer business document upload
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EmployerDocumentConfirmBody"
+      responses:
+        "201":
+          description: Document queued for review
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EmployerDocumentConfirmResponse"
+        "400":
+          description: Validation error
+        "401":
+          description: Unauthorized
+        "403":
+          description: Employer profile required
+
+  /employer-documents/me:
+    get:
+      operationId: getEmployerDocumentsMe
+      tags: [employer-documents]
+      summary: Get the current employer's safe document statuses
+      responses:
+        "200":
+          description: Employer document statuses
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EmployerDocumentsMeResponse"
+        "401":
+          description: Unauthorized
+        "403":
+          description: Employer profile required
+
+  /employer-documents/me/{documentType}/view-url:
+    get:
+      operationId: getEmployerDocumentsMeDocumentTypeViewUrl
+      tags: [employer-documents]
+      summary: Get a short-lived URL to view an own employer document
+      parameters:
+        - name: documentType
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/EmployerDocumentType"
+      responses:
+        "200":
+          description: Signed view URL
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EmployerDocumentViewUrl"
+        "401":
+          description: Unauthorized
+        "403":
+          description: Employer profile required
+        "404":
+          description: Document not found
+
+  /admin/employer-documents:
+    get:
+      operationId: getAdminEmployerDocuments
+      tags: [admin]
+      summary: List employer documents awaiting review
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: pageSize
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 20
+        - name: status
+          in: query
+          schema:
+            type: string
+            default: "pending,needs_review"
+      responses:
+        "200":
+          description: Employer document review queue
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminEmployerDocumentPage"
+
+  /admin/employer-documents/{id}/verify:
+    post:
+      operationId: postAdminEmployerDocumentsIdVerify
+      tags: [admin]
+      summary: Verify an employer document
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminEmployerDocumentReviewBody"
+      responses:
+        "200":
+          description: Document verified
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminEmployerDocumentReviewResponse"
+        "404":
+          description: Document not found
+
+  /admin/employer-documents/{id}/reject:
+    post:
+      operationId: postAdminEmployerDocumentsIdReject
+      tags: [admin]
+      summary: Reject an employer document
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminEmployerDocumentRejectBody"
+      responses:
+        "200":
+          description: Document rejected
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminEmployerDocumentReviewResponse"
+        "400":
+          description: Admin notes are required
+        "404":
+          description: Document not found
 
   # ── Team (Enterprise) ─────────────────────────────────────────────────────
   /team:
@@ -3588,14 +3913,14 @@ components:
           type: ["string", "null"]
         isVerified:
           type: boolean
+        verificationLevel:
+          type: string
+          enum: [unverified, partially_verified, fully_verified]
         verificationStatus:
           type: string
           description: "unverified | pending | verified | rejected"
         verificationNote:
           type: ["string", "null"]
-        verificationLevel:
-          type: string
-          description: "unverified | partially_verified | fully_verified"
         documentNames:
           type: array
           items:
@@ -3680,9 +4005,9 @@ components:
         - yearsExperience
         - paymentPreference
         - isVerified
+        - verificationLevel
         - isAvailable
         - subscriptionPlan
-        - verificationLevel
         - reviewCount
         - completenessScore
         - professionCategory
@@ -4020,6 +4345,9 @@ components:
           type: ["string", "null"]
         isVerified:
           type: boolean
+        verificationLevel:
+          type: string
+          enum: [unverified, partially_verified, fully_verified]
         verificationStatus:
           type: string
           description: "unverified | pending | verified | rejected"
@@ -4041,6 +4369,7 @@ components:
         - companyName
         - industry
         - isVerified
+        - verificationLevel
         - subscriptionPlan
         - createdAt
 
@@ -4072,6 +4401,9 @@ components:
           type: integer
         employerId:
           type: integer
+        employerVerificationLevel:
+          type: string
+          enum: [unverified, partially_verified, fully_verified]
         title:
           type: string
         fieldOfWork:
@@ -4108,6 +4440,7 @@ components:
       required:
         - id
         - employerId
+        - employerVerificationLevel
         - title
         - fieldOfWork
         - description
@@ -4231,6 +4564,9 @@ components:
           type: ["string", "null"]
         employerName:
           type: ["string", "null"]
+        employerVerificationLevel:
+          type: string
+          enum: [unverified, partially_verified, fully_verified]
         review:
           oneOf:
             - $ref: "#/components/schemas/PublicReview"
@@ -4665,6 +5001,9 @@ components:
           type: ["string", "null"]
         employerName:
           type: ["string", "null"]
+        employerVerificationLevel:
+          type: string
+          enum: [unverified, partially_verified, fully_verified]
         briefContent:
           oneOf:
             - type: "null"
@@ -4789,6 +5128,137 @@ components:
           type: string
         meetingLink:
           type: string
+
+    # ── In-App Direct Messaging ────────────────────────────────────────────────
+    DirectConversationReference:
+      type: object
+      properties:
+        conversationId:
+          type: integer
+        isNew:
+          type: boolean
+      required:
+        - conversationId
+        - isNew
+
+    CreateDirectConversationBody:
+      type: object
+      properties:
+        employerId:
+          type: integer
+        freelancerId:
+          type: integer
+        bookingId:
+          type: integer
+        meetingId:
+          type: integer
+
+    DirectConversation:
+      type: object
+      properties:
+        conversationId:
+          type: integer
+        otherPartyName:
+          type: string
+        otherPartyAvatar:
+          type: ["string", "null"]
+        lastMessagePreview:
+          type: string
+        lastMessageAt:
+          type: string
+          format: date-time
+        unreadCount:
+          type: integer
+        bookingTitle:
+          type: string
+        meetingTitle:
+          type: string
+      required:
+        - conversationId
+        - otherPartyName
+        - lastMessagePreview
+        - lastMessageAt
+        - unreadCount
+
+    DirectConversationPage:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/DirectConversation"
+        total:
+          type: integer
+        page:
+          type: integer
+        pageSize:
+          type: integer
+        totalPages:
+          type: integer
+      required: [data, total, page, pageSize, totalPages]
+
+    HumanMessage:
+      type: object
+      properties:
+        id:
+          type: integer
+        conversationId:
+          type: integer
+        content:
+          type: string
+        senderId:
+          type: ["integer", "null"]
+        senderType:
+          type: string
+        senderName:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+          format: date-time
+        readAt:
+          type: ["string", "null"]
+          format: date-time
+      required: [id, conversationId, content, senderType, createdAt]
+
+    HumanMessagePage:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/HumanMessage"
+        total:
+          type: integer
+        page:
+          type: integer
+        pageSize:
+          type: integer
+        totalPages:
+          type: integer
+      required: [data, total, page, pageSize, totalPages]
+
+    SendHumanMessageBody:
+      type: object
+      properties:
+        content:
+          type: string
+          minLength: 1
+          maxLength: 2000
+      required: [content]
+
+    MarkedRead:
+      type: object
+      properties:
+        markedRead:
+          type: integer
+      required: [markedRead]
+
+    UnreadCount:
+      type: object
+      properties:
+        count:
+          type: integer
+      required: [count]
 
     # ── OpenAI Conversations ───────────────────────────────────────────────────
     OpenaiConversation:
@@ -5699,6 +6169,161 @@ components:
           type: string
       required:
         - error
+
+    EmployerDocumentType:
+      type: string
+      enum:
+        - company_registration
+        - tax_vat_certificate
+        - business_licence
+        - representative_id
+        - proof_of_business_address
+
+    EmployerDocumentUploadUrlBody:
+      type: object
+      properties:
+        documentType:
+          $ref: "#/components/schemas/EmployerDocumentType"
+        filename:
+          type: string
+        mimeType:
+          type: string
+          enum: [image/jpeg, image/png, image/webp]
+      required: [documentType, filename, mimeType]
+
+    EmployerDocumentUploadUrl:
+      type: object
+      properties:
+        uploadUrl:
+          type: string
+        fileUrl:
+          type: string
+      required: [uploadUrl, fileUrl]
+
+    EmployerDocumentConfirmBody:
+      type: object
+      properties:
+        documentType:
+          $ref: "#/components/schemas/EmployerDocumentType"
+        fileUrl:
+          type: string
+      required: [documentType, fileUrl]
+
+    EmployerDocumentConfirmResponse:
+      type: object
+      properties:
+        documentId:
+          type: integer
+        status:
+          type: string
+          enum: [pending]
+      required: [documentId, status]
+
+    EmployerDocumentStatus:
+      type: object
+      properties:
+        documentType:
+          $ref: "#/components/schemas/EmployerDocumentType"
+        status:
+          type: string
+          enum: [pending, verified, rejected, needs_review]
+        employerNotes:
+          type: ["string", "null"]
+        updatedAt:
+          type: string
+          format: date-time
+      required: [documentType, status, employerNotes, updatedAt]
+
+    EmployerDocumentsMeResponse:
+      type: object
+      properties:
+        verificationLevel:
+          type: string
+          enum: [unverified, partially_verified, fully_verified]
+        isVerified:
+          type: boolean
+        documents:
+          type: array
+          items:
+            $ref: "#/components/schemas/EmployerDocumentStatus"
+      required: [verificationLevel, isVerified, documents]
+
+    EmployerDocumentViewUrl:
+      type: object
+      properties:
+        signedUrl:
+          type: string
+        expiresInSeconds:
+          type: integer
+      required: [signedUrl, expiresInSeconds]
+
+    AdminEmployerDocument:
+      type: object
+      properties:
+        id:
+          type: integer
+        employerName:
+          type: ["string", "null"]
+        companyName:
+          type: string
+        documentType:
+          $ref: "#/components/schemas/EmployerDocumentType"
+        status:
+          type: string
+          enum: [pending, verified, rejected, needs_review]
+        confidence:
+          type: ["integer", "null"]
+        aiNotes:
+          type: ["string", "null"]
+        signedFileUrl:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        reviewedAt:
+          type: ["string", "null"]
+          format: date-time
+      required: [id, companyName, documentType, status, signedFileUrl, createdAt]
+
+    AdminEmployerDocumentPage:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/AdminEmployerDocument"
+        total:
+          type: integer
+        page:
+          type: integer
+        pageSize:
+          type: integer
+        totalPages:
+          type: integer
+      required: [data, total, page, pageSize, totalPages]
+
+    AdminEmployerDocumentReviewBody:
+      type: object
+      properties:
+        adminNotes:
+          type: string
+
+    AdminEmployerDocumentRejectBody:
+      type: object
+      properties:
+        adminNotes:
+          type: string
+      required: [adminNotes]
+
+    AdminEmployerDocumentReviewResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        newVerificationLevel:
+          type: string
+          enum: [unverified, partially_verified, fully_verified]
+      required: [success, newVerificationLevel]
 
     # ── Storage ────────────────────────────────────────────────────────────────
     UploadUrlRequest:

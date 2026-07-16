@@ -5,12 +5,14 @@
  * TalentLock API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { JobRequirementEmployerVerificationLevel } from "./jobRequirementEmployerVerificationLevel";
 import type { ProfessionCategory } from "./professionCategory";
 import type { RateType } from "./rateType";
 
 export interface JobRequirement {
   id: number;
   employerId: number;
+  employerVerificationLevel: JobRequirementEmployerVerificationLevel;
   title: string;
   fieldOfWork: string;
   description: string;

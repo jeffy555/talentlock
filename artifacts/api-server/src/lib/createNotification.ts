@@ -25,6 +25,7 @@ export const NotificationType = {
   TALENT_SEARCH_INTEREST: "talent_search_interest",
   TALENT_SEARCH_SENT: "talent_search_sent",
   MEETING_BRIEF_READY: "meeting_brief_ready",
+  NEW_MESSAGE: "new_message",
 } as const;
 
 type DbLike = Pick<typeof db, "insert">;

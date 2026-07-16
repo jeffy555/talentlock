@@ -19,13 +19,37 @@
 | Secondary / muted | `--secondary` `--muted` | Soft fills, disabled chrome |
 | Border | `--border` | Default borders |
 | Destructive | `--destructive` | Errors only |
-| Success (semantic) | `emerald-*` sparingly | Completed / success icons — not brand accent |
-| Warning (semantic) | `amber-*` | Pending status badges |
+| Success | `--success` / `bg-success` `text-success` | Completed / positive |
+| Warning | `--warning` / `bg-warning` | Pending caution |
+| Info | `--info` / `bg-info` | Neutral informational |
 | Chart series | `--chart-1` … `--chart-5` | Charts only |
 | Serif | `font-serif` (Playfair) | Brand wordmark, page H1, section titles |
 | Sans | `font-sans` (Plus Jakarta) | Body, UI controls |
 
 **Forbidden in app chrome:** `violet-*`, `purple-*`, indigo-as-brand (except chart tokens already defined).
+
+---
+
+## Color combinations (prefer these classes)
+
+Defined in `artifacts/talentlock/src/index.css` (`@layer components`). Prefer a named combo over inventing new Tailwind color stacks.
+
+| Combination | Class | Recipe | Use |
+|---|---|---|---|
+| Shell | `combo-shell` | Navy bg + white text | Sidebar / navy chrome |
+| Page | `combo-page` | Cream bg + navy text | Main canvas |
+| Card | `combo-card` | White + border | Content cards |
+| Gold solid | `combo-gold` | Gold fill + navy text | Primary brand CTAs / badges |
+| Gold soft | `combo-gold-soft` | Pale gold wash + deep gold text | Highlights, AI accents, active washes |
+| Navy soft | `combo-navy-soft` | Pale navy wash + navy text | Secondary panels, info callouts |
+| Success | `combo-success` | Soft green + success text | Verified / completed chips |
+| Warning | `combo-warning` | Soft amber + warning text | Pending exclusivity / caution |
+| Info | `combo-info` | Soft slate-blue + info text | Neutral notices |
+| Danger | `combo-danger` | Soft red + destructive text | Errors / destructive soft banners |
+| Nav idle | `combo-nav-idle` | Muted white on navy + hover wash | Sidebar items |
+| Nav active | `combo-nav-active` | Gold soft on navy | Active sidebar item |
+
+**Tailwind color utilities also available:** `bg-gold-soft`, `text-gold-soft-foreground`, `bg-navy-soft`, `bg-success-soft`, `bg-warning-soft`, `bg-info-soft`, `bg-destructive-soft`, `bg-surface-elevated`, `bg-surface-sunken`.
 
 ---
 
@@ -122,10 +146,40 @@ Icon: Lucide relevant icon in `EmptyMedia variant="icon"` with `text-muted-foreg
 
 ## Page integrations
 
-### AppLayout
+### AppLayout — Left Sidebar Shell (updated 2026-07-15)
 
-- DOM: brand link → `<BrandLogo variant="onDark" size="md" />`
-- Plan badge chips: primary/gold, not violet
+**File:** `artifacts/talentlock/src/components/layout/AppLayout.tsx`
+
+```
+┌────────────────┬──────────────────────────────────────┐
+│ BrandLogo      │  [page title area via main]   🔔 👤 │  ← slim top bar
+│ ─────────────  ├──────────────────────────────────────┤
+│ WORKSPACE      │                                      │
+│  Dashboard     │           Main content               │
+│  Vault         │                                      │
+│  Jobs …        │                                      │
+│ ─────────────  │                                      │
+│ INTELLIGENCE   │                                      │
+│  AI Match ★    │                                      │
+│  TalentSearch  │                                      │
+└────────────────┴──────────────────────────────────────┘
+```
+
+| Region | Spec |
+|---|---|
+| Sidebar width | `w-60` (240px) desktop; `w-72` mobile drawer |
+| Sidebar bg | `bg-primary` navy; right edge `border-white/10` |
+| Nav item | Full width row: icon + label; `px-3 py-2.5 rounded-lg` |
+| Hover | `bg-white/[0.06]` + `translate-x-0.5` + icon `scale-105` + `duration-200` |
+| Active | Left gold rail `w-0.5 bg-gold`, `bg-gold/10 text-gold`, label semibold |
+| Groups | `WORKSPACE` then `INTELLIGENCE` with uppercase 10px tracking labels |
+| Top bar | Sticky, cream/white, only Messages launcher optional none — bell + avatar |
+| Mobile | Hamburger opens left drawer overlay `bg-black/50`; drawer slides in |
+| Motion | Sidebar items stagger fade/slide-in on mount; hover transitions CSS |
+
+- DOM: brand link → `<BrandLogo variant="onDark" size="md" />` in sidebar header
+- Plan badge chips: primary/gold, not violet / teal
+- Do **not** pile primary nav back into the top header
 
 ### AdminLogin (`/admin/login`)
 

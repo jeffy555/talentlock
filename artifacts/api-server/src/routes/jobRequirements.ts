@@ -27,9 +27,14 @@ router.get("/job-requirements", async (req, res) => {
       conditions.push(eq(jobRequirementsTable.status, params.status));
     }
     const results = conditions.length > 0
-      ? await db.select().from(jobRequirementsTable).where(and(...conditions))
-      : await db.select().from(jobRequirementsTable);
-    res.json(results.map(mapJob));
+      ? await db.select({ job: jobRequirementsTable, verificationLevel: employerProfilesTable.verificationLevel })
+        .from(jobRequirementsTable)
+        .leftJoin(employerProfilesTable, eq(jobRequirementsTable.employerId, employerProfilesTable.id))
+        .where(and(...conditions))
+      : await db.select({ job: jobRequirementsTable, verificationLevel: employerProfilesTable.verificationLevel })
+        .from(jobRequirementsTable)
+        .leftJoin(employerProfilesTable, eq(jobRequirementsTable.employerId, employerProfilesTable.id));
+    res.json(results.map((row) => mapJob(row.job, row.verificationLevel)));
   } catch (err) {
     req.log.error({ err }, "Failed to list job requirements");
     res.status(500).json({ error: "Internal server error" });
@@ -78,7 +83,11 @@ router.post("/job-requirements", async (req, res) => {
     evaluateCruiseModeForNewJob(db, newJob.id, req.log).catch((err) =>
       req.log.warn({ err, jobId: newJob.id }, "cruise-mode evaluation hook failed"),
     );
-    res.status(201).json(mapJob(newJob));
+    const [employerProfile] = await db.select({ verificationLevel: employerProfilesTable.verificationLevel })
+      .from(employerProfilesTable)
+      .where(eq(employerProfilesTable.id, newJob.employerId))
+      .limit(1);
+    res.status(201).json(mapJob(newJob, employerProfile?.verificationLevel ?? "unverified"));
   } catch (err) {
     req.log.error({ err }, "Failed to create job requirement");
     res.status(500).json({ error: "Internal server error" });
@@ -89,9 +98,13 @@ router.get("/job-requirements/:id", async (req, res) => {
   const id = parseInt(req.params.id);
   if (isNaN(id)) { res.status(400).json({ error: "Invalid ID" }); return; }
   try {
-    const [job] = await db.select().from(jobRequirementsTable).where(eq(jobRequirementsTable.id, id)).limit(1);
-    if (!job) { res.status(404).json({ error: "Job requirement not found" }); return; }
-    res.json(mapJob(job));
+    const [row] = await db.select({ job: jobRequirementsTable, verificationLevel: employerProfilesTable.verificationLevel })
+      .from(jobRequirementsTable)
+      .leftJoin(employerProfilesTable, eq(jobRequirementsTable.employerId, employerProfilesTable.id))
+      .where(eq(jobRequirementsTable.id, id))
+      .limit(1);
+    if (!row) { res.status(404).json({ error: "Job requirement not found" }); return; }
+    res.json(mapJob(row.job, row.verificationLevel));
   } catch (err) {
     req.log.error({ err }, "Failed to get job requirement");
     res.status(500).json({ error: "Internal server error" });
@@ -121,7 +134,11 @@ router.patch("/job-requirements/:id", async (req, res) => {
       .where(eq(jobRequirementsTable.id, id))
       .returning();
     if (!updated) { res.status(404).json({ error: "Job requirement not found" }); return; }
-    res.json(mapJob(updated));
+    const [employerProfile] = await db.select({ verificationLevel: employerProfilesTable.verificationLevel })
+      .from(employerProfilesTable)
+      .where(eq(employerProfilesTable.id, updated.employerId))
+      .limit(1);
+    res.json(mapJob(updated, employerProfile?.verificationLevel ?? "unverified"));
   } catch (err) {
     req.log.error({ err }, "Failed to update job requirement");
     res.status(500).json({ error: "Internal server error" });
@@ -149,8 +166,12 @@ router.delete("/job-requirements/:id", async (req, res) => {
   }
 });
 
-function mapJob(j: typeof jobRequirementsTable.$inferSelect) {
-  return { ...j, budget: j.budget ? parseFloat(j.budget) : null };
+function mapJob(j: typeof jobRequirementsTable.$inferSelect, verificationLevel?: string | null) {
+  return {
+    ...j,
+    budget: j.budget ? parseFloat(j.budget) : null,
+    employerVerificationLevel: verificationLevel ?? "unverified",
+  };
 }
 
 export default router;

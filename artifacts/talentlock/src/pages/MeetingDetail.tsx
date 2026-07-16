@@ -1,6 +1,7 @@
 import { useParams, useLocation } from "wouter";
 import { useGetMeeting, useUpdateMeeting, useGetMe, useGetMySubscription } from "@workspace/api-client-react";
 import { MeetingBriefCard } from "@/components/meetings/MeetingBriefCard";
+import { MeetingMessageThread } from "@/components/messages/MeetingMessageThread";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,6 +11,7 @@ import {
   XCircle, ExternalLink, ArrowRight, BookOpen,
 } from "lucide-react";
 import { Link } from "wouter";
+import { VerifiedEmployerBadge } from "@/components/employer/VerifiedEmployerBadge";
 import { format } from "date-fns";
 import { buildGoogleCalendarUrl, buildOutlookCalendarUrl, downloadIcsFile } from "@/lib/calendarUrl";
 
@@ -118,6 +120,7 @@ export default function MeetingDetail() {
               <p className="text-muted-foreground mt-1 flex items-center gap-1.5">
                 <Users className="h-4 w-4" />
                 {isEmployer ? meeting.freelancerName : meeting.employerName}
+                {!isEmployer && <VerifiedEmployerBadge verificationLevel={meeting.employerVerificationLevel} />}
               </p>
             </div>
             <Badge className={`border capitalize ${statusColors[meeting.status] ?? "bg-secondary"}`}>
@@ -182,6 +185,13 @@ export default function MeetingDetail() {
               }}
             />
           )}
+
+          <div className="border-t pt-4 space-y-3">
+            <h2 className="font-serif text-xl font-semibold">Messages</h2>
+            <div className="rounded-lg border border-border overflow-hidden">
+              <MeetingMessageThread meetingId={meeting.id} />
+            </div>
+          </div>
 
           {/* Calendar export — quick access to all major calendar apps */}
           {!isCancelled && (

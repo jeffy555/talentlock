@@ -124,6 +124,15 @@ export interface TeachingProfileFields {
   location?: string | null;
 }
 
+export type FreelancerProfileVerificationLevel =
+  (typeof FreelancerProfileVerificationLevel)[keyof typeof FreelancerProfileVerificationLevel];
+
+export const FreelancerProfileVerificationLevel = {
+  unverified: "unverified",
+  partially_verified: "partially_verified",
+  fully_verified: "fully_verified",
+} as const;
+
 export interface FreelancerProfile {
   id: number;
   userId: number;
@@ -148,12 +157,11 @@ export interface FreelancerProfile {
   /** @nullable */
   achievements?: string | null;
   isVerified: boolean;
+  verificationLevel: FreelancerProfileVerificationLevel;
   /** unverified | pending | verified | rejected */
   verificationStatus?: string;
   /** @nullable */
   verificationNote?: string | null;
-  /** unverified | partially_verified | fully_verified */
-  verificationLevel: string;
   documentNames?: string[];
   isAvailable: boolean;
   /** @nullable */
@@ -397,6 +405,15 @@ export interface UpdateFreelancerProfileBody {
   location?: string | null;
 }
 
+export type EmployerProfileVerificationLevel =
+  (typeof EmployerProfileVerificationLevel)[keyof typeof EmployerProfileVerificationLevel];
+
+export const EmployerProfileVerificationLevel = {
+  unverified: "unverified",
+  partially_verified: "partially_verified",
+  fully_verified: "fully_verified",
+} as const;
+
 export interface EmployerProfile {
   id: number;
   userId: number;
@@ -410,6 +427,7 @@ export interface EmployerProfile {
   /** @nullable */
   website?: string | null;
   isVerified: boolean;
+  verificationLevel: EmployerProfileVerificationLevel;
   /** unverified | pending | verified | rejected */
   verificationStatus?: string;
   /** @nullable */
@@ -431,9 +449,19 @@ export interface UpsertEmployerProfileBody {
   subscriptionPlan: string;
 }
 
+export type JobRequirementEmployerVerificationLevel =
+  (typeof JobRequirementEmployerVerificationLevel)[keyof typeof JobRequirementEmployerVerificationLevel];
+
+export const JobRequirementEmployerVerificationLevel = {
+  unverified: "unverified",
+  partially_verified: "partially_verified",
+  fully_verified: "fully_verified",
+} as const;
+
 export interface JobRequirement {
   id: number;
   employerId: number;
+  employerVerificationLevel: JobRequirementEmployerVerificationLevel;
   title: string;
   fieldOfWork: string;
   description: string;
@@ -480,6 +508,15 @@ export interface UpdateJobRequirementBody {
   professionCategory?: ProfessionCategory;
   rateType?: RateType;
 }
+
+export type BookingEmployerVerificationLevel =
+  (typeof BookingEmployerVerificationLevel)[keyof typeof BookingEmployerVerificationLevel];
+
+export const BookingEmployerVerificationLevel = {
+  unverified: "unverified",
+  partially_verified: "partially_verified",
+  fully_verified: "fully_verified",
+} as const;
 
 export interface PublicReview {
   id: number;
@@ -534,6 +571,7 @@ export interface Booking {
   freelancerName?: string | null;
   /** @nullable */
   employerName?: string | null;
+  employerVerificationLevel?: BookingEmployerVerificationLevel;
   review: PublicReview | null;
   createdAt: string;
 }
@@ -793,6 +831,15 @@ export interface SignAgreementBody {
   signatureImageUrl?: string;
 }
 
+export type MeetingEmployerVerificationLevel =
+  (typeof MeetingEmployerVerificationLevel)[keyof typeof MeetingEmployerVerificationLevel];
+
+export const MeetingEmployerVerificationLevel = {
+  unverified: "unverified",
+  partially_verified: "partially_verified",
+  fully_verified: "fully_verified",
+} as const;
+
 export type MeetingBriefCandidateSnapshot = {
   name: string;
   field: string;
@@ -847,6 +894,7 @@ export interface Meeting {
   freelancerName?: string | null;
   /** @nullable */
   employerName?: string | null;
+  employerVerificationLevel?: MeetingEmployerVerificationLevel;
   briefContent?: null | MeetingBrief;
   /** @nullable */
   briefGeneratedAt?: string | null;
@@ -869,6 +917,76 @@ export interface UpdateMeetingBody {
   durationMinutes?: number;
   agenda?: string;
   meetingLink?: string;
+}
+
+export interface DirectConversationReference {
+  conversationId: number;
+  isNew: boolean;
+}
+
+export interface CreateDirectConversationBody {
+  employerId?: number;
+  freelancerId?: number;
+  bookingId?: number;
+  meetingId?: number;
+}
+
+export interface DirectConversation {
+  conversationId: number;
+  otherPartyName: string;
+  /** @nullable */
+  otherPartyAvatar?: string | null;
+  lastMessagePreview: string;
+  lastMessageAt: string;
+  unreadCount: number;
+  bookingTitle?: string;
+  meetingTitle?: string;
+}
+
+export interface DirectConversationPage {
+  data: DirectConversation[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+}
+
+export interface HumanMessage {
+  id: number;
+  conversationId: number;
+  content: string;
+  /** @nullable */
+  senderId?: number | null;
+  senderType: string;
+  /** @nullable */
+  senderName?: string | null;
+  createdAt: string;
+  /** @nullable */
+  readAt?: string | null;
+}
+
+export interface HumanMessagePage {
+  data: HumanMessage[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+}
+
+export interface SendHumanMessageBody {
+  /**
+   * @minLength 1
+   * @maxLength 2000
+   */
+  content: string;
+}
+
+export interface MarkedRead {
+  markedRead: number;
+}
+
+export interface UnreadCount {
+  count: number;
 }
 
 export interface OpenaiConversation {
@@ -1440,6 +1558,149 @@ export interface DocumentsMeResponse {
 export interface DocumentErrorEnvelope {
   error: string;
   code?: string;
+}
+
+export type EmployerDocumentType =
+  (typeof EmployerDocumentType)[keyof typeof EmployerDocumentType];
+
+export const EmployerDocumentType = {
+  company_registration: "company_registration",
+  tax_vat_certificate: "tax_vat_certificate",
+  business_licence: "business_licence",
+  representative_id: "representative_id",
+  proof_of_business_address: "proof_of_business_address",
+} as const;
+
+export type EmployerDocumentUploadUrlBodyMimeType =
+  (typeof EmployerDocumentUploadUrlBodyMimeType)[keyof typeof EmployerDocumentUploadUrlBodyMimeType];
+
+export const EmployerDocumentUploadUrlBodyMimeType = {
+  "image/jpeg": "image/jpeg",
+  "image/png": "image/png",
+  "image/webp": "image/webp",
+} as const;
+
+export interface EmployerDocumentUploadUrlBody {
+  documentType: EmployerDocumentType;
+  filename: string;
+  mimeType: EmployerDocumentUploadUrlBodyMimeType;
+}
+
+export interface EmployerDocumentUploadUrl {
+  uploadUrl: string;
+  fileUrl: string;
+}
+
+export interface EmployerDocumentConfirmBody {
+  documentType: EmployerDocumentType;
+  fileUrl: string;
+}
+
+export type EmployerDocumentConfirmResponseStatus =
+  (typeof EmployerDocumentConfirmResponseStatus)[keyof typeof EmployerDocumentConfirmResponseStatus];
+
+export const EmployerDocumentConfirmResponseStatus = {
+  pending: "pending",
+} as const;
+
+export interface EmployerDocumentConfirmResponse {
+  documentId: number;
+  status: EmployerDocumentConfirmResponseStatus;
+}
+
+export type EmployerDocumentStatusStatus =
+  (typeof EmployerDocumentStatusStatus)[keyof typeof EmployerDocumentStatusStatus];
+
+export const EmployerDocumentStatusStatus = {
+  pending: "pending",
+  verified: "verified",
+  rejected: "rejected",
+  needs_review: "needs_review",
+} as const;
+
+export interface EmployerDocumentStatus {
+  documentType: EmployerDocumentType;
+  status: EmployerDocumentStatusStatus;
+  /** @nullable */
+  employerNotes: string | null;
+  updatedAt: string;
+}
+
+export type EmployerDocumentsMeResponseVerificationLevel =
+  (typeof EmployerDocumentsMeResponseVerificationLevel)[keyof typeof EmployerDocumentsMeResponseVerificationLevel];
+
+export const EmployerDocumentsMeResponseVerificationLevel = {
+  unverified: "unverified",
+  partially_verified: "partially_verified",
+  fully_verified: "fully_verified",
+} as const;
+
+export interface EmployerDocumentsMeResponse {
+  verificationLevel: EmployerDocumentsMeResponseVerificationLevel;
+  isVerified: boolean;
+  documents: EmployerDocumentStatus[];
+}
+
+export interface EmployerDocumentViewUrl {
+  signedUrl: string;
+  expiresInSeconds: number;
+}
+
+export type AdminEmployerDocumentStatus =
+  (typeof AdminEmployerDocumentStatus)[keyof typeof AdminEmployerDocumentStatus];
+
+export const AdminEmployerDocumentStatus = {
+  pending: "pending",
+  verified: "verified",
+  rejected: "rejected",
+  needs_review: "needs_review",
+} as const;
+
+export interface AdminEmployerDocument {
+  id: number;
+  /** @nullable */
+  employerName?: string | null;
+  companyName: string;
+  documentType: EmployerDocumentType;
+  status: AdminEmployerDocumentStatus;
+  /** @nullable */
+  confidence?: number | null;
+  /** @nullable */
+  aiNotes?: string | null;
+  signedFileUrl: string;
+  createdAt: string;
+  /** @nullable */
+  reviewedAt?: string | null;
+}
+
+export interface AdminEmployerDocumentPage {
+  data: AdminEmployerDocument[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+}
+
+export interface AdminEmployerDocumentReviewBody {
+  adminNotes?: string;
+}
+
+export interface AdminEmployerDocumentRejectBody {
+  adminNotes: string;
+}
+
+export type AdminEmployerDocumentReviewResponseNewVerificationLevel =
+  (typeof AdminEmployerDocumentReviewResponseNewVerificationLevel)[keyof typeof AdminEmployerDocumentReviewResponseNewVerificationLevel];
+
+export const AdminEmployerDocumentReviewResponseNewVerificationLevel = {
+  unverified: "unverified",
+  partially_verified: "partially_verified",
+  fully_verified: "fully_verified",
+} as const;
+
+export interface AdminEmployerDocumentReviewResponse {
+  success: boolean;
+  newVerificationLevel: AdminEmployerDocumentReviewResponseNewVerificationLevel;
 }
 
 export interface UploadUrlRequest {
@@ -2385,6 +2646,30 @@ export type GenerateMeetingBrief202 = {
   message: string;
 };
 
+export type GetConversationsDirectParams = {
+  /**
+   * @minimum 1
+   */
+  page?: number;
+  /**
+   * @minimum 1
+   * @maximum 100
+   */
+  pageSize?: number;
+};
+
+export type GetConversationsIdMessagesParams = {
+  /**
+   * @minimum 1
+   */
+  page?: number;
+  /**
+   * @minimum 1
+   * @maximum 100
+   */
+  pageSize?: number;
+};
+
 export type GetDashboardHiringAnalyticsParams = {
   window?: GetDashboardHiringAnalyticsWindow;
 };
@@ -2412,6 +2697,19 @@ export type ListFreelancerReviewsParams = {
 
 export type DeletePortfolioItem200 = {
   deleted: boolean;
+};
+
+export type GetAdminEmployerDocumentsParams = {
+  /**
+   * @minimum 1
+   */
+  page?: number;
+  /**
+   * @minimum 1
+   * @maximum 50
+   */
+  pageSize?: number;
+  status?: string;
 };
 
 export type AcceptTeamInviteParams = {

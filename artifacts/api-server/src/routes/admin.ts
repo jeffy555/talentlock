@@ -15,6 +15,7 @@ import {
   reviewsTable,
   tokenUsage,
   documentsTable,
+  employerDocumentsTable,
 } from "@workspace/db";
 import { sql, desc, eq, gte, count, and, asc, inArray } from "drizzle-orm";
 import { PLANS, type PlanId } from "../lib/plans";
@@ -25,6 +26,12 @@ import { createNotification, NotificationType, userIdFromFreelancerProfileId } f
 import { sendNotificationEmailAsync } from "../lib/emailService";
 import { isPdfStoragePath } from "../lib/documentConstants";
 import { ObjectStorageService } from "../lib/objectStorage";
+import { logAudit } from "../lib/auditLogger";
+import {
+  DOCUMENT_TYPE_LABELS,
+  recalculateEmployerVerificationLevel,
+} from "../lib/employerDocReviewUtils";
+import { sanitiseText } from "../lib/sanitise";
 import {
   verifyAdminCredentials,
   issueAdminCookie,
@@ -769,7 +776,7 @@ router.post("/admin/wipe-all-data", requireAdmin, async (req, res) => {
   try {
     await db.execute(sql`
       TRUNCATE TABLE
-        audit_logs, messages, conversations, agreements, meetings,
+        audit_logs, messages, conversations, agreements, meetings, employer_documents,
         bookings, job_requirements, subscriptions,
         freelancer_profiles, employer_profiles, users
       RESTART IDENTITY CASCADE
@@ -936,6 +943,150 @@ router.patch("/admin/documents/:id", requireAdmin, async (req, res) => {
     req.log.error({ err, documentId: id }, "Failed to update admin document verdict");
     res.status(500).json({ error: "Internal server error" });
   }
+});
+
+router.get("/admin/employer-documents", requireAdmin, async (req, res) => {
+  try {
+    const page = Math.max(1, parseInt(String(req.query.page ?? "1"), 10) || 1);
+    const pageSize = Math.min(50, Math.max(1, parseInt(String(req.query.pageSize ?? "20"), 10) || 20));
+    const offset = (page - 1) * pageSize;
+    const requestedStatuses = String(req.query.status ?? "pending,needs_review")
+      .split(",")
+      .filter((status): status is "pending" | "needs_review" => status === "pending" || status === "needs_review");
+    const statuses = requestedStatuses.length > 0 ? requestedStatuses : ["pending", "needs_review"] as const;
+
+    const [totalRow] = await db
+      .select({ total: count() })
+      .from(employerDocumentsTable)
+      .where(inArray(employerDocumentsTable.status, [...statuses]));
+    const rows = await db
+      .select({
+        id: employerDocumentsTable.id,
+        employerName: usersTable.name,
+        companyName: employerProfilesTable.companyName,
+        documentType: employerDocumentsTable.documentType,
+        status: employerDocumentsTable.status,
+        confidence: employerDocumentsTable.confidence,
+        aiNotes: employerDocumentsTable.aiNotes,
+        fileUrl: employerDocumentsTable.fileUrl,
+        createdAt: employerDocumentsTable.createdAt,
+        reviewedAt: employerDocumentsTable.reviewedAt,
+      })
+      .from(employerDocumentsTable)
+      .innerJoin(employerProfilesTable, eq(employerDocumentsTable.employerId, employerProfilesTable.id))
+      .innerJoin(usersTable, eq(employerProfilesTable.userId, usersTable.id))
+      .where(inArray(employerDocumentsTable.status, [...statuses]))
+      .orderBy(asc(employerDocumentsTable.createdAt))
+      .limit(pageSize)
+      .offset(offset);
+
+    const data = await Promise.all(rows.map(async (row) => ({
+      id: row.id,
+      employerName: row.employerName,
+      companyName: row.companyName,
+      documentType: row.documentType,
+      status: row.status,
+      confidence: row.confidence,
+      aiNotes: row.aiNotes,
+      signedFileUrl: await objectStorageService.getSignedReadUrlForKey(row.fileUrl, 15 * 60),
+      createdAt: row.createdAt.toISOString(),
+      reviewedAt: row.reviewedAt?.toISOString() ?? null,
+    })));
+    res.json({
+      data,
+      total: totalRow?.total ?? 0,
+      page,
+      pageSize,
+      totalPages: Math.ceil(Number(totalRow?.total ?? 0) / pageSize),
+    });
+  } catch (err) {
+    req.log.error({ err }, "Failed to list employer document review queue");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+async function updateEmployerDocumentFromAdmin(
+  req: Parameters<typeof requireAdmin>[0],
+  res: Parameters<typeof requireAdmin>[1],
+  id: number,
+  status: "verified" | "rejected",
+  adminNotes: string | undefined,
+) {
+  if (status === "rejected" && !adminNotes?.trim()) {
+    res.status(400).json({ error: "Admin notes required for rejection" });
+    return;
+  }
+  try {
+    const result = await db.transaction(async (tx) => {
+      const [doc] = await tx.select().from(employerDocumentsTable)
+        .where(eq(employerDocumentsTable.id, id)).limit(1);
+      if (!doc) return { kind: "not_found" as const };
+      const [employer] = await tx.select().from(employerProfilesTable)
+        .where(eq(employerProfilesTable.id, doc.employerId)).limit(1);
+      if (!employer) return { kind: "not_found" as const };
+      const safeNotes = adminNotes?.trim() ? sanitiseText(adminNotes.trim()) : null;
+      await tx.update(employerDocumentsTable).set({
+        status,
+        adminNotes: safeNotes,
+        employerNotes: status === "rejected" ? safeNotes : doc.employerNotes,
+        reviewedBy: "admin",
+        reviewedAt: new Date(),
+        updatedAt: new Date(),
+      }).where(eq(employerDocumentsTable.id, id));
+      await recalculateEmployerVerificationLevel(tx, doc.employerId);
+      const [updatedProfile] = await tx.select({
+        verificationLevel: employerProfilesTable.verificationLevel,
+      }).from(employerProfilesTable).where(eq(employerProfilesTable.id, doc.employerId)).limit(1);
+      return { kind: "updated" as const, doc, employer, verificationLevel: updatedProfile?.verificationLevel ?? "unverified", safeNotes };
+    });
+    if (result.kind === "not_found") {
+      res.status(404).json({ error: "Employer document not found" });
+      return;
+    }
+    const label = DOCUMENT_TYPE_LABELS[result.doc.documentType as keyof typeof DOCUMENT_TYPE_LABELS] ?? result.doc.documentType;
+    const message = status === "verified"
+      ? `Your ${label} has been verified ✓`
+      : `Your ${label} requires attention. ${result.safeNotes ?? "Please re-upload a clearer document."}`;
+    createNotification(db, {
+      userId: result.employer.userId,
+      type: status === "verified" ? "employer_doc_verified" : "employer_doc_rejected",
+      entityType: "employer_document",
+      entityId: id,
+      message,
+    }).catch((err) => req.log.warn({ err, employerDocumentId: id }, "Employer document notification failed"));
+    sendNotificationEmailAsync(
+      db,
+      result.employer.userId,
+      status === "verified" ? "Employer document verified" : "Employer document requires attention",
+      message,
+      "/profile#verification",
+      req.log,
+    );
+    logAudit(db, {
+      action: status === "verified" ? "admin_employer_doc_verified" : "admin_employer_doc_rejected",
+      entityType: "employer_document",
+      entityId: String(id),
+      metadata: { employerId: result.doc.employerId, status },
+    }).catch((err) => req.log.warn({ err, employerDocumentId: id }, "Employer document audit failed"));
+    res.json({ success: true, newVerificationLevel: result.verificationLevel });
+  } catch (err) {
+    req.log.error({ err, employerDocumentId: id }, "Failed to update employer document verdict");
+    res.status(500).json({ error: "Internal server error" });
+  }
+}
+
+router.post("/admin/employer-documents/:id/verify", requireAdmin, async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id)) { res.status(400).json({ error: "Invalid employer document ID" }); return; }
+  const { adminNotes } = (req.body ?? {}) as { adminNotes?: string };
+  await updateEmployerDocumentFromAdmin(req, res, id, "verified", adminNotes);
+});
+
+router.post("/admin/employer-documents/:id/reject", requireAdmin, async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id)) { res.status(400).json({ error: "Invalid employer document ID" }); return; }
+  const { adminNotes } = (req.body ?? {}) as { adminNotes?: string };
+  await updateEmployerDocumentFromAdmin(req, res, id, "rejected", adminNotes);
 });
 
 export default router;

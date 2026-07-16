@@ -16,7 +16,8 @@ export type TokenFeature =
   | "cruise_mode_evaluation"
   | "talent_search_parse"
   | "talent_search_evaluation"
-  | "meeting_brief";
+  | "meeting_brief"
+  | "employer_doc_review";
 
 export const TOKEN_FEATURES: TokenFeature[] = [
   "ai_match",
@@ -34,6 +35,7 @@ export const TOKEN_FEATURES: TokenFeature[] = [
   "talent_search_parse",
   "talent_search_evaluation",
   "meeting_brief",
+  "employer_doc_review",
 ];
 
 const VALID_TOKEN_FEATURES = TOKEN_FEATURES;

@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { MeetingBrief } from "./meetingBrief";
+import type { MeetingEmployerVerificationLevel } from "./meetingEmployerVerificationLevel";
 
 export interface Meeting {
   id: number;
@@ -24,6 +25,7 @@ export interface Meeting {
   freelancerName?: string | null;
   /** @nullable */
   employerName?: string | null;
+  employerVerificationLevel?: MeetingEmployerVerificationLevel;
   briefContent?: null | MeetingBrief;
   /** @nullable */
   briefGeneratedAt?: Date | null;

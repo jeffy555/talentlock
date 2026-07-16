@@ -31,6 +31,14 @@ rg -n "BrandLogo" artifacts/talentlock/src/components/layout/AppLayout.tsx
 - [x] AppLayout imports and renders `BrandLogo`
 - [x] Visual: sidebar shows gold Shield + white “TalentLock” serif wordmark (`variant="onDark"`)
 
+### V1.2b — Left Sidebar Shell (2026-07-15)
+
+- [x] Desktop primary routes live in a left sidebar (not a crowded top strip)
+- [x] Nav grouped Workspace / Intelligence with full labels
+- [x] Hover: background wash + slight translate; active: gold rail + gold text
+- [x] Slim top bar has notifications + account only
+- [x] Mobile: hamburger opens left drawer with the same nav
+
 ### V1.3 — Teaching Details / Onboarding violet purge
 
 ```bash

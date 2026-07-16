@@ -28,6 +28,7 @@ import DeleteAccountSection from "@/components/DeleteAccountSection";
 import { resolveVerificationLevel } from "@/lib/verification";
 import { useQueryClient } from "@tanstack/react-query";
 import TeachingDetailsSection, { emptyTeachingDetails, type TeachingDetailsValues } from "@/components/onboarding/TeachingDetailsSection";
+import EmployerVerificationSection from "@/components/employer/EmployerVerificationSection";
 
 const BASE = import.meta.env.BASE_URL ?? "/";
 
@@ -714,6 +715,7 @@ export default function Profile() {
             </Button>
           </CardContent>
         </Card>
+        <EmployerVerificationSection />
         </>
       )}
 

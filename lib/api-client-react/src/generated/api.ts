@@ -24,6 +24,10 @@ import type {
   AcceptTeamInviteResponse,
   ActivityItem,
   AddTeamShortlistBody,
+  AdminEmployerDocumentPage,
+  AdminEmployerDocumentRejectBody,
+  AdminEmployerDocumentReviewBody,
+  AdminEmployerDocumentReviewResponse,
   Agreement,
   AgreementSignedError,
   AgreementSummaryParseError,
@@ -40,6 +44,7 @@ import type {
   CreateAgreementBody,
   CreateAvailabilityBlockBody,
   CreateBookingBody,
+  CreateDirectConversationBody,
   CreateFreelancerProfileBody,
   CreateJobRequirementBody,
   CreateMeetingBody,
@@ -54,6 +59,8 @@ import type {
   DashboardStats,
   DeleteAvailabilityBlockResponse,
   DeletePortfolioItem200,
+  DirectConversationPage,
+  DirectConversationReference,
   DocumentErrorEnvelope,
   DocumentsConfirmBody,
   DocumentsConfirmResponse,
@@ -61,6 +68,13 @@ import type {
   DocumentsUploadUrlBody,
   DocumentsUploadUrlResponse,
   EarningsIntelligence,
+  EmployerDocumentConfirmBody,
+  EmployerDocumentConfirmResponse,
+  EmployerDocumentType,
+  EmployerDocumentUploadUrl,
+  EmployerDocumentUploadUrlBody,
+  EmployerDocumentViewUrl,
+  EmployerDocumentsMeResponse,
   EmployerProfile,
   ErrorEnvelope,
   ExpressInterestBody,
@@ -68,12 +82,17 @@ import type {
   FreelancerProfileDetail,
   FreelancerReviewsResult,
   GenerateMeetingBrief202,
+  GetAdminEmployerDocumentsParams,
+  GetConversationsDirectParams,
+  GetConversationsIdMessagesParams,
   GetDashboardHiringAnalyticsParams,
   GetTeamAnalyticsParams,
   HealthScoreParseError,
   HealthScoreResult,
   HealthStatus,
   HiringAnalytics,
+  HumanMessage,
+  HumanMessagePage,
   InviteEmailFailedError,
   InviteTeamMemberBody,
   InviteUsedError,
@@ -91,6 +110,7 @@ import type {
   ListNotificationsParams,
   ListPlansParams,
   ListTalentSearchActivityParams,
+  MarkedRead,
   MatchExplanation,
   Meeting,
   Milestone,
@@ -131,6 +151,7 @@ import type {
   ReplyReviewBody,
   ResendTeamInviteResponse,
   SaveToggleResult,
+  SendHumanMessageBody,
   SendOpenaiMessageBody,
   SignAgreementBody,
   SpendAnalytics,
@@ -144,6 +165,7 @@ import type {
   TeamShortlistItem,
   TokenLimitError,
   TokenUsageSummary,
+  UnreadCount,
   UpdateBookingBody,
   UpdateFreelancerProfileBody,
   UpdateJobRequirementBody,
@@ -4620,6 +4642,567 @@ export const useGenerateMeetingBrief = <
 };
 
 /**
+ * @summary Create or retrieve a direct conversation
+ */
+export const getPostConversationsDirectUrl = () => {
+  return `/api/conversations/direct`;
+};
+
+export const postConversationsDirect = async (
+  createDirectConversationBody: CreateDirectConversationBody,
+  options?: RequestInit,
+): Promise<DirectConversationReference> => {
+  return customFetch<DirectConversationReference>(
+    getPostConversationsDirectUrl(),
+    {
+      ...options,
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(createDirectConversationBody),
+    },
+  );
+};
+
+export const getPostConversationsDirectMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof postConversationsDirect>>,
+    TError,
+    { data: BodyType<CreateDirectConversationBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof postConversationsDirect>>,
+  TError,
+  { data: BodyType<CreateDirectConversationBody> },
+  TContext
+> => {
+  const mutationKey = ["postConversationsDirect"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof postConversationsDirect>>,
+    { data: BodyType<CreateDirectConversationBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return postConversationsDirect(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type PostConversationsDirectMutationResult = NonNullable<
+  Awaited<ReturnType<typeof postConversationsDirect>>
+>;
+export type PostConversationsDirectMutationBody =
+  BodyType<CreateDirectConversationBody>;
+export type PostConversationsDirectMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Create or retrieve a direct conversation
+ */
+export const usePostConversationsDirect = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof postConversationsDirect>>,
+    TError,
+    { data: BodyType<CreateDirectConversationBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof postConversationsDirect>>,
+  TError,
+  { data: BodyType<CreateDirectConversationBody> },
+  TContext
+> => {
+  return useMutation(getPostConversationsDirectMutationOptions(options));
+};
+
+/**
+ * @summary List direct conversations
+ */
+export const getGetConversationsDirectUrl = (
+  params?: GetConversationsDirectParams,
+) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/conversations/direct?${stringifiedParams}`
+    : `/api/conversations/direct`;
+};
+
+export const getConversationsDirect = async (
+  params?: GetConversationsDirectParams,
+  options?: RequestInit,
+): Promise<DirectConversationPage> => {
+  return customFetch<DirectConversationPage>(
+    getGetConversationsDirectUrl(params),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getGetConversationsDirectQueryKey = (
+  params?: GetConversationsDirectParams,
+) => {
+  return [`/api/conversations/direct`, ...(params ? [params] : [])] as const;
+};
+
+export const getGetConversationsDirectQueryOptions = <
+  TData = Awaited<ReturnType<typeof getConversationsDirect>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: GetConversationsDirectParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getConversationsDirect>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetConversationsDirectQueryKey(params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getConversationsDirect>>
+  > = ({ signal }) =>
+    getConversationsDirect(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getConversationsDirect>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetConversationsDirectQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getConversationsDirect>>
+>;
+export type GetConversationsDirectQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List direct conversations
+ */
+
+export function useGetConversationsDirect<
+  TData = Awaited<ReturnType<typeof getConversationsDirect>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: GetConversationsDirectParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getConversationsDirect>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetConversationsDirectQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary List messages in a direct conversation
+ */
+export const getGetConversationsIdMessagesUrl = (
+  id: number,
+  params?: GetConversationsIdMessagesParams,
+) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/conversations/${id}/messages?${stringifiedParams}`
+    : `/api/conversations/${id}/messages`;
+};
+
+export const getConversationsIdMessages = async (
+  id: number,
+  params?: GetConversationsIdMessagesParams,
+  options?: RequestInit,
+): Promise<HumanMessagePage> => {
+  return customFetch<HumanMessagePage>(
+    getGetConversationsIdMessagesUrl(id, params),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getGetConversationsIdMessagesQueryKey = (
+  id: number,
+  params?: GetConversationsIdMessagesParams,
+) => {
+  return [
+    `/api/conversations/${id}/messages`,
+    ...(params ? [params] : []),
+  ] as const;
+};
+
+export const getGetConversationsIdMessagesQueryOptions = <
+  TData = Awaited<ReturnType<typeof getConversationsIdMessages>>,
+  TError = ErrorType<unknown>,
+>(
+  id: number,
+  params?: GetConversationsIdMessagesParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getConversationsIdMessages>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetConversationsIdMessagesQueryKey(id, params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getConversationsIdMessages>>
+  > = ({ signal }) =>
+    getConversationsIdMessages(id, params, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!id,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getConversationsIdMessages>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetConversationsIdMessagesQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getConversationsIdMessages>>
+>;
+export type GetConversationsIdMessagesQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List messages in a direct conversation
+ */
+
+export function useGetConversationsIdMessages<
+  TData = Awaited<ReturnType<typeof getConversationsIdMessages>>,
+  TError = ErrorType<unknown>,
+>(
+  id: number,
+  params?: GetConversationsIdMessagesParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getConversationsIdMessages>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetConversationsIdMessagesQueryOptions(
+    id,
+    params,
+    options,
+  );
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Send a message in a direct conversation
+ */
+export const getPostConversationsIdMessagesUrl = (id: number) => {
+  return `/api/conversations/${id}/messages`;
+};
+
+export const postConversationsIdMessages = async (
+  id: number,
+  sendHumanMessageBody: SendHumanMessageBody,
+  options?: RequestInit,
+): Promise<HumanMessage> => {
+  return customFetch<HumanMessage>(getPostConversationsIdMessagesUrl(id), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(sendHumanMessageBody),
+  });
+};
+
+export const getPostConversationsIdMessagesMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof postConversationsIdMessages>>,
+    TError,
+    { id: number; data: BodyType<SendHumanMessageBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof postConversationsIdMessages>>,
+  TError,
+  { id: number; data: BodyType<SendHumanMessageBody> },
+  TContext
+> => {
+  const mutationKey = ["postConversationsIdMessages"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof postConversationsIdMessages>>,
+    { id: number; data: BodyType<SendHumanMessageBody> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return postConversationsIdMessages(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type PostConversationsIdMessagesMutationResult = NonNullable<
+  Awaited<ReturnType<typeof postConversationsIdMessages>>
+>;
+export type PostConversationsIdMessagesMutationBody =
+  BodyType<SendHumanMessageBody>;
+export type PostConversationsIdMessagesMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Send a message in a direct conversation
+ */
+export const usePostConversationsIdMessages = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof postConversationsIdMessages>>,
+    TError,
+    { id: number; data: BodyType<SendHumanMessageBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof postConversationsIdMessages>>,
+  TError,
+  { id: number; data: BodyType<SendHumanMessageBody> },
+  TContext
+> => {
+  return useMutation(getPostConversationsIdMessagesMutationOptions(options));
+};
+
+/**
+ * @summary Mark a direct conversation as read
+ */
+export const getPatchConversationsIdReadUrl = (id: number) => {
+  return `/api/conversations/${id}/read`;
+};
+
+export const patchConversationsIdRead = async (
+  id: number,
+  options?: RequestInit,
+): Promise<MarkedRead> => {
+  return customFetch<MarkedRead>(getPatchConversationsIdReadUrl(id), {
+    ...options,
+    method: "PATCH",
+  });
+};
+
+export const getPatchConversationsIdReadMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof patchConversationsIdRead>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof patchConversationsIdRead>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  const mutationKey = ["patchConversationsIdRead"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof patchConversationsIdRead>>,
+    { id: number }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return patchConversationsIdRead(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type PatchConversationsIdReadMutationResult = NonNullable<
+  Awaited<ReturnType<typeof patchConversationsIdRead>>
+>;
+
+export type PatchConversationsIdReadMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Mark a direct conversation as read
+ */
+export const usePatchConversationsIdRead = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof patchConversationsIdRead>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof patchConversationsIdRead>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  return useMutation(getPatchConversationsIdReadMutationOptions(options));
+};
+
+/**
+ * @summary Count direct conversations with unread messages
+ */
+export const getGetMessagesUnreadCountUrl = () => {
+  return `/api/messages/unread-count`;
+};
+
+export const getMessagesUnreadCount = async (
+  options?: RequestInit,
+): Promise<UnreadCount> => {
+  return customFetch<UnreadCount>(getGetMessagesUnreadCountUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetMessagesUnreadCountQueryKey = () => {
+  return [`/api/messages/unread-count`] as const;
+};
+
+export const getGetMessagesUnreadCountQueryOptions = <
+  TData = Awaited<ReturnType<typeof getMessagesUnreadCount>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getMessagesUnreadCount>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetMessagesUnreadCountQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getMessagesUnreadCount>>
+  > = ({ signal }) => getMessagesUnreadCount({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getMessagesUnreadCount>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetMessagesUnreadCountQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getMessagesUnreadCount>>
+>;
+export type GetMessagesUnreadCountQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Count direct conversations with unread messages
+ */
+
+export function useGetMessagesUnreadCount<
+  TData = Awaited<ReturnType<typeof getMessagesUnreadCount>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getMessagesUnreadCount>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetMessagesUnreadCountQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
  * @summary List AI matching conversations
  */
 export const getListOpenaiConversationsUrl = () => {
@@ -7715,6 +8298,665 @@ export function useGetDocumentsMe<
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
+
+/**
+ * @summary Request an employer business document upload URL
+ */
+export const getPostEmployerDocumentsUploadUrlUrl = () => {
+  return `/api/employer-documents/upload-url`;
+};
+
+export const postEmployerDocumentsUploadUrl = async (
+  employerDocumentUploadUrlBody: EmployerDocumentUploadUrlBody,
+  options?: RequestInit,
+): Promise<EmployerDocumentUploadUrl> => {
+  return customFetch<EmployerDocumentUploadUrl>(
+    getPostEmployerDocumentsUploadUrlUrl(),
+    {
+      ...options,
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(employerDocumentUploadUrlBody),
+    },
+  );
+};
+
+export const getPostEmployerDocumentsUploadUrlMutationOptions = <
+  TError = ErrorType<ErrorEnvelope | void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof postEmployerDocumentsUploadUrl>>,
+    TError,
+    { data: BodyType<EmployerDocumentUploadUrlBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof postEmployerDocumentsUploadUrl>>,
+  TError,
+  { data: BodyType<EmployerDocumentUploadUrlBody> },
+  TContext
+> => {
+  const mutationKey = ["postEmployerDocumentsUploadUrl"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof postEmployerDocumentsUploadUrl>>,
+    { data: BodyType<EmployerDocumentUploadUrlBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return postEmployerDocumentsUploadUrl(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type PostEmployerDocumentsUploadUrlMutationResult = NonNullable<
+  Awaited<ReturnType<typeof postEmployerDocumentsUploadUrl>>
+>;
+export type PostEmployerDocumentsUploadUrlMutationBody =
+  BodyType<EmployerDocumentUploadUrlBody>;
+export type PostEmployerDocumentsUploadUrlMutationError =
+  ErrorType<ErrorEnvelope | void>;
+
+/**
+ * @summary Request an employer business document upload URL
+ */
+export const usePostEmployerDocumentsUploadUrl = <
+  TError = ErrorType<ErrorEnvelope | void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof postEmployerDocumentsUploadUrl>>,
+    TError,
+    { data: BodyType<EmployerDocumentUploadUrlBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof postEmployerDocumentsUploadUrl>>,
+  TError,
+  { data: BodyType<EmployerDocumentUploadUrlBody> },
+  TContext
+> => {
+  return useMutation(getPostEmployerDocumentsUploadUrlMutationOptions(options));
+};
+
+/**
+ * @summary Confirm an employer business document upload
+ */
+export const getPostEmployerDocumentsConfirmUrl = () => {
+  return `/api/employer-documents/confirm`;
+};
+
+export const postEmployerDocumentsConfirm = async (
+  employerDocumentConfirmBody: EmployerDocumentConfirmBody,
+  options?: RequestInit,
+): Promise<EmployerDocumentConfirmResponse> => {
+  return customFetch<EmployerDocumentConfirmResponse>(
+    getPostEmployerDocumentsConfirmUrl(),
+    {
+      ...options,
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(employerDocumentConfirmBody),
+    },
+  );
+};
+
+export const getPostEmployerDocumentsConfirmMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof postEmployerDocumentsConfirm>>,
+    TError,
+    { data: BodyType<EmployerDocumentConfirmBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof postEmployerDocumentsConfirm>>,
+  TError,
+  { data: BodyType<EmployerDocumentConfirmBody> },
+  TContext
+> => {
+  const mutationKey = ["postEmployerDocumentsConfirm"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof postEmployerDocumentsConfirm>>,
+    { data: BodyType<EmployerDocumentConfirmBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return postEmployerDocumentsConfirm(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type PostEmployerDocumentsConfirmMutationResult = NonNullable<
+  Awaited<ReturnType<typeof postEmployerDocumentsConfirm>>
+>;
+export type PostEmployerDocumentsConfirmMutationBody =
+  BodyType<EmployerDocumentConfirmBody>;
+export type PostEmployerDocumentsConfirmMutationError = ErrorType<void>;
+
+/**
+ * @summary Confirm an employer business document upload
+ */
+export const usePostEmployerDocumentsConfirm = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof postEmployerDocumentsConfirm>>,
+    TError,
+    { data: BodyType<EmployerDocumentConfirmBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof postEmployerDocumentsConfirm>>,
+  TError,
+  { data: BodyType<EmployerDocumentConfirmBody> },
+  TContext
+> => {
+  return useMutation(getPostEmployerDocumentsConfirmMutationOptions(options));
+};
+
+/**
+ * @summary Get the current employer's safe document statuses
+ */
+export const getGetEmployerDocumentsMeUrl = () => {
+  return `/api/employer-documents/me`;
+};
+
+export const getEmployerDocumentsMe = async (
+  options?: RequestInit,
+): Promise<EmployerDocumentsMeResponse> => {
+  return customFetch<EmployerDocumentsMeResponse>(
+    getGetEmployerDocumentsMeUrl(),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getGetEmployerDocumentsMeQueryKey = () => {
+  return [`/api/employer-documents/me`] as const;
+};
+
+export const getGetEmployerDocumentsMeQueryOptions = <
+  TData = Awaited<ReturnType<typeof getEmployerDocumentsMe>>,
+  TError = ErrorType<void>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getEmployerDocumentsMe>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetEmployerDocumentsMeQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getEmployerDocumentsMe>>
+  > = ({ signal }) => getEmployerDocumentsMe({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getEmployerDocumentsMe>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetEmployerDocumentsMeQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getEmployerDocumentsMe>>
+>;
+export type GetEmployerDocumentsMeQueryError = ErrorType<void>;
+
+/**
+ * @summary Get the current employer's safe document statuses
+ */
+
+export function useGetEmployerDocumentsMe<
+  TData = Awaited<ReturnType<typeof getEmployerDocumentsMe>>,
+  TError = ErrorType<void>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getEmployerDocumentsMe>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetEmployerDocumentsMeQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Get a short-lived URL to view an own employer document
+ */
+export const getGetEmployerDocumentsMeDocumentTypeViewUrlUrl = (
+  documentType: EmployerDocumentType,
+) => {
+  return `/api/employer-documents/me/${documentType}/view-url`;
+};
+
+export const getEmployerDocumentsMeDocumentTypeViewUrl = async (
+  documentType: EmployerDocumentType,
+  options?: RequestInit,
+): Promise<EmployerDocumentViewUrl> => {
+  return customFetch<EmployerDocumentViewUrl>(
+    getGetEmployerDocumentsMeDocumentTypeViewUrlUrl(documentType),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getGetEmployerDocumentsMeDocumentTypeViewUrlQueryKey = (
+  documentType: EmployerDocumentType,
+) => {
+  return [`/api/employer-documents/me/${documentType}/view-url`] as const;
+};
+
+export const getGetEmployerDocumentsMeDocumentTypeViewUrlQueryOptions = <
+  TData = Awaited<ReturnType<typeof getEmployerDocumentsMeDocumentTypeViewUrl>>,
+  TError = ErrorType<void>,
+>(
+  documentType: EmployerDocumentType,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getEmployerDocumentsMeDocumentTypeViewUrl>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ??
+    getGetEmployerDocumentsMeDocumentTypeViewUrlQueryKey(documentType);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getEmployerDocumentsMeDocumentTypeViewUrl>>
+  > = ({ signal }) =>
+    getEmployerDocumentsMeDocumentTypeViewUrl(documentType, {
+      signal,
+      ...requestOptions,
+    });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!documentType,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getEmployerDocumentsMeDocumentTypeViewUrl>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetEmployerDocumentsMeDocumentTypeViewUrlQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getEmployerDocumentsMeDocumentTypeViewUrl>>
+>;
+export type GetEmployerDocumentsMeDocumentTypeViewUrlQueryError =
+  ErrorType<void>;
+
+/**
+ * @summary Get a short-lived URL to view an own employer document
+ */
+
+export function useGetEmployerDocumentsMeDocumentTypeViewUrl<
+  TData = Awaited<ReturnType<typeof getEmployerDocumentsMeDocumentTypeViewUrl>>,
+  TError = ErrorType<void>,
+>(
+  documentType: EmployerDocumentType,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getEmployerDocumentsMeDocumentTypeViewUrl>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetEmployerDocumentsMeDocumentTypeViewUrlQueryOptions(
+    documentType,
+    options,
+  );
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary List employer documents awaiting review
+ */
+export const getGetAdminEmployerDocumentsUrl = (
+  params?: GetAdminEmployerDocumentsParams,
+) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/admin/employer-documents?${stringifiedParams}`
+    : `/api/admin/employer-documents`;
+};
+
+export const getAdminEmployerDocuments = async (
+  params?: GetAdminEmployerDocumentsParams,
+  options?: RequestInit,
+): Promise<AdminEmployerDocumentPage> => {
+  return customFetch<AdminEmployerDocumentPage>(
+    getGetAdminEmployerDocumentsUrl(params),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getGetAdminEmployerDocumentsQueryKey = (
+  params?: GetAdminEmployerDocumentsParams,
+) => {
+  return [
+    `/api/admin/employer-documents`,
+    ...(params ? [params] : []),
+  ] as const;
+};
+
+export const getGetAdminEmployerDocumentsQueryOptions = <
+  TData = Awaited<ReturnType<typeof getAdminEmployerDocuments>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: GetAdminEmployerDocumentsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getAdminEmployerDocuments>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetAdminEmployerDocumentsQueryKey(params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getAdminEmployerDocuments>>
+  > = ({ signal }) =>
+    getAdminEmployerDocuments(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getAdminEmployerDocuments>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetAdminEmployerDocumentsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getAdminEmployerDocuments>>
+>;
+export type GetAdminEmployerDocumentsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List employer documents awaiting review
+ */
+
+export function useGetAdminEmployerDocuments<
+  TData = Awaited<ReturnType<typeof getAdminEmployerDocuments>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: GetAdminEmployerDocumentsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getAdminEmployerDocuments>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetAdminEmployerDocumentsQueryOptions(
+    params,
+    options,
+  );
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Verify an employer document
+ */
+export const getPostAdminEmployerDocumentsIdVerifyUrl = (id: number) => {
+  return `/api/admin/employer-documents/${id}/verify`;
+};
+
+export const postAdminEmployerDocumentsIdVerify = async (
+  id: number,
+  adminEmployerDocumentReviewBody?: AdminEmployerDocumentReviewBody,
+  options?: RequestInit,
+): Promise<AdminEmployerDocumentReviewResponse> => {
+  return customFetch<AdminEmployerDocumentReviewResponse>(
+    getPostAdminEmployerDocumentsIdVerifyUrl(id),
+    {
+      ...options,
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(adminEmployerDocumentReviewBody),
+    },
+  );
+};
+
+export const getPostAdminEmployerDocumentsIdVerifyMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof postAdminEmployerDocumentsIdVerify>>,
+    TError,
+    { id: number; data: BodyType<AdminEmployerDocumentReviewBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof postAdminEmployerDocumentsIdVerify>>,
+  TError,
+  { id: number; data: BodyType<AdminEmployerDocumentReviewBody> },
+  TContext
+> => {
+  const mutationKey = ["postAdminEmployerDocumentsIdVerify"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof postAdminEmployerDocumentsIdVerify>>,
+    { id: number; data: BodyType<AdminEmployerDocumentReviewBody> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return postAdminEmployerDocumentsIdVerify(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type PostAdminEmployerDocumentsIdVerifyMutationResult = NonNullable<
+  Awaited<ReturnType<typeof postAdminEmployerDocumentsIdVerify>>
+>;
+export type PostAdminEmployerDocumentsIdVerifyMutationBody =
+  BodyType<AdminEmployerDocumentReviewBody>;
+export type PostAdminEmployerDocumentsIdVerifyMutationError = ErrorType<void>;
+
+/**
+ * @summary Verify an employer document
+ */
+export const usePostAdminEmployerDocumentsIdVerify = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof postAdminEmployerDocumentsIdVerify>>,
+    TError,
+    { id: number; data: BodyType<AdminEmployerDocumentReviewBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof postAdminEmployerDocumentsIdVerify>>,
+  TError,
+  { id: number; data: BodyType<AdminEmployerDocumentReviewBody> },
+  TContext
+> => {
+  return useMutation(
+    getPostAdminEmployerDocumentsIdVerifyMutationOptions(options),
+  );
+};
+
+/**
+ * @summary Reject an employer document
+ */
+export const getPostAdminEmployerDocumentsIdRejectUrl = (id: number) => {
+  return `/api/admin/employer-documents/${id}/reject`;
+};
+
+export const postAdminEmployerDocumentsIdReject = async (
+  id: number,
+  adminEmployerDocumentRejectBody: AdminEmployerDocumentRejectBody,
+  options?: RequestInit,
+): Promise<AdminEmployerDocumentReviewResponse> => {
+  return customFetch<AdminEmployerDocumentReviewResponse>(
+    getPostAdminEmployerDocumentsIdRejectUrl(id),
+    {
+      ...options,
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(adminEmployerDocumentRejectBody),
+    },
+  );
+};
+
+export const getPostAdminEmployerDocumentsIdRejectMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof postAdminEmployerDocumentsIdReject>>,
+    TError,
+    { id: number; data: BodyType<AdminEmployerDocumentRejectBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof postAdminEmployerDocumentsIdReject>>,
+  TError,
+  { id: number; data: BodyType<AdminEmployerDocumentRejectBody> },
+  TContext
+> => {
+  const mutationKey = ["postAdminEmployerDocumentsIdReject"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof postAdminEmployerDocumentsIdReject>>,
+    { id: number; data: BodyType<AdminEmployerDocumentRejectBody> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return postAdminEmployerDocumentsIdReject(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type PostAdminEmployerDocumentsIdRejectMutationResult = NonNullable<
+  Awaited<ReturnType<typeof postAdminEmployerDocumentsIdReject>>
+>;
+export type PostAdminEmployerDocumentsIdRejectMutationBody =
+  BodyType<AdminEmployerDocumentRejectBody>;
+export type PostAdminEmployerDocumentsIdRejectMutationError = ErrorType<void>;
+
+/**
+ * @summary Reject an employer document
+ */
+export const usePostAdminEmployerDocumentsIdReject = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof postAdminEmployerDocumentsIdReject>>,
+    TError,
+    { id: number; data: BodyType<AdminEmployerDocumentRejectBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof postAdminEmployerDocumentsIdReject>>,
+  TError,
+  { id: number; data: BodyType<AdminEmployerDocumentRejectBody> },
+  TContext
+> => {
+  return useMutation(
+    getPostAdminEmployerDocumentsIdRejectMutationOptions(options),
+  );
+};
 
 /**
  * @summary Get team details and member list

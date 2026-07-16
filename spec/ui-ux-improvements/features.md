@@ -100,6 +100,36 @@ Sibling precedent: Availability Calendar Module 8 + Phase 4b locks availability 
 
 ---
 
+## Module 6b — Named Color Combinations (2026-07-15)
+
+**The problem:** Components invent one-off Tailwind color stacks (`violet-*`, ad-hoc greens/teals), fighting the navy/gold/cream brand.
+
+**What it builds:**
+- Soft semantic tokens in `index.css`: `gold-soft`, `navy-soft`, `success`/`success-soft`, `warning`/`warning-soft`, `info`/`info-soft`, `destructive-soft`, `surface-elevated`, `surface-sunken`.
+- Ready-made combination classes: `combo-shell`, `combo-page`, `combo-card`, `combo-gold`, `combo-gold-soft`, `combo-navy-soft`, `combo-success`, `combo-warning`, `combo-info`, `combo-danger`, `combo-nav-idle`, `combo-nav-active`.
+- Docs: `UI.md` table + `COLOR.md` quick reference; `project.md` points implementers here.
+
+**Plan gating:** N/A — design tokens only.
+
+---
+
+## Module 7 — App Shell: Left Sidebar Navigation (2026-07-15)
+
+**The problem:** The top header packs Dashboard, Vault, Jobs, Meetings, Bookings, Messages, Agreements, AI Match, TalentSearch / Cruise Mode into one crowded horizontal strip. Labels truncate, tooltips proliferate, and the chrome feels like a utility toolbar rather than a professional product shell.
+
+**What it builds:**
+- Replace the dense top nav with a **fixed left sidebar** (desktop `md+`) + slim top bar (notifications + account only).
+- Nav items grouped: **Workspace** (Dashboard → Agreements) and **Intelligence** (AI Match / TalentSearch / Cruise Mode).
+- Each item: icon + full label, gold active rail, polished hover (`bg-white/5` → gold wash, slight translate, icon scale).
+- Staggered entrance + intentional transitions (opacity / slide). No perpetual bounce.
+- Mobile: slide-over drawer from the left (hamburger on slim top bar); same nav model.
+- BrandLogo remains at the top of the sidebar (`onDark`).
+- Messages still opens the floating chat box (does not navigate to a full-page messages service).
+
+**Plan gating:** N/A — frontend shell only.
+
+---
+
 ## Explicit Non-Goals
 
 - No database schema changes, migrations, or backfills

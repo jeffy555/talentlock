@@ -120,7 +120,7 @@ talentlock/
 │   │   ├── UI.md
 │   │   └── validation.md
 │   │
-│   ├── availability-calendar/                      ← ✅ Complete · Module 8 + Phase 4b (agreement lock) 2026-07-12
+│   ├── availability-calendar/                      ← ✅ Complete · 🟢 P1 follow-up (defer lock to confirmation) validated 2026-06-09
 │   │   ├── features.md
 │   │   ├── clarify.md
 │   │   ├── plan.md
@@ -225,14 +225,6 @@ talentlock/
 │   │   └── validation.md
 │   │
 │   ├── ai-meeting-brief/                          ← 🟡 Ready to Execute
-│   │   ├── features.md
-│   │   ├── clarify.md
-│   │   ├── plan.md
-│   │   ├── task.md
-│   │   ├── UI.md
-│   │   └── validation.md
-│   │
-│   ├── ui-ux-improvements/                        ← 🟡 Ready to Execute · P2 design polish (tokens, BrandLogo, exclusivity copy, primitives)
 │   │   ├── features.md
 │   │   ├── clarify.md
 │   │   ├── plan.md
@@ -487,7 +479,7 @@ The `.cursor/rules/talentlock.mdc` file at the repo root enforces these rules au
 | Earnings Intelligence | `specs/earnings-intelligence/` | ✅ Complete |
 | Employer Spend Analytics | `specs/employer-spend-analytics/` | ✅ Complete |
 | Employer Analytics Dashboard | `specs/employer-analytics-dashboard/` | ✅ Complete |
-| Availability Calendar (Visual) | `specs/availability-calendar/` | ✅ Complete · Module 8 + Phase 4b (agreement fully-signed lock + create guard) 2026-07-12 |
+| Availability Calendar (Visual) | `specs/availability-calendar/` | ✅ Complete · 🟢 P1 follow-up (defer lock to confirmation) validated 2026-06-09 |
 | Security Hardening | `specs/security-hardening/` | ✅ Complete · 🟢 P1 follow-up (sanitisation on 6 routes) validated 2026-06-09 |
 | Product Gaps | `specs/product-gaps/` | ✅ Complete (validated 2026-06-08) |
 | AI Proposal Generator | `specs/ai-proposal-generator/` | ✅ Complete (validated 2026-06-08) |
@@ -495,20 +487,19 @@ The `.cursor/rules/talentlock.mdc` file at the repo root enforces these rules au
 | Team Accounts (Enterprise) | `specs/team-accounts-enterprise/` | ✅ Complete |
 | AI Contract Health Score | `specs/ai-contract-health-score/` | ✅ Complete (validated 2026-06-09) |
 | **Auth Hardening (Access Control)** | `specs/AuthHardening/` | ✅ Complete (validated 2026-06-09) |
-| Agreement AI Summary | `specs/agreement-ai-summary/` | ✅ Complete |
-| Agreement PDF Download | `specs/agreement-pdf-download/` | ✅ Complete |
-| Cruise Mode | `specs/cruise-mode/` | ✅ Complete |
-| Teaching Professional Profile | `specs/teaching-professional-profile/` | ✅ Complete |
-| TalentSearch (Employer Cruise Mode) | `specs/talent-search/` | ✅ Complete |
-| AI Meeting Brief Generator | `specs/ai-meeting-brief/` | ✅ Completee |
-| UI/UX Improvements | `spec/ui-ux-improvements/` |✅ Complete |
+| Agreement AI Summary | `specs/agreement-ai-summary/` | 🟡 Ready to Execute |
+| Agreement PDF Download | `specs/agreement-pdf-download/` | 🟡 Ready to Execute |
+| Cruise Mode | `specs/cruise-mode/` | 🟡 Ready to Execute |
+| Teaching Professional Profile | `specs/teaching-professional-profile/` | 🟡 Ready to Execute |
+| TalentSearch (Employer Cruise Mode) | `specs/talent-search/` | 🟡 Ready to Execute |
+| AI Meeting Brief Generator | `specs/ai-meeting-brief/` | 🟡 Ready to Execute |
+| TalentSearch (Employer Cruise Mode) | `specs/talent-search/` | 🟡 Ready to Execute |
+| AI Meeting Brief Generator | `specs/ai-meeting-brief/` | 🟡 Ready to Execute |
 
 > Add new features to this table when their `features.md` is created.
 > Update status as work progresses: 🟡 Ready → 🔄 In Progress → ✅ Complete
 >
 > **Note:** `AuthHardening` closed the per-resource authorization gap (IDOR protection on 11 routes + storage ACL). It is independent of the completed `security-hardening` spec, which covered middleware/CSRF/sanitisation/audit/GDPR but not per-resource authorization. Automated validation: `node artifacts/api-server/validate-auth-hardening.mjs` (32/32 passed).
->
-> **Note:** `ui-ux-improvements` is a **P2-style design refactor** (frontend-only): token consolidation, BrandLogo, exclusivity copy aligned to Availability Calendar Module 8 Phase 4b, shared primitives, Dashboard/Vault polish, admin login brand alignment. No schema, OpenAPI, or auth-logic changes.
 
 ---
 
@@ -522,7 +513,7 @@ Tracking the findings from the TalentLock Security & Production Readiness review
 | 🔴 P0 | Auth-gate storage upload URLs + object ACL (namespace by userId) | `AuthHardening/` (Module 6) | ✅ Implemented & validated 2026-06-09 |
 | 🟠 P1 | Token breakdown — extend to all 9 features | `token-usage/` (Module 5 addendum) | ✅ Implemented & validated 2026-06-09 |
 | 🟠 P1 | Apply `sanitiseText()` to 6 missing free-text fields | `security-hardening/` (Module 2 addendum) | ✅ Implemented & validated 2026-06-09 |
-| 🟠 P1 | Fix premature availability lock | `availability-calendar/` (Module 8 + Phase 4b) | ✅ Done 2026-07-12 (PATCH + agreement fully-signed + create 409 guard) |
+| 🟠 P1 | Fix premature availability lock | `availability-calendar/` (Module 8 addendum) | ✅ Implemented & validated 2026-06-09 |
 | 🟠 P1 | Add 4 missing endpoint groups to OpenAPI + fix raw `fetch` | `specs/OpenApiContractCleanup/` | ⬜ Not started |
 | 🟡 P2 | Automated tests (Vitest + Supertest) + wire `validate-*.mjs` to CI | `specs/api-testing/` | ⬜ Not started |
 | 🟡 P2 | Fix N+1 on bookings/meetings/agreements list endpoints | _backend perf_ | ⬜ Not started |
@@ -530,7 +521,6 @@ Tracking the findings from the TalentLock Security & Production Readiness review
 | 🟡 P2 | Stripe real checkout + webhook signature verification | `specs/stripe-billing/` | ⬜ Not started |
 | 🟡 P2 | AI match history cap + profile caching | _backend perf_ | ⬜ Not started |
 | 🟡 P2 | Booking acceptance state machine (freelancer accept/decline) | `specs/booking-acceptance/` | ⬜ Not started |
-| 🟡 P2 | UI/UX design polish (tokens, BrandLogo, exclusivity copy, primitives) | `spec/ui-ux-improvements/` | 🟡 Ready to Execute |
 | 🟢 P3 | Boot guard (reject default creds), CORS lockdown, trust proxy, remove demo route | `specs/production-readiness/` | ⬜ Not started |
 
 > P0 and P1 from the review are **closed**. Remaining work is P2 (important, non-blocking) and P3 (production config / enterprise). See the P2 plan tracked with the team.

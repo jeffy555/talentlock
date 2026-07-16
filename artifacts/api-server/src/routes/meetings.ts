@@ -28,7 +28,11 @@ async function enrichMeeting(m: typeof meetingsTable.$inferSelect) {
     .where(eq(freelancerProfilesTable.id, m.freelancerId))
     .limit(1);
   const [e] = await db
-    .select({ name: employerProfilesTable.companyName, clerkId: employerProfilesTable.clerkId })
+    .select({
+      name: employerProfilesTable.companyName,
+      clerkId: employerProfilesTable.clerkId,
+      verificationLevel: employerProfilesTable.verificationLevel,
+    })
     .from(employerProfilesTable)
     .where(eq(employerProfilesTable.id, m.employerId))
     .limit(1);
@@ -46,6 +50,7 @@ async function enrichMeeting(m: typeof meetingsTable.$inferSelect) {
     ...m,
     freelancerName: f?.name ?? null,
     employerName: e?.name ?? null,
+    employerVerificationLevel: e?.verificationLevel ?? "unverified",
     freelancerEmail: fu?.email ?? null,
     employerEmail: eu?.email ?? null,
   };
