@@ -23,6 +23,13 @@ scripts/
 
 Frontend unit tests (optional Phase 9) live in `artifacts/talentlock/tests/` with Vitest + `@testing-library/react`.
 
+## Local secrets (never commit)
+
+- **`.env`** and **`.env.test`** live on your machine only. They are listed in `.gitignore` (`.env.*` with `!.env.example`).
+- Copy `.env.example` → `.env` locally and fill in real values.
+- Integration tests read `.env.test` first, then `.env` — both must stay out of git.
+- CI should inject secrets via the platform (GitHub Actions secrets, etc.), not a committed file.
+
 ## Test database strategy
 
 - **Dedicated Neon branch** or local Postgres with `DATABASE_URL_TEST`

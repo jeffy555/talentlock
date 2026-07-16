@@ -20,6 +20,7 @@ function parseEnvFile(path: string) {
 }
 
 /** Load `.env.test` then `.env` from workspace root (first wins for unset keys). */
+/** Both files are gitignored — never commit secrets to the repo. */
 export function loadTestEnv() {
   if (loaded) return;
   parseEnvFile(join(workspaceRoot, ".env.test"));

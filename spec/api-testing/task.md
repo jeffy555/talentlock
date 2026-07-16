@@ -389,10 +389,10 @@ Run via `pnpm run test:validate` until each row is ✅ in Vitest.
 
 | Phase | Owner | Status |
 |-------|-------|--------|
-| 0 Harness | — | 🔄 In progress |
-| 1 Auth/Security | — | ⬜ |
-| 2 Core API | — | ⬜ |
-| 3 Billing/Tokens | — | ⬜ |
+| 0 Harness | — | ✅ Complete |
+| 1 Auth/Security | — | ✅ Implemented (71 integration tests; skip without `.env`) |
+| 2 Core API | — | ✅ Implemented |
+| 3 Billing/Tokens | — | ✅ Implemented |
 | 4 AI (mocked) | — | ⬜ |
 | 5 Messaging/Docs | — | ⬜ |
 | 6 Dashboard/Teams | — | ⬜ |
