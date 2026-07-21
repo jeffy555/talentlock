@@ -36,7 +36,7 @@ The Vite dev server has a proxy rule that forwards `/api` calls to `localhost:80
 | `subscriptions` | Per-user billing plan and status |
 | `audit_logs` | Login/logout and sensitive-action audit trail. Has `ipAddress`, `userAgent`, `entityType`, `entityId`, `metadata` columns. |
 | `token_usage` | AI token consumption per user per feature. Has `conversationId` column. |
-| `documents` | Freelancer identity/credential uploads for AI verification. |
+| `documents` | Freelancer identity/credential uploads for AI verification. Has `expiryDate` (nullable, freelancer-supplied) and `expiryAlertStage` (`none\|90d\|30d\|7d\|expired`, tracks which expiry alert was last sent) columns. `status` gains an `expired` value alongside `pending\|verified\|rejected\|needs_review`. |
 | `reviews` | Employer reviews of freelancers after completed bookings. One per booking. |
 | `notifications` | In-app notification rows for all users. Triggered server-side on key platform events. |
 | `account_deletion_requests` | GDPR deletion requests. Tracks status from pending → complete. |
@@ -83,6 +83,12 @@ POST /api/meetings/:id/brief`., `jobRequirementId`, `score`, `decision`, `matchR
 `job_requirements` gains `professionCategory` (text, NOT NULL DEFAULT 'technology') and `rateType` (text, NOT NULL DEFAULT 'hourly').
 
 All existing rows backfilled to `'technology'` / `'hourly'` via column default — zero behaviour change for existing data.
+
+### Credential Expiry Tracking additions (additive, non-breaking)
+
+`freelancer_profiles` gains `teachingLicenceAlertStage` (text NOT NULL DEFAULT 'none' — `none|90d|30d|7d|expired`), tracking the last expiry alert stage sent for `teachingLicenceExpiry` so alerts never duplicate and safely catch up if the daily scan misses a day.
+
+`documents` gains `expiryDate` (timestamptz, nullable, freelancer-supplied at upload time) and `expiryAlertStage` (text NOT NULL DEFAULT 'none' — same 5-value enum). `status` gains a 5th value, `expired`, alongside the existing `pending|verified|rejected|needs_review` — set when a `verified` document's `expiryDate` passes; `updateVerificationLevel()` (unchanged) automatically downgrades the badge since it only counts `status = 'verified'`.
 
 ### Schema changes workflow
 
@@ -211,9 +217,12 @@ PATCH /api/notifications/:id/read                 Mark single notification as re
 GET  /api/token-usage/me                          Monthly token usage summary
 GET  /api/token-usage/conversation/:id            Per-conversation token breakdown (Growth+)
 
-GET  /api/documents/me                            Freelancer own document statuses
+GET  /api/documents/me                            Freelancer own document statuses (includes expiryDate, daysUntilExpiry)
 POST /api/documents/upload-url                    Request presigned GCS upload URL for document
-POST /api/documents/confirm                       Confirm document upload and trigger AI review
+POST /api/documents/confirm                       Confirm document upload and trigger AI review (accepts optional expiryDate; resets expiry state on re-upload)
+PATCH /api/documents/:documentType/expiry         Set/clear expiry date on an existing document without re-uploading
+
+POST /api/cron/credential-expiry                  Daily credential expiry scan (machine-only; requires x-cron-secret header matching CRON_SECRET; NOT under /api/admin, bypasses CSRF middleware)
 
 GET  /api/availability/:freelancerId              Public availability blocks (no auth — register BEFORE /me)
 GET  /api/availability/me                         Freelancer own blocks with labels and bookingId
@@ -396,6 +405,8 @@ GET  /api/messages/unread-count                   Count of conversations with un
 
 POST /api/meetings/:id/brief` (202 Accepted); employer-only — freelancers never see it; plan-gated questions (Growth+ only in UI, always generated server-side); `meeting_brief` token label charged to employer; amber accent UI card on meeting detail page
 
+41. **Credential Expiry Tracking** — daily scan (`POST /api/cron/credential-expiry`, machine-only, `x-cron-secret` header, triggered by a scheduled GitHub Actions workflow since the API runs on an autoscale deployment target) tracks two expiry sources: `documents.expiryDate` (freelancer-supplied, `professional_credential`/`government_id`) and `freelancer_profiles.teachingLicenceExpiry` (education professionals); alert schedule 90d email → 30d email + in-app + amber profile banner → 7d in-app + red urgent banner + "Expiring Soon" Talent Vault badge → expiry day flips `documents.status` to `expired` (badge auto-downgrades via existing `updateVerificationLevel()`); each credential tracks an `expiryAlertStage` (`none|90d|30d|7d|expired`) so the stage only ever advances — never duplicates an alert, safely catches up if a day is missed; Talent Vault removal (`GET /api/freelancers` exclusion) is scoped **only** to `professionCategory: 'education'` + `educationProfessionType: 'school_teacher'` freelancers with an expired `teachingLicenceExpiry` — the one credential already documented as required; generic `professional_credential` expiry never removes a freelancer from Vault, only degrades the badge and fires alerts; direct profile access (`GET /freelancers/:id`, `/f/:id`) is never blocked by Vault exclusion; re-uploading a document or renewing a teaching licence resets the alert stage to `none`; all plans, no token consumption
+
 ### Dashboard analytics panels
 
 | Panel | Role | Endpoint | Frontend components |
@@ -476,6 +487,18 @@ Cursor notes — Teaching Professional Profile
 - `calculateCompletenessScore()` is NOT modified by this feature — education fields do not affect the ≥60% Talent Vault visibility gate
 - No new columns on `bookings` or `agreements` — `professionCategory`/`rateType` are read via `booking.jobRequirementId` join when needed (e.g. agreement generation in a future spec)
 
+### Cursor notes — Credential Expiry Tracking
+
+- The cron route lives at `POST /api/cron/credential-expiry`, deliberately **outside** `/api/admin` — `app.use("/api/admin", ...)` in `app.ts` applies CSRF double-submit protection to every non-GET method under that prefix, which is wrong for a machine-to-machine scheduled call. Never move this route under `/api/admin`.
+- Auth for the cron route is a shared-secret header (`x-cron-secret` matching `CRON_SECRET` env var, timing-safe compared), NOT the Clerk-based admin session — there is no browser session involved.
+- Fails closed: if `CRON_SECRET` is unset, the route returns 500 (same pattern as `CSRF_SECRET`), never silently skipping auth.
+- No in-process `setInterval` scheduler exists or should be added — the deployment target (`.replit`, `deploymentTarget = "autoscale"`) idles/scales instances, so a persistent in-process timer is unreliable. The daily trigger is an external scheduled GitHub Actions workflow (`.github/workflows/credential-expiry-cron.yml`) that POSTs to the cron endpoint.
+- `expiryAlertStage` (`documents`) and `teachingLicenceAlertStage` (`freelancer_profiles`) only ever advance forward (`none → 90d → 30d → 7d → expired`) — the scan is safe to run more than once a day and safe if a day is skipped.
+- Vault exclusion in `GET /api/freelancers` is scoped to `professionCategory: 'education' && educationProfessionType: 'school_teacher' && teachingLicenceExpiry < now()` only — do not extend this to generic `professional_credential` expiry without a separate, explicitly scoped decision; verification status has never gated Vault visibility for the general freelancer population.
+- Re-upload via `POST /documents/confirm` (existing upsert on `(freelancerId, documentType)`) MUST reset `expiryDate: null, expiryAlertStage: 'none'` — otherwise a renewed credential inherits a stale `expired` stage and immediately re-triggers a false alert.
+- `PATCH /api/freelancers/me` MUST reset `teachingLicenceAlertStage: 'none'` whenever `teachingLicenceExpiry` changes to a new value — otherwise a renewed licence stays excluded from Vault after renewal.
+- `updateVerificationLevel()` (`documentReview.ts`) is unchanged and reused as-is — it already only counts `status = 'verified'`, so flipping a document to `expired` automatically downgrades the badge with zero new logic.
+
 ### Utility file registry
 
 | File | Purpose |
@@ -547,6 +570,11 @@ Cursor notes — Teaching Professional Profile
 | `artifacts/api-server/src/lib/cruiseModeEvaluator.ts` | `evaluateCruiseModeForNewJob()` — background evaluation pipeline; fires after job creation |
 | `artifacts/api-server/src/routes/cruiseMode.ts` | All `/api/cruise-mode/*` routes |
 | `artifacts/talentlock/src/components/cruise-mode/` | `CruiseModeStatusBar`, `CruiseModeRuleBuilder`, `CruiseModeActivityFeed` |
+| `artifacts/api-server/src/lib/credentialExpiryUtils.ts` | `daysUntil()`, `targetStageForDaysRemaining()`, `stageAdvanced()`, `alertCopyForStage()` — shared expiry-stage math for both `documents` and teaching licence |
+| `artifacts/api-server/src/lib/credentialExpiryScan.ts` | `runCredentialExpiryScan(log)` — daily scan pipeline; scans `documents.expiryDate` and `freelancer_profiles.teachingLicenceExpiry`, advances alert stages, fires alerts, flips expired document status |
+| `artifacts/api-server/src/lib/cronAuth.ts` | `requireCronSecret()` — Express middleware; timing-safe `x-cron-secret` header check against `CRON_SECRET`, fails closed (500) if unset |
+| `artifacts/api-server/src/routes/cron.ts` | `POST /api/cron/credential-expiry` — machine-only, mounted outside `/api/admin` |
+| `artifacts/talentlock/src/components/CredentialExpiryBanner.tsx` | Amber (≤30d) / red (≤7d or expired) banner on `/profile`, sourced from `GET /documents/me` + teaching licence fields |
 
 ---
 
@@ -629,6 +657,7 @@ pnpm --filter @workspace/talentlock run dev
 | `RESEND_API_KEY` | Optional | Transactional email — no-op if unset |
 | `EMAIL_FROM` | Optional | From address (default `noreply@talentlock.io`) |
 | `APP_URL` | Optional | Base URL for email CTAs (default `http://localhost:25807`) |
+| `CRON_SECRET` | Required for `/api/cron/*` routes | Shared secret for `x-cron-secret` header on machine-triggered scheduled jobs (e.g. credential expiry scan); route fails closed (500) if unset |
 
 ---
 
