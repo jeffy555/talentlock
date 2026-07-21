@@ -33,6 +33,27 @@ export function calculateCompletenessScore(
   return score;
 }
 
+export const COMPLETENESS_WEIGHTS = {
+  photo: 15,
+  bio: 20,
+  skills: 20,
+  rate: 15,
+  field: 15,
+  availability: 15,
+} as const;
+
+export const COMPLETENESS_THRESHOLD_DASHBOARD = 80;
+
+export function getCompletenessBreakdown(
+  profile: Parameters<typeof calculateCompletenessScore>[0],
+  avatarUrl?: string | null,
+) {
+  const missing = new Set(getMissingCompletenessFields(profile, avatarUrl));
+  return (Object.keys(COMPLETENESS_WEIGHTS) as CompletenessField[])
+    .filter((field) => missing.has(field))
+    .map((field) => ({ field, points: COMPLETENESS_WEIGHTS[field] }));
+}
+
 export type CompletenessField =
   | "photo"
   | "bio"

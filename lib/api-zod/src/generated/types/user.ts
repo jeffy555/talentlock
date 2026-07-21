@@ -22,5 +22,15 @@ export interface User {
   signatureImageUrl?: string | null;
   /** Whether the user receives email alerts for platform activity */
   emailNotificationsEnabled: boolean;
+  /**
+   * freelancer | employer — in-progress onboarding role while role is pending
+   * @nullable
+   */
+  onboardingRole?: string | null;
+  /**
+   * role | profession_category | freelancer_details | employer_details
+   * @nullable
+   */
+  onboardingStep?: string | null;
   createdAt: Date;
 }

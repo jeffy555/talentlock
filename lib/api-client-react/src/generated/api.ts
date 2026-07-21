@@ -133,6 +133,7 @@ import type {
   ParseTalentSearchRulesBody,
   ParseTalentSearchRulesResult,
   PatchNotificationPreferencesBody,
+  PatchOnboardingStepBody,
   PlanDef,
   PlanLimitError,
   PortfolioItem,
@@ -415,6 +416,92 @@ export const useUpsertMe = <
   TContext
 > => {
   return useMutation(getUpsertMeMutationOptions(options));
+};
+
+/**
+ * @summary Save in-progress onboarding role and step (upserts pending user)
+ */
+export const getPatchOnboardingStepUrl = () => {
+  return `/api/users/me/onboarding-step`;
+};
+
+export const patchOnboardingStep = async (
+  patchOnboardingStepBody: PatchOnboardingStepBody,
+  options?: RequestInit,
+): Promise<User> => {
+  return customFetch<User>(getPatchOnboardingStepUrl(), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(patchOnboardingStepBody),
+  });
+};
+
+export const getPatchOnboardingStepMutationOptions = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof patchOnboardingStep>>,
+    TError,
+    { data: BodyType<PatchOnboardingStepBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof patchOnboardingStep>>,
+  TError,
+  { data: BodyType<PatchOnboardingStepBody> },
+  TContext
+> => {
+  const mutationKey = ["patchOnboardingStep"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof patchOnboardingStep>>,
+    { data: BodyType<PatchOnboardingStepBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return patchOnboardingStep(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type PatchOnboardingStepMutationResult = NonNullable<
+  Awaited<ReturnType<typeof patchOnboardingStep>>
+>;
+export type PatchOnboardingStepMutationBody = BodyType<PatchOnboardingStepBody>;
+export type PatchOnboardingStepMutationError = ErrorType<ErrorEnvelope>;
+
+/**
+ * @summary Save in-progress onboarding role and step (upserts pending user)
+ */
+export const usePatchOnboardingStep = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof patchOnboardingStep>>,
+    TError,
+    { data: BodyType<PatchOnboardingStepBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof patchOnboardingStep>>,
+  TError,
+  { data: BodyType<PatchOnboardingStepBody> },
+  TContext
+> => {
+  return useMutation(getPatchOnboardingStepMutationOptions(options));
 };
 
 /**

@@ -101,6 +101,37 @@ paths:
               schema:
                 $ref: "#/components/schemas/User"
 
+  /users/me/onboarding-step:
+    patch:
+      operationId: patchOnboardingStep
+      tags: [users]
+      summary: Save in-progress onboarding role and step (upserts pending user)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PatchOnboardingStepBody"
+      responses:
+        "200":
+          description: Updated user with onboarding progress
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "400":
+          description: Invalid body
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
   /users/me/notification-preferences:
     patch:
       operationId: patchNotificationPreferences
@@ -3773,6 +3804,12 @@ components:
         emailNotificationsEnabled:
           type: boolean
           description: Whether the user receives email alerts for platform activity
+        onboardingRole:
+          type: ["string", "null"]
+          description: "freelancer | employer — in-progress onboarding role while role is pending"
+        onboardingStep:
+          type: ["string", "null"]
+          description: "role | profession_category | freelancer_details | employer_details"
         createdAt:
           type: string
           format: date-time
@@ -3801,6 +3838,27 @@ components:
           type: ["string", "null"]
       required:
         - role
+        - email
+        - name
+
+    PatchOnboardingStepBody:
+      type: object
+      properties:
+        onboardingRole:
+          type: string
+          enum: [freelancer, employer]
+        onboardingStep:
+          type: string
+          enum: [role, profession_category, freelancer_details, employer_details]
+        email:
+          type: string
+        name:
+          type: string
+        avatarUrl:
+          type: ["string", "null"]
+      required:
+        - onboardingRole
+        - onboardingStep
         - email
         - name
 

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
-import { useGetMe, useUpsertMe, useCreateFreelancerProfile, useUpsertMyEmployerProfile } from "@workspace/api-client-react";
+import { useGetMe, useUpsertMe, useCreateFreelancerProfile, useUpsertMyEmployerProfile, usePatchOnboardingStep } from "@workspace/api-client-react";
 import { useUser } from "@clerk/react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,7 +16,23 @@ import { ResumeImporter, type ParsedResume } from "@/components/ResumeImporter";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import TeachingDetailsSection, { emptyTeachingDetails, type TeachingDetailsValues } from "@/components/onboarding/TeachingDetailsSection";
 import { cn } from "@/lib/utils";
-import type { EducationProfessionType, ProfessionCategory } from "@workspace/api-client-react";
+import type { EducationProfessionType, ProfessionCategory, PatchOnboardingStepBodyOnboardingStep } from "@workspace/api-client-react";
+
+type OnboardingUiStep = "role" | "profession_category" | "freelancer-details" | "employer-details";
+
+function toApiOnboardingStep(step: OnboardingUiStep): PatchOnboardingStepBodyOnboardingStep {
+  if (step === "freelancer-details") return "freelancer_details";
+  if (step === "employer-details") return "employer_details";
+  return step;
+}
+
+function toUiOnboardingStep(step: string | null | undefined): OnboardingUiStep | null {
+  if (step === "freelancer_details") return "freelancer-details";
+  if (step === "employer_details") return "employer-details";
+  if (step === "profession_category") return "profession_category";
+  if (step === "role") return "role";
+  return null;
+}
 
 function getIntendedRole(): "freelancer" | "employer" | null {
   const val = localStorage.getItem("talentlock_intended_role");
@@ -36,8 +52,9 @@ export default function Onboarding() {
   const upsertMe = useUpsertMe();
   const createFreelancerProfile = useCreateFreelancerProfile();
   const upsertEmployerProfile = useUpsertMyEmployerProfile();
+  const patchOnboardingStep = usePatchOnboardingStep();
 
-  const [step, setStep] = useState<"role" | "profession_category" | "freelancer-details" | "employer-details">("role");
+  const [step, setStep] = useState<OnboardingUiStep>("role");
   const [role, setRole] = useState<"freelancer" | "employer" | null>(null);
   const [autoCreating, setAutoCreating] = useState(false);
 
@@ -104,12 +121,39 @@ export default function Onboarding() {
 
   useEffect(() => {
     const intended = getIntendedRole();
-    if (intended) {
+    if (intended && !dbUser?.onboardingStep) {
       setRole(intended);
       setStep(intended === "freelancer" ? "profession_category" : "employer-details");
       clearIntendedRole();
     }
-  }, []);
+  }, [dbUser?.onboardingStep]);
+
+  useEffect(() => {
+    if (!dbUser || dbUser.role !== "pending") return;
+    if (dbUser.onboardingRole === "freelancer" || dbUser.onboardingRole === "employer") {
+      setRole(dbUser.onboardingRole);
+    }
+    const resumed = toUiOnboardingStep(dbUser.onboardingStep);
+    if (resumed && resumed !== "role") {
+      setStep(resumed);
+    }
+  }, [dbUser]);
+
+  const persistOnboardingStep = async (
+    onboardingRole: "freelancer" | "employer",
+    nextStep: OnboardingUiStep,
+  ) => {
+    if (!user) return;
+    await patchOnboardingStep.mutateAsync({
+      data: {
+        onboardingRole,
+        onboardingStep: toApiOnboardingStep(nextStep),
+        email: user.primaryEmailAddress?.emailAddress || "",
+        name: user.fullName || "",
+        avatarUrl: user.imageUrl ?? null,
+      },
+    });
+  };
 
   // Redirect already-onboarded users away from this page
   useEffect(() => {
@@ -133,9 +177,20 @@ export default function Onboarding() {
     return null;
   }
 
-  const handleRoleSelection = (selectedRole: "freelancer" | "employer") => {
+  const handleRoleSelection = async (selectedRole: "freelancer" | "employer") => {
+    const nextStep: OnboardingUiStep =
+      selectedRole === "freelancer" ? "profession_category" : "employer-details";
     setRole(selectedRole);
-    setStep(selectedRole === "freelancer" ? "profession_category" : "employer-details");
+    setStep(nextStep);
+    try {
+      await persistOnboardingStep(selectedRole, nextStep);
+    } catch {
+      toast({
+        title: "Could not save progress",
+        description: "Your selection was kept on this device. Try again if you switch devices.",
+        variant: "destructive",
+      });
+    }
   };
 
   const buildTeachingPayload = () => {
@@ -221,8 +276,25 @@ export default function Onboarding() {
     }
   };
 
-  const stepIndex = ["role", "freelancer-details", "employer-details"].indexOf(step);
-  const progressStep = stepIndex <= 0 ? 1 : 2;
+  const isEmployerPath = role === "employer" || step === "employer-details";
+  const stepConfig = isEmployerPath
+    ? [
+        { n: 1, label: "Account type", active: step === "role" },
+        { n: 2, label: "Profile details", active: step === "employer-details" },
+      ]
+    : [
+        { n: 1, label: "Account type", active: step === "role" },
+        { n: 2, label: "Work category", active: step === "profession_category" },
+        { n: 3, label: "Profile details", active: step === "freelancer-details" },
+      ];
+  const progressStep =
+    step === "role"
+      ? 1
+      : step === "profession_category"
+        ? 2
+        : step === "employer-details"
+          ? 2
+          : 3;
 
   return (
     <div className="max-w-2xl mx-auto py-8">
@@ -255,10 +327,7 @@ export default function Onboarding() {
 
       {/* ── Step indicator ──────────────────────────────────────────────── */}
       <div className="mb-8 flex items-center gap-2">
-          {[
-            { n: 1, label: "Account type" },
-            { n: 2, label: "Profile details" },
-          ].map(({ n, label }, i) => (
+          {stepConfig.map(({ n, label }, i) => (
             <div key={n} className="flex items-center gap-2 flex-1">
               <div className="flex items-center gap-2">
                 <div
@@ -277,7 +346,7 @@ export default function Onboarding() {
                   {label}
                 </span>
               </div>
-              {i < 1 && (
+              {i < stepConfig.length - 1 && (
                 <div className="flex-1 h-px mx-2" style={{ backgroundColor: progressStep > n ? "#c9a84c" : "rgba(255,255,255,0.1)" }} />
               )}
             </div>
@@ -397,7 +466,20 @@ export default function Onboarding() {
             <Button
               type="button"
               disabled={!professionCategory || (professionCategory === "education" && !educationProfessionType)}
-              onClick={() => setStep("freelancer-details")}
+              onClick={async () => {
+                setStep("freelancer-details");
+                if (role === "freelancer") {
+                  try {
+                    await persistOnboardingStep("freelancer", "freelancer-details");
+                  } catch {
+                    toast({
+                      title: "Could not save progress",
+                      description: "Continue on this device — progress may not sync.",
+                      variant: "destructive",
+                    });
+                  }
+                }
+              }}
             >
               Continue →
             </Button>

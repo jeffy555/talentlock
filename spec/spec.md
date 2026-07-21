@@ -496,6 +496,7 @@ The `.cursor/rules/talentlock.mdc` file at the repo root enforces these rules au
 | TalentSearch (Employer Cruise Mode) | `specs/talent-search/` | 🟡 Ready to Execute |
 | AI Meeting Brief Generator | `specs/ai-meeting-brief/` | 🟡 Ready to Execute |
 | **Automated API Testing (Regression)** | `spec/api-testing/` | 🔄 In progress — Phase 0 harness on `cursor/regression-tests-9a23` |
+| Onboarding Scaffolding | `spec/onboarding-scaffolding/` | 🔄 In progress |
 
 > Add new features to this table when their `features.md` is created.
 > Update status as work progresses: 🟡 Ready → 🔄 In Progress → ✅ Complete

@@ -7,6 +7,7 @@ import {
   useGetDashboardActivity,
   useGetMyAnalytics,
   useListBookings,
+  useGetMyFreelancerProfile,
   getBooking,
 } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -19,6 +20,7 @@ import { TokenUsageBanner } from "@/components/TokenUsageBanner";
 import { EarningsIntelligencePanel } from "@/components/earnings/EarningsIntelligencePanel";
 import { SpendAnalyticsPanel } from "@/components/spend/SpendAnalyticsPanel";
 import { HiringAnalyticsPanel } from "@/components/hiring/HiringAnalyticsPanel";
+import { ProfileStrengthChecklist } from "@/components/onboarding/ProfileStrengthChecklist";
 
 function StatCardSkeleton() {
   return (
@@ -69,6 +71,9 @@ export default function Dashboard() {
   const { data: analytics } = useGetMyAnalytics();
 
   const isEmployer = user?.role === "employer";
+  const { data: freelancerProfile } = useGetMyFreelancerProfile({
+    query: { enabled: user?.role === "freelancer" } as never,
+  });
   const { data: completedBookings } = useListBookings(
     { status: "completed" },
     { query: { enabled: isEmployer } as never },
@@ -126,6 +131,22 @@ export default function Dashboard() {
         <h1 className="text-3xl font-serif font-bold tracking-tight text-foreground">Dashboard</h1>
         <p className="text-muted-foreground mt-1 font-light">Welcome back, {user?.name}. Here is your overview.</p>
       </div>
+
+      {!isEmployer && freelancerProfile && (
+        <ProfileStrengthChecklist
+          score={freelancerProfile.completenessScore ?? 0}
+          profile={{
+            bio: freelancerProfile.bio,
+            skills: freelancerProfile.skills,
+            hourlyRate: freelancerProfile.hourlyRate,
+            dailyRate: freelancerProfile.dailyRate,
+            paymentPreference: freelancerProfile.paymentPreference,
+            fieldOfWork: freelancerProfile.fieldOfWork,
+            isAvailable: freelancerProfile.isAvailable,
+          }}
+          avatarUrl={user?.avatarUrl}
+        />
+      )}
 
       <section className="space-y-3" aria-label="Key metrics">
         <h2 className="text-sm font-semibold uppercase tracking-[0.14em] text-muted-foreground">Overview</h2>
