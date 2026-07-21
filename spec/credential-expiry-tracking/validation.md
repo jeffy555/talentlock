@@ -6,6 +6,8 @@ Run after all `task.md` phases complete.
 
 ## Phase 1 — Database
 
+- [x] V1.1
+
 ### V1.1 — Columns exist
 
 ```sql
@@ -21,6 +23,9 @@ Expected: 2 rows + 1 row.
 ---
 
 ## Phase 2 — Backend
+
+- [x] V2.1 · [x] V2.2 · [x] V2.3 · [x] V2.4 · [x] V2.5 · [x] V2.6 · [x] V2.7 · [x] V2.8 · [x] V2.9
+  — all live-verified against the real database 2026-07-21 (see Validation Run Log — Update 2)
 
 ### V2.1 — Cron endpoint auth
 
@@ -155,19 +160,39 @@ Freelancer from V2.4 sees a red "Expired" badge and "Renew ↑" button on `/prof
 
 ---
 
-## Validation Run Log (2026-07-21)
+## Validation Run Log — Update 2 (2026-07-21, real database)
 
-**Update:** The user ran `pnpm --filter @workspace/db run push` against the real configured
-database from their own terminal (outside this cloud agent VM, which has no `.env` of its own).
-Reported output: `[✓] Pulling schema from database... [✓] Changes applied — Database schema push
-completed successfully.` **V1.1 is therefore considered done** — the `documents.expiry_date`,
-`documents.expiry_alert_stage`, and `freelancer_profiles.teaching_licence_alert_stage` columns
-now exist in the real database. This cloud agent session still has no `DATABASE_URL` configured,
-so V2.3–V2.9 (seeded end-to-end scenarios) remain to be re-run either by the user or by this
-agent once given DB access (see Phase 1 row in Sign-Off below).
+The user provided `DATABASE_URL` for the real Neon database directly in this session. Findings:
 
-This sandbox has no reachable Postgres instance and no live Clerk credentials, so DB-backed
-integration checks could not be executed end-to-end here. What was actually run:
+1. Re-checked the columns from V1.1 against this exact connection string — **they did not yet
+   exist** (this database differs from whatever the user's earlier terminal run targeted, or
+   that push predated these column additions). Ran `pnpm --filter @workspace/db run push`
+   myself against it: `[✓] Pulling schema from database... [✓] Changes applied`. Re-verified with
+   a direct SQL query — all 3 columns (`documents.expiry_date`, `documents.expiry_alert_stage`,
+   `freelancer_profiles.teaching_licence_alert_stage`) now exist with correct defaults/nullability.
+   **V1.1: ✅ confirmed.**
+2. Ran **every previously-code-reviewed-only check (V2.1, V2.2, V2.3–V2.9)** for real against
+   this database, using clearly-tagged fixtures (`clerk_id LIKE 'test_credexp_9a23%'`) created via
+   the actual production functions (`runCredentialExpiryScan`, `updateVerificationLevel`, the same
+   upsert used by `POST /documents/confirm`, the same `PATCH /freelancers/me` reset logic, and the
+   exact SQL used by `GET /freelancers`), then deleted every fixture row in a `finally` block.
+   **Result: 16/16 checks passed.** Post-run counts confirmed the database returned to its exact
+   original state (10 users / 6 freelancer_profiles / 2 documents, 0 leftover fixtures).
+3. Booted the real Express app against this database and hit `/api/cron/credential-expiry`
+   directly: `no secret → 500`, `missing/wrong header → 401`, `correct header → 200
+   { ok: true, documentsScanned: 0, documentAlertsSent: 0, documentsExpired: 0, licencesScanned: 0,
+   licenceAlertsSent: 0 }` (zero counts are correct — no real data currently has `expiryDate` set).
+
+This closes out every Phase 1 and Phase 2 item in this document with genuine, executed evidence
+against a live database rather than code review alone. Phase 3 (frontend) remains code-reviewed
+only — visual/manual QA still needs a running dev server (see notes below).
+
+---
+
+## Validation Run Log — Update 1 (2026-07-21, sandbox only)
+
+This sandbox originally had no reachable Postgres instance and no live Clerk credentials, so
+DB-backed integration checks could not be executed end-to-end. What was run at that time:
 
 | Check | Method | Result |
 |---|---|---|
@@ -201,44 +226,42 @@ to connect to, not a logic defect.
 
 ### Code-review verification (V1.1, V2.3–V2.9, V3.1–V3.4)
 
-- **V1.1** — ✅ Done. Columns added in `lib/db/src/schema/documents.ts` (`expiryDate`,
-  `expiryAlertStage`) and `lib/db/src/schema/freelancerProfiles.ts` (`teachingLicenceAlertStage`).
-  Schema push (`pnpm --filter @workspace/db run push`) was run by the user against the real
-  database on 2026-07-21 — reported `[✓] Pulling schema from database... [✓] Changes applied`.
-- **V2.3** — `stageAdvanced()` / `targetStageForDaysRemaining()` are unit-tested directly with the
-  exact day thresholds used in `runCredentialExpiryScan()`; the scan loop only mutates state and
-  sends alerts when `stageAdvanced()` returns `true`, so a second run with an unchanged
-  `expiryDate` cannot re-fire the same stage.
-- **V2.4** — `shouldFlipStatus = target === "expired" && doc.status === "verified"` in
+- **V1.1** — ✅ **Live-verified** against the real database (see Update 2 above).
+- **V2.3** — ✅ **Live-verified**: `stageAdvanced()` / `targetStageForDaysRemaining()` are also
+  unit-tested directly (10/10) with the exact day thresholds used in `runCredentialExpiryScan()`.
+- **V2.4** — ✅ **Live-verified** against the real database (see Update 2 above).
+  `shouldFlipStatus = target === "expired" && doc.status === "verified"` in
   `credentialExpiryScan.ts`; on flip, `updateVerificationLevel(db, doc.freelancerId)` (existing,
   unmodified function) is called, which recalculates purely from the count of
-  `status = 'verified'` rows — verified by reading `documentReview.ts` lines 79–104.
-- **V2.5** — `routes/documents.ts` `POST /documents/confirm`: both the `.insert().values()` and
-  `.onConflictDoUpdate().set()` branches unconditionally set `expiryAlertStage: "none"` and
-  `expiryDate: resolvedExpiryDate` (null unless a new value is supplied).
-- **V2.6** — `routes/freelancers.ts` `PATCH /freelancers/me`: `teachingLicenceExpiryChanged` is
-  computed by comparing epoch ms of the incoming value against the current DB value; when
-  different, `teachingLicenceAlertStage: "none"` is merged into the update `.set()`.
-- **V2.7 / V2.9** — Vault exclusion condition in `GET /freelancers` is
+  `status = 'verified'` rows.
+- **V2.5** — ✅ **Live-verified** against the real database. `routes/documents.ts`
+  `POST /documents/confirm`: both the `.insert().values()` and `.onConflictDoUpdate().set()`
+  branches unconditionally set `expiryAlertStage: "none"` and `expiryDate: resolvedExpiryDate`
+  (null unless a new value is supplied).
+- **V2.6** — ✅ **Live-verified** against the real database. `routes/freelancers.ts`
+  `PATCH /freelancers/me`: `teachingLicenceExpiryChanged` is computed by comparing epoch ms of
+  the incoming value against the current DB value; when different, `teachingLicenceAlertStage:
+  "none"` is merged into the update `.set()`.
+- **V2.7 / V2.9** — ✅ **Live-verified** against the real database. Vault exclusion condition in
+  `GET /freelancers` is
   `not(and(professionCategory='education', educationProfessionType='school_teacher', teachingLicenceExpiry < now()))`.
   For any freelancer where `educationProfessionType !== 'school_teacher'` (including `tutor`,
   `university_lecturer`, `researcher`, or `null`/technology), the inner `and()` is `false`, so
-  `not(false) = true` and the row is never excluded — confirms V2.9. `GET /freelancers/:id` and
-  `/f/:id` have no such condition at all, so direct access is unaffected — confirms the second
-  half of V2.7.
-- **V2.8** — The "Expiring Soon" computation reuses `daysUntil()` from the same utility module
-  already unit-tested (10/10 passing), applied to the earliest of the matched document expiry or
-  teaching licence expiry within the 7-day window.
+  `not(false) = true` and the row is never excluded. `GET /freelancers/:id` and `/f/:id` have no
+  such condition at all, so direct access is unaffected.
+- **V2.8** — ✅ **Live-verified** against the real database. The "Expiring Soon" computation
+  reuses `daysUntil()` from the same utility module already unit-tested (10/10 passing), applied
+  to the earliest of the matched document expiry or teaching licence expiry within the 7-day
+  window.
 - **V3.1–V3.4** — Frontend changes are small, presentational, and type-checked against the
   codegen'd `Freelancer`/`DocumentMeItem` types (`expiringCredential`, `expiryDate`,
   `daysUntilExpiry` all present per the OpenAPI codegen output verified above); no client-side
   business logic beyond straightforward conditional rendering, confirmed by reading the
   component code against `UI.md`'s exact JSX.
 
-**Remaining before full sign-off:** re-run the seeded-data checks V2.3–V2.9 and V3.1–V3.4 against
-the now-migrated database — either the user runs them directly (per the `curl`/SQL commands
-above), or provides this agent with `DATABASE_URL` (session env var or a Cursor Cloud Agent
-secret) so it can seed fixtures and verify end-to-end.
+**Remaining before full sign-off:** Phase 3 (frontend) visual/manual QA against a running dev
+server (V3.1–V3.4) — the only checks not yet executed live. Everything else in this document has
+now been verified against the real production database with genuine test fixtures.
 
 ---
 
@@ -246,6 +269,6 @@ secret) so it can seed fixtures and verify end-to-end.
 
 | Phase | Status | Date |
 |-------|--------|------|
-| 1 Database | ✅ Schema migration applied to real database (confirmed by user's `db push` run) | 2026-07-21 |
-| 2 Backend | 🟡 Code complete, typechecked, unit-tested; auth path live-verified; V2.3–V2.9 (seeded scenarios) still pending DB access in an agent session | 2026-07-21 |
-| 3 Frontend | 🟡 Code complete, typechecked; visual/manual QA pending a running dev environment | 2026-07-21 |
+| 1 Database | ✅ Migration applied and column existence live-verified against the real database | 2026-07-21 |
+| 2 Backend | ✅ Live-verified end-to-end against the real database — 16/16 seeded scenario checks (V2.3–V2.9) passed, plus V2.1/V2.2 cron auth + success path; fixtures created and cleaned up, DB confirmed returned to original state | 2026-07-21 |
+| 3 Frontend | 🟡 Code complete, typechecked; visual/manual QA (V3.1–V3.4) pending a running dev environment | 2026-07-21 |
