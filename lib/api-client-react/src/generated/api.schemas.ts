@@ -29,6 +29,16 @@ export interface User {
   signatureImageUrl?: string | null;
   /** Whether the user receives email alerts for platform activity */
   emailNotificationsEnabled: boolean;
+  /**
+   * freelancer | employer — in-progress onboarding role while role is pending
+   * @nullable
+   */
+  onboardingRole?: string | null;
+  /**
+   * role | profession_category | freelancer_details | employer_details
+   * @nullable
+   */
+  onboardingStep?: string | null;
   createdAt: string;
 }
 
@@ -41,6 +51,33 @@ export interface UpsertUserBody {
   avatarUrl?: string | null;
   /** @nullable */
   signatureImageUrl?: string | null;
+}
+
+export type PatchOnboardingStepBodyOnboardingRole =
+  (typeof PatchOnboardingStepBodyOnboardingRole)[keyof typeof PatchOnboardingStepBodyOnboardingRole];
+
+export const PatchOnboardingStepBodyOnboardingRole = {
+  freelancer: "freelancer",
+  employer: "employer",
+} as const;
+
+export type PatchOnboardingStepBodyOnboardingStep =
+  (typeof PatchOnboardingStepBodyOnboardingStep)[keyof typeof PatchOnboardingStepBodyOnboardingStep];
+
+export const PatchOnboardingStepBodyOnboardingStep = {
+  role: "role",
+  profession_category: "profession_category",
+  freelancer_details: "freelancer_details",
+  employer_details: "employer_details",
+} as const;
+
+export interface PatchOnboardingStepBody {
+  onboardingRole: PatchOnboardingStepBodyOnboardingRole;
+  onboardingStep: PatchOnboardingStepBodyOnboardingStep;
+  email: string;
+  name: string;
+  /** @nullable */
+  avatarUrl?: string | null;
 }
 
 export type ProfessionCategory =

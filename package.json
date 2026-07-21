@@ -6,11 +6,20 @@
     "preinstall": "node -e \"const fs=require('node:fs');for(const f of ['package-lock.json','yarn.lock']){try{fs.unlinkSync(f)}catch{}}if(!String(process.env.npm_config_user_agent||'').startsWith('pnpm/')){console.error('Use pnpm instead');process.exit(1)}\"",
     "build": "pnpm run typecheck && pnpm -r --if-present run build",
     "typecheck:libs": "tsc --build",
-    "typecheck": "pnpm run typecheck:libs && pnpm -r --filter \"./artifacts/**\" --filter \"./scripts\" --if-present run typecheck"
+    "typecheck": "pnpm run typecheck:libs && pnpm -r --filter \"./artifacts/**\" --filter \"./scripts\" --if-present run typecheck",
+    "test": "pnpm run test:unit && pnpm run test:frontend",
+    "test:unit": "pnpm --filter @workspace/api-server run test:unit",
+    "test:frontend": "pnpm --filter @workspace/talentlock run test:unit",
+    "test:integration": "pnpm --filter @workspace/api-server run test:integration",
+    "test:validate": "node scripts/test-regression.mjs",
+    "test:e2e": "playwright test",
+    "test:all": "pnpm run test:unit && pnpm run test:frontend && pnpm --filter @workspace/api-server run test"
   },
   "private": true,
+  "packageManager": "pnpm@10.33.3",
   "devDependencies": {
-    "playwright": "^1.60.0",
+    "@playwright/test": "^1.61.1",
+    "playwright": "^1.61.1",
     "prettier": "^3.8.1",
     "typescript": "~5.9.2"
   },

@@ -11,6 +11,8 @@ export const usersTable = pgTable("users", {
   avatarUrl: text("avatar_url"),
   signatureImageUrl: text("signature_image_url"),
   emailNotificationsEnabled: boolean("email_notifications_enabled").notNull().default(true),
+  onboardingRole: text("onboarding_role"),
+  onboardingStep: text("onboarding_step"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });

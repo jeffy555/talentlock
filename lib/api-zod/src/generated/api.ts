@@ -32,6 +32,18 @@ export const GetMeResponse = zod.object({
   emailNotificationsEnabled: zod
     .boolean()
     .describe("Whether the user receives email alerts for platform activity"),
+  onboardingRole: zod
+    .string()
+    .nullish()
+    .describe(
+      "freelancer | employer — in-progress onboarding role while role is pending",
+    ),
+  onboardingStep: zod
+    .string()
+    .nullish()
+    .describe(
+      "role | profession_category | freelancer_details | employer_details",
+    ),
   createdAt: zod.coerce.date(),
 });
 
@@ -60,6 +72,63 @@ export const UpsertMeResponse = zod.object({
   emailNotificationsEnabled: zod
     .boolean()
     .describe("Whether the user receives email alerts for platform activity"),
+  onboardingRole: zod
+    .string()
+    .nullish()
+    .describe(
+      "freelancer | employer — in-progress onboarding role while role is pending",
+    ),
+  onboardingStep: zod
+    .string()
+    .nullish()
+    .describe(
+      "role | profession_category | freelancer_details | employer_details",
+    ),
+  createdAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Save in-progress onboarding role and step (upserts pending user)
+ */
+export const PatchOnboardingStepBody = zod.object({
+  onboardingRole: zod.enum(["freelancer", "employer"]),
+  onboardingStep: zod.enum([
+    "role",
+    "profession_category",
+    "freelancer_details",
+    "employer_details",
+  ]),
+  email: zod.string(),
+  name: zod.string(),
+  avatarUrl: zod.string().nullish(),
+});
+
+export const PatchOnboardingStepResponse = zod.object({
+  id: zod.number(),
+  clerkId: zod.string(),
+  role: zod.string().describe("freelancer or employer"),
+  email: zod.string(),
+  name: zod.string(),
+  avatarUrl: zod.string().nullish(),
+  signatureImageUrl: zod
+    .string()
+    .nullish()
+    .describe("Stored signature image path (object storage)"),
+  emailNotificationsEnabled: zod
+    .boolean()
+    .describe("Whether the user receives email alerts for platform activity"),
+  onboardingRole: zod
+    .string()
+    .nullish()
+    .describe(
+      "freelancer | employer — in-progress onboarding role while role is pending",
+    ),
+  onboardingStep: zod
+    .string()
+    .nullish()
+    .describe(
+      "role | profession_category | freelancer_details | employer_details",
+    ),
   createdAt: zod.coerce.date(),
 });
 

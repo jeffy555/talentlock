@@ -1,0 +1,130 @@
+name: Test
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  schedule:
+    # Nightly integration run (03:00 UTC)
+    - cron: "0 3 * * *"
+
+concurrency:
+  group: test-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ci:
+    name: CI
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.33.3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck
+        run: pnpm run typecheck
+
+      - name: API unit tests
+        run: pnpm run test:unit
+        env:
+          CI: true
+          VITEST_JUNIT_FILE: test-results/api-unit-junit.xml
+
+      - name: Frontend unit tests
+        run: pnpm run test:frontend
+        env:
+          CI: true
+          VITEST_JUNIT_FILE: test-results/frontend-unit-junit.xml
+
+      - name: Install Playwright browsers
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: E2E harness
+        run: pnpm run test:e2e
+
+      - name: Upload Vitest JUnit reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: vitest-junit
+          path: |
+            artifacts/api-server/test-results/*.xml
+            artifacts/talentlock/test-results/*.xml
+          if-no-files-found: warn
+
+  integration:
+    name: Integration
+    runs-on: ubuntu-latest
+    needs: ci
+    if: github.event_name == 'schedule' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
+    timeout-minutes: 30
+    env:
+      CI: true
+      DATABASE_URL: ${{ secrets.DATABASE_URL_TEST }}
+      DATABASE_URL_TEST: ${{ secrets.DATABASE_URL_TEST }}
+      CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY }}
+      CLERK_PUBLISHABLE_KEY: ${{ secrets.CLERK_PUBLISHABLE_KEY }}
+      VITE_CLERK_PUBLISHABLE_KEY: ${{ secrets.CLERK_PUBLISHABLE_KEY }}
+      CSRF_SECRET: ${{ secrets.CSRF_SECRET }}
+      SESSION_SECRET: ${{ secrets.SESSION_SECRET }}
+      ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD }}
+      DEMO_EMPLOYER_CLERK_ID: ${{ secrets.DEMO_EMPLOYER_CLERK_ID }}
+      DEMO_FREELANCER_CLERK_ID: ${{ secrets.DEMO_FREELANCER_CLERK_ID }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.33.3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Verify integration secrets
+        run: |
+          missing=0
+          for key in DATABASE_URL CLERK_SECRET_KEY CLERK_PUBLISHABLE_KEY CSRF_SECRET ADMIN_PASSWORD; do
+            if [ -z "${!key}" ]; then
+              echo "::error::Missing required secret for integration job: $key"
+              missing=1
+            fi
+          done
+          exit "$missing"
+
+      - name: Push database schema
+        run: pnpm --filter @workspace/db run push
+
+      - name: API integration tests
+        run: pnpm run test:integration
+        env:
+          VITEST_JUNIT_FILE: test-results/api-integration-junit.xml
+
+      - name: Upload integration JUnit report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: vitest-integration-junit
+          path: artifacts/api-server/test-results/*.xml
+          if-no-files-found: warn

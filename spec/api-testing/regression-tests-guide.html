@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>TalentLock Regression Tests Guide</title>
+  <style>
+    @page { margin: 18mm 15mm; }
+    * { box-sizing: border-box; }
+    body {
+      font-family: "Segoe UI", Helvetica, Arial, sans-serif;
+      color: #1a1a2e;
+      line-height: 1.55;
+      font-size: 11pt;
+      max-width: 780px;
+      margin: 0 auto;
+      padding: 24px 0;
+    }
+    h1 {
+      font-size: 22pt;
+      color: #0f3460;
+      border-bottom: 3px solid #e94560;
+      padding-bottom: 8px;
+      margin-top: 0;
+    }
+    h2 {
+      font-size: 14pt;
+      color: #16213e;
+      margin-top: 28px;
+      page-break-after: avoid;
+    }
+    h3 {
+      font-size: 12pt;
+      color: #0f3460;
+      margin-top: 18px;
+      page-break-after: avoid;
+    }
+    p { margin: 8px 0; }
+    .subtitle {
+      color: #555;
+      font-size: 11pt;
+      margin-bottom: 24px;
+    }
+    .summary-box {
+      background: #f0f4ff;
+      border-left: 4px solid #0f3460;
+      padding: 14px 16px;
+      margin: 16px 0;
+      border-radius: 0 6px 6px 0;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 12px 0 18px;
+      font-size: 10pt;
+      page-break-inside: avoid;
+    }
+    th, td {
+      border: 1px solid #ccd6e0;
+      padding: 7px 10px;
+      text-align: left;
+      vertical-align: top;
+    }
+    th {
+      background: #16213e;
+      color: #fff;
+      font-weight: 600;
+    }
+    tr:nth-child(even) td { background: #f8fafc; }
+    code, .cmd {
+      font-family: "Consolas", "Courier New", monospace;
+      background: #eef2f7;
+      padding: 1px 5px;
+      border-radius: 3px;
+      font-size: 9.5pt;
+    }
+    pre {
+      background: #1a1a2e;
+      color: #e8e8e8;
+      padding: 12px 14px;
+      border-radius: 6px;
+      font-size: 9pt;
+      overflow-wrap: anywhere;
+      white-space: pre-wrap;
+      page-break-inside: avoid;
+    }
+    ul { margin: 6px 0 12px; padding-left: 22px; }
+    li { margin: 4px 0; }
+    .phase { font-weight: 600; color: #e94560; }
+    .footer {
+      margin-top: 36px;
+      padding-top: 12px;
+      border-top: 1px solid #ccd6e0;
+      font-size: 9pt;
+      color: #666;
+    }
+    .diagram {
+      font-family: "Consolas", monospace;
+      background: #f8fafc;
+      border: 1px solid #ccd6e0;
+      padding: 14px;
+      border-radius: 6px;
+      font-size: 9pt;
+      line-height: 1.45;
+      page-break-inside: avoid;
+    }
+  </style>
+</head>
+<body>
+
+<h1>TalentLock Regression Tests</h1>
+<p class="subtitle">What the automated regression suite does, how it is organised, and how to run it.<br />
+Generated: July 2026 &nbsp;|&nbsp; Branch: cursor/regression-tests-9a23</p>
+
+<div class="summary-box">
+  <strong>In short:</strong> Regression tests automatically re-check that TalentLock still works correctly after every code change.
+  They cover API security, marketplace flows, billing limits, AI features, messaging, dashboards, frontend utilities, and legacy validation scripts —
+  catching bugs before they reach production.
+</div>
+
+<h2>1. What is a regression test?</h2>
+<p>
+  A <strong>regression test</strong> verifies that existing behaviour has not broken after a change.
+  In TalentLock, the suite runs hundreds of automated checks against the API server, frontend components, and (optionally) a live browser.
+</p>
+<p>Each test follows a simple pattern:</p>
+<ol>
+  <li><strong>Arrange</strong> — set up inputs, auth tokens, or database fixtures.</li>
+  <li><strong>Act</strong> — call an API endpoint, render a component, or load a page.</li>
+  <li><strong>Assert</strong> — confirm the response status, JSON shape, UI text, or security header matches expectations.</li>
+</ol>
+<p>
+  If a developer changes code that breaks a previously working feature, the matching test fails immediately —
+  in local development or in GitHub Actions CI — before the change is merged.
+</p>
+
+<h2>2. Test architecture overview</h2>
+<div class="diagram">
+  Developer / CI
+       │
+       ├─ pnpm run test:unit ──────────► API unit tests (54) — no DB, no secrets
+       ├─ pnpm run test:frontend ──────► Frontend unit tests (27) — jsdom, no secrets
+       ├─ pnpm run test:e2e ───────────► Playwright smoke (6) — browser harness
+       ├─ pnpm run test:integration ───► API integration (147) — real DB + Clerk
+       └─ pnpm run test:validate ──────► Legacy .mjs scripts (28) — manual bridge
+</div>
+
+<h2>3. Test layers and what they verify</h2>
+
+<h3>3.1 API unit tests — 54 tests (CI-safe)</h3>
+<p><strong>Location:</strong> <code>artifacts/api-server/tests/unit/</code><br />
+<strong>Runner:</strong> Vitest &nbsp;|&nbsp; <strong>Command:</strong> <code>pnpm run test:unit</code></p>
+<p>Fast, isolated tests for pure functions and business logic. No database or network required.</p>
+<table>
+  <tr><th>Test file</th><th>What it checks</th></tr>
+  <tr><td>sanitise.test.ts</td><td>HTML stripping from user text; safe rich-text tags allowed</td></tr>
+  <tr><td>completenessUtils.test.ts</td><td>Profile completeness score 0–100; ≥60% gate for Talent Vault</td></tr>
+  <tr><td>paginationUtils.test.ts</td><td>Page bounds and totalPages calculation</td></tr>
+  <tr><td>plans.test.ts</td><td>All 5 subscription plan IDs exist with correct limits</td></tr>
+  <tr><td>subscriptionGating.test.ts</td><td>Token usage aggregation and monthly reset date logic</td></tr>
+  <tr><td>searchUtils.test.ts</td><td>Search query sanitisation (SQL injection safe)</td></tr>
+  <tr><td>accessControl.test.ts</td><td>Access-control helper exports present</td></tr>
+  <tr><td>cruiseModeUtils.test.ts</td><td>Cruise Mode pre-filter, blackout windows, prompt validation</td></tr>
+  <tr><td>talentSearchUtils.test.ts</td><td>Talent Search pre-filter and prompt validation</td></tr>
+  <tr><td>professionContext.test.ts</td><td>Teaching profession context builder</td></tr>
+  <tr><td>securitySource.test.ts</td><td>Security hardening source patterns (Phase 2 checks)</td></tr>
+  <tr><td>legacyCoverage.test.ts</td><td>Every legacy script and Vitest port file exists on disk</td></tr>
+</table>
+
+<h3>3.2 API integration tests — 147 tests (needs secrets)</h3>
+<p><strong>Location:</strong> <code>artifacts/api-server/tests/integration/</code><br />
+<strong>Runner:</strong> Vitest + Supertest &nbsp;|&nbsp; <strong>Command:</strong> <code>pnpm run test:integration</code></p>
+<p>
+  Hits the real Express API against a test database and Clerk test users.
+  Tests are automatically <strong>skipped</strong> when <code>DATABASE_URL</code>, <code>CLERK_SECRET_KEY</code>,
+  or <code>CLERK_PUBLISHABLE_KEY</code> are not configured.
+</p>
+<table>
+  <tr><th>Area</th><th>What it checks</th></tr>
+  <tr><td><span class="phase">Phase 1</span> Auth &amp; Security</td>
+      <td>IDOR guards (401/403/200 per route), security headers, admin CSRF login, input sanitisation, GDPR deletion</td></tr>
+  <tr><td><span class="phase">Phase 2</span> Core marketplace</td>
+      <td>Users, freelancers/vault, employers, jobs, bookings, meetings, agreements, reviews, availability</td></tr>
+  <tr><td><span class="phase">Phase 3</span> Billing &amp; tokens</td>
+      <td>Subscription plans, quota enforcement (402 PLAN_LIMIT / TOKEN_LIMIT), per-conversation token usage</td></tr>
+  <tr><td><span class="phase">Phase 4</span> AI &amp; automation</td>
+      <td>AI endpoint auth guards, rate suggestions, proposals, match explanations, Cruise Mode &amp; Talent Search config</td></tr>
+  <tr><td><span class="phase">Phase 5</span> Messaging &amp; docs</td>
+      <td>Direct messaging dedup/rate limits, notification inbox/read ordering, document verification</td></tr>
+  <tr><td><span class="phase">Phase 6</span> Dashboard &amp; teams</td>
+      <td>Role-specific dashboard panels, earnings intelligence, team access (Enterprise plan), teaching profiles</td></tr>
+  <tr><td><span class="phase">Phase 8</span> Legacy ports</td>
+      <td>Agreement health/redline/summary/download, product gaps, calendar, reviews submit, email notifications</td></tr>
+</table>
+
+<h3>3.3 Frontend unit tests — 27 tests (CI-safe)</h3>
+<p><strong>Location:</strong> <code>artifacts/talentlock/tests/</code><br />
+<strong>Runner:</strong> Vitest + Testing Library &nbsp;|&nbsp; <strong>Command:</strong> <code>pnpm run test:frontend</code></p>
+<table>
+  <tr><th>Test file</th><th>What it checks</th></tr>
+  <tr><td>rateFormatUtils.test.ts</td><td>Rate type labels (hourly, daily, fixed, etc.)</td></tr>
+  <tr><td>contractHealthUtils.test.ts</td><td>Agreement health grade boundaries (A–F)</td></tr>
+  <tr><td>agreementSummaryUtils.test.ts</td><td>Summary section ordering</td></tr>
+  <tr><td>planErrorUtils.test.ts</td><td>402 TOKEN_LIMIT shows inline error; PLAN_LIMIT redirects to /pricing</td></tr>
+  <tr><td>exclusivityCopy.test.ts</td><td>Pending bookings never display "locked" copy</td></tr>
+  <tr><td>VerifiedEmployerBadge.test.tsx</td><td>Badge hidden when employer is unverified</td></tr>
+  <tr><td>PaginationControls.test.tsx</td><td>Prev/next disabled at first/last page</td></tr>
+  <tr><td>CompletenessBanner.test.tsx</td><td>Missing profile fields shown to user</td></tr>
+</table>
+
+<h3>3.4 Playwright E2E smoke — 6 tests</h3>
+<p><strong>Location:</strong> <code>e2e/smoke.spec.ts</code> &nbsp;|&nbsp; <strong>Command:</strong> <code>pnpm run test:e2e</code></p>
+<p>
+  Browser-level smoke tests. One harness test always runs in CI.
+  The remaining 5 tests (landing page, health API, sign-in, pricing, admin login) run only when
+  <code>E2E_FORCE=1</code> or <code>E2E_BASE_URL</code> is set with dev servers running.
+</p>
+
+<h3>3.5 Legacy validation bridge — 28 scripts</h3>
+<p><strong>Location:</strong> <code>scripts/test-regression.mjs</code> &nbsp;|&nbsp; <strong>Command:</strong> <code>pnpm run test:validate</code></p>
+<p>
+  Before the Vitest suite existed, TalentLock used standalone <code>validate-*.mjs</code> scripts run manually.
+  The bridge orchestrator still runs all 28 legacy scripts for backwards compatibility.
+  Each script is mapped to a modern Vitest suite in <code>artifacts/api-server/tests/regression/legacy-map.ts</code>.
+</p>
+
+<h2>4. What regression tests protect against</h2>
+<ul>
+  <li><strong>Security regressions</strong> — users accessing other users' bookings, agreements, or messages (IDOR)</li>
+  <li><strong>Auth bypass</strong> — admin routes without CSRF, missing security headers</li>
+  <li><strong>Billing bugs</strong> — quota limits not enforced; wrong 402 error shape</li>
+  <li><strong>Data integrity</strong> — profile completeness score wrong; vault listing incomplete profiles</li>
+  <li><strong>API contract drift</strong> — response shapes changing without notice</li>
+  <li><strong>Frontend UX bugs</strong> — wrong error handling on plan limits; broken pagination</li>
+  <li><strong>Feature regressions</strong> — agreements, AI, messaging, notifications breaking silently</li>
+</ul>
+
+<h2>5. Commands reference</h2>
+<pre>pnpm run typecheck       # Full workspace TypeScript check
+pnpm run test            # API unit + frontend unit (CI-safe)
+pnpm run test:unit       # API server unit tests only
+pnpm run test:frontend   # Frontend unit tests only
+pnpm run test:integration # API integration (needs .env secrets)
+pnpm run test:e2e        # Playwright smoke harness
+pnpm run test:validate   # Legacy .mjs scripts (needs .env secrets)
+pnpm run test:all        # unit + frontend + full API vitest suite</pre>
+
+<h2>6. Local setup (secrets never committed)</h2>
+<ol>
+  <li>Copy <code>.env.example</code> → <code>.env</code> locally.</li>
+  <li>Fill in: <code>DATABASE_URL</code>, <code>CLERK_SECRET_KEY</code>, <code>CLERK_PUBLISHABLE_KEY</code>.</li>
+  <li>Optional: <code>ADMIN_PASSWORD</code>, <code>CSRF_SECRET</code>, demo Clerk user IDs.</li>
+  <li>Run <code>pnpm run test:integration</code> to execute all 147 integration tests.</li>
+</ol>
+<p><code>.env</code> and <code>.env.test</code> are gitignored. Never commit secrets to the repository.</p>
+
+<h2>7. CI pipeline (GitHub Actions)</h2>
+<p><strong>Workflow file:</strong> <code>.github/workflows/test.yml</code></p>
+<table>
+  <tr><th>Job</th><th>When</th><th>Steps</th></tr>
+  <tr><td><strong>CI</strong></td><td>Every PR and push to main</td>
+      <td>typecheck → API unit (54) → frontend unit (27) → Playwright E2E harness</td></tr>
+  <tr><td><strong>Integration</strong></td><td>Push to main + nightly 03:00 UTC</td>
+      <td>Verify secrets → DB schema push → API integration (147)</td></tr>
+</table>
+<p>Required GitHub secrets for integration job:</p>
+<ul>
+  <li><code>DATABASE_URL_TEST</code> — Neon test database connection string</li>
+  <li><code>CLERK_SECRET_KEY</code> / <code>CLERK_PUBLISHABLE_KEY</code></li>
+  <li><code>CSRF_SECRET</code> / <code>ADMIN_PASSWORD</code></li>
+</ul>
+<p>Vitest JUnit XML reports are uploaded as GitHub Actions artifacts after each run.</p>
+
+<h2>8. Test count summary</h2>
+<table>
+  <tr><th>Layer</th><th>Tests</th><th>Runs in CI without secrets?</th></tr>
+  <tr><td>API unit</td><td>54</td><td>Yes — every PR</td></tr>
+  <tr><td>Frontend unit</td><td>27</td><td>Yes — every PR</td></tr>
+  <tr><td>Playwright E2E</td><td>1 pass + 5 skip</td><td>Yes — harness only</td></tr>
+  <tr><td>API integration</td><td>147</td><td>Main + nightly (with secrets)</td></tr>
+  <tr><td>Legacy scripts</td><td>28 scripts</td><td>Manual / local only</td></tr>
+  <tr><td><strong>Total Vitest</strong></td><td><strong>203</strong></td><td><strong>81 pass / 147 skip without .env</strong></td></tr>
+</table>
+
+<h2>9. Legacy script → Vitest migration map (Phase 8)</h2>
+<p>28 legacy scripts are tracked in <code>legacy-map.ts</code>. Priority P0 scripts cover auth, security, and completeness utils. P1 covers agreements, AI, availability, and tokens. P2 covers teams, notifications, reviews, and earnings.</p>
+<table>
+  <tr><th>Priority</th><th>Legacy script examples</th><th>Modern Vitest suite</th></tr>
+  <tr><td>P0</td><td>validate-auth-hardening.mjs</td><td>integration/auth/idor.test.ts</td></tr>
+  <tr><td>P0</td><td>validate-security-hardening.mjs</td><td>integration/security/middleware.test.ts</td></tr>
+  <tr><td>P1</td><td>validate-contract-health-score.mjs</td><td>integration/agreements/health.test.ts</td></tr>
+  <tr><td>P1</td><td>validate-ai-proposal-generator.mjs</td><td>integration/ai/proposal.test.ts</td></tr>
+  <tr><td>P2</td><td>verify-earnings-intelligence.mjs</td><td>integration/dashboard/earnings.test.ts</td></tr>
+  <tr><td>P2</td><td>verify-reviews-all.mjs</td><td>integration/reviews/submit.test.ts</td></tr>
+</table>
+
+<h2>10. How a typical integration test works</h2>
+<ol>
+  <li>Test file calls <code>integrationEnvReady()</code> — skips entire suite if secrets missing.</li>
+  <li><code>apiClient.ts</code> mints a real Clerk JWT for demo employer or freelancer.</li>
+  <li>Supertest sends HTTP request to the in-process Express app.</li>
+  <li>Response status, JSON body, and headers are asserted.</li>
+  <li>For quota tests: asserts HTTP 402 with <code>{ error, code, planNeeded }</code> shape.</li>
+  <li>For IDOR tests: same route called as wrong user → expects 403.</li>
+</ol>
+
+<div class="footer">
+  TalentLock Regression Tests Guide &nbsp;|&nbsp; spec/api-testing/ &nbsp;|&nbsp;
+  For the full test inventory see task.md in the same directory.
+</div>
+
+</body>
+</html>
