@@ -131,19 +131,19 @@ Verify `indexFiles: false` and `lib/api-zod/src/index.ts` exports unchanged.
 
 ## Acceptance Criteria
 
-- [x] `documents.expiry_date`, `documents.expiry_alert_stage`, `freelancer_profiles.teaching_licence_alert_stage` columns exist — schema written; `pnpm --filter @workspace/db run push` must be run against a real database before deploy (no DB available in the implementing sandbox)
-- [x] `POST /api/cron/credential-expiry` requires `x-cron-secret`; wrong/missing secret → 401; unset `CRON_SECRET` → 500 — live-verified against the real Express app (see `validation.md`)
-- [x] Cron route is NOT under `/api/admin` and is unaffected by CSRF middleware — live-verified (never 403)
-- [x] Running the scan twice in a row does not re-send the same alert stage twice — covered by `credentialExpiryUtils.test.ts` (`stageAdvanced`)
-- [x] Document crossing 0 days with `status='verified'` flips to `status='expired'`; `updateVerificationLevel()` recalculates badge — implemented in `credentialExpiryScan.ts`, code-reviewed against unmodified `updateVerificationLevel()`
-- [x] Re-uploading a `professional_credential` resets `expiryDate` and `expiryAlertStage` to `none` — implemented in `routes/documents.ts`
-- [x] `PATCH /freelancers/me` with a new `teachingLicenceExpiry` resets `teachingLicenceAlertStage` to `none` — implemented in `routes/freelancers.ts`
-- [x] `GET /freelancers` excludes `school_teacher` freelancers with an expired `teachingLicenceExpiry`; `GET /freelancers/:id` and `/f/:id` still work for the same freelancer — implemented, no change to the `:id`/public routes
-- [x] `GET /freelancers` includes `expiringCredential: { daysRemaining }` for any freelancer with a credential expiring within 7 days — implemented
-- [x] Talent Vault card shows "Expiring Soon" badge when `expiringCredential` is present — implemented in `FreelancersList.tsx`
-- [x] `/profile` shows amber banner at ≤30 days, red banner at ≤7 days / expired — implemented via `CredentialExpiryBanner.tsx`
+- [x] `documents.expiry_date`, `documents.expiry_alert_stage`, `freelancer_profiles.teaching_licence_alert_stage` columns exist — pushed to and live-verified against the real database 2026-07-21
+- [x] `POST /api/cron/credential-expiry` requires `x-cron-secret`; wrong/missing secret → 401; unset `CRON_SECRET` → 500 — live-verified against the real Express app + real database
+- [x] Cron route is NOT under `/api/admin` and is unaffected by CSRF middleware — live-verified (never 403; correct-secret path returns 200 with real DB connectivity)
+- [x] Running the scan twice in a row does not re-send the same alert stage twice — live-verified with a seeded fixture (first scan → `7d` + 1 alert; second scan → unchanged, 0 alerts) + unit-tested in isolation
+- [x] Document crossing 0 days with `status='verified'` flips to `status='expired'`; `updateVerificationLevel()` recalculates badge — live-verified: fixture went `partially_verified` → `unverified`, `isVerified` → `false`
+- [x] Re-uploading a `professional_credential` resets `expiryDate` and `expiryAlertStage` to `none` — live-verified with the exact upsert used by the route
+- [x] `PATCH /freelancers/me` with a new `teachingLicenceExpiry` resets `teachingLicenceAlertStage` to `none` — live-verified
+- [x] `GET /freelancers` excludes `school_teacher` freelancers with an expired `teachingLicenceExpiry`; `GET /freelancers/:id` and `/f/:id` still work for the same freelancer — live-verified (tutor with the same expired date was correctly NOT excluded)
+- [x] `GET /freelancers` includes `expiringCredential: { daysRemaining }` for any freelancer with a credential expiring within 7 days — live-verified (3-day-out fixture → `daysRemaining: 3`)
+- [x] Talent Vault card shows "Expiring Soon" badge when `expiringCredential` is present — implemented in `FreelancersList.tsx`, type-checked against codegen'd types
+- [x] `/profile` shows amber banner at ≤30 days, red banner at ≤7 days / expired — implemented via `CredentialExpiryBanner.tsx`, type-checked
 - [x] `pnpm run typecheck` passes — verified
 
-DB-dependent items (schema push, full end-to-end HTTP flows against seeded data) require a real
-Postgres connection to fully re-verify — see `validation.md` "Validation Run Log" for exactly
-what was executed vs. code-reviewed in this environment.
+All backend acceptance criteria have been live-verified against the real production database
+using clearly-tagged, auto-cleaned-up fixtures (see `validation.md` "Validation Run Log — Update
+2" for the full 16/16 result). Only frontend visual/manual QA (running dev server) remains.
