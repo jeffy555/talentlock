@@ -21,6 +21,7 @@ import { EarningsIntelligencePanel } from "@/components/earnings/EarningsIntelli
 import { SpendAnalyticsPanel } from "@/components/spend/SpendAnalyticsPanel";
 import { HiringAnalyticsPanel } from "@/components/hiring/HiringAnalyticsPanel";
 import { ProfileStrengthChecklist } from "@/components/onboarding/ProfileStrengthChecklist";
+import { WatchlistSummaryCard } from "@/components/watchlist/WatchlistSummaryCard";
 
 function StatCardSkeleton() {
   return (
@@ -235,6 +236,12 @@ export default function Dashboard() {
         {isEmployer && <TokenUsageWidget variant="compact" />}
         </div>
       </section>
+
+      {isEmployer && (
+        <div className="max-w-md">
+          <WatchlistSummaryCard />
+        </div>
+      )}
 
       {/* Analytics Chart */}
       {monthly.length > 0 && (

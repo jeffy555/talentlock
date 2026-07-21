@@ -2169,21 +2169,21 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorEnvelope"
 
-  # ── Saved Freelancers ────────────────────────────────────────────────────
+  # ── Saved Freelancers / Watchlist ────────────────────────────────────────
   /freelancers/saved:
     get:
       operationId: listSavedFreelancers
       tags: [freelancers]
-      summary: List saved/shortlisted freelancers (employer only)
+      summary: List employer personal watchlist (employer only)
       responses:
         "200":
-          description: List of saved freelancer profiles
+          description: List of watchlist items
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: "#/components/schemas/FreelancerProfile"
+                  $ref: "#/components/schemas/WatchlistItem"
 
   /freelancers/{id}/saved:
     get:
@@ -2208,7 +2208,7 @@ paths:
     post:
       operationId: toggleSaveFreelancer
       tags: [freelancers]
-      summary: Toggle save/unsave a freelancer (employer only)
+      summary: Toggle save/unsave a freelancer on personal watchlist (employer only)
       parameters:
         - name: id
           in: path
@@ -2222,6 +2222,43 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/SaveToggleResult"
+        "402":
+          description: Watchlist plan limit reached
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlanLimitError"
+
+  /freelancers/{id}/watchlist:
+    patch:
+      operationId: patchWatchlistNotes
+      tags: [freelancers]
+      summary: Update private notes for a watchlisted freelancer (employer only)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PatchWatchlistNotesBody"
+      responses:
+        "200":
+          description: Updated notes
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PatchWatchlistNotesResponse"
+        "404":
+          description: Freelancer not on watchlist
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
 
   # ── Portfolio ─────────────────────────────────────────────────────────────
   /freelancers/{id}/portfolio:
@@ -6941,6 +6978,47 @@ components:
         - page
         - pageSize
         - totalPages
+
+    WatchlistItem:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: saved_freelancers.id
+        freelancerId:
+          type: integer
+        savedAt:
+          type: string
+          format: date-time
+        notes:
+          type: string
+          nullable: true
+        freelancer:
+          $ref: "#/components/schemas/FreelancerProfile"
+      required:
+        - id
+        - freelancerId
+        - savedAt
+        - freelancer
+
+    PatchWatchlistNotesBody:
+      type: object
+      properties:
+        notes:
+          type: string
+          nullable: true
+          maxLength: 500
+      required:
+        - notes
+
+    PatchWatchlistNotesResponse:
+      type: object
+      properties:
+        notes:
+          type: string
+          nullable: true
+      required:
+        - notes
 
     SaveToggleResult:
       type: object

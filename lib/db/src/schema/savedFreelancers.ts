@@ -1,9 +1,11 @@
-import { pgTable, serial, timestamp, integer, unique, index } from "drizzle-orm/pg-core";
+import { pgTable, serial, timestamp, integer, unique, index, text } from "drizzle-orm/pg-core";
 
 export const savedFreelancersTable = pgTable("saved_freelancers", {
   id: serial("id").primaryKey(),
   employerUserId: integer("employer_user_id").notNull(),
   freelancerId: integer("freelancer_id").notNull(), // freelancer_profiles.id
+  notes: text("notes"),
+  lastAlertAt: timestamp("last_alert_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 }, (t) => ({
   uniquePair: unique("saved_freelancers_uq").on(t.employerUserId, t.freelancerId),

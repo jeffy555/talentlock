@@ -598,6 +598,13 @@ Cursor notes — Teaching Professional Profile
 | `artifacts/api-server/src/lib/cronAuth.ts` | `requireCronSecret()` — Express middleware; timing-safe `x-cron-secret` header check against `CRON_SECRET`, fails closed (500) if unset |
 | `artifacts/api-server/src/routes/cron.ts` | `POST /api/cron/credential-expiry` — machine-only, mounted outside `/api/admin` |
 | `artifacts/talentlock/src/components/CredentialExpiryBanner.tsx` | Amber (≤30d) / red (≤7d or expired) banner on `/profile`, sourced from `GET /documents/me` + teaching licence fields |
+| `artifacts/api-server/src/lib/watchlistLimits.ts` | `WATCHLIST_LIMITS`, `watchlistLimitForPlan()`, `countWatchlist()` — plan gate for personal watchlist |
+| `artifacts/api-server/src/lib/watchlistAlerts.ts` | `shouldNotifyAvailability()`, `shouldNotifyRateChange()`, `notifyWatchlistSubscribers()` — fire-and-forget watchlist change alerts |
+| `artifacts/api-server/src/lib/teamMembership.ts` | `isActiveTeamMember()` — blocks personal watchlist for enterprise team members |
+| `artifacts/api-server/src/routes/savedFreelancers.ts` | `/api/freelancers/saved`, `/api/freelancers/:id/saved`, `/api/freelancers/:id/save`, `/api/freelancers/:id/watchlist` |
+| `artifacts/talentlock/src/components/watchlist/WatchlistToggleButton.tsx` | Heart toggle for personal watchlist |
+| `artifacts/talentlock/src/components/watchlist/WatchlistNotesEditor.tsx` | Inline private notes editor on watchlist panel |
+| `artifacts/talentlock/src/components/watchlist/WatchlistSummaryCard.tsx` | Employer dashboard watchlist summary |
 
 ---
 

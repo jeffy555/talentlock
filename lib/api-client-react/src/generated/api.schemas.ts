@@ -1997,6 +1997,24 @@ export interface PaginatedMeetingsResult {
   totalPages: number;
 }
 
+export interface WatchlistItem {
+  /** saved_freelancers.id */
+  id: number;
+  freelancerId: number;
+  savedAt: string;
+  notes?: string | null;
+  freelancer: FreelancerProfile;
+}
+
+export interface PatchWatchlistNotesBody {
+  /** @maxLength 500 */
+  notes: string | null;
+}
+
+export interface PatchWatchlistNotesResponse {
+  notes: string | null;
+}
+
 export interface SaveToggleResult {
   saved: boolean;
 }

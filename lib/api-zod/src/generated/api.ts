@@ -2691,78 +2691,88 @@ export const ReplyToReviewResponse = zod.object({
 });
 
 /**
- * @summary List saved/shortlisted freelancers (employer only)
+ * @summary List employer personal watchlist (employer only)
  */
 export const ListSavedFreelancersResponseItem = zod.object({
-  id: zod.number(),
-  userId: zod.number(),
-  clerkId: zod.string(),
-  name: zod.string(),
-  tagline: zod.string(),
-  fieldOfWork: zod.string(),
-  skills: zod.array(zod.string()),
-  yearsExperience: zod.number(),
-  bio: zod.string().nullish(),
-  resumeUrl: zod.string().nullish(),
-  portfolioUrl: zod.string().nullish(),
-  paymentPreference: zod.string().describe("hourly or daily"),
-  hourlyRate: zod.number().nullish(),
-  dailyRate: zod.number().nullish(),
-  achievements: zod.string().nullish(),
-  isVerified: zod.boolean(),
-  verificationLevel: zod.enum([
-    "unverified",
-    "partially_verified",
-    "fully_verified",
-  ]),
-  verificationStatus: zod
-    .string()
-    .optional()
-    .describe("unverified | pending | verified | rejected"),
-  verificationNote: zod.string().nullish(),
-  documentNames: zod.array(zod.string()).optional(),
-  isAvailable: zod.boolean(),
-  currentBookingId: zod.number().nullish(),
-  bookingEndDate: zod.coerce.date().nullish(),
-  subscriptionPlan: zod.string(),
-  availableFrom: zod.coerce.date().nullish(),
-  nextAvailableDate: zod.coerce
-    .date()
-    .nullish()
-    .describe("Cached next available date (null when not available)"),
-  availabilityNote: zod.string().nullish(),
-  averageRating: zod.number().nullish(),
-  reviewCount: zod.number(),
-  completenessScore: zod
-    .number()
-    .describe("Profile completeness score 0–100 (Talent Vault requires ≥ 60)"),
-  professionCategory: zod.enum(["technology", "education"]),
-  educationProfessionType: zod
-    .enum(["school_teacher", "university_lecturer", "tutor", "researcher"])
-    .nullish(),
-  teachingSubjects: zod.array(zod.string()).nullish(),
-  teachingLevels: zod.array(zod.string()).nullish(),
-  yearsTeachingExperience: zod.number().nullish(),
-  highestDegree: zod.enum(["bachelors", "masters", "phd", "postdoc"]).nullish(),
-  degreeSubject: zod.string().nullish(),
-  degreeInstitution: zod.string().nullish(),
-  teachingLicenceState: zod.string().nullish(),
-  teachingLicenceExpiry: zod.coerce.date().nullish(),
-  dbsCheckStatus: zod
-    .enum(["not_uploaded", "uploaded", "verified", "expired"])
-    .nullish(),
-  researchPublications: zod.string().nullish(),
-  preferredTeachingMode: zod.enum(["in_person", "online", "both"]).nullish(),
-  location: zod.string().nullish(),
-  expiringCredential: zod
-    .object({
-      daysRemaining: zod.number(),
-    })
-    .nullish()
-    .describe(
-      "Set when a verified document or teaching licence expires within 7 days (Talent Vault list only)",
-    ),
-  createdAt: zod.coerce.date(),
+  id: zod.number().describe("saved_freelancers.id"),
+  freelancerId: zod.number(),
+  savedAt: zod.coerce.date(),
+  notes: zod.string().nullish(),
+  freelancer: zod.object({
+    id: zod.number(),
+    userId: zod.number(),
+    clerkId: zod.string(),
+    name: zod.string(),
+    tagline: zod.string(),
+    fieldOfWork: zod.string(),
+    skills: zod.array(zod.string()),
+    yearsExperience: zod.number(),
+    bio: zod.string().nullish(),
+    resumeUrl: zod.string().nullish(),
+    portfolioUrl: zod.string().nullish(),
+    paymentPreference: zod.string().describe("hourly or daily"),
+    hourlyRate: zod.number().nullish(),
+    dailyRate: zod.number().nullish(),
+    achievements: zod.string().nullish(),
+    isVerified: zod.boolean(),
+    verificationLevel: zod.enum([
+      "unverified",
+      "partially_verified",
+      "fully_verified",
+    ]),
+    verificationStatus: zod
+      .string()
+      .optional()
+      .describe("unverified | pending | verified | rejected"),
+    verificationNote: zod.string().nullish(),
+    documentNames: zod.array(zod.string()).optional(),
+    isAvailable: zod.boolean(),
+    currentBookingId: zod.number().nullish(),
+    bookingEndDate: zod.coerce.date().nullish(),
+    subscriptionPlan: zod.string(),
+    availableFrom: zod.coerce.date().nullish(),
+    nextAvailableDate: zod.coerce
+      .date()
+      .nullish()
+      .describe("Cached next available date (null when not available)"),
+    availabilityNote: zod.string().nullish(),
+    averageRating: zod.number().nullish(),
+    reviewCount: zod.number(),
+    completenessScore: zod
+      .number()
+      .describe(
+        "Profile completeness score 0–100 (Talent Vault requires ≥ 60)",
+      ),
+    professionCategory: zod.enum(["technology", "education"]),
+    educationProfessionType: zod
+      .enum(["school_teacher", "university_lecturer", "tutor", "researcher"])
+      .nullish(),
+    teachingSubjects: zod.array(zod.string()).nullish(),
+    teachingLevels: zod.array(zod.string()).nullish(),
+    yearsTeachingExperience: zod.number().nullish(),
+    highestDegree: zod
+      .enum(["bachelors", "masters", "phd", "postdoc"])
+      .nullish(),
+    degreeSubject: zod.string().nullish(),
+    degreeInstitution: zod.string().nullish(),
+    teachingLicenceState: zod.string().nullish(),
+    teachingLicenceExpiry: zod.coerce.date().nullish(),
+    dbsCheckStatus: zod
+      .enum(["not_uploaded", "uploaded", "verified", "expired"])
+      .nullish(),
+    researchPublications: zod.string().nullish(),
+    preferredTeachingMode: zod.enum(["in_person", "online", "both"]).nullish(),
+    location: zod.string().nullish(),
+    expiringCredential: zod
+      .object({
+        daysRemaining: zod.number(),
+      })
+      .nullish()
+      .describe(
+        "Set when a verified document or teaching licence expires within 7 days (Talent Vault list only)",
+      ),
+    createdAt: zod.coerce.date(),
+  }),
 });
 export const ListSavedFreelancersResponse = zod.array(
   ListSavedFreelancersResponseItem,
@@ -2780,7 +2790,7 @@ export const CheckFreelancerSavedResponse = zod.object({
 });
 
 /**
- * @summary Toggle save/unsave a freelancer (employer only)
+ * @summary Toggle save/unsave a freelancer on personal watchlist (employer only)
  */
 export const ToggleSaveFreelancerParams = zod.object({
   id: zod.coerce.number(),
@@ -2788,6 +2798,23 @@ export const ToggleSaveFreelancerParams = zod.object({
 
 export const ToggleSaveFreelancerResponse = zod.object({
   saved: zod.boolean(),
+});
+
+/**
+ * @summary Update private notes for a watchlisted freelancer (employer only)
+ */
+export const PatchWatchlistNotesParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const patchWatchlistNotesBodyNotesMax = 500;
+
+export const PatchWatchlistNotesBody = zod.object({
+  notes: zod.string().max(patchWatchlistNotesBodyNotesMax).nullable(),
+});
+
+export const PatchWatchlistNotesResponse = zod.object({
+  notes: zod.string().nullable(),
 });
 
 /**

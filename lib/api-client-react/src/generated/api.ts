@@ -137,6 +137,8 @@ import type {
   PatchDocumentExpiryResponse,
   PatchNotificationPreferencesBody,
   PatchOnboardingStepBody,
+  PatchWatchlistNotesBody,
+  PatchWatchlistNotesResponse,
   PlanDef,
   PlanLimitError,
   PortfolioItem,
@@ -185,6 +187,7 @@ import type {
   UpsertTalentSearchBody,
   UpsertUserBody,
   User,
+  WatchlistItem,
 } from "./api.schemas";
 
 import { customFetch } from "../custom-fetch";
@@ -7041,7 +7044,7 @@ export const useReplyToReview = <
 };
 
 /**
- * @summary List saved/shortlisted freelancers (employer only)
+ * @summary List employer personal watchlist (employer only)
  */
 export const getListSavedFreelancersUrl = () => {
   return `/api/freelancers/saved`;
@@ -7049,8 +7052,8 @@ export const getListSavedFreelancersUrl = () => {
 
 export const listSavedFreelancers = async (
   options?: RequestInit,
-): Promise<FreelancerProfile[]> => {
-  return customFetch<FreelancerProfile[]>(getListSavedFreelancersUrl(), {
+): Promise<WatchlistItem[]> => {
+  return customFetch<WatchlistItem[]>(getListSavedFreelancersUrl(), {
     ...options,
     method: "GET",
   });
@@ -7092,7 +7095,7 @@ export type ListSavedFreelancersQueryResult = NonNullable<
 export type ListSavedFreelancersQueryError = ErrorType<unknown>;
 
 /**
- * @summary List saved/shortlisted freelancers (employer only)
+ * @summary List employer personal watchlist (employer only)
  */
 
 export function useListSavedFreelancers<
@@ -7204,7 +7207,7 @@ export function useCheckFreelancerSaved<
 }
 
 /**
- * @summary Toggle save/unsave a freelancer (employer only)
+ * @summary Toggle save/unsave a freelancer on personal watchlist (employer only)
  */
 export const getToggleSaveFreelancerUrl = (id: number) => {
   return `/api/freelancers/${id}/save`;
@@ -7221,7 +7224,7 @@ export const toggleSaveFreelancer = async (
 };
 
 export const getToggleSaveFreelancerMutationOptions = <
-  TError = ErrorType<unknown>,
+  TError = ErrorType<PlanLimitError>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -7262,13 +7265,13 @@ export type ToggleSaveFreelancerMutationResult = NonNullable<
   Awaited<ReturnType<typeof toggleSaveFreelancer>>
 >;
 
-export type ToggleSaveFreelancerMutationError = ErrorType<unknown>;
+export type ToggleSaveFreelancerMutationError = ErrorType<PlanLimitError>;
 
 /**
- * @summary Toggle save/unsave a freelancer (employer only)
+ * @summary Toggle save/unsave a freelancer on personal watchlist (employer only)
  */
 export const useToggleSaveFreelancer = <
-  TError = ErrorType<unknown>,
+  TError = ErrorType<PlanLimitError>,
   TContext = unknown,
 >(options?: {
   mutation?: UseMutationOptions<
@@ -7285,6 +7288,96 @@ export const useToggleSaveFreelancer = <
   TContext
 > => {
   return useMutation(getToggleSaveFreelancerMutationOptions(options));
+};
+
+/**
+ * @summary Update private notes for a watchlisted freelancer (employer only)
+ */
+export const getPatchWatchlistNotesUrl = (id: number) => {
+  return `/api/freelancers/${id}/watchlist`;
+};
+
+export const patchWatchlistNotes = async (
+  id: number,
+  patchWatchlistNotesBody: PatchWatchlistNotesBody,
+  options?: RequestInit,
+): Promise<PatchWatchlistNotesResponse> => {
+  return customFetch<PatchWatchlistNotesResponse>(
+    getPatchWatchlistNotesUrl(id),
+    {
+      ...options,
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(patchWatchlistNotesBody),
+    },
+  );
+};
+
+export const getPatchWatchlistNotesMutationOptions = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof patchWatchlistNotes>>,
+    TError,
+    { id: number; data: BodyType<PatchWatchlistNotesBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof patchWatchlistNotes>>,
+  TError,
+  { id: number; data: BodyType<PatchWatchlistNotesBody> },
+  TContext
+> => {
+  const mutationKey = ["patchWatchlistNotes"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof patchWatchlistNotes>>,
+    { id: number; data: BodyType<PatchWatchlistNotesBody> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return patchWatchlistNotes(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type PatchWatchlistNotesMutationResult = NonNullable<
+  Awaited<ReturnType<typeof patchWatchlistNotes>>
+>;
+export type PatchWatchlistNotesMutationBody = BodyType<PatchWatchlistNotesBody>;
+export type PatchWatchlistNotesMutationError = ErrorType<ErrorEnvelope>;
+
+/**
+ * @summary Update private notes for a watchlisted freelancer (employer only)
+ */
+export const usePatchWatchlistNotes = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof patchWatchlistNotes>>,
+    TError,
+    { id: number; data: BodyType<PatchWatchlistNotesBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof patchWatchlistNotes>>,
+  TError,
+  { id: number; data: BodyType<PatchWatchlistNotesBody> },
+  TContext
+> => {
+  return useMutation(getPatchWatchlistNotesMutationOptions(options));
 };
 
 /**
