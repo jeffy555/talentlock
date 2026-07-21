@@ -8,6 +8,8 @@ import { AlertCircle, CheckCircle, Loader2, Upload } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 const ALLOWED_MIME_TYPES = ["image/jpeg", "image/png", "image/webp", "application/pdf", "application/x-pdf"];
 const INVALID_FILE_TYPE_ERROR = "Only JPEG, PNG, WebP, and PDF files are accepted.";
@@ -76,6 +78,7 @@ export default function DocumentUploader({
   const [step, setStep] = useState<UploadStep>("idle");
   const [progress, setProgress] = useState(0);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [expiryDate, setExpiryDate] = useState("");
 
   const reset = () => {
     setStep("idle");
@@ -109,7 +112,13 @@ export default function DocumentUploader({
       await uploadWithProgress(file, uploadUrl, mimeType, setProgress);
 
       setStep("saving");
-      await confirmMutation.mutateAsync({ data: { documentType, storagePath } });
+      await confirmMutation.mutateAsync({
+        data: {
+          documentType,
+          storagePath,
+          expiryDate: expiryDate ? new Date(expiryDate).toISOString() : null,
+        },
+      });
 
       setStep("success");
       onSuccess();
@@ -176,6 +185,20 @@ export default function DocumentUploader({
 
   return (
     <>
+      {documentType === "professional_credential" && (
+        <div className="space-y-1 mb-2">
+          <Label htmlFor={`expiry-${documentType}`} className="text-xs text-muted-foreground">
+            Expiry date (optional)
+          </Label>
+          <Input
+            id={`expiry-${documentType}`}
+            type="date"
+            value={expiryDate}
+            onChange={(e) => setExpiryDate(e.target.value)}
+            className="h-8 text-sm w-40"
+          />
+        </div>
+      )}
       <Button
         type="button"
         variant={variant}

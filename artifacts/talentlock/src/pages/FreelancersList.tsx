@@ -24,7 +24,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { Search, Lock, Briefcase, Heart, SlidersHorizontal, X, Star } from "lucide-react";
+import { Search, Lock, Briefcase, Heart, SlidersHorizontal, X, Star, Clock } from "lucide-react";
 import { FIELDS_OF_WORK } from "@/lib/fields";
 import { useQueryClient } from "@tanstack/react-query";
 import VerificationBadge from "@/components/VerificationBadge";
@@ -188,6 +188,12 @@ function FreelancerCard({
           )}
         </div>
         <CardDescription className="text-primary font-medium text-sm mt-1.5 line-clamp-1">{freelancer.tagline}</CardDescription>
+        {freelancer.expiringCredential && (
+          <span className="inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded-full font-medium bg-amber-100 text-amber-700 border border-amber-200 w-fit mt-1.5">
+            <Clock className="h-3 w-3" />
+            Expiring Soon
+          </span>
+        )}
         {freelancer.averageRating != null && (freelancer.reviewCount ?? 0) > 0 && (
           <span className="inline-flex items-center gap-0.5 text-xs text-slate-600 mt-1.5">
             <Star className="h-3 w-3 fill-amber-400 text-amber-400" />

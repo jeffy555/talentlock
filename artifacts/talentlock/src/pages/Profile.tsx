@@ -3,9 +3,10 @@ import {
   useGetMe, useUpdateMyFreelancerProfile,
   useGetMyEmployerProfile, useUpsertMyEmployerProfile,
   useListMyPortfolio, useCreatePortfolioItem, useUpdatePortfolioItem, useDeletePortfolioItem,
-  useGetMyFreelancerProfile, usePatchNotificationPreferences,
+  useGetMyFreelancerProfile, usePatchNotificationPreferences, useGetDocumentsMe,
 } from "@workspace/api-client-react";
 import { CompletenessBanner } from "@/components/CompletenessBanner";
+import CredentialExpiryBanner from "@/components/CredentialExpiryBanner";
 import { useUser } from "@clerk/react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -326,6 +327,7 @@ export default function Profile() {
 
   const { data: freelancerProfile, refetch: refetchFreelancer } = useGetMyFreelancerProfile({ query: { enabled: isFreelancer } as any });
   const { data: employerProfile, refetch: refetchEmployer } = useGetMyEmployerProfile({ query: { enabled: isEmployer } as any });
+  const { data: documentsMe } = useGetDocumentsMe({ query: { enabled: isFreelancer } as any });
 
   const updateFreelancer = useUpdateMyFreelancerProfile();
   const upsertEmployer = useUpsertMyEmployerProfile();
@@ -600,6 +602,10 @@ export default function Profile() {
         </Card>
 
         <SignatureCard />
+        <CredentialExpiryBanner
+          documents={documentsMe?.documents}
+          teachingLicenceExpiry={(freelancerProfile as { teachingLicenceExpiry?: string | null } | undefined)?.teachingLicenceExpiry}
+        />
         <VerificationSection />
         <Card id="availability">
           <CardHeader>
