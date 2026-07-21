@@ -470,6 +470,7 @@ The `.cursor/rules/talentlock.mdc` file at the repo root enforces these rules au
 | AI Token Consumption Dashboard | `specs/token-usage/` | ✅ Complete · 🟢 P1 follow-up (full 9-feature breakdown) validated 2026-06-09 |
 | AI Enhancements | `specs/ai-enhancements/` | ✅ Complete |
 | Document Verification | `specs/document-verification/` | ✅ Complete |
+| Employer Verification | `specs/employee-verification/` | ✅ Complete |
 | Smarter Matching Explanation | `specs/smarter-matching/` | ✅ Complete |
 | Agreement Templates + Redlining | `specs/agreement-templates-redlining/` | ✅ Complete |
 | Job Description Assistant | `specs/job-description-assistant/` | ✅ Complete |
@@ -487,14 +488,14 @@ The `.cursor/rules/talentlock.mdc` file at the repo root enforces these rules au
 | Team Accounts (Enterprise) | `specs/team-accounts-enterprise/` | ✅ Complete |
 | AI Contract Health Score | `specs/ai-contract-health-score/` | ✅ Complete (validated 2026-06-09) |
 | **Auth Hardening (Access Control)** | `specs/AuthHardening/` | ✅ Complete (validated 2026-06-09) |
-| Agreement AI Summary | `specs/agreement-ai-summary/` | 🟡 Ready to Execute |
-| Agreement PDF Download | `specs/agreement-pdf-download/` | 🟡 Ready to Execute |
-| Cruise Mode | `specs/cruise-mode/` | 🟡 Ready to Execute |
-| Teaching Professional Profile | `specs/teaching-professional-profile/` | 🟡 Ready to Execute |
-| TalentSearch (Employer Cruise Mode) | `specs/talent-search/` | 🟡 Ready to Execute |
-| AI Meeting Brief Generator | `specs/ai-meeting-brief/` | 🟡 Ready to Execute |
-| TalentSearch (Employer Cruise Mode) | `specs/talent-search/` | 🟡 Ready to Execute |
-| AI Meeting Brief Generator | `specs/ai-meeting-brief/` | 🟡 Ready to Execute |
+| Agreement AI Summary | `specs/agreement-ai-summary/` | ✅ Complete |
+| Agreement PDF Download | `specs/agreement-pdf-download/` | ✅ Complete |
+| Cruise Mode | `specs/cruise-mode/` | ✅ Complete |
+| Teaching Professional Profile | `specs/teaching-professional-profile/` | ✅ Complete |
+| TalentSearch (Employer Cruise Mode) | `specs/talent-search/` | ✅ Complete |
+| AI Meeting Brief Generator | `specs/ai-meeting-brief/` | ✅ Complete |
+| TalentSearch (Employer Cruise Mode) | `specs/talent-search/` | ✅ Complete |
+| AI Meeting Brief Generator | `specs/ai-meeting-brief/` | ✅ Complete |
 | **Automated API Testing (Regression)** | `spec/api-testing/` | 🔄 In progress — Phase 0 harness on `cursor/regression-tests-9a23` |
 
 > Add new features to this table when their `features.md` is created.
