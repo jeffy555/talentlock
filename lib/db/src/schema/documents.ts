@@ -15,8 +15,11 @@ export const documentsTable = pgTable(
     // government_id | professional_credential
     fileUrl: text("file_url").notNull(),
     status: text("status").notNull().default("pending"),
-    // pending | verified | rejected | needs_review
+    // pending | verified | rejected | needs_review | expired
     confidence: integer("confidence"),
+    expiryDate: timestamp("expiry_date", { withTimezone: true }),
+    expiryAlertStage: text("expiry_alert_stage").notNull().default("none"),
+    // none | 90d | 30d | 7d | expired
     aiNotes: text("ai_notes"),
     adminNotes: text("admin_notes"),
     reviewedBy: text("reviewed_by"),

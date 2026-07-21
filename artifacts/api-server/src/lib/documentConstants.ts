@@ -10,6 +10,7 @@ export const DOCUMENT_STATUSES = [
   "verified",
   "rejected",
   "needs_review",
+  "expired",
 ] as const;
 
 export type DocumentStatus = (typeof DOCUMENT_STATUSES)[number];
