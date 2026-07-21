@@ -10,4 +10,9 @@ import type { DocumentsConfirmBodyDocumentType } from "./documentsConfirmBodyDoc
 export interface DocumentsConfirmBody {
   documentType: DocumentsConfirmBodyDocumentType;
   storagePath: string;
+  /**
+   * Optional freelancer-supplied credential expiry date
+   * @nullable
+   */
+  expiryDate?: Date | null;
 }

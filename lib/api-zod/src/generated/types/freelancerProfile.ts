@@ -7,6 +7,7 @@
  */
 import type { DbsCheckStatus } from "./dbsCheckStatus";
 import type { EducationProfessionType } from "./educationProfessionType";
+import type { ExpiringCredential } from "./expiringCredential";
 import type { FreelancerProfileVerificationLevel } from "./freelancerProfileVerificationLevel";
 import type { HighestDegree } from "./highestDegree";
 import type { PreferredTeachingMode } from "./preferredTeachingMode";
@@ -85,5 +86,7 @@ export interface FreelancerProfile {
   preferredTeachingMode?: PreferredTeachingMode | null;
   /** @nullable */
   location?: string | null;
+  /** Set when a verified document or teaching licence expires within 7 days (Talent Vault list only) */
+  expiringCredential?: ExpiringCredential | null;
   createdAt: Date;
 }
