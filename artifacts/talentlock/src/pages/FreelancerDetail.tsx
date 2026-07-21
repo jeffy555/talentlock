@@ -104,8 +104,18 @@ export default function FreelancerDetail() {
       await toggleSave.mutateAsync({ id: freelancerId });
       refetchSaved();
       queryClient.invalidateQueries({ queryKey: ["/api/freelancers/saved"] });
-    } catch {
-      toast({ title: "Failed to update shortlist", variant: "destructive" });
+    } catch (err: unknown) {
+      const apiErr = err as { status?: number; data?: { code?: string } };
+      if (apiErr?.status === 402 || apiErr?.data?.code === "PLAN_LIMIT") {
+        toast({
+          title: "Watchlist limit reached",
+          description: "Upgrade your plan to save more freelancers. Redirecting to pricing…",
+          variant: "destructive",
+        });
+        setTimeout(() => setLocation("/pricing"), 1200);
+        return;
+      }
+      toast({ title: "Failed to update watchlist", variant: "destructive" });
     }
   };
 
@@ -239,7 +249,7 @@ export default function FreelancerDetail() {
               }`}
             >
               <Heart className={`h-3.5 w-3.5 ${isSaved ? "fill-rose-500 text-rose-500" : ""}`} />
-              {isSaved ? "Shortlisted" : "Shortlist"}
+              {isSaved ? "On watchlist" : "Add to watchlist"}
             </button>
           )}
         </div>

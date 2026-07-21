@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useDebounce } from "use-debounce";
 import { format } from "date-fns";
 import {
@@ -6,8 +6,6 @@ import {
   useGetMe,
   useGetMySubscription,
   useGetTeam,
-  useToggleSaveFreelancer,
-  useCheckFreelancerSaved,
   useListSavedFreelancers,
   useListTeamShortlist,
   useAddTeamShortlist,
@@ -15,8 +13,9 @@ import {
   getListTeamShortlistQueryKey,
   type FreelancerProfile,
   type TeamShortlistItem,
+  type WatchlistItem,
 } from "@workspace/api-client-react";
-import { Link } from "wouter";
+import { Link, useSearch } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -44,6 +43,8 @@ import { EDUCATION_TYPE_LABELS } from "@/components/onboarding/TeachingDetailsSe
 import { cn } from "@/lib/utils";
 import type { ProfessionCategory } from "@workspace/api-client-react";
 import { GraduationCap } from "lucide-react";
+import { WatchlistToggleButton } from "@/components/watchlist/WatchlistToggleButton";
+import { WatchlistNotesEditor } from "@/components/watchlist/WatchlistNotesEditor";
 
 function FilterChip({
   active,
@@ -70,37 +71,7 @@ function FilterChip({
   );
 }
 
-type VaultView = "search" | "team-shortlist";
-
-function PersonalSaveButton({ freelancerId }: { freelancerId: number }) {
-  const qc = useQueryClient();
-  const { data } = useCheckFreelancerSaved(freelancerId);
-  const toggle = useToggleSaveFreelancer();
-  const saved = data?.saved ?? false;
-
-  const handleToggle = async (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    await toggle.mutateAsync({ id: freelancerId });
-    qc.invalidateQueries({ queryKey: ["/api/freelancers/saved"] });
-    qc.invalidateQueries({ queryKey: [`/api/freelancers/${freelancerId}/saved`] });
-  };
-
-  return (
-    <button
-      onClick={handleToggle}
-      disabled={toggle.isPending}
-      className={`absolute top-4 left-4 z-10 p-1.5 rounded-full transition-all shadow-sm border ${
-        saved
-          ? "bg-rose-50 border-rose-200 text-rose-500 hover:bg-rose-100"
-          : "bg-card border-border text-muted-foreground hover:text-rose-400 hover:border-rose-200 hover:bg-rose-50"
-      }`}
-      aria-label={saved ? "Remove from shortlist" : "Add to shortlist"}
-    >
-      <Heart className={`w-3.5 h-3.5 ${saved ? "fill-rose-500" : ""}`} />
-    </button>
-  );
-}
+type VaultView = "search" | "watchlist" | "team-shortlist";
 
 function TeamSaveButton({
   freelancerId,
@@ -148,6 +119,8 @@ function FreelancerCard({
   teamShortlisted,
   addedByLabel,
   onRemove,
+  vaultHidden,
+  watchlistNotes,
 }: {
   freelancer: FreelancerProfile;
   index: number;
@@ -155,6 +128,8 @@ function FreelancerCard({
   teamShortlisted?: boolean;
   addedByLabel?: string;
   onRemove?: () => void;
+  vaultHidden?: boolean;
+  watchlistNotes?: string | null;
 }) {
   const verificationLevel = resolveVerificationLevel(freelancer as { verificationLevel?: string; isVerified?: boolean });
 
@@ -166,7 +141,7 @@ function FreelancerCard({
       {useTeamShortlist ? (
         <TeamSaveButton freelancerId={freelancer.id} shortlisted={!!teamShortlisted} />
       ) : (
-        <PersonalSaveButton freelancerId={freelancer.id} />
+        <WatchlistToggleButton freelancerId={freelancer.id} />
       )}
       {!freelancer.isAvailable ? (
         <div className="absolute top-4 right-4 z-10 flex items-center bg-destructive/10 border border-destructive/20 text-destructive px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest backdrop-blur-sm shadow-sm">
@@ -188,6 +163,11 @@ function FreelancerCard({
           )}
         </div>
         <CardDescription className="text-primary font-medium text-sm mt-1.5 line-clamp-1">{freelancer.tagline}</CardDescription>
+        {vaultHidden && (
+          <Badge variant="outline" className="text-xs text-muted-foreground w-fit mt-1.5">
+            No longer in Talent Vault
+          </Badge>
+        )}
         {freelancer.expiringCredential && (
           <span className="inline-flex items-center gap-1 text-xs px-1.5 py-0.5 rounded-full font-medium bg-amber-100 text-amber-700 border border-amber-200 w-fit mt-1.5">
             <Clock className="h-3 w-3" />
@@ -265,12 +245,16 @@ function FreelancerCard({
           </Button>
         )}
       </CardFooter>
+      {watchlistNotes !== undefined && (
+        <WatchlistNotesEditor freelancerId={freelancer.id} initialNotes={watchlistNotes} />
+      )}
     </Card>
   );
 }
 
 export default function FreelancersList() {
   const qc = useQueryClient();
+  const search = useSearch();
   const { data: user } = useGetMe();
   const { data: subscription } = useGetMySubscription({ query: { enabled: !!user } as any });
   const isEnterprise = subscription?.plan?.id === "employer_enterprise";
@@ -279,7 +263,15 @@ export default function FreelancersList() {
   });
   const isTeamMember = isEnterprise && !!teamData;
 
-  const [vaultView, setVaultView] = useState<VaultView>("search");
+  const initialView = ((): VaultView => {
+    const params = new URLSearchParams(search);
+    const view = params.get("view");
+    if (view === "watchlist" && !isTeamMember) return "watchlist";
+    if (view === "team-shortlist" && isTeamMember) return "team-shortlist";
+    return "search";
+  })();
+
+  const [vaultView, setVaultView] = useState<VaultView>(initialView);
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedQuery] = useDebounce(searchQuery, 400);
   const [fieldFilter, setFieldFilter] = useState<string>("all");
@@ -287,7 +279,6 @@ export default function FreelancersList() {
   const [maxRate, setMaxRate] = useState("");
   const [availableOnly, setAvailableOnly] = useState(false);
   const [verifiedOnly, setVerifiedOnly] = useState(false);
-  const [showSavedOnly, setShowSavedOnly] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [availableFromDate, setAvailableFromDate] = useState<Date | undefined>();
   const [professionCategoryFilter, setProfessionCategoryFilter] = useState<ProfessionCategory | undefined>(undefined);
@@ -303,7 +294,7 @@ export default function FreelancersList() {
   const { data: freelancers, isLoading } = useListFreelancers(listParams, {
     query: { enabled: vaultView === "search" } as any,
   });
-  const { data: saved } = useListSavedFreelancers({
+  const { data: saved, isLoading: watchlistLoading } = useListSavedFreelancers({
     query: { enabled: !isTeamMember } as any,
   });
   const { data: teamShortlist, isLoading: teamShortlistLoading } = useListTeamShortlist({
@@ -311,7 +302,14 @@ export default function FreelancersList() {
   });
   const removeFromTeamShortlist = useRemoveTeamShortlist();
 
-  const savedIds = useMemo(() => new Set((saved ?? []).map((f) => f.id)), [saved]);
+  useEffect(() => {
+    const params = new URLSearchParams(search);
+    const view = params.get("view");
+    if (view === "watchlist" && !isTeamMember) setVaultView("watchlist");
+    else if (view === "team-shortlist" && isTeamMember) setVaultView("team-shortlist");
+    else if (!view) setVaultView("search");
+  }, [search, isTeamMember]);
+
   const teamShortlistIds = useMemo(
     () => new Set((teamShortlist ?? []).map((item) => item.freelancer.id)),
     [teamShortlist],
@@ -332,20 +330,20 @@ export default function FreelancersList() {
   const filteredFreelancers = (freelancers ?? []).filter((f) => {
     if (fieldFilter && fieldFilter !== "all" && f.fieldOfWork !== fieldFilter) return false;
     if (availableOnly && !f.isAvailable) return false;
-    if (showSavedOnly && !savedIds.has(f.id)) return false;
     const rate = f.hourlyRate ?? f.dailyRate ?? 0;
     if (minRate && rate < parseFloat(minRate)) return false;
     if (maxRate && rate > parseFloat(maxRate)) return false;
     return true;
   });
 
-  const hasActiveFilters = fieldFilter !== "all" || minRate || maxRate || availableOnly || verifiedOnly || showSavedOnly || availableFromDate || debouncedQuery || professionCategoryFilter || teachingSubject;
+  const hasActiveFilters = fieldFilter !== "all" || minRate || maxRate || availableOnly || verifiedOnly || availableFromDate || debouncedQuery || professionCategoryFilter || teachingSubject;
 
   const clearFilters = () => {
-    setFieldFilter("all"); setMinRate(""); setMaxRate(""); setAvailableOnly(false); setVerifiedOnly(false); setShowSavedOnly(false); setAvailableFromDate(undefined); setSearchQuery(""); setProfessionCategoryFilter(undefined); setTeachingSubject("");
+    setFieldFilter("all"); setMinRate(""); setMaxRate(""); setAvailableOnly(false); setVerifiedOnly(false); setAvailableFromDate(undefined); setSearchQuery(""); setProfessionCategoryFilter(undefined); setTeachingSubject("");
   };
 
-  const shortlistCount = isTeamMember ? (teamShortlist?.length ?? 0) : (saved?.length ?? 0);
+  const watchlistCount = saved?.length ?? 0;
+  const shortlistCount = isTeamMember ? (teamShortlist?.length ?? 0) : watchlistCount;
 
   const formatAddedBy = (item: TeamShortlistItem) => {
     const name = item.addedByUserId === user?.id ? "you" : item.addedByName;
@@ -357,7 +355,8 @@ export default function FreelancersList() {
     qc.invalidateQueries({ queryKey: getListTeamShortlistQueryKey() });
   };
 
-  const showSearchPanel = !isTeamMember || vaultView === "search";
+  const showSearchPanel = vaultView === "search";
+  const showWatchlistPanel = !isTeamMember && vaultView === "watchlist";
   const showTeamShortlistPanel = isTeamMember && vaultView === "team-shortlist";
 
   return (
@@ -371,9 +370,11 @@ export default function FreelancersList() {
         </div>
         <div className="flex items-center gap-3 flex-wrap">
           {isTeamMember ? (
-            <div className="flex items-center rounded-lg border border-border overflow-hidden">
+            <div className="flex items-center rounded-lg border border-border overflow-hidden" role="tablist">
               <button
                 type="button"
+                role="tab"
+                aria-selected={vaultView === "search"}
                 onClick={() => setVaultView("search")}
                 className={`px-3 py-1.5 text-sm font-medium transition-colors ${vaultView === "search" ? "bg-primary text-primary-foreground" : "bg-card text-muted-foreground hover:text-foreground"}`}
               >
@@ -381,6 +382,8 @@ export default function FreelancersList() {
               </button>
               <button
                 type="button"
+                role="tab"
+                aria-selected={vaultView === "team-shortlist"}
                 onClick={() => setVaultView("team-shortlist")}
                 className={`px-3 py-1.5 text-sm font-medium transition-colors ${vaultView === "team-shortlist" ? "bg-rose-50 text-rose-600 border-l border-border" : "bg-card text-muted-foreground hover:text-rose-500 border-l border-border"}`}
               >
@@ -388,15 +391,26 @@ export default function FreelancersList() {
               </button>
             </div>
           ) : (
-            shortlistCount > 0 && (
+            <div className="flex items-center rounded-lg border border-border overflow-hidden" role="tablist">
               <button
-                onClick={() => setShowSavedOnly(!showSavedOnly)}
-                className={`flex items-center gap-2 text-sm font-medium px-3 py-1.5 rounded-lg border transition-colors ${showSavedOnly ? "bg-rose-50 border-rose-200 text-rose-600" : "bg-card border-border text-muted-foreground hover:text-rose-500"}`}
+                type="button"
+                role="tab"
+                aria-selected={vaultView === "search"}
+                onClick={() => setVaultView("search")}
+                className={`px-3 py-1.5 text-sm font-medium transition-colors ${vaultView === "search" ? "bg-primary text-primary-foreground" : "bg-card text-muted-foreground hover:text-foreground"}`}
               >
-                <Heart className={`h-3.5 w-3.5 ${showSavedOnly ? "fill-rose-500 text-rose-500" : ""}`} />
-                Shortlist ({shortlistCount})
+                Search results
               </button>
-            )
+              <button
+                type="button"
+                role="tab"
+                aria-selected={vaultView === "watchlist"}
+                onClick={() => setVaultView("watchlist")}
+                className={`px-3 py-1.5 text-sm font-medium transition-colors ${vaultView === "watchlist" ? "bg-rose-50 text-rose-600 border-l border-border" : "bg-card text-muted-foreground hover:text-rose-500 border-l border-border"}`}
+              >
+                Watchlist ({watchlistCount})
+              </button>
+            </div>
           )}
           {showSearchPanel && (
             <Button
@@ -406,7 +420,7 @@ export default function FreelancersList() {
               onClick={() => setShowFilters(!showFilters)}
             >
               <SlidersHorizontal className="h-4 w-4" />
-              Filters {hasActiveFilters && `(${[fieldFilter !== "all", minRate, maxRate, availableOnly, verifiedOnly, showSavedOnly, availableFromDate].filter(Boolean).length})`}
+              Filters {hasActiveFilters && `(${[fieldFilter !== "all", minRate, maxRate, availableOnly, verifiedOnly, availableFromDate].filter(Boolean).length})`}
             </Button>
           )}
         </div>
@@ -580,6 +594,50 @@ export default function FreelancersList() {
                   index={index}
                   useTeamShortlist={isTeamMember}
                   teamShortlisted={teamShortlistIds.has(freelancer.id)}
+                />
+              ))}
+            </div>
+          )}
+        </>
+      )}
+
+      {showWatchlistPanel && (
+        <>
+          <div className="flex items-center justify-between text-sm text-muted-foreground">
+            <span>
+              {watchlistLoading
+                ? "Loading..."
+                : `${watchlistCount} professional${watchlistCount !== 1 ? "s" : ""} on your watchlist`}
+            </span>
+          </div>
+
+          {watchlistLoading ? (
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+              {[1, 2, 3].map((i) => (
+                <Card key={i} className="animate-pulse shadow-sm border-border bg-card h-64" />
+              ))}
+            </div>
+          ) : !(saved?.length) ? (
+            <Card className="flex flex-col items-center justify-center py-24 text-center bg-card shadow-sm border-border border-dashed">
+              <Heart className="h-10 w-10 text-muted-foreground mb-4" />
+              <h3 className="text-xl font-serif font-bold text-foreground">No one on your watchlist yet</h3>
+              <p className="text-muted-foreground mt-2 max-w-sm font-light">
+                Save freelancers from search results to track them here and get notified when their availability or rate changes.
+              </p>
+              <Button variant="outline" className="mt-6" onClick={() => setVaultView("search")}>
+                Browse search results
+              </Button>
+            </Card>
+          ) : (
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+              {(saved ?? []).map((item: WatchlistItem, index) => (
+                <FreelancerCard
+                  key={item.id}
+                  freelancer={item.freelancer}
+                  index={index}
+                  useTeamShortlist={false}
+                  vaultHidden={(item.freelancer.completenessScore ?? 0) < 60}
+                  watchlistNotes={item.notes}
                 />
               ))}
             </div>

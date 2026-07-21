@@ -8,6 +8,7 @@ import { sanitiseSearchQuery } from "../lib/searchUtils";
 import { calculateCompletenessScore } from "../lib/completenessUtils";
 import { daysUntil } from "../lib/credentialExpiryUtils";
 import { evaluateTalentSearchForUpdatedProfile } from "../lib/talentSearchEvaluator";
+import { notifyWatchlistSubscribers, type FreelancerSnapshot } from "../lib/watchlistAlerts";
 import {
   CreateFreelancerProfileBody,
   UpdateMyFreelancerProfileBody,
@@ -209,6 +210,13 @@ router.patch("/freelancers/me", async (req, res) => {
       .where(eq(freelancerProfilesTable.clerkId, clerkId)).limit(1);
     if (!current) { res.status(404).json({ error: "Profile not found" }); return; }
 
+    const beforeSnapshot: FreelancerSnapshot = {
+      isAvailable: current.isAvailable,
+      hourlyRate: current.hourlyRate,
+      dailyRate: current.dailyRate,
+      name: current.name,
+    };
+
     const [user] = await db.select({ avatarUrl: usersTable.avatarUrl })
       .from(usersTable).where(eq(usersTable.id, current.userId)).limit(1);
 
@@ -249,6 +257,16 @@ router.patch("/freelancers/me", async (req, res) => {
       .where(eq(freelancerProfilesTable.clerkId, clerkId))
       .returning();
     if (!updated) { res.status(404).json({ error: "Profile not found" }); return; }
+
+    const afterSnapshot: FreelancerSnapshot = {
+      isAvailable: updated.isAvailable,
+      hourlyRate: updated.hourlyRate,
+      dailyRate: updated.dailyRate,
+      name: updated.name,
+    };
+    notifyWatchlistSubscribers(updated.id, beforeSnapshot, afterSnapshot, req.log).catch((err) =>
+      req.log.warn({ err, freelancerId: updated.id }, "watchlist alert failed"),
+    );
 
     // Fire-and-forget TalentSearch evaluation — runs before both res.json exits below,
     // never awaited, never delays the response. Only matchable, Talent-Vault-visible

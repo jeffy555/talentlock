@@ -8,6 +8,7 @@ import {
   CheckSquare,
   Sparkles,
   Search,
+  Heart,
 } from "lucide-react";
 import { getNotificationRoute } from "@/lib/notificationRoutes";
 import { formatRelativeTime } from "@/lib/formatRelativeTime";
@@ -47,6 +48,8 @@ function EntityIcon({ entityType }: { entityType: string }) {
       return <Sparkles className="h-4 w-4 text-gold" />;
     case "talent_search_activity":
       return <Search className="h-4 w-4 text-teal-500" />;
+    case "freelancer_profile":
+      return <Heart className="h-4 w-4 text-rose-500" />;
     default:
       return <Briefcase className="h-4 w-4 text-slate-400" />;
   }
@@ -90,6 +93,11 @@ export function NotificationItem({ notification, onRead }: NotificationItemProps
           {notification.type === "talent_search_interest" && (
             <span className="shrink-0 text-xs bg-teal-100 text-teal-700 border border-teal-200 rounded px-1.5 py-0.5">
               TalentSearch ✦
+            </span>
+          )}
+          {notification.type === "watchlist_update" && (
+            <span className="shrink-0 text-xs bg-rose-100 text-rose-700 border border-rose-200 rounded px-1.5 py-0.5">
+              Watchlist update
             </span>
           )}
         </div>
