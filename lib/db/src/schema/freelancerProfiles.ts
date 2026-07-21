@@ -50,6 +50,8 @@ export const freelancerProfilesTable = pgTable("freelancer_profiles", {
   degreeInstitution: text("degree_institution"),
   teachingLicenceState: text("teaching_licence_state"),
   teachingLicenceExpiry: timestamp("teaching_licence_expiry", { withTimezone: true }),
+  teachingLicenceAlertStage: text("teaching_licence_alert_stage").notNull().default("none"),
+  // none | 90d | 30d | 7d | expired
   dbsCheckStatus: text("dbs_check_status"),
   researchPublications: text("research_publications"),
   preferredTeachingMode: text("preferred_teaching_mode"),

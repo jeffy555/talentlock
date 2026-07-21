@@ -170,6 +170,10 @@ export const FreelancerProfileVerificationLevel = {
   fully_verified: "fully_verified",
 } as const;
 
+export interface ExpiringCredential {
+  daysRemaining: number;
+}
+
 export interface FreelancerProfile {
   id: number;
   userId: number;
@@ -243,6 +247,8 @@ export interface FreelancerProfile {
   preferredTeachingMode?: PreferredTeachingMode | null;
   /** @nullable */
   location?: string | null;
+  /** Set when a verified document or teaching licence expires within 7 days (Talent Vault list only) */
+  expiringCredential?: ExpiringCredential | null;
   createdAt: string;
 }
 
@@ -1560,6 +1566,29 @@ export const DocumentsConfirmBodyDocumentType = {
 export interface DocumentsConfirmBody {
   documentType: DocumentsConfirmBodyDocumentType;
   storagePath: string;
+  /**
+   * Optional freelancer-supplied credential expiry date
+   * @nullable
+   */
+  expiryDate?: string | null;
+}
+
+export interface PatchDocumentExpiryBody {
+  /** @nullable */
+  expiryDate: string | null;
+}
+
+export interface PatchDocumentExpiryResponse {
+  success: boolean;
+}
+
+export interface CredentialExpiryScanResult {
+  ok: boolean;
+  documentsScanned: number;
+  documentAlertsSent: number;
+  documentsExpired: number;
+  licencesScanned: number;
+  licenceAlertsSent: number;
 }
 
 export type DocumentsConfirmResponseStatus =
@@ -1575,7 +1604,7 @@ export interface DocumentsConfirmResponse {
 
 export interface DocumentMeItem {
   documentType: string;
-  /** pending | verified | rejected | needs_review */
+  /** pending | verified | rejected | needs_review | expired */
   status: string;
   /** @nullable */
   confidence?: number | null;
@@ -1584,6 +1613,16 @@ export interface DocumentMeItem {
   /** @nullable */
   adminNotes?: string | null;
   updatedAt: string;
+  /**
+   * Freelancer-supplied credential expiry date
+   * @nullable
+   */
+  expiryDate?: string | null;
+  /**
+   * Computed days remaining until expiryDate (null when expiryDate is unset)
+   * @nullable
+   */
+  daysUntilExpiry?: number | null;
 }
 
 export interface DocumentsMeResponse {

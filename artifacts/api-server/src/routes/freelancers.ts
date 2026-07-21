@@ -2,10 +2,11 @@ import { Router } from "express";
 import { getAuth } from "@clerk/express";
 import { db } from "@workspace/db";
 import { freelancerProfilesTable, usersTable, documentsTable } from "@workspace/db";
-import { eq, and, or, isNull, lte, gte, sql, SQL, exists } from "drizzle-orm";
+import { eq, and, or, isNull, isNotNull, lte, gte, lt, not, inArray, sql, SQL, exists } from "drizzle-orm";
 import { refreshNextAvailableDate, toDateString } from "../lib/availabilityUtils";
 import { sanitiseSearchQuery } from "../lib/searchUtils";
 import { calculateCompletenessScore } from "../lib/completenessUtils";
+import { daysUntil } from "../lib/credentialExpiryUtils";
 import { evaluateTalentSearchForUpdatedProfile } from "../lib/talentSearchEvaluator";
 import {
   CreateFreelancerProfileBody,
@@ -89,6 +90,22 @@ router.get("/freelancers", async (req, res) => {
 
     conditions.push(gte(freelancerProfilesTable.completenessScore, 60));
 
+    // Credential Expiry Tracking (Q3 scope): only school_teacher education
+    // professionals with an expired REQUIRED teaching licence are excluded
+    // from Talent Vault. Generic professional_credential expiry never
+    // gates Vault visibility — it only downgrades the badge (see
+    // credentialExpiryScan.ts). Direct access (/:id, /f/:id) is unaffected.
+    conditions.push(
+      not(
+        and(
+          eq(freelancerProfilesTable.professionCategory, "education"),
+          eq(freelancerProfilesTable.educationProfessionType, "school_teacher"),
+          isNotNull(freelancerProfilesTable.teachingLicenceExpiry),
+          lt(freelancerProfilesTable.teachingLicenceExpiry, new Date()),
+        )!,
+      )!,
+    );
+
     const results = await db
       .select()
       .from(freelancerProfilesTable)
@@ -96,7 +113,41 @@ router.get("/freelancers", async (req, res) => {
       .limit(params.limit ?? 50)
       .offset(params.offset ?? 0);
 
-    res.json(results.map(mapProfile));
+    // "Expiring Soon" Vault badge — any verified document or teaching
+    // licence expiring within the next 7 days.
+    const now = new Date();
+    const sevenDaysOut = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+    const freelancerIds = results.map((r) => r.id);
+
+    const expiringDocs = freelancerIds.length
+      ? await db
+          .select({ freelancerId: documentsTable.freelancerId, expiryDate: documentsTable.expiryDate })
+          .from(documentsTable)
+          .where(
+            and(
+              inArray(documentsTable.freelancerId, freelancerIds),
+              eq(documentsTable.status, "verified"),
+              isNotNull(documentsTable.expiryDate),
+              gte(documentsTable.expiryDate, now),
+              lte(documentsTable.expiryDate, sevenDaysOut),
+            ),
+          )
+      : [];
+    const docExpiryByFreelancer = new Map(expiringDocs.map((d) => [d.freelancerId, d.expiryDate!]));
+
+    res.json(
+      results.map((p) => {
+        const mapped = mapProfile(p);
+        let soonest: Date | null = docExpiryByFreelancer.get(p.id) ?? null;
+        if (p.teachingLicenceExpiry && p.teachingLicenceExpiry >= now && p.teachingLicenceExpiry <= sevenDaysOut) {
+          if (!soonest || p.teachingLicenceExpiry < soonest) soonest = p.teachingLicenceExpiry;
+        }
+        return {
+          ...mapped,
+          expiringCredential: soonest ? { daysRemaining: daysUntil(soonest, now) } : null,
+        };
+      }),
+    );
   } catch (err) {
     req.log.error({ err }, "Failed to list freelancers");
     res.status(500).json({ error: "Internal server error" });
@@ -175,8 +226,26 @@ router.patch("/freelancers/me", async (req, res) => {
       user?.avatarUrl,
     );
 
+    // Renewing the teaching licence must reset the expiry alert stage —
+    // otherwise a renewed licence stays stuck at 'expired' and the
+    // freelancer remains excluded from Talent Vault despite renewing.
+    const nextTeachingLicenceExpiry =
+      data.teachingLicenceExpiry !== undefined
+        ? (data.teachingLicenceExpiry ? new Date(data.teachingLicenceExpiry).getTime() : null)
+        : undefined;
+    const currentTeachingLicenceExpiry = current.teachingLicenceExpiry
+      ? current.teachingLicenceExpiry.getTime()
+      : null;
+    const teachingLicenceExpiryChanged =
+      nextTeachingLicenceExpiry !== undefined && nextTeachingLicenceExpiry !== currentTeachingLicenceExpiry;
+
     const [updated] = await db.update(freelancerProfilesTable)
-      .set({ ...data, completenessScore, updatedAt: new Date() } as any)
+      .set({
+        ...data,
+        completenessScore,
+        ...(teachingLicenceExpiryChanged ? { teachingLicenceAlertStage: "none" } : {}),
+        updatedAt: new Date(),
+      } as any)
       .where(eq(freelancerProfilesTable.clerkId, clerkId))
       .returning();
     if (!updated) { res.status(404).json({ error: "Profile not found" }); return; }

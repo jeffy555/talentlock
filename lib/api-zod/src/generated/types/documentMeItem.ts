@@ -8,7 +8,7 @@
 
 export interface DocumentMeItem {
   documentType: string;
-  /** pending | verified | rejected | needs_review */
+  /** pending | verified | rejected | needs_review | expired */
   status: string;
   /** @nullable */
   confidence?: number | null;
@@ -17,4 +17,14 @@ export interface DocumentMeItem {
   /** @nullable */
   adminNotes?: string | null;
   updatedAt: Date;
+  /**
+   * Freelancer-supplied credential expiry date
+   * @nullable
+   */
+  expiryDate?: Date | null;
+  /**
+   * Computed days remaining until expiryDate (null when expiryDate is unset)
+   * @nullable
+   */
+  daysUntilExpiry?: number | null;
 }

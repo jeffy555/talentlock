@@ -53,6 +53,7 @@ import type {
   CreatePortfolioItemBody,
   CreateReviewBody,
   CreateTeamBody,
+  CredentialExpiryScanResult,
   CruiseModeActivity,
   CruiseModeConfig,
   CruiseModeStats,
@@ -132,6 +133,8 @@ import type {
   ParseCruiseModeRulesResult,
   ParseTalentSearchRulesBody,
   ParseTalentSearchRulesResult,
+  PatchDocumentExpiryBody,
+  PatchDocumentExpiryResponse,
   PatchNotificationPreferencesBody,
   PatchOnboardingStepBody,
   PlanDef,
@@ -8312,6 +8315,113 @@ export const usePostDocumentsConfirm = <
 };
 
 /**
+ * @summary Set or clear the expiry date on an existing document without re-uploading
+ */
+export const getPatchDocumentExpiryUrl = (
+  documentType: "government_id" | "professional_credential",
+) => {
+  return `/api/documents/${documentType}/expiry`;
+};
+
+export const patchDocumentExpiry = async (
+  documentType: "government_id" | "professional_credential",
+  patchDocumentExpiryBody: PatchDocumentExpiryBody,
+  options?: RequestInit,
+): Promise<PatchDocumentExpiryResponse> => {
+  return customFetch<PatchDocumentExpiryResponse>(
+    getPatchDocumentExpiryUrl(documentType),
+    {
+      ...options,
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(patchDocumentExpiryBody),
+    },
+  );
+};
+
+export const getPatchDocumentExpiryMutationOptions = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof patchDocumentExpiry>>,
+    TError,
+    {
+      documentType: "government_id" | "professional_credential";
+      data: BodyType<PatchDocumentExpiryBody>;
+    },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof patchDocumentExpiry>>,
+  TError,
+  {
+    documentType: "government_id" | "professional_credential";
+    data: BodyType<PatchDocumentExpiryBody>;
+  },
+  TContext
+> => {
+  const mutationKey = ["patchDocumentExpiry"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof patchDocumentExpiry>>,
+    {
+      documentType: "government_id" | "professional_credential";
+      data: BodyType<PatchDocumentExpiryBody>;
+    }
+  > = (props) => {
+    const { documentType, data } = props ?? {};
+
+    return patchDocumentExpiry(documentType, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type PatchDocumentExpiryMutationResult = NonNullable<
+  Awaited<ReturnType<typeof patchDocumentExpiry>>
+>;
+export type PatchDocumentExpiryMutationBody = BodyType<PatchDocumentExpiryBody>;
+export type PatchDocumentExpiryMutationError = ErrorType<ErrorEnvelope>;
+
+/**
+ * @summary Set or clear the expiry date on an existing document without re-uploading
+ */
+export const usePatchDocumentExpiry = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof patchDocumentExpiry>>,
+    TError,
+    {
+      documentType: "government_id" | "professional_credential";
+      data: BodyType<PatchDocumentExpiryBody>;
+    },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof patchDocumentExpiry>>,
+  TError,
+  {
+    documentType: "government_id" | "professional_credential";
+    data: BodyType<PatchDocumentExpiryBody>;
+  },
+  TContext
+> => {
+  return useMutation(getPatchDocumentExpiryMutationOptions(options));
+};
+
+/**
  * @summary Get my document verification status
  */
 export const getGetDocumentsMeUrl = () => {
@@ -11516,3 +11626,89 @@ export function useGetTalentSearchStats<
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
+
+/**
+ * Not part of the browser-facing API contract — documented for completeness only. Requires an x-cron-secret header matching the CRON_SECRET environment variable. Deliberately mounted outside /api/admin so the CSRF double-submit middleware never applies.
+
+ * @summary Daily credential expiry scan (machine-only, shared-secret auth via x-cron-secret header)
+ */
+export const getPostCronCredentialExpiryUrl = () => {
+  return `/api/cron/credential-expiry`;
+};
+
+export const postCronCredentialExpiry = async (
+  options?: RequestInit,
+): Promise<CredentialExpiryScanResult> => {
+  return customFetch<CredentialExpiryScanResult>(
+    getPostCronCredentialExpiryUrl(),
+    {
+      ...options,
+      method: "POST",
+    },
+  );
+};
+
+export const getPostCronCredentialExpiryMutationOptions = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof postCronCredentialExpiry>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof postCronCredentialExpiry>>,
+  TError,
+  void,
+  TContext
+> => {
+  const mutationKey = ["postCronCredentialExpiry"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof postCronCredentialExpiry>>,
+    void
+  > = () => {
+    return postCronCredentialExpiry(requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type PostCronCredentialExpiryMutationResult = NonNullable<
+  Awaited<ReturnType<typeof postCronCredentialExpiry>>
+>;
+
+export type PostCronCredentialExpiryMutationError = ErrorType<ErrorEnvelope>;
+
+/**
+ * @summary Daily credential expiry scan (machine-only, shared-secret auth via x-cron-secret header)
+ */
+export const usePostCronCredentialExpiry = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof postCronCredentialExpiry>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof postCronCredentialExpiry>>,
+  TError,
+  void,
+  TContext
+> => {
+  return useMutation(getPostCronCredentialExpiryMutationOptions(options));
+};

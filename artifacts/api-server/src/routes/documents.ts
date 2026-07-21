@@ -19,6 +19,7 @@ import {
 import { triggerDocumentReview } from "../lib/documentReview";
 import { ObjectStorageService } from "../lib/objectStorage";
 import { logAudit } from "../lib/auditLogger";
+import { daysUntil } from "../lib/credentialExpiryUtils";
 
 const router = Router();
 const objectStorageService = new ObjectStorageService();
@@ -32,6 +33,11 @@ const PostDocumentsUploadUrlBody = z.object({
 const PostDocumentsConfirmBody = z.object({
   documentType: z.string(),
   storagePath: z.string(),
+  expiryDate: z.string().datetime().nullable().optional(),
+});
+
+const PatchDocumentExpiryBody = z.object({
+  expiryDate: z.string().datetime().nullable(),
 });
 
 const TEN_MINUTES_MS = 10 * 60 * 1000;
@@ -141,7 +147,7 @@ router.post("/documents/confirm", async (req, res) => {
     return;
   }
 
-  const { documentType, storagePath } = parsed.data;
+  const { documentType, storagePath, expiryDate } = parsed.data;
 
   if (!isDocumentType(documentType)) {
     res.status(400).json({ error: "Invalid document type" });
@@ -164,6 +170,11 @@ router.post("/documents/confirm", async (req, res) => {
       return;
     }
 
+    // Re-uploading (upsert on freelancerId+documentType) must reset expiry
+    // tracking — otherwise a renewed credential could inherit a stale
+    // 'expired' alert stage and immediately re-trigger a false alert cycle.
+    const resolvedExpiryDate = expiryDate ? new Date(expiryDate) : null;
+
     const [document] = await db
       .insert(documentsTable)
       .values({
@@ -175,6 +186,8 @@ router.post("/documents/confirm", async (req, res) => {
         aiNotes: null,
         adminNotes: null,
         reviewedBy: null,
+        expiryDate: resolvedExpiryDate,
+        expiryAlertStage: "none",
         updatedAt: new Date(),
       })
       .onConflictDoUpdate({
@@ -186,6 +199,8 @@ router.post("/documents/confirm", async (req, res) => {
           aiNotes: null,
           adminNotes: null,
           reviewedBy: null,
+          expiryDate: resolvedExpiryDate,
+          expiryAlertStage: "none",
           updatedAt: new Date(),
         },
       })
@@ -244,6 +259,7 @@ router.get("/documents/me", async (req, res) => {
         aiNotes: documentsTable.aiNotes,
         adminNotes: documentsTable.adminNotes,
         updatedAt: documentsTable.updatedAt,
+        expiryDate: documentsTable.expiryDate,
       })
       .from(documentsTable)
       .where(eq(documentsTable.freelancerId, ctx.profile.id));
@@ -253,10 +269,64 @@ router.get("/documents/me", async (req, res) => {
       documents: documents.map((doc) => ({
         ...doc,
         updatedAt: doc.updatedAt.toISOString(),
+        expiryDate: doc.expiryDate ? doc.expiryDate.toISOString() : null,
+        daysUntilExpiry: doc.expiryDate ? daysUntil(doc.expiryDate) : null,
       })),
     });
   } catch (err) {
     req.log.error({ err }, "Failed to get document verification status");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.patch("/documents/:documentType/expiry", async (req, res) => {
+  const { userId: clerkId } = getAuth(req);
+  if (!clerkId) {
+    res.status(401).json({ error: "Unauthorized" });
+    return;
+  }
+
+  const documentType = req.params.documentType;
+  if (!isDocumentType(documentType)) {
+    res.status(400).json({ error: "Invalid document type" });
+    return;
+  }
+
+  const parsed = PatchDocumentExpiryBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "expiryDate required (ISO date-time or null)" });
+    return;
+  }
+
+  try {
+    const ctx = await resolveFreelancerContext(clerkId);
+    if (!ctx) {
+      res.status(404).json({ error: "User not found" });
+      return;
+    }
+    if (ctx.forbidden || !ctx.profile) {
+      res.status(403).json({ error: "Freelancer profile required" });
+      return;
+    }
+
+    const [updated] = await db
+      .update(documentsTable)
+      .set({
+        expiryDate: parsed.data.expiryDate ? new Date(parsed.data.expiryDate) : null,
+        expiryAlertStage: "none",
+        updatedAt: new Date(),
+      })
+      .where(and(eq(documentsTable.freelancerId, ctx.profile.id), eq(documentsTable.documentType, documentType)))
+      .returning({ id: documentsTable.id });
+
+    if (!updated) {
+      res.status(404).json({ error: "Document not found" });
+      return;
+    }
+
+    res.json({ success: true });
+  } catch (err) {
+    req.log.error({ err }, "Failed to update document expiry");
     res.status(500).json({ error: "Internal server error" });
   }
 });

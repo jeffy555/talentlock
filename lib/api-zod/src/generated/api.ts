@@ -239,6 +239,14 @@ export const ListFreelancersResponseItem = zod.object({
   researchPublications: zod.string().nullish(),
   preferredTeachingMode: zod.enum(["in_person", "online", "both"]).nullish(),
   location: zod.string().nullish(),
+  expiringCredential: zod
+    .object({
+      daysRemaining: zod.number(),
+    })
+    .nullish()
+    .describe(
+      "Set when a verified document or teaching licence expires within 7 days (Talent Vault list only)",
+    ),
   createdAt: zod.coerce.date(),
 });
 export const ListFreelancersResponse = zod.array(ListFreelancersResponseItem);
@@ -363,6 +371,14 @@ export const GetMyFreelancerProfileResponse = zod.object({
   researchPublications: zod.string().nullish(),
   preferredTeachingMode: zod.enum(["in_person", "online", "both"]).nullish(),
   location: zod.string().nullish(),
+  expiringCredential: zod
+    .object({
+      daysRemaining: zod.number(),
+    })
+    .nullish()
+    .describe(
+      "Set when a verified document or teaching licence expires within 7 days (Talent Vault list only)",
+    ),
   createdAt: zod.coerce.date(),
 });
 
@@ -466,6 +482,14 @@ export const UpdateMyFreelancerProfileResponse = zod.object({
   researchPublications: zod.string().nullish(),
   preferredTeachingMode: zod.enum(["in_person", "online", "both"]).nullish(),
   location: zod.string().nullish(),
+  expiringCredential: zod
+    .object({
+      daysRemaining: zod.number(),
+    })
+    .nullish()
+    .describe(
+      "Set when a verified document or teaching licence expires within 7 days (Talent Vault list only)",
+    ),
   createdAt: zod.coerce.date(),
 });
 
@@ -542,6 +566,14 @@ export const GetFreelancerProfileResponse = zod
     researchPublications: zod.string().nullish(),
     preferredTeachingMode: zod.enum(["in_person", "online", "both"]).nullish(),
     location: zod.string().nullish(),
+    expiringCredential: zod
+      .object({
+        daysRemaining: zod.number(),
+      })
+      .nullish()
+      .describe(
+        "Set when a verified document or teaching licence expires within 7 days (Talent Vault list only)",
+      ),
     createdAt: zod.coerce.date(),
   })
   .and(
@@ -2722,6 +2754,14 @@ export const ListSavedFreelancersResponseItem = zod.object({
   researchPublications: zod.string().nullish(),
   preferredTeachingMode: zod.enum(["in_person", "online", "both"]).nullish(),
   location: zod.string().nullish(),
+  expiringCredential: zod
+    .object({
+      daysRemaining: zod.number(),
+    })
+    .nullish()
+    .describe(
+      "Set when a verified document or teaching licence expires within 7 days (Talent Vault list only)",
+    ),
   createdAt: zod.coerce.date(),
 });
 export const ListSavedFreelancersResponse = zod.array(
@@ -3027,6 +3067,25 @@ export const PostDocumentsUploadUrlResponse = zod.object({
 export const PostDocumentsConfirmBody = zod.object({
   documentType: zod.enum(["government_id", "professional_credential"]),
   storagePath: zod.string(),
+  expiryDate: zod.coerce
+    .date()
+    .nullish()
+    .describe("Optional freelancer-supplied credential expiry date"),
+});
+
+/**
+ * @summary Set or clear the expiry date on an existing document without re-uploading
+ */
+export const PatchDocumentExpiryParams = zod.object({
+  documentType: zod.enum(["government_id", "professional_credential"]),
+});
+
+export const PatchDocumentExpiryBody = zod.object({
+  expiryDate: zod.coerce.date().nullable(),
+});
+
+export const PatchDocumentExpiryResponse = zod.object({
+  success: zod.boolean(),
 });
 
 /**
@@ -3041,11 +3100,21 @@ export const GetDocumentsMeResponse = zod.object({
       documentType: zod.string(),
       status: zod
         .string()
-        .describe("pending | verified | rejected | needs_review"),
+        .describe("pending | verified | rejected | needs_review | expired"),
       confidence: zod.number().nullish(),
       aiNotes: zod.string().nullish(),
       adminNotes: zod.string().nullish(),
       updatedAt: zod.coerce.date(),
+      expiryDate: zod.coerce
+        .date()
+        .nullish()
+        .describe("Freelancer-supplied credential expiry date"),
+      daysUntilExpiry: zod
+        .number()
+        .nullish()
+        .describe(
+          "Computed days remaining until expiryDate (null when expiryDate is unset)",
+        ),
     }),
   ),
 });
@@ -3384,6 +3453,14 @@ export const ListTeamShortlistResponseItem = zod.object({
     researchPublications: zod.string().nullish(),
     preferredTeachingMode: zod.enum(["in_person", "online", "both"]).nullish(),
     location: zod.string().nullish(),
+    expiringCredential: zod
+      .object({
+        daysRemaining: zod.number(),
+      })
+      .nullish()
+      .describe(
+        "Set when a verified document or teaching licence expires within 7 days (Talent Vault list only)",
+      ),
     createdAt: zod.coerce.date(),
   }),
   addedByUserId: zod.number(),
@@ -3468,6 +3545,14 @@ export const AddTeamShortlistResponse = zod.object({
     researchPublications: zod.string().nullish(),
     preferredTeachingMode: zod.enum(["in_person", "online", "both"]).nullish(),
     location: zod.string().nullish(),
+    expiringCredential: zod
+      .object({
+        daysRemaining: zod.number(),
+      })
+      .nullish()
+      .describe(
+        "Set when a verified document or teaching licence expires within 7 days (Talent Vault list only)",
+      ),
     createdAt: zod.coerce.date(),
   }),
   addedByUserId: zod.number(),
@@ -4535,4 +4620,18 @@ export const GetTalentSearchStatsResponse = zod.object({
   dailyLimitHours: zod.number(),
   hoursRemainingToday: zod.number(),
   hoursResetAt: zod.coerce.date(),
+});
+
+/**
+ * Not part of the browser-facing API contract — documented for completeness only. Requires an x-cron-secret header matching the CRON_SECRET environment variable. Deliberately mounted outside /api/admin so the CSRF double-submit middleware never applies.
+
+ * @summary Daily credential expiry scan (machine-only, shared-secret auth via x-cron-secret header)
+ */
+export const PostCronCredentialExpiryResponse = zod.object({
+  ok: zod.boolean(),
+  documentsScanned: zod.number(),
+  documentAlertsSent: zod.number(),
+  documentsExpired: zod.number(),
+  licencesScanned: zod.number(),
+  licenceAlertsSent: zod.number(),
 });

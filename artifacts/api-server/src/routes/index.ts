@@ -34,6 +34,7 @@ import cruiseModeRouter from "./cruiseMode";
 import talentSearchRouter from "./talentSearch";
 import conversationsRouter from "./conversations";
 import employerDocumentsRouter from "./employerDocuments";
+import cronRouter from "./cron";
 
 const router: IRouter = Router();
 
@@ -72,5 +73,6 @@ router.use(cruiseModeRouter);
 router.use(talentSearchRouter);
 router.use(conversationsRouter);
 router.use(employerDocumentsRouter);
+router.use(cronRouter);
 
 export default router;

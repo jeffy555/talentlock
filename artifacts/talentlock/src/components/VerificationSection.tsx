@@ -138,7 +138,20 @@ function DocumentRow({
     );
     detail = "Sent for manual review — usually resolved within 24 hours";
     action = null;
+  } else if (status === "expired") {
+    icon = <ShieldX className="h-5 w-5 text-red-600" />;
+    statusBadge = (
+      <span className="text-xs px-2 py-0.5 rounded-full font-medium text-red-700 bg-red-100 border border-red-200">
+        Expired
+      </span>
+    );
+    detail = "This credential has expired — upload a renewed document to restore your verified status.";
+    action = (
+      <DocumentUploader documentType={documentType} onSuccess={onRefresh} label="Renew ↑" />
+    );
   }
+
+  const showCountdown = status === "verified" && doc?.daysUntilExpiry != null && doc.daysUntilExpiry <= 30;
 
   return (
     <div className="flex items-start gap-3 py-4 border-b border-border/50 last:border-0">
@@ -152,6 +165,11 @@ function DocumentRow({
           </div>
         </div>
         <p className="text-sm text-muted-foreground mt-1">{detail}</p>
+        {showCountdown && (
+          <p className={`text-xs mt-1 font-medium ${doc!.daysUntilExpiry! <= 7 ? "text-red-600" : "text-amber-600"}`}>
+            Expires in {doc!.daysUntilExpiry} day{doc!.daysUntilExpiry === 1 ? "" : "s"}
+          </p>
+        )}
       </div>
     </div>
   );

@@ -48,6 +48,8 @@ tags:
     description: Freelancer Cruise Mode automation and member management
   - name: talent-search
     description: Employer TalentSearch automation (employer-side Cruise Mode)
+  - name: cron
+    description: Machine-only scheduled job endpoints (shared-secret auth, not Clerk)
 
 paths:
   /healthz:
@@ -2507,6 +2509,56 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorEnvelope"
 
+  /documents/{documentType}/expiry:
+    patch:
+      operationId: patchDocumentExpiry
+      tags: [documents]
+      summary: Set or clear the expiry date on an existing document without re-uploading
+      parameters:
+        - name: documentType
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [government_id, professional_credential]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PatchDocumentExpiryBody"
+      responses:
+        "200":
+          description: Expiry date updated (alert stage reset to none)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PatchDocumentExpiryResponse"
+        "400":
+          description: Invalid document type or body
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "403":
+          description: Freelancer profile required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "404":
+          description: Document not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
   /documents/me:
     get:
       operationId: getDocumentsMe
@@ -3763,6 +3815,36 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorEnvelope"
 
+  # ── Cron (machine-only) ──────────────────────────────────────────────────────
+  /cron/credential-expiry:
+    post:
+      operationId: postCronCredentialExpiry
+      tags: [cron]
+      summary: Daily credential expiry scan (machine-only, shared-secret auth via x-cron-secret header)
+      description: >
+        Not part of the browser-facing API contract — documented for completeness only.
+        Requires an x-cron-secret header matching the CRON_SECRET environment variable.
+        Deliberately mounted outside /api/admin so the CSRF double-submit middleware never applies.
+      responses:
+        "200":
+          description: Scan complete
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CredentialExpiryScanResult"
+        "401":
+          description: Missing or incorrect x-cron-secret header
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "500":
+          description: CRON_SECRET not configured, or scan failed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
 components:
   schemas:
     HealthStatus:
@@ -4049,6 +4131,11 @@ components:
           nullable: true
         location:
           type: ["string", "null"]
+        expiringCredential:
+          allOf:
+            - $ref: "#/components/schemas/ExpiringCredential"
+          nullable: true
+          description: Set when a verified document or teaching licence expires within 7 days (Talent Vault list only)
         createdAt:
           type: string
           format: date-time
@@ -6169,9 +6256,61 @@ components:
           enum: [government_id, professional_credential]
         storagePath:
           type: string
+        expiryDate:
+          type: ["string", "null"]
+          format: date-time
+          description: Optional freelancer-supplied credential expiry date
       required:
         - documentType
         - storagePath
+
+    PatchDocumentExpiryBody:
+      type: object
+      properties:
+        expiryDate:
+          type: ["string", "null"]
+          format: date-time
+      required:
+        - expiryDate
+
+    PatchDocumentExpiryResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+      required:
+        - success
+
+    CredentialExpiryScanResult:
+      type: object
+      properties:
+        ok:
+          type: boolean
+        documentsScanned:
+          type: integer
+        documentAlertsSent:
+          type: integer
+        documentsExpired:
+          type: integer
+        licencesScanned:
+          type: integer
+        licenceAlertsSent:
+          type: integer
+      required:
+        - ok
+        - documentsScanned
+        - documentAlertsSent
+        - documentsExpired
+        - licencesScanned
+        - licenceAlertsSent
+
+    ExpiringCredential:
+      type: object
+      properties:
+        daysRemaining:
+          type: integer
+      required:
+        - daysRemaining
 
     DocumentsConfirmResponse:
       type: object
@@ -6189,7 +6328,7 @@ components:
           type: string
         status:
           type: string
-          description: "pending | verified | rejected | needs_review"
+          description: "pending | verified | rejected | needs_review | expired"
         confidence:
           type: ["integer", "null"]
         aiNotes:
@@ -6199,6 +6338,13 @@ components:
         updatedAt:
           type: string
           format: date-time
+        expiryDate:
+          type: ["string", "null"]
+          format: date-time
+          description: Freelancer-supplied credential expiry date
+        daysUntilExpiry:
+          type: ["integer", "null"]
+          description: Computed days remaining until expiryDate (null when expiryDate is unset)
       required:
         - documentType
         - status
