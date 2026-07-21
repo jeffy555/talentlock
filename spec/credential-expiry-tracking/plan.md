@@ -463,6 +463,6 @@ Requires GitHub repo secrets `API_BASE_URL` and `CRON_SECRET` (same value as the
 
 | Phase | Description | Status |
 |-------|-------------|--------|
-| 1 | Database — `documents.expiryDate`/`expiryAlertStage`, `freelancer_profiles.teachingLicenceAlertStage` | 🟡 Schema written; `db push` not yet run (no reachable DB in implementing environment) |
+| 1 | Database — `documents.expiryDate`/`expiryAlertStage`, `freelancer_profiles.teachingLicenceAlertStage` | ✅ Complete; `db push` run by user against the real database 2026-07-21 |
 | 2 | Backend — utils, scan logic, cron route, confirm/expiry endpoints, Vault query, OpenAPI + codegen | ✅ Complete; typechecked; 15 unit tests added; auth path live-verified |
 | 3 | Frontend — badges, banners, GitHub Actions cron workflow | ✅ Complete; typechecked |

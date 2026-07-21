@@ -497,7 +497,7 @@ The `.cursor/rules/talentlock.mdc` file at the repo root enforces these rules au
 | AI Meeting Brief Generator | `specs/ai-meeting-brief/` | 🟡 Ready to Execute |
 | **Automated API Testing (Regression)** | `spec/api-testing/` | 🔄 In progress — Phase 0 harness on `cursor/regression-tests-9a23` |
 | Onboarding Scaffolding | `spec/onboarding-scaffolding/` | ✅ Complete |
-| Credential Expiry Tracking | `spec/credential-expiry-tracking/` | 🔄 In progress — code complete/typechecked; DB migration pending a real Postgres connection |
+| Credential Expiry Tracking | `spec/credential-expiry-tracking/` | 🔄 In progress — code complete/typechecked; DB migration applied; seeded end-to-end validation (V2.3–V2.9) pending |
 
 > Add new features to this table when their `features.md` is created.
 > Update status as work progresses: 🟡 Ready → 🔄 In Progress → ✅ Complete

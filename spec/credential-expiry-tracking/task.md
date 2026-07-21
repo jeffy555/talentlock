@@ -131,7 +131,7 @@ Verify `indexFiles: false` and `lib/api-zod/src/index.ts` exports unchanged.
 
 ## Acceptance Criteria
 
-- [x] `documents.expiry_date`, `documents.expiry_alert_stage`, `freelancer_profiles.teaching_licence_alert_stage` columns exist — schema written; `pnpm --filter @workspace/db run push` must be run against a real database before deploy (no DB available in the implementing sandbox)
+- [x] `documents.expiry_date`, `documents.expiry_alert_stage`, `freelancer_profiles.teaching_licence_alert_stage` columns exist — schema written and pushed to the real database (`pnpm --filter @workspace/db run push`, confirmed by user 2026-07-21)
 - [x] `POST /api/cron/credential-expiry` requires `x-cron-secret`; wrong/missing secret → 401; unset `CRON_SECRET` → 500 — live-verified against the real Express app (see `validation.md`)
 - [x] Cron route is NOT under `/api/admin` and is unaffected by CSRF middleware — live-verified (never 403)
 - [x] Running the scan twice in a row does not re-send the same alert stage twice — covered by `credentialExpiryUtils.test.ts` (`stageAdvanced`)

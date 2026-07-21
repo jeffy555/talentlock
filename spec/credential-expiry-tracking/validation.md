@@ -157,6 +157,15 @@ Freelancer from V2.4 sees a red "Expired" badge and "Renew ↑" button on `/prof
 
 ## Validation Run Log (2026-07-21)
 
+**Update:** The user ran `pnpm --filter @workspace/db run push` against the real configured
+database from their own terminal (outside this cloud agent VM, which has no `.env` of its own).
+Reported output: `[✓] Pulling schema from database... [✓] Changes applied — Database schema push
+completed successfully.` **V1.1 is therefore considered done** — the `documents.expiry_date`,
+`documents.expiry_alert_stage`, and `freelancer_profiles.teaching_licence_alert_stage` columns
+now exist in the real database. This cloud agent session still has no `DATABASE_URL` configured,
+so V2.3–V2.9 (seeded end-to-end scenarios) remain to be re-run either by the user or by this
+agent once given DB access (see Phase 1 row in Sign-Off below).
+
 This sandbox has no reachable Postgres instance and no live Clerk credentials, so DB-backed
 integration checks could not be executed end-to-end here. What was actually run:
 
@@ -192,10 +201,10 @@ to connect to, not a logic defect.
 
 ### Code-review verification (V1.1, V2.3–V2.9, V3.1–V3.4)
 
-- **V1.1** — Columns added in `lib/db/src/schema/documents.ts` (`expiryDate`, `expiryAlertStage`)
-  and `lib/db/src/schema/freelancerProfiles.ts` (`teachingLicenceAlertStage`). Schema push
-  (`pnpm --filter @workspace/db run push`) could not run here (no `DATABASE_URL`) — must be run
-  in an environment with a real Neon/Postgres connection before deploying.
+- **V1.1** — ✅ Done. Columns added in `lib/db/src/schema/documents.ts` (`expiryDate`,
+  `expiryAlertStage`) and `lib/db/src/schema/freelancerProfiles.ts` (`teachingLicenceAlertStage`).
+  Schema push (`pnpm --filter @workspace/db run push`) was run by the user against the real
+  database on 2026-07-21 — reported `[✓] Pulling schema from database... [✓] Changes applied`.
 - **V2.3** — `stageAdvanced()` / `targetStageForDaysRemaining()` are unit-tested directly with the
   exact day thresholds used in `runCredentialExpiryScan()`; the scan loop only mutates state and
   sends alerts when `stageAdvanced()` returns `true`, so a second run with an unchanged
@@ -226,9 +235,10 @@ to connect to, not a logic defect.
   business logic beyond straightforward conditional rendering, confirmed by reading the
   component code against `UI.md`'s exact JSX.
 
-**Action required before merge/deploy:** run `pnpm --filter @workspace/db run push` against a
-real database, then re-run the full `validation.md` Phase 1–3 checks (especially V2.3–V2.9)
-against that database with seeded fixtures, per the `curl`/SQL commands above.
+**Remaining before full sign-off:** re-run the seeded-data checks V2.3–V2.9 and V3.1–V3.4 against
+the now-migrated database — either the user runs them directly (per the `curl`/SQL commands
+above), or provides this agent with `DATABASE_URL` (session env var or a Cursor Cloud Agent
+secret) so it can seed fixtures and verify end-to-end.
 
 ---
 
@@ -236,6 +246,6 @@ against that database with seeded fixtures, per the `curl`/SQL commands above.
 
 | Phase | Status | Date |
 |-------|--------|------|
-| 1 Database | 🟡 Schema written, migration not yet applied (no DB in this environment) | 2026-07-21 |
-| 2 Backend | 🟡 Code complete, typechecked, unit-tested; auth path live-verified; DB-dependent paths code-reviewed only | 2026-07-21 |
+| 1 Database | ✅ Schema migration applied to real database (confirmed by user's `db push` run) | 2026-07-21 |
+| 2 Backend | 🟡 Code complete, typechecked, unit-tested; auth path live-verified; V2.3–V2.9 (seeded scenarios) still pending DB access in an agent session | 2026-07-21 |
 | 3 Frontend | 🟡 Code complete, typechecked; visual/manual QA pending a running dev environment | 2026-07-21 |
