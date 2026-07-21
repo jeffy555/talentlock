@@ -6,7 +6,30 @@ Run after all `task.md` phases complete.
 
 ## Phase 1 — Database
 
-- [ ] V1.1
+> **Pre-push reconciliation (mandatory):** If Drizzle warns it will **drop** `onboarding_role`, `expiry_date`, `teaching_licence_alert_stage`, or similar columns, **cancel the push**. That means local schema files are stale relative to Neon. Do not use `--force`.
+>
+> ```bash
+> # 1. Sync code with main (schema must include onboarding + credential expiry + watchlist columns)
+> git fetch origin && git merge origin/main
+>
+> # 2. Verify local schema markers + optional DB check
+> DATABASE_URL='...' pnpm --filter @workspace/db run verify-schema
+>
+> # 3. Push only when verify-schema passes and Drizzle shows ADD-only changes
+> DATABASE_URL='...' pnpm --filter @workspace/db run push
+> ```
+>
+> Expected **additive-only** change for this feature: `saved_freelancers.notes`, `saved_freelancers.last_alert_at`.
+
+- [ ] V1.0 · [ ] V1.1
+
+### V1.0 — Schema parity script passes
+
+```bash
+pnpm --filter @workspace/db run verify-schema
+```
+
+With `DATABASE_URL` set, confirms local schema files declare all columns Neon already has, and lists pending additive columns.
 
 ### V1.1 — Columns exist
 

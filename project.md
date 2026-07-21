@@ -100,6 +100,16 @@ Personal watchlist plan limits: `employer_starter` = 25, `employer_growth` = 100
 ### Schema changes workflow
 
 After editing `lib/db/src/schema/*.ts`:
+
+```bash
+# Always reconcile before push — prevents accidental column drops
+pnpm --filter @workspace/db run verify-schema
+
+pnpm --filter @workspace/db run push
+```
+
+If `verify-schema` fails, merge latest `main` into your branch first. **Never** confirm a Drizzle push that drops `onboarding_role`, `expiry_date`, `expiry_alert_stage`, or `teaching_licence_alert_stage` — those columns have live data from prior feature pushes.
+
 ```bash
 pnpm --filter @workspace/db run push
 ```
