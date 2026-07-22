@@ -28,7 +28,7 @@ The Vite dev server has a proxy rule that forwards `/api` calls to `localhost:80
 | `freelancer_profiles` | Freelancer professional info, skills, rate, availability. Has `averageRating`, `reviewCount`, `nextAvailableDate`, `completenessScore` columns. |
 | `employer_profiles` | Employer company info |
 | `job_requirements` | Job postings by employers |
-| `bookings` | Exclusive engagements. Has negotiation columns: `proposedRate`, `lastProposedBy`, `negotiationStatus`, and optional employer `message` |
+| `bookings` | Exclusive engagements. Has negotiation columns: `proposedRate`, `lastProposedBy`, `negotiationStatus`, optional employer `message`, and post-engagement debrief cache: `debriefContent` (jsonb — dual employer/freelancer slices), `debriefGeneratedAt`, `debriefRegeneratedAt` |
 | `agreements` | AI-generated legal agreements. Has `freelancerSignatureImageUrl`, `employerSignatureImageUrl`, `status`, `healthScore`, `healthScoreDetail`, `healthScoredAt`, `freelancerSummary`, `freelancerSummaryScoredAt`, `employerSignedAt`, `freelancerSignedAt` columns. |
 | `conversations` | AI match chat sessions. Has `jobRequirementId` column. |
 | `messages` | Individual chat messages |
@@ -189,8 +189,10 @@ DELETE /api/job-requirements/:id                  Delete job
 
 GET  /api/bookings                                Paginated list (?page, ?pageSize — returns {data,total,page,pageSize,totalPages})
 POST /api/bookings                                Create booking (optional `message` max 500 chars)
-GET  /api/bookings/:id                            Booking detail (includes review object and employer message)
+GET  /api/bookings/:id                            Booking detail (includes review object, employer message, `hasDebrief`, `debriefGeneratedAt` — never raw `debriefContent`)
 PATCH /api/bookings/:id                           Update booking (status, milestones, negotiation)
+GET  /api/bookings/:id/debrief                    Role-filtered post-engagement debrief slice (participant only; 404 if not ready)
+POST /api/bookings/:id/debrief                    Generate or regenerate debrief (202 Accepted; 24h cooldown; `booking_debrief` token charged to employer)
 
 GET  /api/agreements                              Paginated list (?page, ?pageSize)
 POST /api/agreements                              Generate agreement (AI)
@@ -419,6 +421,8 @@ POST /api/meetings/:id/brief` (202 Accepted); employer-only — freelancers neve
 41. **Credential Expiry Tracking** — daily scan (`POST /api/cron/credential-expiry`, machine-only, `x-cron-secret` header, triggered by a scheduled GitHub Actions workflow since the API runs on an autoscale deployment target) tracks two expiry sources: `documents.expiryDate` (freelancer-supplied, `professional_credential`/`government_id`) and `freelancer_profiles.teachingLicenceExpiry` (education professionals); alert schedule 90d email → 30d email + in-app + amber profile banner → 7d in-app + red urgent banner + "Expiring Soon" Talent Vault badge → expiry day flips `documents.status` to `expired` (badge auto-downgrades via existing `updateVerificationLevel()`); each credential tracks an `expiryAlertStage` (`none|90d|30d|7d|expired`) so the stage only ever advances — never duplicates an alert, safely catches up if a day is missed; Talent Vault removal (`GET /api/freelancers` exclusion) is scoped **only** to `professionCategory: 'education'` + `educationProfessionType: 'school_teacher'` freelancers with an expired `teachingLicenceExpiry` — the one credential already documented as required; generic `professional_credential` expiry never removes a freelancer from Vault, only degrades the badge and fires alerts; direct profile access (`GET /freelancers/:id`, `/f/:id`) is never blocked by Vault exclusion; re-uploading a document or renewing a teaching licence resets the alert stage to `none`; all plans, no token consumption
 42. **Freelancer Watchlist** — employer personal talent pipeline built on `saved_freelancers`; dedicated Watchlist tab on `/freelancers` (non-enterprise); private notes per entry (`PATCH /api/freelancers/:id/watchlist`); in-app `WATCHLIST_UPDATE` notifications when a watched freelancer becomes available or changes rate ≥ 5% (debounced 24 h via `lastAlertAt`); plan limits (starter 25 / growth 100); dashboard summary card; active enterprise team members use `team_shortlist` instead — personal watchlist API returns `[]`/`403`; freelancers never know they are on a watchlist
 
+43. **Post-Engagement AI Debrief** — fires fire-and-forget when booking `status → completed`; single OpenAI call (`gpt-4o-mini`) produces dual role-specific debrief cached as `debriefContent` jsonb on `bookings`; each party reads their slice via `GET /api/bookings/:id/debrief`; manual regeneration via `POST /api/bookings/:id/debrief` (202, 24h cooldown via `debriefRegeneratedAt`); `booking_debrief` token label charged to employer; `BOOKING_DEBRIEF_READY` notification + email to both parties; violet (employer) / indigo (freelancer) `DebriefCard` on `/bookings/:id`; employer starter plan gates sections 3–5 in UI only; GDPR nullifies debrief columns on account deletion
+
 ### Dashboard analytics panels
 
 | Panel | Role | Endpoint | Frontend components |
@@ -522,6 +526,17 @@ Cursor notes — Teaching Professional Profile
 - Watchlist entries persist even when a freelancer drops below the 60% Vault gate — show a muted "No longer in Talent Vault" badge on the card; do not auto-remove saves.
 - Frontend 402 `PLAN_LIMIT` on save toggle redirects to `/pricing` — do NOT show inline error in a drawer (match PostJob/JobDetail pattern).
 
+### Cursor notes — Post-Engagement AI Debrief
+
+- Debrief auto-fires on `PATCH /api/bookings/:id` when `status` transitions to `completed` — fire-and-forget, never awaited
+- `GET /api/bookings/:id/debrief` returns **role-filtered slice only** — never full `debriefContent` to client
+- Token `booking_debrief` charged to **employer** account
+- Re-fetch booking at start of `generateBookingDebrief()` — exit if `status !== 'completed'`
+- Manual regen debounced 24h via `debriefRegeneratedAt` — auto-trigger on first completion is not debounced
+- GDPR: nullify `debriefContent` + timestamps on account deletion for participant bookings
+- Agreement `content` field must NEVER be passed to the debrief prompt
+- Plan gating for employer sections 3–5 is UI-only — server always generates full employer debrief
+
 ### Utility file registry
 
 | File | Purpose |
@@ -538,6 +553,8 @@ Cursor notes — Teaching Professional Profile
 | `artifacts/talentlock/src/components/messages/` | `BookingMessageThread`, `MeetingMessageThread`, `InlineMessageThread` |
 | `artifacts/api-server/src/lib/meetingBriefGenerator.ts` | `generateMeetingBrief(db, meetingId, log)` — fire-and-forget brief generation; `resolveJobRequirement()` — 3-path job resolution; `buildMeetingBriefPrompt()` — verbatim prompt builder |
 | `artifacts/talentlock/src/components/meetings/MeetingBriefCard.tsx` | Brief card with 4 states: not-generated, generating (polling), loaded, error |
+| `artifacts/api-server/src/lib/bookingDebriefGenerator.ts` | `generateBookingDebrief(db, bookingId, log)` — fire-and-forget dual debrief generation; `validateDebriefResponse()`, `buildBookingDebriefPrompt()`, `isWithinDebriefRegenCooldown()` |
+| `artifacts/talentlock/src/components/bookings/DebriefCard.tsx` | Post-engagement debrief card with 4 states; violet (employer) / indigo (freelancer); starter plan gating |
 | `artifacts/api-server/src/lib/talentSearchUtils.ts` | `talentSearchPreFilter()`, `normaliseFreelancer()`, `buildTalentSearchEvaluationPrompt()`, `validateTalentSearchResponse()` |
 | `artifacts/api-server/src/lib/talentSearchEvaluator.ts` | `evaluateTalentSearchForUpdatedProfile()` — background evaluation pipeline; fires after profile update |
 | `artifacts/api-server/src/routes/talentSearch.ts` | All `/api/talent-search/*` routes |

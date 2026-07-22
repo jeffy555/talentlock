@@ -28,6 +28,7 @@ export const NotificationType = {
   NEW_MESSAGE: "new_message",
   CREDENTIAL_EXPIRING: "credential_expiring",
   WATCHLIST_UPDATE: "watchlist_update",
+  BOOKING_DEBRIEF_READY: "booking_debrief_ready",
 } as const;
 
 type DbLike = Pick<typeof db, "insert">;

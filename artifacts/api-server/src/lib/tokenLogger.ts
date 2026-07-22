@@ -17,6 +17,7 @@ export type TokenFeature =
   | "talent_search_parse"
   | "talent_search_evaluation"
   | "meeting_brief"
+  | "booking_debrief"
   | "employer_doc_review";
 
 export const TOKEN_FEATURES: TokenFeature[] = [
@@ -35,6 +36,7 @@ export const TOKEN_FEATURES: TokenFeature[] = [
   "talent_search_parse",
   "talent_search_evaluation",
   "meeting_brief",
+  "booking_debrief",
   "employer_doc_review",
 ];
 

@@ -9,6 +9,7 @@ import {
   Sparkles,
   Search,
   Heart,
+  ClipboardList,
 } from "lucide-react";
 import { getNotificationRoute } from "@/lib/notificationRoutes";
 import { formatRelativeTime } from "@/lib/formatRelativeTime";
@@ -28,7 +29,17 @@ interface NotificationItemProps {
   onRead: (id: number) => void;
 }
 
-function EntityIcon({ entityType }: { entityType: string }) {
+function EntityIcon({
+  entityType,
+  notificationType,
+}: {
+  entityType: string;
+  notificationType: string;
+}) {
+  if (notificationType === "booking_debrief_ready") {
+    return <ClipboardList className="h-4 w-4 text-violet-500" />;
+  }
+
   switch (entityType) {
     case "booking":
       return <Briefcase className="h-4 w-4 text-blue-500" />;
@@ -79,7 +90,10 @@ export function NotificationItem({ notification, onRead }: NotificationItemProps
       {notification.read && <span className="w-2 shrink-0" />}
 
       <span className="shrink-0 mt-0.5">
-        <EntityIcon entityType={notification.entityType} />
+        <EntityIcon
+          entityType={notification.entityType}
+          notificationType={notification.type}
+        />
       </span>
 
       <div className="flex-1 min-w-0">
@@ -98,6 +112,11 @@ export function NotificationItem({ notification, onRead }: NotificationItemProps
           {notification.type === "watchlist_update" && (
             <span className="shrink-0 text-xs bg-rose-100 text-rose-700 border border-rose-200 rounded px-1.5 py-0.5">
               Watchlist update
+            </span>
+          )}
+          {notification.type === "booking_debrief_ready" && (
+            <span className="shrink-0 text-xs bg-violet-100 text-violet-700 border border-violet-200 rounded px-1.5 py-0.5">
+              Debrief ready
             </span>
           )}
         </div>

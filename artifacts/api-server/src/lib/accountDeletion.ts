@@ -143,6 +143,21 @@ export async function anonymiseUserData(
         .where(eq(employerDocumentsTable.employerId, employer.id));
     }
 
+    const bookingPartyConditions: SQL[] = [];
+    if (freelancer) bookingPartyConditions.push(eq(bookingsTable.freelancerId, freelancer.id));
+    if (employer) bookingPartyConditions.push(eq(bookingsTable.employerId, employer.id));
+    if (bookingPartyConditions.length > 0) {
+      await tx
+        .update(bookingsTable)
+        .set({
+          debriefContent: null,
+          debriefGeneratedAt: null,
+          debriefRegeneratedAt: null,
+          updatedAt: new Date(),
+        })
+        .where(or(...bookingPartyConditions));
+    }
+
     await tx.delete(notificationsTable).where(eq(notificationsTable.userId, userId));
     await tx.delete(tokenUsage).where(eq(tokenUsage.userId, userId));
     await tx
