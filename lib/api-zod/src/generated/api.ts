@@ -1267,6 +1267,8 @@ export const getTokenUsageMeResponseBreakdownDocumentVerificationDefault = 0;
 export const getTokenUsageMeResponseBreakdownRateSuggestionDefault = 0;
 export const getTokenUsageMeResponseBreakdownContractHealthScoreDefault = 0;
 export const getTokenUsageMeResponseBreakdownAgreementSummaryDefault = 0;
+export const getTokenUsageMeResponseBreakdownAgreementUploadSummaryDefault = 0;
+export const getTokenUsageMeResponseBreakdownAgreementUploadEnrichDefault = 0;
 export const getTokenUsageMeResponseBreakdownCruiseModeParseDefault = 0;
 export const getTokenUsageMeResponseBreakdownCruiseModeEvaluationDefault = 0;
 export const getTokenUsageMeResponseBreakdownTalentSearchParseDefault = 0;
@@ -1309,6 +1311,12 @@ export const GetTokenUsageMeResponse = zod.object({
     agreement_summary: zod
       .number()
       .default(getTokenUsageMeResponseBreakdownAgreementSummaryDefault),
+    agreement_upload_summary: zod
+      .number()
+      .default(getTokenUsageMeResponseBreakdownAgreementUploadSummaryDefault),
+    agreement_upload_enrich: zod
+      .number()
+      .default(getTokenUsageMeResponseBreakdownAgreementUploadEnrichDefault),
     cruise_mode_parse: zod
       .number()
       .default(getTokenUsageMeResponseBreakdownCruiseModeParseDefault),
@@ -1765,6 +1773,39 @@ export const ListAgreementsResponse = zod.object({
         .boolean()
         .optional()
         .describe("Whether a cached freelancer summary exists"),
+      source: zod
+        .enum(["ai_generated", "employer_upload"])
+        .optional()
+        .describe("How the agreement was created"),
+      uploadStage: zod
+        .union([
+          zod.literal("summary_ready"),
+          zod.literal("enriched"),
+          zod.literal("finalized"),
+          zod.literal(null),
+        ])
+        .nullish(),
+      uploadFilename: zod.string().nullish(),
+      finalizedAt: zod.coerce.date().nullish(),
+      amendments: zod
+        .array(
+          zod.object({
+            id: zod.string(),
+            text: zod.string(),
+            addedAt: zod.coerce.date(),
+          }),
+        )
+        .optional(),
+      employerSummary: zod
+        .object({})
+        .passthrough()
+        .nullish()
+        .describe("Cached employer-facing AI summary (employer view only)"),
+      employerSummaryScoredAt: zod.coerce.date().nullish(),
+      hasEmployerSummary: zod
+        .boolean()
+        .optional()
+        .describe("Whether a cached employer summary exists"),
       createdAt: zod.coerce.date(),
     }),
   ),
@@ -1796,6 +1837,31 @@ export const CreateAgreementBody = zod.object({
     .max(createAgreementBodyCustomClausesMax)
     .optional()
     .describe("Enterprise only — up to 5 custom clauses (20–500 chars each)"),
+});
+
+/**
+ * @summary Request presigned URL to upload employer agreement document
+ */
+export const PostAgreementsUploadUrlBody = zod.object({
+  bookingId: zod.number(),
+  filename: zod.string(),
+  mimeType: zod.string(),
+  fileSize: zod.number(),
+});
+
+export const PostAgreementsUploadUrlResponse = zod.object({
+  uploadUrl: zod.string(),
+  storagePath: zod.string(),
+});
+
+/**
+ * @summary Confirm employer agreement upload, extract text, and generate employer summary
+ */
+export const PostAgreementsUploadConfirmBody = zod.object({
+  bookingId: zod.number(),
+  storagePath: zod.string(),
+  filename: zod.string(),
+  mimeType: zod.string(),
 });
 
 /**
@@ -1851,6 +1917,39 @@ export const GetAgreementResponse = zod.object({
     .boolean()
     .optional()
     .describe("Whether a cached freelancer summary exists"),
+  source: zod
+    .enum(["ai_generated", "employer_upload"])
+    .optional()
+    .describe("How the agreement was created"),
+  uploadStage: zod
+    .union([
+      zod.literal("summary_ready"),
+      zod.literal("enriched"),
+      zod.literal("finalized"),
+      zod.literal(null),
+    ])
+    .nullish(),
+  uploadFilename: zod.string().nullish(),
+  finalizedAt: zod.coerce.date().nullish(),
+  amendments: zod
+    .array(
+      zod.object({
+        id: zod.string(),
+        text: zod.string(),
+        addedAt: zod.coerce.date(),
+      }),
+    )
+    .optional(),
+  employerSummary: zod
+    .object({})
+    .passthrough()
+    .nullish()
+    .describe("Cached employer-facing AI summary (employer view only)"),
+  employerSummaryScoredAt: zod.coerce.date().nullish(),
+  hasEmployerSummary: zod
+    .boolean()
+    .optional()
+    .describe("Whether a cached employer summary exists"),
   createdAt: zod.coerce.date(),
 });
 
@@ -1928,6 +2027,39 @@ export const SignAgreementResponse = zod.object({
     .boolean()
     .optional()
     .describe("Whether a cached freelancer summary exists"),
+  source: zod
+    .enum(["ai_generated", "employer_upload"])
+    .optional()
+    .describe("How the agreement was created"),
+  uploadStage: zod
+    .union([
+      zod.literal("summary_ready"),
+      zod.literal("enriched"),
+      zod.literal("finalized"),
+      zod.literal(null),
+    ])
+    .nullish(),
+  uploadFilename: zod.string().nullish(),
+  finalizedAt: zod.coerce.date().nullish(),
+  amendments: zod
+    .array(
+      zod.object({
+        id: zod.string(),
+        text: zod.string(),
+        addedAt: zod.coerce.date(),
+      }),
+    )
+    .optional(),
+  employerSummary: zod
+    .object({})
+    .passthrough()
+    .nullish()
+    .describe("Cached employer-facing AI summary (employer view only)"),
+  employerSummaryScoredAt: zod.coerce.date().nullish(),
+  hasEmployerSummary: zod
+    .boolean()
+    .optional()
+    .describe("Whether a cached employer summary exists"),
   createdAt: zod.coerce.date(),
 });
 
@@ -2116,6 +2248,287 @@ export const PostAgreementsIdSummariseResponse = zod.union([
     summary: zod.object({}).passthrough().nullish(),
   }),
 ]);
+
+/**
+ * @summary Update employer amendment points on an uploaded agreement
+ */
+export const PatchAgreementsIdAmendmentsParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const patchAgreementsIdAmendmentsBodyAmendmentsMax = 20;
+
+export const PatchAgreementsIdAmendmentsBody = zod.object({
+  amendments: zod
+    .array(zod.string())
+    .max(patchAgreementsIdAmendmentsBodyAmendmentsMax),
+});
+
+export const PatchAgreementsIdAmendmentsResponse = zod.object({
+  id: zod.number(),
+  bookingId: zod.number(),
+  freelancerId: zod.number(),
+  employerId: zod.number(),
+  content: zod.string().describe("AI-generated legal agreement text"),
+  status: zod
+    .string()
+    .describe("draft, redlined, partially_signed, fully_signed"),
+  estimatedRedlineTokens: zod
+    .number()
+    .optional()
+    .describe("Approximate tokens for a redline request (~content\/4 + 500)"),
+  freelancerSignedAt: zod.coerce.date().nullish(),
+  employerSignedAt: zod.coerce.date().nullish(),
+  freelancerSignatureName: zod.string().nullish(),
+  employerSignatureName: zod.string().nullish(),
+  documentUrl: zod.string().nullish(),
+  freelancerSignatureImageUrl: zod.string().nullish(),
+  employerSignatureImageUrl: zod.string().nullish(),
+  freelancerDownloadedAt: zod.coerce.date().nullish(),
+  employerDownloadedAt: zod.coerce.date().nullish(),
+  freelancerName: zod.string().nullish(),
+  employerName: zod.string().nullish(),
+  healthScore: zod
+    .number()
+    .nullish()
+    .describe(
+      "Cached AI contract health score (0–100), null if not yet scored",
+    ),
+  healthScoreDetail: zod
+    .object({})
+    .passthrough()
+    .nullish()
+    .describe("Cached dimension breakdown JSON"),
+  healthScoredAt: zod.coerce.date().nullish(),
+  freelancerSummary: zod
+    .object({})
+    .passthrough()
+    .nullish()
+    .describe("Cached AI plain-English summary JSON (freelancer view only)"),
+  freelancerSummaryScoredAt: zod.coerce.date().nullish(),
+  hasSummary: zod
+    .boolean()
+    .optional()
+    .describe("Whether a cached freelancer summary exists"),
+  source: zod
+    .enum(["ai_generated", "employer_upload"])
+    .optional()
+    .describe("How the agreement was created"),
+  uploadStage: zod
+    .union([
+      zod.literal("summary_ready"),
+      zod.literal("enriched"),
+      zod.literal("finalized"),
+      zod.literal(null),
+    ])
+    .nullish(),
+  uploadFilename: zod.string().nullish(),
+  finalizedAt: zod.coerce.date().nullish(),
+  amendments: zod
+    .array(
+      zod.object({
+        id: zod.string(),
+        text: zod.string(),
+        addedAt: zod.coerce.date(),
+      }),
+    )
+    .optional(),
+  employerSummary: zod
+    .object({})
+    .passthrough()
+    .nullish()
+    .describe("Cached employer-facing AI summary (employer view only)"),
+  employerSummaryScoredAt: zod.coerce.date().nullish(),
+  hasEmployerSummary: zod
+    .boolean()
+    .optional()
+    .describe("Whether a cached employer summary exists"),
+  createdAt: zod.coerce.date(),
+});
+
+/**
+ * @summary AI enrich uploaded agreement with amendments, dates, and compensation
+ */
+export const PostAgreementsIdEnrichParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const PostAgreementsIdEnrichResponse = zod.object({
+  id: zod.number(),
+  bookingId: zod.number(),
+  freelancerId: zod.number(),
+  employerId: zod.number(),
+  content: zod.string().describe("AI-generated legal agreement text"),
+  status: zod
+    .string()
+    .describe("draft, redlined, partially_signed, fully_signed"),
+  estimatedRedlineTokens: zod
+    .number()
+    .optional()
+    .describe("Approximate tokens for a redline request (~content\/4 + 500)"),
+  freelancerSignedAt: zod.coerce.date().nullish(),
+  employerSignedAt: zod.coerce.date().nullish(),
+  freelancerSignatureName: zod.string().nullish(),
+  employerSignatureName: zod.string().nullish(),
+  documentUrl: zod.string().nullish(),
+  freelancerSignatureImageUrl: zod.string().nullish(),
+  employerSignatureImageUrl: zod.string().nullish(),
+  freelancerDownloadedAt: zod.coerce.date().nullish(),
+  employerDownloadedAt: zod.coerce.date().nullish(),
+  freelancerName: zod.string().nullish(),
+  employerName: zod.string().nullish(),
+  healthScore: zod
+    .number()
+    .nullish()
+    .describe(
+      "Cached AI contract health score (0–100), null if not yet scored",
+    ),
+  healthScoreDetail: zod
+    .object({})
+    .passthrough()
+    .nullish()
+    .describe("Cached dimension breakdown JSON"),
+  healthScoredAt: zod.coerce.date().nullish(),
+  freelancerSummary: zod
+    .object({})
+    .passthrough()
+    .nullish()
+    .describe("Cached AI plain-English summary JSON (freelancer view only)"),
+  freelancerSummaryScoredAt: zod.coerce.date().nullish(),
+  hasSummary: zod
+    .boolean()
+    .optional()
+    .describe("Whether a cached freelancer summary exists"),
+  source: zod
+    .enum(["ai_generated", "employer_upload"])
+    .optional()
+    .describe("How the agreement was created"),
+  uploadStage: zod
+    .union([
+      zod.literal("summary_ready"),
+      zod.literal("enriched"),
+      zod.literal("finalized"),
+      zod.literal(null),
+    ])
+    .nullish(),
+  uploadFilename: zod.string().nullish(),
+  finalizedAt: zod.coerce.date().nullish(),
+  amendments: zod
+    .array(
+      zod.object({
+        id: zod.string(),
+        text: zod.string(),
+        addedAt: zod.coerce.date(),
+      }),
+    )
+    .optional(),
+  employerSummary: zod
+    .object({})
+    .passthrough()
+    .nullish()
+    .describe("Cached employer-facing AI summary (employer view only)"),
+  employerSummaryScoredAt: zod.coerce.date().nullish(),
+  hasEmployerSummary: zod
+    .boolean()
+    .optional()
+    .describe("Whether a cached employer summary exists"),
+  createdAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Run thorough AI review and mark uploaded agreement ready for employer signature
+ */
+export const PostAgreementsIdFinalizeParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const PostAgreementsIdFinalizeResponse = zod.object({
+  agreement: zod.object({
+    id: zod.number(),
+    bookingId: zod.number(),
+    freelancerId: zod.number(),
+    employerId: zod.number(),
+    content: zod.string().describe("AI-generated legal agreement text"),
+    status: zod
+      .string()
+      .describe("draft, redlined, partially_signed, fully_signed"),
+    estimatedRedlineTokens: zod
+      .number()
+      .optional()
+      .describe("Approximate tokens for a redline request (~content\/4 + 500)"),
+    freelancerSignedAt: zod.coerce.date().nullish(),
+    employerSignedAt: zod.coerce.date().nullish(),
+    freelancerSignatureName: zod.string().nullish(),
+    employerSignatureName: zod.string().nullish(),
+    documentUrl: zod.string().nullish(),
+    freelancerSignatureImageUrl: zod.string().nullish(),
+    employerSignatureImageUrl: zod.string().nullish(),
+    freelancerDownloadedAt: zod.coerce.date().nullish(),
+    employerDownloadedAt: zod.coerce.date().nullish(),
+    freelancerName: zod.string().nullish(),
+    employerName: zod.string().nullish(),
+    healthScore: zod
+      .number()
+      .nullish()
+      .describe(
+        "Cached AI contract health score (0–100), null if not yet scored",
+      ),
+    healthScoreDetail: zod
+      .object({})
+      .passthrough()
+      .nullish()
+      .describe("Cached dimension breakdown JSON"),
+    healthScoredAt: zod.coerce.date().nullish(),
+    freelancerSummary: zod
+      .object({})
+      .passthrough()
+      .nullish()
+      .describe("Cached AI plain-English summary JSON (freelancer view only)"),
+    freelancerSummaryScoredAt: zod.coerce.date().nullish(),
+    hasSummary: zod
+      .boolean()
+      .optional()
+      .describe("Whether a cached freelancer summary exists"),
+    source: zod
+      .enum(["ai_generated", "employer_upload"])
+      .optional()
+      .describe("How the agreement was created"),
+    uploadStage: zod
+      .union([
+        zod.literal("summary_ready"),
+        zod.literal("enriched"),
+        zod.literal("finalized"),
+        zod.literal(null),
+      ])
+      .nullish(),
+    uploadFilename: zod.string().nullish(),
+    finalizedAt: zod.coerce.date().nullish(),
+    amendments: zod
+      .array(
+        zod.object({
+          id: zod.string(),
+          text: zod.string(),
+          addedAt: zod.coerce.date(),
+        }),
+      )
+      .optional(),
+    employerSummary: zod
+      .object({})
+      .passthrough()
+      .nullish()
+      .describe("Cached employer-facing AI summary (employer view only)"),
+    employerSummaryScoredAt: zod.coerce.date().nullish(),
+    hasEmployerSummary: zod
+      .boolean()
+      .optional()
+      .describe("Whether a cached employer summary exists"),
+    createdAt: zod.coerce.date(),
+  }),
+  healthScore: zod.number().nullish(),
+  healthScoreDetail: zod.object({}).passthrough().nullish(),
+  healthScoredAt: zod.coerce.date().nullish(),
+  parseError: zod.boolean(),
+});
 
 /**
  * @summary List meetings for the current user

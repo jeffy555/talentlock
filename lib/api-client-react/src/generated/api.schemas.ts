@@ -950,6 +950,42 @@ export type AgreementHealthScoreDetail = { [key: string]: unknown } | null;
  */
 export type AgreementFreelancerSummary = { [key: string]: unknown } | null;
 
+/**
+ * How the agreement was created
+ */
+export type AgreementSource =
+  (typeof AgreementSource)[keyof typeof AgreementSource];
+
+export const AgreementSource = {
+  ai_generated: "ai_generated",
+  employer_upload: "employer_upload",
+} as const;
+
+/**
+ * @nullable
+ */
+export type AgreementUploadStage =
+  | (typeof AgreementUploadStage)[keyof typeof AgreementUploadStage]
+  | null;
+
+export const AgreementUploadStage = {
+  summary_ready: "summary_ready",
+  enriched: "enriched",
+  finalized: "finalized",
+} as const;
+
+/**
+ * Cached employer-facing AI summary (employer view only)
+ * @nullable
+ */
+export type AgreementEmployerSummary = { [key: string]: unknown } | null;
+
+export interface AgreementAmendment {
+  id: string;
+  text: string;
+  addedAt: string;
+}
+
 export interface Agreement {
   id: number;
   bookingId: number;
@@ -1004,6 +1040,24 @@ export interface Agreement {
   freelancerSummaryScoredAt?: string | null;
   /** Whether a cached freelancer summary exists */
   hasSummary?: boolean;
+  /** How the agreement was created */
+  source?: AgreementSource;
+  /** @nullable */
+  uploadStage?: AgreementUploadStage;
+  /** @nullable */
+  uploadFilename?: string | null;
+  /** @nullable */
+  finalizedAt?: string | null;
+  amendments?: AgreementAmendment[];
+  /**
+   * Cached employer-facing AI summary (employer view only)
+   * @nullable
+   */
+  employerSummary?: AgreementEmployerSummary;
+  /** @nullable */
+  employerSummaryScoredAt?: string | null;
+  /** Whether a cached employer summary exists */
+  hasEmployerSummary?: boolean;
   createdAt: string;
 }
 
@@ -1015,6 +1069,48 @@ export interface CreateAgreementBody {
    * @maxItems 5
    */
   customClauses?: string[];
+}
+
+export interface PostAgreementsUploadUrlBody {
+  bookingId: number;
+  filename: string;
+  mimeType: string;
+  fileSize: number;
+}
+
+export interface PostAgreementsUploadUrlResponse {
+  uploadUrl: string;
+  storagePath: string;
+}
+
+export interface PostAgreementsUploadConfirmBody {
+  bookingId: number;
+  storagePath: string;
+  filename: string;
+  mimeType: string;
+}
+
+export interface PatchAgreementsIdAmendmentsBody {
+  /** @maxItems 20 */
+  amendments: string[];
+}
+
+/**
+ * @nullable
+ */
+export type PostAgreementsIdFinalizeResponseHealthScoreDetail = {
+  [key: string]: unknown;
+} | null;
+
+export interface PostAgreementsIdFinalizeResponse {
+  agreement: Agreement;
+  /** @nullable */
+  healthScore?: number | null;
+  /** @nullable */
+  healthScoreDetail?: PostAgreementsIdFinalizeResponseHealthScoreDetail;
+  /** @nullable */
+  healthScoredAt?: string | null;
+  parseError: boolean;
 }
 
 export interface SignAgreementBody {
@@ -2044,6 +2140,8 @@ export interface TokenUsageBreakdown {
   rate_suggestion: number;
   contract_health_score: number;
   agreement_summary: number;
+  agreement_upload_summary: number;
+  agreement_upload_enrich: number;
   cruise_mode_parse: number;
   cruise_mode_evaluation: number;
   talent_search_parse: number;

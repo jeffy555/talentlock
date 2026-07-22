@@ -1193,6 +1193,92 @@ paths:
               schema:
                 $ref: "#/components/schemas/Agreement"
 
+  /agreements/upload-url:
+    post:
+      operationId: postAgreementsUploadUrl
+      tags: [agreements]
+      summary: Request presigned URL to upload employer agreement document
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PostAgreementsUploadUrlBody"
+      responses:
+        "200":
+          description: Presigned upload URL
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PostAgreementsUploadUrlResponse"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "403":
+          description: Employer only
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /agreements/upload-confirm:
+    post:
+      operationId: postAgreementsUploadConfirm
+      tags: [agreements]
+      summary: Confirm employer agreement upload, extract text, and generate employer summary
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PostAgreementsUploadConfirmBody"
+      responses:
+        "201":
+          description: Created employer-uploaded agreement
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Agreement"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "402":
+          description: Token limit reached
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "403":
+          description: Employer only
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "422":
+          description: Could not extract text from document
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
   /agreements/{id}:
     get:
       operationId: getAgreement
@@ -1483,6 +1569,141 @@ paths:
                 $ref: "#/components/schemas/ErrorEnvelope"
         "500":
           description: AI service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /agreements/{id}/amendments:
+    patch:
+      operationId: patchAgreementsIdAmendments
+      tags: [agreements]
+      summary: Update employer amendment points on an uploaded agreement
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PatchAgreementsIdAmendmentsBody"
+      responses:
+        "200":
+          description: Updated agreement
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Agreement"
+        "400":
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "403":
+          description: Employer only or wrong workflow stage
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /agreements/{id}/enrich:
+    post:
+      operationId: postAgreementsIdEnrich
+      tags: [agreements]
+      summary: AI enrich uploaded agreement with amendments, dates, and compensation
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Enriched agreement
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Agreement"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "402":
+          description: Token limit reached
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "403":
+          description: Employer only
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /agreements/{id}/finalize:
+    post:
+      operationId: postAgreementsIdFinalize
+      tags: [agreements]
+      summary: Run thorough AI review and mark uploaded agreement ready for employer signature
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Finalized agreement with health score
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PostAgreementsIdFinalizeResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "402":
+          description: Token limit reached
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "403":
+          description: Employer only
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "404":
+          description: Not found
           content:
             application/json:
               schema:
@@ -5540,6 +5761,31 @@ components:
         hasSummary:
           type: boolean
           description: Whether a cached freelancer summary exists
+        source:
+          type: string
+          enum: [ai_generated, employer_upload]
+          description: How the agreement was created
+        uploadStage:
+          type: ["string", "null"]
+          enum: [summary_ready, enriched, finalized, null]
+        uploadFilename:
+          type: ["string", "null"]
+        finalizedAt:
+          type: ["string", "null"]
+          format: date-time
+        amendments:
+          type: array
+          items:
+            $ref: "#/components/schemas/AgreementAmendment"
+        employerSummary:
+          type: ["object", "null"]
+          description: Cached employer-facing AI summary (employer view only)
+        employerSummaryScoredAt:
+          type: ["string", "null"]
+          format: date-time
+        hasEmployerSummary:
+          type: boolean
+          description: Whether a cached employer summary exists
         createdAt:
           type: string
           format: date-time
@@ -5567,6 +5813,95 @@ components:
           description: Enterprise only — up to 5 custom clauses (20–500 chars each)
       required:
         - bookingId
+
+    AgreementAmendment:
+      type: object
+      properties:
+        id:
+          type: string
+        text:
+          type: string
+        addedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - text
+        - addedAt
+
+    PostAgreementsUploadUrlBody:
+      type: object
+      properties:
+        bookingId:
+          type: integer
+        filename:
+          type: string
+        mimeType:
+          type: string
+        fileSize:
+          type: integer
+      required:
+        - bookingId
+        - filename
+        - mimeType
+        - fileSize
+
+    PostAgreementsUploadUrlResponse:
+      type: object
+      properties:
+        uploadUrl:
+          type: string
+        storagePath:
+          type: string
+      required:
+        - uploadUrl
+        - storagePath
+
+    PostAgreementsUploadConfirmBody:
+      type: object
+      properties:
+        bookingId:
+          type: integer
+        storagePath:
+          type: string
+        filename:
+          type: string
+        mimeType:
+          type: string
+      required:
+        - bookingId
+        - storagePath
+        - filename
+        - mimeType
+
+    PatchAgreementsIdAmendmentsBody:
+      type: object
+      properties:
+        amendments:
+          type: array
+          items:
+            type: string
+          maxItems: 20
+      required:
+        - amendments
+
+    PostAgreementsIdFinalizeResponse:
+      type: object
+      properties:
+        agreement:
+          $ref: "#/components/schemas/Agreement"
+        healthScore:
+          type: ["integer", "null"]
+        healthScoreDetail:
+          type: ["object", "null"]
+        healthScoredAt:
+          type: ["string", "null"]
+          format: date-time
+        parseError:
+          type: boolean
+      required:
+        - agreement
+        - parseError
 
     SignAgreementBody:
       type: object
@@ -7186,6 +7521,8 @@ components:
         rate_suggestion: { type: integer, default: 0 }
         contract_health_score: { type: integer, default: 0 }
         agreement_summary: { type: integer, default: 0 }
+        agreement_upload_summary: { type: integer, default: 0 }
+        agreement_upload_enrich: { type: integer, default: 0 }
         cruise_mode_parse: { type: integer, default: 0 }
         cruise_mode_evaluation: { type: integer, default: 0 }
         talent_search_parse: { type: integer, default: 0 }
@@ -7201,6 +7538,8 @@ components:
         - rate_suggestion
         - contract_health_score
         - agreement_summary
+        - agreement_upload_summary
+        - agreement_upload_enrich
         - cruise_mode_parse
         - cruise_mode_evaluation
         - talent_search_parse

@@ -2,6 +2,12 @@ import { pgTable, text, serial, timestamp, integer, jsonb } from "drizzle-orm/pg
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 
+export interface AgreementAmendment {
+  id: string;
+  text: string;
+  addedAt: string;
+}
+
 export const agreementsTable = pgTable("agreements", {
   id: serial("id").primaryKey(),
   bookingId: integer("booking_id").notNull(),
@@ -23,6 +29,13 @@ export const agreementsTable = pgTable("agreements", {
   healthScoredAt: timestamp("health_scored_at", { withTimezone: true }),
   freelancerSummary: jsonb("freelancer_summary"),
   freelancerSummaryScoredAt: timestamp("freelancer_summary_scored_at", { withTimezone: true }),
+  source: text("source").notNull().default("ai_generated"), // ai_generated | employer_upload
+  employerSummary: jsonb("employer_summary"),
+  employerSummaryScoredAt: timestamp("employer_summary_scored_at", { withTimezone: true }),
+  amendments: jsonb("amendments").$type<AgreementAmendment[]>().default([]),
+  uploadFilename: text("upload_filename"),
+  uploadStage: text("upload_stage"), // summary_ready | enriched | finalized
+  finalizedAt: timestamp("finalized_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });

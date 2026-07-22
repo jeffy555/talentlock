@@ -5,8 +5,12 @@
  * TalentLock API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { AgreementAmendment } from "./agreementAmendment";
+import type { AgreementEmployerSummary } from "./agreementEmployerSummary";
 import type { AgreementFreelancerSummary } from "./agreementFreelancerSummary";
 import type { AgreementHealthScoreDetail } from "./agreementHealthScoreDetail";
+import type { AgreementSource } from "./agreementSource";
+import type { AgreementUploadStage } from "./agreementUploadStage";
 
 export interface Agreement {
   id: number;
@@ -62,5 +66,23 @@ export interface Agreement {
   freelancerSummaryScoredAt?: Date | null;
   /** Whether a cached freelancer summary exists */
   hasSummary?: boolean;
+  /** How the agreement was created */
+  source?: AgreementSource;
+  /** @nullable */
+  uploadStage?: AgreementUploadStage;
+  /** @nullable */
+  uploadFilename?: string | null;
+  /** @nullable */
+  finalizedAt?: Date | null;
+  amendments?: AgreementAmendment[];
+  /**
+   * Cached employer-facing AI summary (employer view only)
+   * @nullable
+   */
+  employerSummary?: AgreementEmployerSummary;
+  /** @nullable */
+  employerSummaryScoredAt?: Date | null;
+  /** Whether a cached employer summary exists */
+  hasEmployerSummary?: boolean;
   createdAt: Date;
 }

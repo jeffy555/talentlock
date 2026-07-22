@@ -10,6 +10,7 @@ import {
 import ContractRedliningSection from "@/components/ContractRedliningSection";
 import ContractHealthScoreCard from "@/components/ContractHealthScoreCard";
 import AgreementSummaryPanel from "@/components/AgreementSummaryPanel";
+import EmployerAgreementWorkflow from "@/components/agreements/EmployerAgreementWorkflow";
 import type { HealthScoreDimensions } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -159,7 +160,17 @@ export default function AgreementDetail() {
     freelancerSignatureName?: string | null;
     employerSignatureImageUrl?: string | null;
     freelancerSignatureImageUrl?: string | null;
+    source?: string;
+    uploadStage?: string | null;
+    amendments?: Array<{ id: string; text: string; addedAt: string }>;
+    employerSummary?: Record<string, unknown> | null;
+    healthScore?: number | null;
+    healthScoreDetail?: { dimensions?: unknown; summary?: string } | null;
   };
+
+  const isUploadedAgreement = ag.source === "employer_upload";
+  const userPlan = subscription?.plan?.id ?? "employer_starter";
+  const employerCanSignUploaded = !isUploadedAgreement || ag.uploadStage === "finalized";
 
   const handleSigUpload = async (file: File) => {
     if (!file.type.startsWith("image/")) {
@@ -208,7 +219,7 @@ export default function AgreementDetail() {
 
   // Determine if the current user can sign
   const myTurn = isEmployer
-    ? !employerSigned
+    ? !employerSigned && employerCanSignUploaded
     : isFreelancer
     ? employerSigned && !freelancerSigned   // freelancer can only sign after employer
     : false;
@@ -455,6 +466,15 @@ export default function AgreementDetail() {
             Signed PDF · TalentLock certified document
           </span>
         </div>
+      )}
+
+      {isEmployer && isUploadedAgreement && !fullyExecuted && (
+        <EmployerAgreementWorkflow
+          agreement={ag as Parameters<typeof EmployerAgreementWorkflow>[0]["agreement"]}
+          userPlan={userPlan}
+          onRefetch={() => refetch()}
+          onOpenSign={() => setSignDialogOpen(true)}
+        />
       )}
 
       {fullyExecuted && (

@@ -11,6 +11,8 @@ export const TOKEN_FEATURE_LABELS: Record<keyof TokenUsageBreakdown, string> = {
   rate_suggestion: "Rate Suggestion",
   contract_health_score: "Contract Health Score",
   agreement_summary: "Agreement Summary",
+  agreement_upload_summary: "Agreement Upload Summary",
+  agreement_upload_enrich: "Agreement Upload Enrich",
   cruise_mode_parse: "Cruise Mode Parse",
   cruise_mode_evaluation: "Cruise Mode Evaluation",
   talent_search_parse: "TalentSearch Parse",
