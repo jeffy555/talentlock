@@ -16,6 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, BadgeCheck, Briefcase, Calendar, CheckCircle2, Clock, DollarSign, GraduationCap, Lock, Star, ExternalLink, Video, Heart, Image, Info, MessageSquare, Loader2 } from "lucide-react";
 import { formatRate, paymentTypeToRateType, profileDefaultRateType } from "@/lib/rateFormatUtils";
+import { BookingCurrencyBanner } from "@/components/currency/BookingCurrencyBanner";
 import { EDUCATION_TYPE_LABELS } from "@/components/onboarding/TeachingDetailsSection";
 import { useEffect, useRef, useState } from "react";
 import { Link } from "wouter";
@@ -462,6 +463,14 @@ export default function FreelancerDetail() {
                             <DialogDescription>Set engagement dates and payment terms. Exclusivity activates when the agreement is fully signed.</DialogDescription>
                           </DialogHeader>
                           <div className="space-y-5 py-6">
+                            {me?.role === "employer" && (
+                              <BookingCurrencyBanner
+                                currencyCode={freelancer.currencyCode ?? "USD"}
+                                freelancerName={freelancer.name}
+                                displayCurrencyCode={me.currencyCode ?? "USD"}
+                                variant="pre-booking"
+                              />
+                            )}
                             <div className="grid grid-cols-2 gap-4">
                               <div className="space-y-2.5">
                                 <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Start Date</Label>

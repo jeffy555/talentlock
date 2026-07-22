@@ -44,6 +44,9 @@ import { useState, useEffect } from "react";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { useQueryClient } from "@tanstack/react-query";
 import { VerifiedEmployerBadge } from "@/components/employer/VerifiedEmployerBadge";
+import { BookingCurrencyBanner } from "@/components/currency/BookingCurrencyBanner";
+import { DualRateDisplay } from "@/components/currency/DualRateDisplay";
+import { useExchangeRates, currencySymbol } from "@/lib/currencyUtils";
 
 const statusColors: Record<string, { bg: string, text: string, border: string }> = {
   pending: { bg: "bg-yellow-50", text: "text-yellow-700", border: "border-yellow-200" },
@@ -116,6 +119,10 @@ export default function BookingDetail() {
   const { data: counterFreelancer } = useGetFreelancerProfile(booking?.freelancerId ?? 0, {
     query: { enabled: !!booking?.freelancerId && counterOpen } as any,
   });
+  const { data: exchangeRates } = useExchangeRates();
+
+  const bookingCurrency = booking?.currencyCode ?? "USD";
+  const employerCurrency = me?.currencyCode ?? "USD";
 
   const [milestoneOpen, setMilestoneOpen] = useState(false);
   const [msTitle, setMsTitle] = useState("");
@@ -160,7 +167,7 @@ export default function BookingDetail() {
     if (isNaN(rate) || rate <= 0) { toast({ title: "Enter a valid rate", variant: "destructive" }); return; }
     try {
       await negotiateBooking.mutateAsync({ id: bookingId, data: { action: "counter", counterRate: rate } });
-      toast({ title: "Counter-proposal sent", description: `You've proposed $${rate}. Awaiting the other party's response.` });
+      toast({ title: "Counter-proposal sent", description: `You've proposed ${formatRate(rate, bookingRateType, bookingCurrency)}. Awaiting the other party's response.` });
       setCounterOpen(false);
       setCounterRate("");
       refetch();
@@ -328,7 +335,7 @@ export default function BookingDetail() {
                 title: `TalentLock: ${isEmployer ? booking.freelancerName : booking.employerName}`,
                 startDate: booking.startDate,
                 endDate: booking.endDate,
-                details: `TalentLock Booking #${booking.id}\nPayment: ${booking.paymentType}${booking.rate ? ` · $${booking.rate}` : ""}\n\n${window.location.href}`,
+                details: `TalentLock Booking #${booking.id}\nPayment: ${booking.paymentType}${booking.rate ? ` · ${formatRate(Number(booking.rate), bookingRateType, bookingCurrency)}` : ""}\n\n${window.location.href}`,
               })}
               target="_blank" rel="noreferrer"
             >
@@ -379,6 +386,14 @@ export default function BookingDetail() {
           </TabsContent>
         </Tabs>
       </section>
+
+      {isEmployer && bookingCurrency !== employerCurrency && (
+        <BookingCurrencyBanner
+          currencyCode={bookingCurrency}
+          freelancerName={booking.freelancerName}
+          displayCurrencyCode={employerCurrency}
+        />
+      )}
 
       {/* Rate Negotiation Panel */}
       {!isCancelled && isNegotiating && (
@@ -563,7 +578,9 @@ export default function BookingDetail() {
             <div className="space-y-2">
               <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Your Proposed Rate</Label>
               <div className="relative">
-                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground font-semibold text-sm">$</span>
+                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground font-semibold text-sm">
+                  {currencySymbol(bookingCurrency)}
+                </span>
                 <Input
                   type="number" min="1" step="0.01" autoFocus
                   value={counterRate} onChange={e => setCounterRate(e.target.value)}
@@ -572,7 +589,22 @@ export default function BookingDetail() {
                   placeholder="0.00"
                 />
               </div>
-              <p className="text-xs text-muted-foreground">Payment type: <span className="font-medium capitalize">{booking.paymentType}</span></p>
+              <p className="text-xs text-muted-foreground">
+                Enter amount in {bookingCurrency}. Payment type:{" "}
+                <span className="font-medium capitalize">{booking.paymentType}</span>
+              </p>
+              {isEmployer && employerCurrency !== bookingCurrency && counterRate && Number(counterRate) > 0 && (
+                <DualRateDisplay
+                  amount={Number(counterRate)}
+                  rateType={bookingRateType}
+                  primaryCurrency={bookingCurrency}
+                  secondaryCurrency={employerCurrency}
+                  rates={exchangeRates}
+                  ratesSource={exchangeRates?.source}
+                  layout="inline"
+                  className="text-sm"
+                />
+              )}
             </div>
             {isEmployer && isNegotiating && counterFreelancer && (
               <RateSuggestionWidget
