@@ -35,11 +35,74 @@ export interface User {
    */
   onboardingRole?: string | null;
   /**
-   * role | profession_category | freelancer_details | employer_details
+   * role | profession_category | location | freelancer_details | employer_details
    * @nullable
    */
   onboardingStep?: string | null;
+  /** ISO 3166-1 alpha-2 country code */
+  countryCode: string;
+  /**
+   * State/province code when applicable
+   * @nullable
+   */
+  stateCode?: string | null;
+  /** ISO 4217 currency derived from country */
+  currencyCode: string;
   createdAt: string;
+}
+
+export interface PatchLocationBody {
+  /**
+   * @minLength 2
+   * @maxLength 2
+   */
+  countryCode: string;
+  /** @nullable */
+  stateCode?: string | null;
+}
+
+export interface CountryState {
+  code: string;
+  name: string;
+}
+
+export interface Country {
+  code: string;
+  name: string;
+  currencyCode: string;
+  currencySymbol: string;
+  currencyName: string;
+  stateRequired: boolean;
+  states: CountryState[];
+}
+
+export interface CountryList {
+  countries: Country[];
+}
+
+export type ExchangeRatesBaseCurrency =
+  (typeof ExchangeRatesBaseCurrency)[keyof typeof ExchangeRatesBaseCurrency];
+
+export const ExchangeRatesBaseCurrency = {
+  USD: "USD",
+} as const;
+
+export type ExchangeRatesRates = { [key: string]: number };
+
+export type ExchangeRatesSource =
+  (typeof ExchangeRatesSource)[keyof typeof ExchangeRatesSource];
+
+export const ExchangeRatesSource = {
+  api: "api",
+  cache: "cache",
+  fallback: "fallback",
+} as const;
+
+export interface ExchangeRates {
+  baseCurrency: ExchangeRatesBaseCurrency;
+  rates: ExchangeRatesRates;
+  fetchedAt: string;
+  source: ExchangeRatesSource;
 }
 
 export interface UpsertUserBody {
@@ -67,6 +130,7 @@ export type PatchOnboardingStepBodyOnboardingStep =
 export const PatchOnboardingStepBodyOnboardingStep = {
   role: "role",
   profession_category: "profession_category",
+  location: "location",
   freelancer_details: "freelancer_details",
   employer_details: "employer_details",
 } as const;
@@ -74,6 +138,17 @@ export const PatchOnboardingStepBodyOnboardingStep = {
 export interface PatchOnboardingStepBody {
   onboardingRole: PatchOnboardingStepBodyOnboardingRole;
   onboardingStep: PatchOnboardingStepBodyOnboardingStep;
+  /**
+   * Required when onboardingStep is location
+   * @minLength 2
+   * @maxLength 2
+   */
+  countryCode?: string;
+  /**
+   * State/province code when required by country
+   * @nullable
+   */
+  stateCode?: string | null;
   email: string;
   name: string;
   /** @nullable */
@@ -247,6 +322,10 @@ export interface FreelancerProfile {
   preferredTeachingMode?: PreferredTeachingMode | null;
   /** @nullable */
   location?: string | null;
+  /** ISO 3166-1 alpha-2 country code */
+  countryCode: string;
+  /** ISO 4217 currency code derived from country */
+  currencyCode: string;
   /** Set when a verified document or teaching licence expires within 7 days (Talent Vault list only) */
   expiringCredential?: ExpiringCredential | null;
   createdAt: string;
@@ -619,6 +698,8 @@ export interface Booking {
   /** @nullable */
   debriefGeneratedAt?: string | null;
   hasDebrief: boolean;
+  /** ISO 4217 currency frozen at booking creation */
+  currencyCode: string;
   createdAt: string;
 }
 
@@ -1381,17 +1462,11 @@ export interface EarningsIntelligenceRateBenchmark {
   freelancerCount: number;
 }
 
-export type EarningsIntelligenceProjectionCurrency =
-  (typeof EarningsIntelligenceProjectionCurrency)[keyof typeof EarningsIntelligenceProjectionCurrency];
-
-export const EarningsIntelligenceProjectionCurrency = {
-  USD: "USD",
-} as const;
-
 export interface EarningsIntelligenceProjection {
   projectedAmount: number;
   milestoneCount: number;
-  currency: EarningsIntelligenceProjectionCurrency;
+  /** ISO 4217 currency code for earnings amounts */
+  currency: string;
 }
 
 export interface EarningsIntelligenceTopSkill {
@@ -1462,6 +1537,13 @@ export interface SpendAnalytics {
   topFreelancers: SpendAnalyticsTopFreelancer[];
   committed: SpendAnalyticsCommitted;
   rateBenchmark?: SpendAnalyticsRateBenchmark | null;
+  /** ISO 4217 currency code used for all spend amounts */
+  displayCurrency: string;
+  /**
+   * Present when amounts were converted from booking currencies
+   * @nullable
+   */
+  conversionNote: string | null;
 }
 
 export type HiringAnalyticsFunnelWindow =
@@ -2408,6 +2490,8 @@ export interface PublicFreelancerProfile {
   teachingLevels?: string[] | null;
   /** @nullable */
   location?: string | null;
+  countryCode: string;
+  currencyCode: string;
   createdAt: string;
 }
 
@@ -2720,6 +2804,18 @@ export type ListFreelancersParams = {
    * Case-insensitive substring match on teachingSubjects (education professionals)
    */
   teachingSubject?: string;
+  /**
+   * Filter by freelancer country code (ISO 3166-1 alpha-2)
+   * @minLength 2
+   * @maxLength 2
+   */
+  countryCode?: string;
+  /**
+   * Filter by freelancer currency code (ISO 4217)
+   * @minLength 3
+   * @maxLength 3
+   */
+  currencyCode?: string;
 };
 
 export type ListFreelancersProfessionCategory =

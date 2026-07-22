@@ -6,12 +6,14 @@ import { formatCurrency } from "@/lib/earningsFormat";
 interface ProjectionCardProps {
   projectedAmount: number;
   milestoneCount: number;
+  currencyCode?: string;
   isLoading?: boolean;
 }
 
 export function ProjectionCard({
   projectedAmount,
   milestoneCount,
+  currencyCode = "USD",
   isLoading,
 }: ProjectionCardProps) {
   if (isLoading) {
@@ -45,7 +47,7 @@ export function ProjectionCard({
       {hasProjection ? (
         <>
           <p className="text-2xl font-semibold text-slate-800 mt-4">
-            {formatCurrency(projectedAmount)}
+            {formatCurrency(projectedAmount, currencyCode)}
           </p>
           <p className="text-sm text-muted-foreground mt-2">
             From {milestoneCount} upcoming milestone{milestoneCount !== 1 ? "s" : ""}

@@ -19,4 +19,11 @@ export interface SpendAnalytics {
   topFreelancers: SpendAnalyticsTopFreelancer[];
   committed: SpendAnalyticsCommitted;
   rateBenchmark?: SpendAnalyticsRateBenchmark | null;
+  /** ISO 4217 currency code used for all spend amounts */
+  displayCurrency: string;
+  /**
+   * Present when amounts were converted from booking currencies
+   * @nullable
+   */
+  conversionNote: string | null;
 }

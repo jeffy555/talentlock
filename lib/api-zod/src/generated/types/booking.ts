@@ -49,5 +49,7 @@ export interface Booking {
   /** @nullable */
   debriefGeneratedAt?: Date | null;
   hasDebrief: boolean;
+  /** ISO 4217 currency frozen at booking creation */
+  currencyCode: string;
   createdAt: Date;
 }

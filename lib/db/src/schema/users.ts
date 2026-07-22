@@ -13,6 +13,9 @@ export const usersTable = pgTable("users", {
   emailNotificationsEnabled: boolean("email_notifications_enabled").notNull().default(true),
   onboardingRole: text("onboarding_role"),
   onboardingStep: text("onboarding_step"),
+  countryCode: text("country_code").notNull().default("US"),
+  stateCode: text("state_code"),
+  currencyCode: text("currency_code").notNull().default("USD"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });

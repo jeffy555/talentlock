@@ -145,9 +145,9 @@ function FreelancerContactCard({
   const f = freelancer as typeof freelancer & { email?: string | null };
   const initials = f.name.split(" ").map((w: string) => w[0]).join("").slice(0, 2).toUpperCase();
   const rate = f.paymentPreference === "hourly" && f.hourlyRate != null
-    ? formatRate(Number(f.hourlyRate), profileDefaultRateType(f.professionCategory))
+    ? formatRate(Number(f.hourlyRate), profileDefaultRateType(f.professionCategory), f.currencyCode ?? "USD")
     : f.paymentPreference === "daily" && f.dailyRate != null
-    ? formatRate(Number(f.dailyRate), "per_day")
+    ? formatRate(Number(f.dailyRate), "per_day", f.currencyCode ?? "USD")
     : null;
 
   const isDemo = f.email?.endsWith("@demo.talentlock.io");

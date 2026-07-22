@@ -44,4 +44,16 @@ export type ListFreelancersParams = {
    * Case-insensitive substring match on teachingSubjects (education professionals)
    */
   teachingSubject?: string;
+  /**
+   * Filter by freelancer country code (ISO 3166-1 alpha-2)
+   * @minLength 2
+   * @maxLength 2
+   */
+  countryCode?: string;
+  /**
+   * Filter by freelancer currency code (ISO 4217)
+   * @minLength 3
+   * @maxLength 3
+   */
+  currencyCode?: string;
 };

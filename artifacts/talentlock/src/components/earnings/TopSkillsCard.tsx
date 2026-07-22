@@ -4,10 +4,11 @@ import type { EarningsIntelligenceTopSkill } from "@workspace/api-client-react";
 
 interface TopSkillsCardProps {
   skills: EarningsIntelligenceTopSkill[];
+  currencyCode?: string;
   isLoading?: boolean;
 }
 
-export function TopSkillsCard({ skills, isLoading }: TopSkillsCardProps) {
+export function TopSkillsCard({ skills, currencyCode = "USD", isLoading }: TopSkillsCardProps) {
   if (isLoading) {
     return (
       <div className="rounded-lg border border-slate-200 bg-white p-5 space-y-3">
@@ -48,7 +49,7 @@ export function TopSkillsCard({ skills, isLoading }: TopSkillsCardProps) {
               <span className="text-sm text-muted-foreground">{index + 1}</span>
               <span className="text-sm font-medium text-slate-800 truncate">{skill.skill}</span>
               <span className="text-sm text-slate-600 tabular-nums">
-                {formatCurrency(skill.totalEarned)}
+                {formatCurrency(skill.totalEarned, currencyCode)}
               </span>
               <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
                 <div

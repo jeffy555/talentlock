@@ -4,10 +4,11 @@ import type { SpendAnalyticsFieldSpend } from "@workspace/api-client-react";
 
 interface SpendByFieldChartProps {
   data: SpendAnalyticsFieldSpend[];
+  currencyCode?: string;
   isLoading?: boolean;
 }
 
-export function SpendByFieldChart({ data, isLoading }: SpendByFieldChartProps) {
+export function SpendByFieldChart({ data, currencyCode = "USD", isLoading }: SpendByFieldChartProps) {
   if (isLoading) {
     return (
       <div className="rounded-lg border border-slate-200 bg-white p-5 space-y-3">
@@ -41,7 +42,7 @@ export function SpendByFieldChart({ data, isLoading }: SpendByFieldChartProps) {
           All spend is in {field.field}.
         </p>
         <p className="text-lg font-semibold text-slate-800 mt-2">
-          {formatCurrency(field.totalSpend)}
+          {formatCurrency(field.totalSpend, currencyCode)}
         </p>
       </div>
     );

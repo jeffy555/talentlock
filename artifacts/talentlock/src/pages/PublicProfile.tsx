@@ -143,10 +143,10 @@ export default function PublicProfile() {
             <div className="flex items-center gap-2 text-foreground font-medium">
               <DollarSign className="h-4 w-4 text-muted-foreground" />
               {profile.paymentPreference === "hourly" && profile.hourlyRate != null
-                ? formatRate(Number(profile.hourlyRate), profileDefaultRateType(profile.professionCategory))
+                ? formatRate(Number(profile.hourlyRate), profileDefaultRateType(profile.professionCategory), profile.currencyCode ?? "USD")
                 : null}
               {profile.paymentPreference === "daily" && profile.dailyRate != null
-                ? formatRate(Number(profile.dailyRate), "per_day")
+                ? formatRate(Number(profile.dailyRate), "per_day", profile.currencyCode ?? "USD")
                 : null}
               {profile.paymentPreference === "fixed" && "Fixed Rate"}
             </div>
@@ -333,14 +333,14 @@ export default function PublicProfile() {
                     <div className="flex justify-between items-center">
                       <span className="text-muted-foreground">Rate</span>
                       <span className="font-bold text-foreground">
-                        {formatRate(Number(profile.hourlyRate), profileDefaultRateType(profile.professionCategory))}
+                        {formatRate(Number(profile.hourlyRate), profileDefaultRateType(profile.professionCategory), profile.currencyCode ?? "USD")}
                       </span>
                     </div>
                   )}
                   {profile.dailyRate != null && (
                     <div className="flex justify-between items-center">
                       <span className="text-muted-foreground">Daily rate</span>
-                      <span className="font-bold text-foreground">{formatRate(Number(profile.dailyRate), "per_day")}</span>
+                      <span className="font-bold text-foreground">{formatRate(Number(profile.dailyRate), "per_day", profile.currencyCode ?? "USD")}</span>
                     </div>
                   )}
                   <div className="flex justify-between items-center">

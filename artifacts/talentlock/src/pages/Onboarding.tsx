@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
-import { useGetMe, useUpsertMe, useCreateFreelancerProfile, useUpsertMyEmployerProfile, usePatchOnboardingStep } from "@workspace/api-client-react";
+import { useGetMe, useUpsertMe, useCreateFreelancerProfile, useUpsertMyEmployerProfile, usePatchOnboardingStep, useListCountries } from "@workspace/api-client-react";
 import { useUser } from "@clerk/react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -15,20 +15,23 @@ import { Badge } from "@/components/ui/badge";
 import { ResumeImporter, type ParsedResume } from "@/components/ResumeImporter";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import TeachingDetailsSection, { emptyTeachingDetails, type TeachingDetailsValues } from "@/components/onboarding/TeachingDetailsSection";
+import { LocationStep } from "@/components/onboarding/LocationStep";
 import { cn } from "@/lib/utils";
 import type { EducationProfessionType, ProfessionCategory, PatchOnboardingStepBodyOnboardingStep } from "@workspace/api-client-react";
 
-type OnboardingUiStep = "role" | "profession_category" | "freelancer-details" | "employer-details";
+type OnboardingUiStep = "role" | "profession_category" | "location" | "freelancer-details" | "employer-details";
 
 function toApiOnboardingStep(step: OnboardingUiStep): PatchOnboardingStepBodyOnboardingStep {
   if (step === "freelancer-details") return "freelancer_details";
   if (step === "employer-details") return "employer_details";
+  if (step === "location") return "location";
   return step;
 }
 
 function toUiOnboardingStep(step: string | null | undefined): OnboardingUiStep | null {
   if (step === "freelancer_details") return "freelancer-details";
   if (step === "employer_details") return "employer-details";
+  if (step === "location") return "location";
   if (step === "profession_category") return "profession_category";
   if (step === "role") return "role";
   return null;
@@ -53,10 +56,14 @@ export default function Onboarding() {
   const createFreelancerProfile = useCreateFreelancerProfile();
   const upsertEmployerProfile = useUpsertMyEmployerProfile();
   const patchOnboardingStep = usePatchOnboardingStep();
+  const { data: countriesData } = useListCountries();
 
   const [step, setStep] = useState<OnboardingUiStep>("role");
   const [role, setRole] = useState<"freelancer" | "employer" | null>(null);
   const [autoCreating, setAutoCreating] = useState(false);
+  const [countryCode, setCountryCode] = useState("US");
+  const [stateCode, setStateCode] = useState<string | null>(null);
+  const [locationSubmitting, setLocationSubmitting] = useState(false);
 
   // Profession category (freelancers only)
   const [professionCategory, setProfessionCategory] = useState<ProfessionCategory | null>(null);
@@ -123,7 +130,7 @@ export default function Onboarding() {
     const intended = getIntendedRole();
     if (intended && !dbUser?.onboardingStep) {
       setRole(intended);
-      setStep(intended === "freelancer" ? "profession_category" : "employer-details");
+      setStep(intended === "freelancer" ? "profession_category" : "location");
       clearIntendedRole();
     }
   }, [dbUser?.onboardingStep]);
@@ -137,11 +144,14 @@ export default function Onboarding() {
     if (resumed && resumed !== "role") {
       setStep(resumed);
     }
+    if (dbUser.countryCode) setCountryCode(dbUser.countryCode);
+    if (dbUser.stateCode) setStateCode(dbUser.stateCode);
   }, [dbUser]);
 
   const persistOnboardingStep = async (
     onboardingRole: "freelancer" | "employer",
     nextStep: OnboardingUiStep,
+    location?: { countryCode: string; stateCode: string | null },
   ) => {
     if (!user) return;
     await patchOnboardingStep.mutateAsync({
@@ -151,6 +161,9 @@ export default function Onboarding() {
         email: user.primaryEmailAddress?.emailAddress || "",
         name: user.fullName || "",
         avatarUrl: user.imageUrl ?? null,
+        ...(location
+          ? { countryCode: location.countryCode, stateCode: location.stateCode }
+          : {}),
       },
     });
   };
@@ -179,7 +192,7 @@ export default function Onboarding() {
 
   const handleRoleSelection = async (selectedRole: "freelancer" | "employer") => {
     const nextStep: OnboardingUiStep =
-      selectedRole === "freelancer" ? "profession_category" : "employer-details";
+      selectedRole === "freelancer" ? "profession_category" : "location";
     setRole(selectedRole);
     setStep(nextStep);
     try {
@@ -280,21 +293,27 @@ export default function Onboarding() {
   const stepConfig = isEmployerPath
     ? [
         { n: 1, label: "Account type", active: step === "role" },
-        { n: 2, label: "Profile details", active: step === "employer-details" },
+        { n: 2, label: "Location", active: step === "location" },
+        { n: 3, label: "Profile details", active: step === "employer-details" },
       ]
     : [
         { n: 1, label: "Account type", active: step === "role" },
         { n: 2, label: "Work category", active: step === "profession_category" },
-        { n: 3, label: "Profile details", active: step === "freelancer-details" },
+        { n: 3, label: "Location", active: step === "location" },
+        { n: 4, label: "Profile details", active: step === "freelancer-details" },
       ];
   const progressStep =
     step === "role"
       ? 1
       : step === "profession_category"
         ? 2
-        : step === "employer-details"
-          ? 2
-          : 3;
+        : step === "location"
+          ? isEmployerPath
+            ? 2
+            : 3
+          : isEmployerPath
+            ? 3
+            : 4;
 
   return (
     <div className="max-w-2xl mx-auto py-8">
@@ -467,10 +486,10 @@ export default function Onboarding() {
               type="button"
               disabled={!professionCategory || (professionCategory === "education" && !educationProfessionType)}
               onClick={async () => {
-                setStep("freelancer-details");
+                setStep("location");
                 if (role === "freelancer") {
                   try {
-                    await persistOnboardingStep("freelancer", "freelancer-details");
+                    await persistOnboardingStep("freelancer", "location");
                   } catch {
                     toast({
                       title: "Could not save progress",
@@ -485,6 +504,44 @@ export default function Onboarding() {
             </Button>
           </CardFooter>
         </Card>
+      )}
+
+      {step === "location" && role && (
+        <LocationStep
+          role={role}
+          countries={countriesData?.countries ?? []}
+          countryCode={countryCode}
+          stateCode={stateCode}
+          onCountryChange={(code) => {
+            setCountryCode(code);
+            setStateCode(null);
+          }}
+          onStateChange={setStateCode}
+          onBack={() => {
+            setStep(role === "freelancer" ? "profession_category" : "role");
+          }}
+          isSubmitting={locationSubmitting}
+          onContinue={async () => {
+            const nextStep: OnboardingUiStep =
+              role === "freelancer" ? "freelancer-details" : "employer-details";
+            setLocationSubmitting(true);
+            setStep(nextStep);
+            try {
+              await persistOnboardingStep(role, nextStep, {
+                countryCode,
+                stateCode,
+              });
+            } catch {
+              toast({
+                title: "Could not save location",
+                description: "Your selection is kept on this device. Try again if you switch devices.",
+                variant: "destructive",
+              });
+            } finally {
+              setLocationSubmitting(false);
+            }
+          }}
+        />
       )}
 
       {/* ── Freelancer details ──────────────────────────────────────────── */}
@@ -570,7 +627,7 @@ export default function Onboarding() {
               </div>
             </CardContent>
             <CardFooter className="flex justify-between">
-              <Button type="button" variant="outline" onClick={() => setStep("profession_category")}>Back</Button>
+              <Button type="button" variant="outline" onClick={() => setStep("location")}>Back</Button>
               <Button type="submit" disabled={upsertMe.isPending || createFreelancerProfile.isPending}>
                 {createFreelancerProfile.isPending ? "Saving..." : "Create Profile →"}
               </Button>
@@ -624,7 +681,7 @@ export default function Onboarding() {
               </div>
             </CardContent>
             <CardFooter className="flex justify-between">
-              <Button type="button" variant="outline" onClick={() => { setStep("role"); setRole(null); }}>Back</Button>
+              <Button type="button" variant="outline" onClick={() => setStep("location")}>Back</Button>
               <Button type="submit" disabled={upsertMe.isPending || upsertEmployerProfile.isPending}>
                 {upsertEmployerProfile.isPending ? "Saving..." : "Create Profile →"}
               </Button>

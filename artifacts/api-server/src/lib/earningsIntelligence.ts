@@ -56,7 +56,7 @@ export type EarningsIntelligenceResponse = {
   projection: {
     projectedAmount: number;
     milestoneCount: number;
-    currency: "USD";
+    currency: string;
   };
   topSkills: {
     skill: string;
@@ -214,6 +214,7 @@ async function buildRateBenchmark(
     .innerJoin(bookingsTable, eq(bookingsTable.freelancerId, freelancerProfilesTable.id))
     .where(and(
       eq(freelancerProfilesTable.fieldOfWork, profile.fieldOfWork),
+      eq(freelancerProfilesTable.currencyCode, profile.currencyCode ?? "USD"),
       eq(bookingsTable.status, BOOKING_COMPLETED_STATUS),
     ));
 
@@ -245,7 +246,10 @@ async function buildRateBenchmark(
   };
 }
 
-async function buildProjection(freelancerProfileId: number): Promise<EarningsIntelligenceResponse["projection"]> {
+async function buildProjection(
+  freelancerProfileId: number,
+  currencyCode: string,
+): Promise<EarningsIntelligenceResponse["projection"]> {
   const { start, end } = currentCalendarMonthRange();
 
   const rows = await db
@@ -268,7 +272,7 @@ async function buildProjection(freelancerProfileId: number): Promise<EarningsInt
   return {
     projectedAmount,
     milestoneCount: rows.length,
-    currency: "USD",
+    currency: currencyCode,
   };
 }
 
@@ -381,7 +385,7 @@ export async function buildEarningsIntelligence(
     sumApprovedMilestones(profile.id),
     monthlyEarningsByFreelancer(profile.id, monthKeys),
     platformMonthlyEarnings(profile.fieldOfWork, monthKeys),
-    buildProjection(profile.id),
+    buildProjection(profile.id, profile.currencyCode ?? "USD"),
     buildTopSkills(profile, profile.id),
   ]);
 

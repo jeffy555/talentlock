@@ -19,17 +19,23 @@ export async function getMarketMedian(
   dbClient: DbClient,
   fieldOfWork: string,
   paymentType: RatePaymentType = "hourly",
+  currencyCode?: string,
 ): Promise<number | null> {
   if (paymentType === "fixed") return null;
 
   const rateColumn = rateColumnForPaymentType(paymentType);
+  const conditions = [
+    eq(freelancerProfilesTable.fieldOfWork, fieldOfWork),
+    isNotNull(rateColumn),
+  ];
+  if (currencyCode) {
+    conditions.push(eq(freelancerProfilesTable.currencyCode, currencyCode));
+  }
+
   const rates = await dbClient
     .select({ rate: rateColumn })
     .from(freelancerProfilesTable)
-    .where(and(
-      eq(freelancerProfilesTable.fieldOfWork, fieldOfWork),
-      isNotNull(rateColumn),
-    ));
+    .where(and(...conditions));
 
   if (rates.length < 3) return null;
 

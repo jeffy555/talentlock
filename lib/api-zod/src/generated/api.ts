@@ -18,6 +18,9 @@ export const HealthCheckResponse = zod.object({
 /**
  * @summary Get current user profile
  */
+export const getMeResponseCountryCodeDefault = `US`;
+export const getMeResponseCurrencyCodeDefault = `USD`;
+
 export const GetMeResponse = zod.object({
   id: zod.number(),
   clerkId: zod.string(),
@@ -42,8 +45,20 @@ export const GetMeResponse = zod.object({
     .string()
     .nullish()
     .describe(
-      "role | profession_category | freelancer_details | employer_details",
+      "role | profession_category | location | freelancer_details | employer_details",
     ),
+  countryCode: zod
+    .string()
+    .default(getMeResponseCountryCodeDefault)
+    .describe("ISO 3166-1 alpha-2 country code"),
+  stateCode: zod
+    .string()
+    .nullish()
+    .describe("State\/province code when applicable"),
+  currencyCode: zod
+    .string()
+    .default(getMeResponseCurrencyCodeDefault)
+    .describe("ISO 4217 currency derived from country"),
   createdAt: zod.coerce.date(),
 });
 
@@ -57,6 +72,9 @@ export const UpsertMeBody = zod.object({
   avatarUrl: zod.string().nullish(),
   signatureImageUrl: zod.string().nullish(),
 });
+
+export const upsertMeResponseCountryCodeDefault = `US`;
+export const upsertMeResponseCurrencyCodeDefault = `USD`;
 
 export const UpsertMeResponse = zod.object({
   id: zod.number(),
@@ -82,26 +100,55 @@ export const UpsertMeResponse = zod.object({
     .string()
     .nullish()
     .describe(
-      "role | profession_category | freelancer_details | employer_details",
+      "role | profession_category | location | freelancer_details | employer_details",
     ),
+  countryCode: zod
+    .string()
+    .default(upsertMeResponseCountryCodeDefault)
+    .describe("ISO 3166-1 alpha-2 country code"),
+  stateCode: zod
+    .string()
+    .nullish()
+    .describe("State\/province code when applicable"),
+  currencyCode: zod
+    .string()
+    .default(upsertMeResponseCurrencyCodeDefault)
+    .describe("ISO 4217 currency derived from country"),
   createdAt: zod.coerce.date(),
 });
 
 /**
  * @summary Save in-progress onboarding role and step (upserts pending user)
  */
+export const patchOnboardingStepBodyCountryCodeMin = 2;
+export const patchOnboardingStepBodyCountryCodeMax = 2;
+
 export const PatchOnboardingStepBody = zod.object({
   onboardingRole: zod.enum(["freelancer", "employer"]),
   onboardingStep: zod.enum([
     "role",
     "profession_category",
+    "location",
     "freelancer_details",
     "employer_details",
   ]),
+  countryCode: zod
+    .string()
+    .min(patchOnboardingStepBodyCountryCodeMin)
+    .max(patchOnboardingStepBodyCountryCodeMax)
+    .optional()
+    .describe("Required when onboardingStep is location"),
+  stateCode: zod
+    .string()
+    .nullish()
+    .describe("State\/province code when required by country"),
   email: zod.string(),
   name: zod.string(),
   avatarUrl: zod.string().nullish(),
 });
+
+export const patchOnboardingStepResponseCountryCodeDefault = `US`;
+export const patchOnboardingStepResponseCurrencyCodeDefault = `USD`;
 
 export const PatchOnboardingStepResponse = zod.object({
   id: zod.number(),
@@ -127,9 +174,111 @@ export const PatchOnboardingStepResponse = zod.object({
     .string()
     .nullish()
     .describe(
-      "role | profession_category | freelancer_details | employer_details",
+      "role | profession_category | location | freelancer_details | employer_details",
     ),
+  countryCode: zod
+    .string()
+    .default(patchOnboardingStepResponseCountryCodeDefault)
+    .describe("ISO 3166-1 alpha-2 country code"),
+  stateCode: zod
+    .string()
+    .nullish()
+    .describe("State\/province code when applicable"),
+  currencyCode: zod
+    .string()
+    .default(patchOnboardingStepResponseCurrencyCodeDefault)
+    .describe("ISO 4217 currency derived from country"),
   createdAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Update country, state, and derived currency after onboarding
+ */
+export const patchMyLocationBodyCountryCodeMin = 2;
+export const patchMyLocationBodyCountryCodeMax = 2;
+
+export const PatchMyLocationBody = zod.object({
+  countryCode: zod
+    .string()
+    .min(patchMyLocationBodyCountryCodeMin)
+    .max(patchMyLocationBodyCountryCodeMax),
+  stateCode: zod.string().nullish(),
+});
+
+export const patchMyLocationResponseCountryCodeDefault = `US`;
+export const patchMyLocationResponseCurrencyCodeDefault = `USD`;
+
+export const PatchMyLocationResponse = zod.object({
+  id: zod.number(),
+  clerkId: zod.string(),
+  role: zod.string().describe("freelancer or employer"),
+  email: zod.string(),
+  name: zod.string(),
+  avatarUrl: zod.string().nullish(),
+  signatureImageUrl: zod
+    .string()
+    .nullish()
+    .describe("Stored signature image path (object storage)"),
+  emailNotificationsEnabled: zod
+    .boolean()
+    .describe("Whether the user receives email alerts for platform activity"),
+  onboardingRole: zod
+    .string()
+    .nullish()
+    .describe(
+      "freelancer | employer — in-progress onboarding role while role is pending",
+    ),
+  onboardingStep: zod
+    .string()
+    .nullish()
+    .describe(
+      "role | profession_category | location | freelancer_details | employer_details",
+    ),
+  countryCode: zod
+    .string()
+    .default(patchMyLocationResponseCountryCodeDefault)
+    .describe("ISO 3166-1 alpha-2 country code"),
+  stateCode: zod
+    .string()
+    .nullish()
+    .describe("State\/province code when applicable"),
+  currencyCode: zod
+    .string()
+    .default(patchMyLocationResponseCurrencyCodeDefault)
+    .describe("ISO 4217 currency derived from country"),
+  createdAt: zod.coerce.date(),
+});
+
+/**
+ * @summary List supported countries with states and currency metadata
+ */
+export const ListCountriesResponse = zod.object({
+  countries: zod.array(
+    zod.object({
+      code: zod.string(),
+      name: zod.string(),
+      currencyCode: zod.string(),
+      currencySymbol: zod.string(),
+      currencyName: zod.string(),
+      stateRequired: zod.boolean(),
+      states: zod.array(
+        zod.object({
+          code: zod.string(),
+          name: zod.string(),
+        }),
+      ),
+    }),
+  ),
+});
+
+/**
+ * @summary Get cached USD-base exchange rates for display conversions
+ */
+export const GetExchangeRatesResponse = zod.object({
+  baseCurrency: zod.enum(["USD"]),
+  rates: zod.record(zod.string(), zod.number()),
+  fetchedAt: zod.coerce.date(),
+  source: zod.enum(["api", "cache", "fallback"]),
 });
 
 /**
@@ -147,6 +296,12 @@ export const PatchNotificationPreferencesResponse = zod.object({
 /**
  * @summary List freelancer profiles
  */
+export const listFreelancersQueryCountryCodeMin = 2;
+export const listFreelancersQueryCountryCodeMax = 2;
+
+export const listFreelancersQueryCurrencyCodeMin = 3;
+export const listFreelancersQueryCurrencyCodeMax = 3;
+
 export const ListFreelancersQueryParams = zod.object({
   field: zod.coerce.string().optional().describe("Filter by field of work"),
   available: zod.coerce.boolean().optional().describe("Filter by availability"),
@@ -176,7 +331,22 @@ export const ListFreelancersQueryParams = zod.object({
     .describe(
       "Case-insensitive substring match on teachingSubjects (education professionals)",
     ),
+  countryCode: zod.coerce
+    .string()
+    .min(listFreelancersQueryCountryCodeMin)
+    .max(listFreelancersQueryCountryCodeMax)
+    .optional()
+    .describe("Filter by freelancer country code (ISO 3166-1 alpha-2)"),
+  currencyCode: zod.coerce
+    .string()
+    .min(listFreelancersQueryCurrencyCodeMin)
+    .max(listFreelancersQueryCurrencyCodeMax)
+    .optional()
+    .describe("Filter by freelancer currency code (ISO 4217)"),
 });
+
+export const listFreelancersResponseCountryCodeDefault = `US`;
+export const listFreelancersResponseCurrencyCodeDefault = `USD`;
 
 export const ListFreelancersResponseItem = zod.object({
   id: zod.number(),
@@ -239,6 +409,14 @@ export const ListFreelancersResponseItem = zod.object({
   researchPublications: zod.string().nullish(),
   preferredTeachingMode: zod.enum(["in_person", "online", "both"]).nullish(),
   location: zod.string().nullish(),
+  countryCode: zod
+    .string()
+    .default(listFreelancersResponseCountryCodeDefault)
+    .describe("ISO 3166-1 alpha-2 country code"),
+  currencyCode: zod
+    .string()
+    .default(listFreelancersResponseCurrencyCodeDefault)
+    .describe("ISO 4217 currency code derived from country"),
   expiringCredential: zod
     .object({
       daysRemaining: zod.number(),
@@ -310,6 +488,9 @@ export const CreateFreelancerProfileBody = zod.object({
 /**
  * @summary Get my freelancer profile
  */
+export const getMyFreelancerProfileResponseCountryCodeDefault = `US`;
+export const getMyFreelancerProfileResponseCurrencyCodeDefault = `USD`;
+
 export const GetMyFreelancerProfileResponse = zod.object({
   id: zod.number(),
   userId: zod.number(),
@@ -371,6 +552,14 @@ export const GetMyFreelancerProfileResponse = zod.object({
   researchPublications: zod.string().nullish(),
   preferredTeachingMode: zod.enum(["in_person", "online", "both"]).nullish(),
   location: zod.string().nullish(),
+  countryCode: zod
+    .string()
+    .default(getMyFreelancerProfileResponseCountryCodeDefault)
+    .describe("ISO 3166-1 alpha-2 country code"),
+  currencyCode: zod
+    .string()
+    .default(getMyFreelancerProfileResponseCurrencyCodeDefault)
+    .describe("ISO 4217 currency code derived from country"),
   expiringCredential: zod
     .object({
       daysRemaining: zod.number(),
@@ -420,6 +609,9 @@ export const UpdateMyFreelancerProfileBody = zod.object({
   preferredTeachingMode: zod.enum(["in_person", "online", "both"]).nullish(),
   location: zod.string().nullish(),
 });
+
+export const updateMyFreelancerProfileResponseCountryCodeDefault = `US`;
+export const updateMyFreelancerProfileResponseCurrencyCodeDefault = `USD`;
 
 export const UpdateMyFreelancerProfileResponse = zod.object({
   id: zod.number(),
@@ -482,6 +674,14 @@ export const UpdateMyFreelancerProfileResponse = zod.object({
   researchPublications: zod.string().nullish(),
   preferredTeachingMode: zod.enum(["in_person", "online", "both"]).nullish(),
   location: zod.string().nullish(),
+  countryCode: zod
+    .string()
+    .default(updateMyFreelancerProfileResponseCountryCodeDefault)
+    .describe("ISO 3166-1 alpha-2 country code"),
+  currencyCode: zod
+    .string()
+    .default(updateMyFreelancerProfileResponseCurrencyCodeDefault)
+    .describe("ISO 4217 currency code derived from country"),
   expiringCredential: zod
     .object({
       daysRemaining: zod.number(),
@@ -499,6 +699,9 @@ export const UpdateMyFreelancerProfileResponse = zod.object({
 export const GetFreelancerProfileParams = zod.object({
   id: zod.coerce.number(),
 });
+
+export const getFreelancerProfileResponseOneCountryCodeDefault = `US`;
+export const getFreelancerProfileResponseOneCurrencyCodeDefault = `USD`;
 
 export const GetFreelancerProfileResponse = zod
   .object({
@@ -566,6 +769,14 @@ export const GetFreelancerProfileResponse = zod
     researchPublications: zod.string().nullish(),
     preferredTeachingMode: zod.enum(["in_person", "online", "both"]).nullish(),
     location: zod.string().nullish(),
+    countryCode: zod
+      .string()
+      .default(getFreelancerProfileResponseOneCountryCodeDefault)
+      .describe("ISO 3166-1 alpha-2 country code"),
+    currencyCode: zod
+      .string()
+      .default(getFreelancerProfileResponseOneCurrencyCodeDefault)
+      .describe("ISO 4217 currency code derived from country"),
     expiringCredential: zod
       .object({
         daysRemaining: zod.number(),
@@ -1156,6 +1367,8 @@ export const ListBookingsQueryParams = zod.object({
 
 export const listBookingsResponseDataItemReviewOneRatingMax = 5;
 
+export const listBookingsResponseDataItemCurrencyCodeDefault = `USD`;
+
 export const ListBookingsResponse = zod.object({
   data: zod.array(
     zod.object({
@@ -1204,6 +1417,10 @@ export const ListBookingsResponse = zod.object({
       ]),
       debriefGeneratedAt: zod.coerce.date().nullish(),
       hasDebrief: zod.boolean(),
+      currencyCode: zod
+        .string()
+        .default(listBookingsResponseDataItemCurrencyCodeDefault)
+        .describe("ISO 4217 currency frozen at booking creation"),
       createdAt: zod.coerce.date(),
     }),
   ),
@@ -1240,6 +1457,8 @@ export const GetBookingParams = zod.object({
 });
 
 export const getBookingResponseReviewOneRatingMax = 5;
+
+export const getBookingResponseCurrencyCodeDefault = `USD`;
 
 export const GetBookingResponse = zod.object({
   id: zod.number(),
@@ -1281,6 +1500,10 @@ export const GetBookingResponse = zod.object({
   ]),
   debriefGeneratedAt: zod.coerce.date().nullish(),
   hasDebrief: zod.boolean(),
+  currencyCode: zod
+    .string()
+    .default(getBookingResponseCurrencyCodeDefault)
+    .describe("ISO 4217 currency frozen at booking creation"),
   createdAt: zod.coerce.date(),
 });
 
@@ -1296,6 +1519,8 @@ export const UpdateBookingBody = zod.object({
 });
 
 export const updateBookingResponseReviewOneRatingMax = 5;
+
+export const updateBookingResponseCurrencyCodeDefault = `USD`;
 
 export const UpdateBookingResponse = zod.object({
   id: zod.number(),
@@ -1337,6 +1562,10 @@ export const UpdateBookingResponse = zod.object({
   ]),
   debriefGeneratedAt: zod.coerce.date().nullish(),
   hasDebrief: zod.boolean(),
+  currencyCode: zod
+    .string()
+    .default(updateBookingResponseCurrencyCodeDefault)
+    .describe("ISO 4217 currency frozen at booking creation"),
   createdAt: zod.coerce.date(),
 });
 
@@ -1415,6 +1644,8 @@ export const NegotiateBookingBody = zod.object({
 
 export const negotiateBookingResponseReviewOneRatingMax = 5;
 
+export const negotiateBookingResponseCurrencyCodeDefault = `USD`;
+
 export const NegotiateBookingResponse = zod.object({
   id: zod.number(),
   freelancerId: zod.number(),
@@ -1458,6 +1689,10 @@ export const NegotiateBookingResponse = zod.object({
   ]),
   debriefGeneratedAt: zod.coerce.date().nullish(),
   hasDebrief: zod.boolean(),
+  currencyCode: zod
+    .string()
+    .default(negotiateBookingResponseCurrencyCodeDefault)
+    .describe("ISO 4217 currency frozen at booking creation"),
   createdAt: zod.coerce.date(),
 });
 
@@ -2477,7 +2712,9 @@ export const GetDashboardEarningsIntelligenceResponse = zod.object({
   projection: zod.object({
     projectedAmount: zod.number(),
     milestoneCount: zod.number(),
-    currency: zod.enum(["USD"]),
+    currency: zod
+      .string()
+      .describe("ISO 4217 currency code for earnings amounts"),
   }),
   topSkills: zod.array(
     zod.object({
@@ -2540,6 +2777,13 @@ export const GetDashboardSpendAnalyticsResponse = zod.object({
       zod.null(),
     ])
     .optional(),
+  displayCurrency: zod
+    .string()
+    .describe("ISO 4217 currency code used for all spend amounts"),
+  conversionNote: zod
+    .string()
+    .nullable()
+    .describe("Present when amounts were converted from booking currencies"),
 });
 
 /**
@@ -2755,6 +2999,9 @@ export const ReplyToReviewResponse = zod.object({
 /**
  * @summary List employer personal watchlist (employer only)
  */
+export const listSavedFreelancersResponseFreelancerCountryCodeDefault = `US`;
+export const listSavedFreelancersResponseFreelancerCurrencyCodeDefault = `USD`;
+
 export const ListSavedFreelancersResponseItem = zod.object({
   id: zod.number().describe("saved_freelancers.id"),
   freelancerId: zod.number(),
@@ -2825,6 +3072,14 @@ export const ListSavedFreelancersResponseItem = zod.object({
     researchPublications: zod.string().nullish(),
     preferredTeachingMode: zod.enum(["in_person", "online", "both"]).nullish(),
     location: zod.string().nullish(),
+    countryCode: zod
+      .string()
+      .default(listSavedFreelancersResponseFreelancerCountryCodeDefault)
+      .describe("ISO 3166-1 alpha-2 country code"),
+    currencyCode: zod
+      .string()
+      .default(listSavedFreelancersResponseFreelancerCurrencyCodeDefault)
+      .describe("ISO 4217 currency code derived from country"),
     expiringCredential: zod
       .object({
         daysRemaining: zod.number(),
@@ -3056,6 +3311,9 @@ export const GetPublicFreelancerProfileParams = zod.object({
 
 export const getPublicFreelancerProfileResponseReviewsItemRatingMax = 5;
 
+export const getPublicFreelancerProfileResponseCountryCodeDefault = `US`;
+export const getPublicFreelancerProfileResponseCurrencyCodeDefault = `USD`;
+
 export const GetPublicFreelancerProfileResponse = zod.object({
   id: zod.number(),
   userId: zod.number(),
@@ -3131,6 +3389,12 @@ export const GetPublicFreelancerProfileResponse = zod.object({
   teachingSubjects: zod.array(zod.string()).nullish(),
   teachingLevels: zod.array(zod.string()).nullish(),
   location: zod.string().nullish(),
+  countryCode: zod
+    .string()
+    .default(getPublicFreelancerProfileResponseCountryCodeDefault),
+  currencyCode: zod
+    .string()
+    .default(getPublicFreelancerProfileResponseCurrencyCodeDefault),
   createdAt: zod.coerce.date(),
 });
 
@@ -3475,6 +3739,9 @@ export const AcceptTeamInviteResponse = zod.object({
 /**
  * @summary List shared team shortlist (active team members)
  */
+export const listTeamShortlistResponseFreelancerCountryCodeDefault = `US`;
+export const listTeamShortlistResponseFreelancerCurrencyCodeDefault = `USD`;
+
 export const ListTeamShortlistResponseItem = zod.object({
   id: zod.number().describe("Shortlist entry ID"),
   freelancer: zod.object({
@@ -3542,6 +3809,14 @@ export const ListTeamShortlistResponseItem = zod.object({
     researchPublications: zod.string().nullish(),
     preferredTeachingMode: zod.enum(["in_person", "online", "both"]).nullish(),
     location: zod.string().nullish(),
+    countryCode: zod
+      .string()
+      .default(listTeamShortlistResponseFreelancerCountryCodeDefault)
+      .describe("ISO 3166-1 alpha-2 country code"),
+    currencyCode: zod
+      .string()
+      .default(listTeamShortlistResponseFreelancerCurrencyCodeDefault)
+      .describe("ISO 4217 currency code derived from country"),
     expiringCredential: zod
       .object({
         daysRemaining: zod.number(),
@@ -3566,6 +3841,9 @@ export const ListTeamShortlistResponse = zod.array(
 export const AddTeamShortlistBody = zod.object({
   freelancerId: zod.number(),
 });
+
+export const addTeamShortlistResponseFreelancerCountryCodeDefault = `US`;
+export const addTeamShortlistResponseFreelancerCurrencyCodeDefault = `USD`;
 
 export const AddTeamShortlistResponse = zod.object({
   id: zod.number().describe("Shortlist entry ID"),
@@ -3634,6 +3912,14 @@ export const AddTeamShortlistResponse = zod.object({
     researchPublications: zod.string().nullish(),
     preferredTeachingMode: zod.enum(["in_person", "online", "both"]).nullish(),
     location: zod.string().nullish(),
+    countryCode: zod
+      .string()
+      .default(addTeamShortlistResponseFreelancerCountryCodeDefault)
+      .describe("ISO 3166-1 alpha-2 country code"),
+    currencyCode: zod
+      .string()
+      .default(addTeamShortlistResponseFreelancerCurrencyCodeDefault)
+      .describe("ISO 4217 currency code derived from country"),
     expiringCredential: zod
       .object({
         daysRemaining: zod.number(),

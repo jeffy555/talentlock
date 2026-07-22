@@ -9,14 +9,17 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { Skeleton } from "@/components/ui/skeleton";
+import { currencySymbol } from "@/lib/currencyUtils";
 
 interface SpendTrendChartProps {
   months: string[];
   spend: number[];
+  currencyCode?: string;
   isLoading?: boolean;
 }
 
-export function SpendTrendChart({ months, spend, isLoading }: SpendTrendChartProps) {
+export function SpendTrendChart({ months, spend, currencyCode = "USD", isLoading }: SpendTrendChartProps) {
+  const sym = currencySymbol(currencyCode);
   const chartData = useMemo(
     () => months.map((month, i) => ({ month, spend: spend[i] ?? 0 })),
     [months, spend],
@@ -57,12 +60,12 @@ export function SpendTrendChart({ months, spend, isLoading }: SpendTrendChartPro
           />
           <YAxis
             tick={{ fontSize: 12, fill: "#94a3b8" }}
-            tickFormatter={(v) => (v >= 1000 ? `$${(v / 1000).toFixed(0)}k` : `$${v}`)}
+            tickFormatter={(v) => (v >= 1000 ? `${sym}${(v / 1000).toFixed(0)}k` : `${sym}${v}`)}
             axisLine={false}
             tickLine={false}
           />
           <Tooltip
-            formatter={(value) => [`$${Number(value).toLocaleString()}`, "Spend"]}
+            formatter={(value) => [`${sym}${Number(value).toLocaleString()}`, "Spend"]}
             cursor={{ fill: "#f8fafc" }}
           />
           <Bar dataKey="spend" fill="#6366f1" radius={[4, 4, 0, 0]} />

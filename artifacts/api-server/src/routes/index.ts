@@ -35,10 +35,14 @@ import talentSearchRouter from "./talentSearch";
 import conversationsRouter from "./conversations";
 import employerDocumentsRouter from "./employerDocuments";
 import cronRouter from "./cron";
+import countriesRouter from "./countries";
+import exchangeRatesRouter from "./exchangeRates";
 
 const router: IRouter = Router();
 
 router.use(healthRouter);
+router.use(countriesRouter);
+router.use(exchangeRatesRouter);
 router.use(demoRouter);
 router.use(storageRouter);
 router.use(usersRouter);

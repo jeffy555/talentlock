@@ -27,6 +27,8 @@ import {
   monthRange,
   currentCalendarMonthRange,
 } from "./earningsUtils";
+import { convertAmount, currencyName } from "./countryData";
+import type { ExchangeRateSnapshot } from "@workspace/db";
 
 // Codebase inspection (Task 1.1):
 // bookings.employerId — integer employer profile id (column employer_id)
@@ -87,6 +89,8 @@ export type SpendAnalyticsResponse = {
       differencePercent: number;
     }[];
   } | null;
+  displayCurrency: string;
+  conversionNote: string | null;
 };
 
 function parseAmount(value: string | null | undefined): number {
@@ -97,6 +101,81 @@ function parseAmount(value: string | null | undefined): number {
 
 function roundMoney(n: number): number {
   return Math.round(n * 100) / 100;
+}
+
+function convertToEmployerCurrency(
+  amount: number,
+  fromCode: string | null,
+  employerCurrency: string,
+  snapshot: ExchangeRateSnapshot | null,
+): { converted: number; didConvert: boolean } {
+  const from = fromCode ?? "USD";
+  if (from === employerCurrency) {
+    return { converted: amount, didConvert: false };
+  }
+  const rates = snapshot?.rates;
+  if (!rates) {
+    return { converted: amount, didConvert: false };
+  }
+  const converted = convertAmount(amount, from, employerCurrency, rates);
+  if (converted == null) {
+    return { converted: amount, didConvert: false };
+  }
+  return { converted, didConvert: true };
+}
+
+type ApprovedMilestoneRow = {
+  amount: string | null;
+  currencyCode: string | null;
+  exchangeRateAtCreation: ExchangeRateSnapshot | null;
+  approvedAt: Date | null;
+};
+
+async function fetchApprovedMilestones(
+  employerProfileId: number,
+  range?: { start: Date; end: Date },
+): Promise<ApprovedMilestoneRow[]> {
+  const conditions = [
+    eq(bookingsTable.employerId, employerProfileId),
+    eq(milestonesTable.status, MILESTONE_APPROVED_STATUS),
+    isNotNull(milestonesTable.approvedAt),
+  ];
+  if (range) {
+    conditions.push(gte(milestonesTable.approvedAt, range.start));
+    conditions.push(lt(milestonesTable.approvedAt, range.end));
+  }
+
+  return db
+    .select({
+      amount: milestonesTable.amount,
+      currencyCode: bookingsTable.currencyCode,
+      exchangeRateAtCreation: bookingsTable.exchangeRateAtCreation,
+      approvedAt: milestonesTable.approvedAt,
+    })
+    .from(milestonesTable)
+    .innerJoin(bookingsTable, eq(milestonesTable.bookingId, bookingsTable.id))
+    .where(and(...conditions));
+}
+
+function sumConvertedMilestones(
+  rows: ApprovedMilestoneRow[],
+  employerCurrency: string,
+): { total: number; hadConversion: boolean } {
+  let total = 0;
+  let hadConversion = false;
+  for (const row of rows) {
+    const amt = parseAmount(row.amount);
+    if (amt <= 0) continue;
+    const { converted, didConvert } = convertToEmployerCurrency(
+      amt,
+      row.currencyCode,
+      employerCurrency,
+      row.exchangeRateAtCreation,
+    );
+    total += converted;
+    if (didConvert) hadConversion = true;
+  }
+  return { total, hadConversion };
 }
 
 function resolveAgreedRate(
@@ -126,63 +205,53 @@ function resolveAgreedRate(
 
 async function sumApprovedMilestonesForEmployer(
   employerProfileId: number,
+  employerCurrency: string,
   range?: { start: Date; end: Date },
-): Promise<number> {
-  const conditions = [
-    eq(bookingsTable.employerId, employerProfileId),
-    eq(milestonesTable.status, MILESTONE_APPROVED_STATUS),
-    isNotNull(milestonesTable.approvedAt),
-  ];
-  if (range) {
-    conditions.push(gte(milestonesTable.approvedAt, range.start));
-    conditions.push(lt(milestonesTable.approvedAt, range.end));
-  }
-
-  const [row] = await db
-    .select({ total: sum(milestonesTable.amount) })
-    .from(milestonesTable)
-    .innerJoin(bookingsTable, eq(milestonesTable.bookingId, bookingsTable.id))
-    .where(and(...conditions));
-
-  return parseAmount(row?.total as string | null);
+): Promise<{ total: number; hadConversion: boolean }> {
+  const rows = await fetchApprovedMilestones(employerProfileId, range);
+  const { total, hadConversion } = sumConvertedMilestones(rows, employerCurrency);
+  return { total, hadConversion };
 }
 
 async function monthlySpendByEmployer(
   employerProfileId: number,
+  employerCurrency: string,
   monthKeys: string[],
 ): Promise<{ month: string; total: number }[]> {
   if (monthKeys.length === 0) return [];
 
   const earliest = monthRange(monthKeys[0]).start;
+  const rows = await fetchApprovedMilestones(employerProfileId, { start: earliest, end: new Date(8640000000000000) });
 
-  const rows = await db
-    .select({
-      month: sql<string>`to_char(date_trunc('month', ${milestonesTable.approvedAt}), 'YYYY-MM')`,
-      total: sum(milestonesTable.amount),
-    })
-    .from(milestonesTable)
-    .innerJoin(bookingsTable, eq(milestonesTable.bookingId, bookingsTable.id))
-    .where(and(
-      eq(bookingsTable.employerId, employerProfileId),
-      eq(milestonesTable.status, MILESTONE_APPROVED_STATUS),
-      isNotNull(milestonesTable.approvedAt),
-      gte(milestonesTable.approvedAt, earliest),
-    ))
-    .groupBy(sql`date_trunc('month', ${milestonesTable.approvedAt})`);
+  const byMonth = new Map<string, number>();
+  for (const row of rows) {
+    if (!row.approvedAt) continue;
+    const month = row.approvedAt.toISOString().slice(0, 7);
+    if (!monthKeys.includes(month)) continue;
+    const amt = parseAmount(row.amount);
+    if (amt <= 0) continue;
+    const { converted } = convertToEmployerCurrency(
+      amt,
+      row.currencyCode,
+      employerCurrency,
+      row.exchangeRateAtCreation,
+    );
+    byMonth.set(month, (byMonth.get(month) ?? 0) + converted);
+  }
 
-  return rows.map((r) => ({
-    month: r.month,
-    total: parseAmount(r.total as string | null),
-  }));
+  return [...byMonth.entries()].map(([month, total]) => ({ month, total }));
 }
 
 async function buildSpendByField(
   employerProfileId: number,
-): Promise<SpendAnalyticsResponse["spendByField"]> {
+  employerCurrency: string,
+): Promise<{ items: SpendAnalyticsResponse["spendByField"]; hadConversion: boolean }> {
   const rows = await db
     .select({
       field: freelancerProfilesTable.fieldOfWork,
-      totalSpend: sum(milestonesTable.amount),
+      amount: milestonesTable.amount,
+      currencyCode: bookingsTable.currencyCode,
+      exchangeRateAtCreation: bookingsTable.exchangeRateAtCreation,
     })
     .from(milestonesTable)
     .innerJoin(bookingsTable, eq(milestonesTable.bookingId, bookingsTable.id))
@@ -194,39 +263,56 @@ async function buildSpendByField(
       eq(bookingsTable.employerId, employerProfileId),
       eq(milestonesTable.status, MILESTONE_APPROVED_STATUS),
       isNotNull(milestonesTable.approvedAt),
-    ))
-    .groupBy(freelancerProfilesTable.fieldOfWork)
-    .orderBy(desc(sum(milestonesTable.amount)))
-    .limit(6);
+    ));
 
-  const items = rows
-    .map((r) => ({
-      field: r.field,
-      totalSpend: parseAmount(r.totalSpend as string | null),
-    }))
-    .filter((r) => r.totalSpend > 0);
+  const byField = new Map<string, number>();
+  let hadConversion = false;
+  for (const row of rows) {
+    const amt = parseAmount(row.amount);
+    if (amt <= 0) continue;
+    const { converted, didConvert } = convertToEmployerCurrency(
+      amt,
+      row.currencyCode,
+      employerCurrency,
+      row.exchangeRateAtCreation,
+    );
+    if (didConvert) hadConversion = true;
+    byField.set(row.field, (byField.get(row.field) ?? 0) + converted);
+  }
+
+  const items = [...byField.entries()]
+    .map(([field, totalSpend]) => ({ field, totalSpend }))
+    .filter((r) => r.totalSpend > 0)
+    .sort((a, b) => b.totalSpend - a.totalSpend)
+    .slice(0, 6);
 
   const grandTotal = items.reduce((acc, r) => acc + r.totalSpend, 0);
-  if (grandTotal === 0) return [];
+  if (grandTotal === 0) return { items: [], hadConversion };
 
-  return items.map((r) => ({
-    field: r.field,
-    totalSpend: roundMoney(r.totalSpend),
-    percentageOfTotal: Math.round((r.totalSpend / grandTotal) * 1000) / 10,
-  }));
+  return {
+    hadConversion,
+    items: items.map((r) => ({
+      field: r.field,
+      totalSpend: roundMoney(r.totalSpend),
+      percentageOfTotal: Math.round((r.totalSpend / grandTotal) * 1000) / 10,
+    })),
+  };
 }
 
 async function buildTopFreelancers(
   employerProfileId: number,
   employerUserId: number,
-): Promise<SpendAnalyticsResponse["topFreelancers"]> {
-  const spendRows = await db
+  employerCurrency: string,
+): Promise<{ items: SpendAnalyticsResponse["topFreelancers"]; hadConversion: boolean }> {
+  const milestoneRows = await db
     .select({
       freelancerId: bookingsTable.freelancerId,
       name: freelancerProfilesTable.name,
       fieldOfWork: freelancerProfilesTable.fieldOfWork,
       freelancerUserId: freelancerProfilesTable.userId,
-      totalPaid: sum(milestonesTable.amount),
+      amount: milestonesTable.amount,
+      currencyCode: bookingsTable.currencyCode,
+      exchangeRateAtCreation: bookingsTable.exchangeRateAtCreation,
     })
     .from(milestonesTable)
     .innerJoin(bookingsTable, eq(milestonesTable.bookingId, bookingsTable.id))
@@ -238,17 +324,47 @@ async function buildTopFreelancers(
       eq(bookingsTable.employerId, employerProfileId),
       eq(milestonesTable.status, MILESTONE_APPROVED_STATUS),
       isNotNull(milestonesTable.approvedAt),
-    ))
-    .groupBy(
-      bookingsTable.freelancerId,
-      freelancerProfilesTable.name,
-      freelancerProfilesTable.fieldOfWork,
-      freelancerProfilesTable.userId,
-    )
-    .orderBy(desc(sum(milestonesTable.amount)))
-    .limit(5);
+    ));
 
-  if (spendRows.length === 0) return [];
+  if (milestoneRows.length === 0) return { items: [], hadConversion: false };
+
+  const byFreelancer = new Map<number, {
+    name: string;
+    fieldOfWork: string;
+    freelancerUserId: number;
+    totalPaid: number;
+  }>();
+  let hadConversion = false;
+
+  for (const row of milestoneRows) {
+    const amt = parseAmount(row.amount);
+    if (amt <= 0) continue;
+    const { converted, didConvert } = convertToEmployerCurrency(
+      amt,
+      row.currencyCode,
+      employerCurrency,
+      row.exchangeRateAtCreation,
+    );
+    if (didConvert) hadConversion = true;
+    const existing = byFreelancer.get(row.freelancerId);
+    if (existing) {
+      existing.totalPaid += converted;
+    } else {
+      byFreelancer.set(row.freelancerId, {
+        name: row.name,
+        fieldOfWork: row.fieldOfWork,
+        freelancerUserId: row.freelancerUserId,
+        totalPaid: converted,
+      });
+    }
+  }
+
+  const spendRows = [...byFreelancer.entries()]
+    .map(([freelancerId, data]) => ({ freelancerId, ...data }))
+    .sort((a, b) => b.totalPaid - a.totalPaid)
+    .slice(0, 5);
+
+  if (spendRows.length === 0) return { items: [], hadConversion };
 
   const freelancerProfileIds = spendRows.map((r) => r.freelancerId);
 
@@ -282,30 +398,36 @@ async function buildTopFreelancers(
     ratingRows.map((r) => [r.freelancerUserId, r.averageRating]),
   );
 
-  return spendRows.map((r) => {
-    const avg = ratingMap.get(r.freelancerUserId);
-    return {
-      freelancerId: String(r.freelancerId),
-      name: r.name,
-      fieldOfWork: r.fieldOfWork,
-      totalPaid: roundMoney(parseAmount(r.totalPaid as string | null)),
-      bookingCount: countMap.get(r.freelancerId) ?? 0,
-      averageRatingGiven:
-        avg != null && Number.isFinite(avg)
-          ? Math.round(avg * 10) / 10
-          : null,
-    };
-  });
+  return {
+    hadConversion,
+    items: spendRows.map((r) => {
+      const avg = ratingMap.get(r.freelancerUserId);
+      return {
+        freelancerId: String(r.freelancerId),
+        name: r.name,
+        fieldOfWork: r.fieldOfWork,
+        totalPaid: roundMoney(r.totalPaid),
+        bookingCount: countMap.get(r.freelancerId) ?? 0,
+        averageRatingGiven:
+          avg != null && Number.isFinite(avg)
+            ? Math.round(avg * 10) / 10
+            : null,
+      };
+    }),
+  };
 }
 
 async function buildCommittedSpend(
   employerProfileId: number,
-): Promise<SpendAnalyticsResponse["committed"]> {
+  employerCurrency: string,
+): Promise<{ committed: SpendAnalyticsResponse["committed"]; hadConversion: boolean }> {
   const { start, end } = currentCalendarMonthRange();
 
   const rows = await db
     .select({
       amount: milestonesTable.amount,
+      currencyCode: bookingsTable.currencyCode,
+      exchangeRateAtCreation: bookingsTable.exchangeRateAtCreation,
     })
     .from(milestonesTable)
     .innerJoin(bookingsTable, eq(milestonesTable.bookingId, bookingsTable.id))
@@ -318,11 +440,27 @@ async function buildCommittedSpend(
       lt(milestonesTable.dueDate, end),
     ));
 
-  const committedAmount = rows.reduce((acc, r) => acc + parseAmount(r.amount), 0);
+  let committedAmount = 0;
+  let hadConversion = false;
+  for (const row of rows) {
+    const amt = parseAmount(row.amount);
+    if (amt <= 0) continue;
+    const { converted, didConvert } = convertToEmployerCurrency(
+      amt,
+      row.currencyCode,
+      employerCurrency,
+      row.exchangeRateAtCreation,
+    );
+    if (didConvert) hadConversion = true;
+    committedAmount += converted;
+  }
 
   return {
-    committedAmount: roundMoney(committedAmount),
-    milestoneCount: rows.length,
+    hadConversion,
+    committed: {
+      committedAmount: roundMoney(committedAmount),
+      milestoneCount: rows.length,
+    },
   };
 }
 
@@ -474,7 +612,9 @@ async function buildRateBenchmark(
 export async function buildSpendAnalytics(
   employer: EmployerProfile,
   employerUserId: number,
+  employerCurrencyCode: string,
 ): Promise<SpendAnalyticsResponse> {
+  const employerCurrency = employerCurrencyCode || "USD";
   const now = new Date();
   const thisMonthRange = currentCalendarMonthRange(now);
   const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
@@ -482,31 +622,49 @@ export async function buildSpendAnalytics(
   const monthKeys = getLast6Months();
 
   const [
-    thisMonth,
-    lastMonth,
-    allTime,
+    thisMonthResult,
+    lastMonthResult,
+    allTimeResult,
     spendMonthRows,
-    spendByField,
-    topFreelancers,
-    committed,
+    spendByFieldResult,
+    topFreelancersResult,
+    committedResult,
   ] = await Promise.all([
-    sumApprovedMilestonesForEmployer(employer.id, thisMonthRange),
-    sumApprovedMilestonesForEmployer(employer.id, {
+    sumApprovedMilestonesForEmployer(employer.id, employerCurrency, thisMonthRange),
+    sumApprovedMilestonesForEmployer(employer.id, employerCurrency, {
       start: lastMonthStart,
       end: lastMonthEnd,
     }),
-    sumApprovedMilestonesForEmployer(employer.id),
-    monthlySpendByEmployer(employer.id, monthKeys),
-    buildSpendByField(employer.id),
-    buildTopFreelancers(employer.id, employerUserId),
-    buildCommittedSpend(employer.id),
+    sumApprovedMilestonesForEmployer(employer.id, employerCurrency),
+    monthlySpendByEmployer(employer.id, employerCurrency, monthKeys),
+    buildSpendByField(employer.id, employerCurrency),
+    buildTopFreelancers(employer.id, employerUserId, employerCurrency),
+    buildCommittedSpend(employer.id, employerCurrency),
   ]);
+
+  const thisMonth = thisMonthResult.total;
+  const lastMonth = lastMonthResult.total;
+  const allTime = allTimeResult.total;
+  const spendByField = spendByFieldResult.items;
+  const topFreelancers = topFreelancersResult.items;
+  const committed = committedResult.committed;
+  const hadConversion =
+    thisMonthResult.hadConversion
+    || lastMonthResult.hadConversion
+    || allTimeResult.hadConversion
+    || spendByFieldResult.hadConversion
+    || topFreelancersResult.hadConversion
+    || committedResult.hadConversion;
 
   const monthOverMonthChange =
     lastMonth === 0 ? null : ((thisMonth - lastMonth) / lastMonth) * 100;
 
   const spend = fillZeroMonths(monthKeys, spendMonthRows);
   const rateBenchmark = await buildRateBenchmark(employer.id, spendByField);
+
+  const conversionNote = hadConversion
+    ? `Amounts converted to ${currencyName(employerCurrency)} (${employerCurrency}) at booking-time rates.`
+    : null;
 
   return {
     summary: {
@@ -526,5 +684,7 @@ export async function buildSpendAnalytics(
     topFreelancers,
     committed,
     rateBenchmark,
+    displayCurrency: employerCurrency,
+    conversionNote,
   };
 }

@@ -120,7 +120,7 @@ router.get("/dashboard/spend-analytics", async (req, res) => {
       return;
     }
 
-    const data = await buildSpendAnalytics(employer, user.id);
+    const data = await buildSpendAnalytics(employer, user.id, user.currencyCode ?? "USD");
     res.json(data);
   } catch (err) {
     req.log.error({ err }, "Failed to get spend analytics");

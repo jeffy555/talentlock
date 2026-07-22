@@ -4,6 +4,7 @@ import type { EarningsIntelligenceRateBenchmark } from "@workspace/api-client-re
 
 interface RateBenchmarkCardProps {
   data: EarningsIntelligenceRateBenchmark | null | undefined;
+  currencyCode?: string;
   isLoading?: boolean;
 }
 
@@ -20,7 +21,7 @@ function percentileLabel(percentile: number): { text: string; className: string 
   return { text: "Bottom 25% in your field", className: "text-slate-500" };
 }
 
-export function RateBenchmarkCard({ data, isLoading }: RateBenchmarkCardProps) {
+export function RateBenchmarkCard({ data, currencyCode = "USD", isLoading }: RateBenchmarkCardProps) {
   if (isLoading) {
     return <Skeleton className="h-48 w-full rounded-lg" />;
   }
@@ -49,7 +50,7 @@ export function RateBenchmarkCard({ data, isLoading }: RateBenchmarkCardProps) {
       </p>
 
       <p className="text-sm text-slate-700 mt-4">
-        Your rate: <span className="font-semibold">{formatRate(data.myRate)}</span>
+        Your rate: <span className="font-semibold">{formatRate(data.myRate, currencyCode)}</span>
       </p>
       <p className={`text-sm mt-1 ${className}`}>{text}</p>
 
@@ -60,13 +61,13 @@ export function RateBenchmarkCard({ data, isLoading }: RateBenchmarkCardProps) {
         />
       </div>
       <div className="flex justify-between text-xs text-muted-foreground">
-        <span>{formatRate(data.fieldMin)}</span>
+        <span>{formatRate(data.fieldMin, currencyCode)}</span>
         <span>min — you — max</span>
-        <span>{formatRate(data.fieldMax)}</span>
+        <span>{formatRate(data.fieldMax, currencyCode)}</span>
       </div>
 
       <p className="text-xs text-muted-foreground mt-3">
-        Field median: {formatRate(data.fieldMedian)} · {data.freelancerCount} freelancers
+        Field median: {formatRate(data.fieldMedian, currencyCode)} · {data.freelancerCount} freelancers
       </p>
     </div>
   );

@@ -9,6 +9,7 @@ import { RateBenchmarkCard } from "./RateBenchmarkCard";
 
 export function SpendAnalyticsPanel() {
   const { data, isLoading, isError, refetch } = useGetDashboardSpendAnalytics();
+  const currencyCode = data?.displayCurrency ?? "USD";
 
   if (isError) {
     return (
@@ -34,24 +35,30 @@ export function SpendAnalyticsPanel() {
         lastMonth={data?.summary.lastMonth ?? 0}
         allTime={data?.summary.allTime ?? 0}
         monthOverMonthChange={data?.summary.monthOverMonthChange ?? null}
+        currencyCode={currencyCode}
         isLoading={isLoading}
       />
+      {data?.conversionNote && (
+        <p className="text-xs text-muted-foreground">{data.conversionNote}</p>
+      )}
       <SpendTrendChart
         months={data?.trend.months ?? []}
         spend={data?.trend.spend ?? []}
+        currencyCode={currencyCode}
         isLoading={isLoading}
       />
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <SpendByFieldChart data={data?.spendByField ?? []} isLoading={isLoading} />
+        <SpendByFieldChart data={data?.spendByField ?? []} currencyCode={currencyCode} isLoading={isLoading} />
         <CommittedSpendCard
           committedAmount={data?.committed.committedAmount ?? 0}
           milestoneCount={data?.committed.milestoneCount ?? 0}
+          currencyCode={currencyCode}
           isLoading={isLoading}
         />
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <TopFreelancersCard freelancers={data?.topFreelancers ?? []} isLoading={isLoading} />
-        <RateBenchmarkCard data={data?.rateBenchmark} isLoading={isLoading} />
+        <TopFreelancersCard freelancers={data?.topFreelancers ?? []} currencyCode={currencyCode} isLoading={isLoading} />
+        <RateBenchmarkCard data={data?.rateBenchmark} currencyCode={currencyCode} isLoading={isLoading} />
       </div>
     </div>
   );

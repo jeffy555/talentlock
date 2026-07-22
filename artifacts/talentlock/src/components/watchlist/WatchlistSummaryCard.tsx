@@ -56,6 +56,7 @@ export function WatchlistSummaryCard() {
           : formatRate(
               Number(item.freelancer.hourlyRate ?? item.freelancer.dailyRate ?? 0),
               profileDefaultRateType(item.freelancer.professionCategory),
+              item.freelancer.currencyCode ?? "USD",
             ),
       }))
     : (saved ?? []).map((item) => ({
@@ -66,6 +67,7 @@ export function WatchlistSummaryCard() {
           : formatRate(
               Number(item.freelancer.hourlyRate ?? item.freelancer.dailyRate ?? 0),
               profileDefaultRateType(item.freelancer.professionCategory),
+              item.freelancer.currencyCode ?? "USD",
             ),
       }));
 

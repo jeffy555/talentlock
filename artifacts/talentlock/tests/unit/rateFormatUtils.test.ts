@@ -14,6 +14,12 @@ describe("rateFormatUtils", () => {
     expect(formatRate(1200, "per_course")).toBe("$1,200/course");
   });
 
+  it("formatRate supports ISO currency codes", () => {
+    expect(formatRate(800, "per_day", "INR")).toBe("₹800/day");
+    expect(formatRate(120, "hourly", "GBP")).toBe("£120/hr");
+    expect(formatRate(90, "hourly", "EUR")).toBe("€90/hr");
+  });
+
   it("defaults to hourly when rateType is null", () => {
     expect(rateUnitLabel(null)).toBe("/hr");
   });

@@ -42,6 +42,7 @@ import type {
   BookingNotPendingError,
   ContentTooShortError,
   ConversationTokenBreakdown,
+  CountryList,
   CreateAgreementBody,
   CreateAvailabilityBlockBody,
   CreateBookingBody,
@@ -80,6 +81,7 @@ import type {
   EmployerDocumentsMeResponse,
   EmployerProfile,
   ErrorEnvelope,
+  ExchangeRates,
   ExpressInterestBody,
   FreelancerProfile,
   FreelancerProfileDetail,
@@ -137,6 +139,7 @@ import type {
   ParseTalentSearchRulesResult,
   PatchDocumentExpiryBody,
   PatchDocumentExpiryResponse,
+  PatchLocationBody,
   PatchNotificationPreferencesBody,
   PatchOnboardingStepBody,
   PatchWatchlistNotesBody,
@@ -512,6 +515,242 @@ export const usePatchOnboardingStep = <
 > => {
   return useMutation(getPatchOnboardingStepMutationOptions(options));
 };
+
+/**
+ * @summary Update country, state, and derived currency after onboarding
+ */
+export const getPatchMyLocationUrl = () => {
+  return `/api/users/me/location`;
+};
+
+export const patchMyLocation = async (
+  patchLocationBody: PatchLocationBody,
+  options?: RequestInit,
+): Promise<User> => {
+  return customFetch<User>(getPatchMyLocationUrl(), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(patchLocationBody),
+  });
+};
+
+export const getPatchMyLocationMutationOptions = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof patchMyLocation>>,
+    TError,
+    { data: BodyType<PatchLocationBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof patchMyLocation>>,
+  TError,
+  { data: BodyType<PatchLocationBody> },
+  TContext
+> => {
+  const mutationKey = ["patchMyLocation"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof patchMyLocation>>,
+    { data: BodyType<PatchLocationBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return patchMyLocation(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type PatchMyLocationMutationResult = NonNullable<
+  Awaited<ReturnType<typeof patchMyLocation>>
+>;
+export type PatchMyLocationMutationBody = BodyType<PatchLocationBody>;
+export type PatchMyLocationMutationError = ErrorType<ErrorEnvelope>;
+
+/**
+ * @summary Update country, state, and derived currency after onboarding
+ */
+export const usePatchMyLocation = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof patchMyLocation>>,
+    TError,
+    { data: BodyType<PatchLocationBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof patchMyLocation>>,
+  TError,
+  { data: BodyType<PatchLocationBody> },
+  TContext
+> => {
+  return useMutation(getPatchMyLocationMutationOptions(options));
+};
+
+/**
+ * @summary List supported countries with states and currency metadata
+ */
+export const getListCountriesUrl = () => {
+  return `/api/countries`;
+};
+
+export const listCountries = async (
+  options?: RequestInit,
+): Promise<CountryList> => {
+  return customFetch<CountryList>(getListCountriesUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListCountriesQueryKey = () => {
+  return [`/api/countries`] as const;
+};
+
+export const getListCountriesQueryOptions = <
+  TData = Awaited<ReturnType<typeof listCountries>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listCountries>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListCountriesQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listCountries>>> = ({
+    signal,
+  }) => listCountries({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listCountries>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListCountriesQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listCountries>>
+>;
+export type ListCountriesQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List supported countries with states and currency metadata
+ */
+
+export function useListCountries<
+  TData = Awaited<ReturnType<typeof listCountries>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listCountries>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListCountriesQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Get cached USD-base exchange rates for display conversions
+ */
+export const getGetExchangeRatesUrl = () => {
+  return `/api/exchange-rates`;
+};
+
+export const getExchangeRates = async (
+  options?: RequestInit,
+): Promise<ExchangeRates> => {
+  return customFetch<ExchangeRates>(getGetExchangeRatesUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetExchangeRatesQueryKey = () => {
+  return [`/api/exchange-rates`] as const;
+};
+
+export const getGetExchangeRatesQueryOptions = <
+  TData = Awaited<ReturnType<typeof getExchangeRates>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getExchangeRates>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetExchangeRatesQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getExchangeRates>>
+  > = ({ signal }) => getExchangeRates({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getExchangeRates>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetExchangeRatesQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getExchangeRates>>
+>;
+export type GetExchangeRatesQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Get cached USD-base exchange rates for display conversions
+ */
+
+export function useGetExchangeRates<
+  TData = Awaited<ReturnType<typeof getExchangeRates>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getExchangeRates>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetExchangeRatesQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
 
 /**
  * @summary Update email notification preferences

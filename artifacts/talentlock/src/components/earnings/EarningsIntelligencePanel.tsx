@@ -8,6 +8,7 @@ import { TopSkillsCard } from "./TopSkillsCard";
 
 export function EarningsIntelligencePanel() {
   const { data, isLoading, isError, refetch } = useGetDashboardEarningsIntelligence();
+  const currencyCode = data?.projection.currency ?? "USD";
 
   if (isError) {
     return (
@@ -33,6 +34,7 @@ export function EarningsIntelligencePanel() {
         lastMonth={data?.summary.lastMonth ?? 0}
         allTime={data?.summary.allTime ?? 0}
         monthOverMonthChange={data?.summary.monthOverMonthChange ?? null}
+        currencyCode={currencyCode}
         isLoading={isLoading}
       />
       <EarningsTrendChart
@@ -40,17 +42,19 @@ export function EarningsIntelligencePanel() {
         freelancerEarnings={data?.trend.freelancerEarnings ?? []}
         platformAverage={data?.trend.platformAverage ?? []}
         fieldOfWork={data?.rateBenchmark?.fieldOfWork ?? ""}
+        currencyCode={currencyCode}
         isLoading={isLoading}
       />
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <RateBenchmarkCard data={data?.rateBenchmark} isLoading={isLoading} />
+        <RateBenchmarkCard data={data?.rateBenchmark} currencyCode={currencyCode} isLoading={isLoading} />
         <ProjectionCard
           projectedAmount={data?.projection.projectedAmount ?? 0}
           milestoneCount={data?.projection.milestoneCount ?? 0}
+          currencyCode={currencyCode}
           isLoading={isLoading}
         />
       </div>
-      <TopSkillsCard skills={data?.topSkills ?? []} isLoading={isLoading} />
+      <TopSkillsCard skills={data?.topSkills ?? []} currencyCode={currencyCode} isLoading={isLoading} />
     </div>
   );
 }
