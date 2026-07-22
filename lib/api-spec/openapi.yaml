@@ -134,6 +134,63 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorEnvelope"
 
+  /users/me/location:
+    patch:
+      operationId: patchMyLocation
+      tags: [users]
+      summary: Update country, state, and derived currency after onboarding
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PatchLocationBody"
+      responses:
+        "200":
+          description: Updated user with new location
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "400":
+          description: Invalid location
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
+  /countries:
+    get:
+      operationId: listCountries
+      tags: [users]
+      summary: List supported countries with states and currency metadata
+      responses:
+        "200":
+          description: Supported countries
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CountryList"
+
+  /exchange-rates:
+    get:
+      operationId: getExchangeRates
+      tags: [users]
+      summary: Get cached USD-base exchange rates for display conversions
+      responses:
+        "200":
+          description: Exchange rate snapshot
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExchangeRates"
+
   /users/me/notification-preferences:
     patch:
       operationId: patchNotificationPreferences
@@ -207,6 +264,20 @@ paths:
           schema:
             type: string
           description: Case-insensitive substring match on teachingSubjects (education professionals)
+        - name: countryCode
+          in: query
+          schema:
+            type: string
+            minLength: 2
+            maxLength: 2
+          description: Filter by freelancer country code (ISO 3166-1 alpha-2)
+        - name: currencyCode
+          in: query
+          schema:
+            type: string
+            minLength: 3
+            maxLength: 3
+          description: Filter by freelancer currency code (ISO 4217)
       responses:
         "200":
           description: List of freelancers
@@ -4017,7 +4088,18 @@ components:
           description: "freelancer | employer — in-progress onboarding role while role is pending"
         onboardingStep:
           type: ["string", "null"]
-          description: "role | profession_category | freelancer_details | employer_details"
+          description: "role | profession_category | location | freelancer_details | employer_details"
+        countryCode:
+          type: string
+          description: ISO 3166-1 alpha-2 country code
+          default: US
+        stateCode:
+          type: ["string", "null"]
+          description: State/province code when applicable
+        currencyCode:
+          type: string
+          description: ISO 4217 currency derived from country
+          default: USD
         createdAt:
           type: string
           format: date-time
@@ -4028,7 +4110,92 @@ components:
         - emailNotificationsEnabled
         - email
         - name
+        - countryCode
+        - currencyCode
         - createdAt
+
+    PatchLocationBody:
+      type: object
+      properties:
+        countryCode:
+          type: string
+          minLength: 2
+          maxLength: 2
+        stateCode:
+          type: ["string", "null"]
+      required:
+        - countryCode
+
+    CountryState:
+      type: object
+      properties:
+        code:
+          type: string
+        name:
+          type: string
+      required:
+        - code
+        - name
+
+    Country:
+      type: object
+      properties:
+        code:
+          type: string
+        name:
+          type: string
+        currencyCode:
+          type: string
+        currencySymbol:
+          type: string
+        currencyName:
+          type: string
+        stateRequired:
+          type: boolean
+        states:
+          type: array
+          items:
+            $ref: "#/components/schemas/CountryState"
+      required:
+        - code
+        - name
+        - currencyCode
+        - currencySymbol
+        - currencyName
+        - stateRequired
+        - states
+
+    CountryList:
+      type: object
+      properties:
+        countries:
+          type: array
+          items:
+            $ref: "#/components/schemas/Country"
+      required:
+        - countries
+
+    ExchangeRates:
+      type: object
+      properties:
+        baseCurrency:
+          type: string
+          enum: [USD]
+        rates:
+          type: object
+          additionalProperties:
+            type: number
+        fetchedAt:
+          type: string
+          format: date-time
+        source:
+          type: string
+          enum: [api, cache, fallback]
+      required:
+        - baseCurrency
+        - rates
+        - fetchedAt
+        - source
 
     UpsertUserBody:
       type: object
@@ -4057,7 +4224,15 @@ components:
           enum: [freelancer, employer]
         onboardingStep:
           type: string
-          enum: [role, profession_category, freelancer_details, employer_details]
+          enum: [role, profession_category, location, freelancer_details, employer_details]
+        countryCode:
+          type: string
+          minLength: 2
+          maxLength: 2
+          description: Required when onboardingStep is location
+        stateCode:
+          type: ["string", "null"]
+          description: State/province code when required by country
         email:
           type: string
         name:
@@ -4257,6 +4432,14 @@ components:
           nullable: true
         location:
           type: ["string", "null"]
+        countryCode:
+          type: string
+          description: ISO 3166-1 alpha-2 country code
+          default: US
+        currencyCode:
+          type: string
+          description: ISO 4217 currency code derived from country
+          default: USD
         expiringCredential:
           allOf:
             - $ref: "#/components/schemas/ExpiringCredential"
@@ -4282,6 +4465,8 @@ components:
         - reviewCount
         - completenessScore
         - professionCategory
+        - countryCode
+        - currencyCode
         - createdAt
 
     PatchNotificationPreferencesBody:
@@ -4847,6 +5032,10 @@ components:
           format: date-time
         hasDebrief:
           type: boolean
+        currencyCode:
+          type: string
+          description: ISO 4217 currency frozen at booking creation
+          default: USD
         createdAt:
           type: string
           format: date-time
@@ -4862,6 +5051,7 @@ components:
         - createdAt
         - review
         - hasDebrief
+        - currencyCode
 
     EmployerDebriefEngagementSnapshot:
       type: object
@@ -6113,7 +6303,7 @@ components:
           type: integer
         currency:
           type: string
-          enum: [USD]
+          description: ISO 4217 currency code for earnings amounts
       required:
         - projectedAmount
         - milestoneCount
@@ -6290,12 +6480,20 @@ components:
           oneOf:
             - $ref: "#/components/schemas/SpendAnalyticsRateBenchmark"
             - type: "null"
+        displayCurrency:
+          type: string
+          description: ISO 4217 currency code used for all spend amounts
+        conversionNote:
+          type: ["string", "null"]
+          description: Present when amounts were converted from booking currencies
       required:
         - summary
         - trend
         - spendByField
         - topFreelancers
         - committed
+        - displayCurrency
+        - conversionNote
 
     HiringAnalyticsFunnel:
       type: object
@@ -7828,6 +8026,12 @@ components:
             type: string
         location:
           type: ["string", "null"]
+        countryCode:
+          type: string
+          default: US
+        currencyCode:
+          type: string
+          default: USD
         createdAt:
           type: string
           format: date-time
@@ -7846,6 +8050,8 @@ components:
         - reviews
         - totalReviews
         - professionCategory
+        - countryCode
+        - currencyCode
         - createdAt
 
     BlackoutWindow:

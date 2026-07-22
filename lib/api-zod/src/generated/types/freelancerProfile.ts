@@ -86,6 +86,10 @@ export interface FreelancerProfile {
   preferredTeachingMode?: PreferredTeachingMode | null;
   /** @nullable */
   location?: string | null;
+  /** ISO 3166-1 alpha-2 country code */
+  countryCode: string;
+  /** ISO 4217 currency code derived from country */
+  currencyCode: string;
   /** Set when a verified document or teaching licence expires within 7 days (Talent Vault list only) */
   expiringCredential?: ExpiringCredential | null;
   createdAt: Date;

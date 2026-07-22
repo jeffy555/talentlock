@@ -6,12 +6,14 @@ import { formatCurrency } from "@/lib/earningsFormat";
 interface CommittedSpendCardProps {
   committedAmount: number;
   milestoneCount: number;
+  currencyCode?: string;
   isLoading?: boolean;
 }
 
 export function CommittedSpendCard({
   committedAmount,
   milestoneCount,
+  currencyCode = "USD",
   isLoading,
 }: CommittedSpendCardProps) {
   if (isLoading) {
@@ -46,7 +48,7 @@ export function CommittedSpendCard({
       {hasCommitted ? (
         <>
           <p className="text-2xl font-semibold text-slate-800 mt-4">
-            {formatCurrency(committedAmount)}
+            {formatCurrency(committedAmount, currencyCode)}
           </p>
           <p className="text-sm text-muted-foreground mt-2">
             Across {milestoneCount} upcoming milestone{milestoneCount !== 1 ? "s" : ""}

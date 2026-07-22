@@ -7,6 +7,7 @@ interface SpendSummaryCardsProps {
   lastMonth: number;
   allTime: number;
   monthOverMonthChange: number | null;
+  currencyCode?: string;
   isLoading?: boolean;
 }
 
@@ -33,6 +34,7 @@ export function SpendSummaryCards({
   lastMonth,
   allTime,
   monthOverMonthChange,
+  currencyCode = "USD",
   isLoading,
 }: SpendSummaryCardsProps) {
   if (isLoading) {
@@ -66,9 +68,9 @@ export function SpendSummaryCards({
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-      <SummaryCard label="This Month" value={formatCurrency(thisMonth)} trend={trendNode} />
-      <SummaryCard label="Last Month" value={formatCurrency(lastMonth)} />
-      <SummaryCard label="All Time" value={formatCurrency(allTime)} />
+      <SummaryCard label="This Month" value={formatCurrency(thisMonth, currencyCode)} trend={trendNode} />
+      <SummaryCard label="Last Month" value={formatCurrency(lastMonth, currencyCode)} />
+      <SummaryCard label="All Time" value={formatCurrency(allTime, currencyCode)} />
     </div>
   );
 }

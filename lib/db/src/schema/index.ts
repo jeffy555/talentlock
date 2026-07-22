@@ -23,4 +23,5 @@ export * from "./employerDocuments";
 export * from "./teams";
 export * from "./cruiseMode";
 export * from "./talentSearch";
+export * from "./exchangeRateCache";
 export * from "../../schema";

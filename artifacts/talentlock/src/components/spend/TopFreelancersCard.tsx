@@ -2,12 +2,15 @@ import { Link } from "wouter";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { SpendAnalyticsTopFreelancer } from "@workspace/api-client-react";
 
+import { formatCurrency } from "@/lib/earningsFormat";
+
 interface TopFreelancersCardProps {
   freelancers: SpendAnalyticsTopFreelancer[];
+  currencyCode?: string;
   isLoading?: boolean;
 }
 
-export function TopFreelancersCard({ freelancers, isLoading }: TopFreelancersCardProps) {
+export function TopFreelancersCard({ freelancers, currencyCode = "USD", isLoading }: TopFreelancersCardProps) {
   if (isLoading) {
     return (
       <div className="rounded-lg border border-slate-200 bg-white p-5 space-y-3">
@@ -59,7 +62,7 @@ export function TopFreelancersCard({ freelancers, isLoading }: TopFreelancersCar
             </div>
             <div className="text-right shrink-0 ml-4">
               <p className="text-sm font-semibold text-slate-800">
-                ${freelancer.totalPaid.toLocaleString()}
+                {formatCurrency(freelancer.totalPaid, currencyCode)}
               </p>
               <Link
                 href={`/freelancers/${freelancer.freelancerId}`}

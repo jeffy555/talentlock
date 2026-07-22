@@ -34,6 +34,7 @@ import {
   isWithinDebriefRegenCooldown,
 } from "../lib/bookingDebriefGenerator";
 import { checkTokenQuota } from "../lib/subscriptionGating";
+import { getOrFetchExchangeRates } from "../lib/exchangeRateService";
 
 const BOOKING_CONFIRMED_STATUS = "active";
 const BOOKING_CANCELLED_STATUS = "cancelled";
@@ -129,6 +130,7 @@ router.post("/bookings", async (req, res) => {
       const [freelancer] = await tx.select({
         id: freelancerProfilesTable.id,
         isAvailable: freelancerProfilesTable.isAvailable,
+        currencyCode: freelancerProfilesTable.currencyCode,
       }).from(freelancerProfilesTable)
         .where(eq(freelancerProfilesTable.id, parsed.data.freelancerId))
         .limit(1);
@@ -148,6 +150,8 @@ router.post("/bookings", async (req, res) => {
       }
 
       const proposedRate = parsed.data.rate != null ? String(parsed.data.rate) : null;
+      const currencyCode = freelancer.currencyCode ?? "USD";
+      const exchangeRateAtCreation = await getOrFetchExchangeRates(db, req.log);
 
       const { message: _msg, ...bookingData } = parsed.data;
       const [booking] = await tx.insert(bookingsTable)
@@ -160,6 +164,8 @@ router.post("/bookings", async (req, res) => {
           proposedRate,
           lastProposedBy: "employer",
           negotiationStatus: "negotiating",
+          currencyCode,
+          exchangeRateAtCreation,
         })
         .returning();
       return { gate: null, booking, unavailable: false as const };
@@ -224,6 +230,7 @@ function mapBookingResponse(
 ) {
   return {
     ...enrichRate(b),
+    currencyCode: b.currencyCode ?? "USD",
     debriefGeneratedAt: b.debriefGeneratedAt ?? null,
     hasDebrief: b.debriefGeneratedAt != null,
     ...extras,

@@ -58,6 +58,7 @@ import {
   writeCachedAgreementPdf,
 } from "../lib/agreementPdfCache";
 import { lockFreelancerForActiveBooking } from "../lib/availabilityUtils";
+import { buildRateDisplay, currencyName } from "../lib/countryData";
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY_TALENTLOCK });
 
@@ -242,8 +243,14 @@ router.post("/agreements", async (req, res) => {
     const startDate = booking.startDate.toISOString().split("T")[0];
     const endDate = booking.endDate.toISOString().split("T")[0];
     const rateDisplay = booking.rate
-      ? `${booking.paymentType === "hourly" ? `USD ${booking.rate} per hour` : booking.paymentType === "daily" ? `USD ${booking.rate} per day` : `USD ${booking.rate} fixed price`}`
+      ? buildRateDisplay({
+          rate: booking.rate,
+          paymentType: booking.paymentType,
+          currencyCode: booking.currencyCode ?? "USD",
+        })
       : "as mutually agreed in writing";
+    const bookingCurrencyCode = booking.currencyCode ?? "USD";
+    const bookingCurrencyName = currencyName(bookingCurrencyCode);
 
     // ── Duration-based clause parameters ────────────────────────────────────
     const durationDays = Math.max(1, Math.round(
@@ -320,7 +327,10 @@ Engagement End        : ${endDate}
 Engagement Duration   : ${durationLabel} (${durationDays} calendar days)
 Compensation Type     : ${booking.paymentType}
 Compensation Rate     : ${rateDisplay}
+Booking Currency      : ${bookingCurrencyName} (${bookingCurrencyCode})
 Platform              : TalentLock (talentlock.app)
+
+IMPORTANT: All fee amounts in this agreement must be expressed in ${bookingCurrencyName} (${bookingCurrencyCode}). Do not reference USD or any other currency unless converting is explicitly required by law.
 ─────────────────────────────────────────────
 PRE-COMPUTED CLAUSE PARAMETERS (use these exact values — do not substitute your own):
 Invoicing cadence     : ${invoicingCadence}

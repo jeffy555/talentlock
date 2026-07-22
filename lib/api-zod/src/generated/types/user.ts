@@ -28,9 +28,18 @@ export interface User {
    */
   onboardingRole?: string | null;
   /**
-   * role | profession_category | freelancer_details | employer_details
+   * role | profession_category | location | freelancer_details | employer_details
    * @nullable
    */
   onboardingStep?: string | null;
+  /** ISO 3166-1 alpha-2 country code */
+  countryCode: string;
+  /**
+   * State/province code when applicable
+   * @nullable
+   */
+  stateCode?: string | null;
+  /** ISO 4217 currency derived from country */
+  currencyCode: string;
   createdAt: Date;
 }

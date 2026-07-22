@@ -47,5 +47,7 @@ export interface PublicFreelancerProfile {
   teachingLevels?: string[] | null;
   /** @nullable */
   location?: string | null;
+  countryCode: string;
+  currencyCode: string;
   createdAt: Date;
 }

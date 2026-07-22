@@ -11,12 +11,14 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { Skeleton } from "@/components/ui/skeleton";
+import { currencySymbol } from "@/lib/currencyUtils";
 
 interface EarningsTrendChartProps {
   months: string[];
   freelancerEarnings: number[];
   platformAverage: (number | null)[];
   fieldOfWork: string;
+  currencyCode?: string;
   isLoading?: boolean;
 }
 
@@ -25,8 +27,10 @@ export function EarningsTrendChart({
   freelancerEarnings,
   platformAverage,
   fieldOfWork,
+  currencyCode = "USD",
   isLoading,
 }: EarningsTrendChartProps) {
+  const sym = currencySymbol(currencyCode);
   const platformAvailable = platformAverage.some((v) => v != null);
   const hasEarnings = freelancerEarnings.some((v) => v > 0);
 
@@ -68,12 +72,12 @@ export function EarningsTrendChart({
           <XAxis dataKey="month" tick={{ fontSize: 12, fill: "#94a3b8" }} />
           <YAxis
             tick={{ fontSize: 12, fill: "#94a3b8" }}
-            tickFormatter={(v) => (v >= 1000 ? `$${(v / 1000).toFixed(0)}k` : `$${v}`)}
+            tickFormatter={(v) => (v >= 1000 ? `${sym}${(v / 1000).toFixed(0)}k` : `${sym}${v}`)}
           />
           <Tooltip
             formatter={(value: number, name: string) => {
               const label = name === "myEarnings" ? "Your earnings" : platformLabel;
-              return [`$${Number(value).toLocaleString()}`, label];
+              return [`${sym}${Number(value).toLocaleString()}`, label];
             }}
           />
           <Legend />

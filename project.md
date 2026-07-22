@@ -423,6 +423,8 @@ POST /api/meetings/:id/brief` (202 Accepted); employer-only — freelancers neve
 
 43. **Post-Engagement AI Debrief** — fires fire-and-forget when booking `status → completed`; single OpenAI call (`gpt-4o-mini`) produces dual role-specific debrief cached as `debriefContent` jsonb on `bookings`; each party reads their slice via `GET /api/bookings/:id/debrief`; manual regeneration via `POST /api/bookings/:id/debrief` (202, 24h cooldown via `debriefRegeneratedAt`); `booking_debrief` token label charged to employer; `BOOKING_DEBRIEF_READY` notification + email to both parties; violet (employer) / indigo (freelancer) `DebriefCard` on `/bookings/:id`; employer starter plan gates sections 3–5 in UI only; GDPR nullifies debrief columns on account deletion
 
+44. **Multi-Currency & Location** — country-derived currency on `users` and denormalised on `freelancer_profiles`; booking `currencyCode` frozen at creation with `exchangeRateAtCreation` snapshot for employer spend analytics; `GET /api/countries` + `GET /api/exchange-rates`; onboarding `location` step; Talent Vault dual-currency display and country/currency filters; agreement rate clause uses booking currency (not hardcoded USD)
+
 ### Dashboard analytics panels
 
 | Panel | Role | Endpoint | Frontend components |

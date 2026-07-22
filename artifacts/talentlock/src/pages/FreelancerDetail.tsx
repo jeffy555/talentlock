@@ -315,10 +315,10 @@ export default function FreelancerDetail() {
               <div className="flex items-center gap-2 text-foreground font-medium">
                 <DollarSign className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                 {freelancer.paymentPreference === "hourly" && freelancer.hourlyRate != null
-                  ? formatRate(Number(freelancer.hourlyRate), profileDefaultRateType(freelancer.professionCategory))
+                  ? formatRate(Number(freelancer.hourlyRate), profileDefaultRateType(freelancer.professionCategory), freelancer.currencyCode ?? "USD")
                   : null}
                 {freelancer.paymentPreference === "daily" && freelancer.dailyRate != null
-                  ? formatRate(Number(freelancer.dailyRate), "per_day")
+                  ? formatRate(Number(freelancer.dailyRate), "per_day", freelancer.currencyCode ?? "USD")
                   : null}
                 {freelancer.paymentPreference === "fixed" && "Fixed Rate"}
               </div>
@@ -502,6 +502,7 @@ export default function FreelancerDetail() {
                                     Listed: {formatRate(
                                       Number(paymentType === "hourly" ? freelancer.hourlyRate : freelancer.dailyRate),
                                       paymentTypeToRateType(paymentType, jobRequirement?.rateType),
+                                      freelancer.currencyCode ?? "USD",
                                     )}
                                   </span>
                                 )}

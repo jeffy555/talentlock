@@ -9,6 +9,7 @@ import { calculateCompletenessScore } from "../lib/completenessUtils";
 import { daysUntil } from "../lib/credentialExpiryUtils";
 import { evaluateTalentSearchForUpdatedProfile } from "../lib/talentSearchEvaluator";
 import { notifyWatchlistSubscribers, type FreelancerSnapshot } from "../lib/watchlistAlerts";
+import { syncFreelancerLocationFromUser } from "../lib/locationSync";
 import {
   CreateFreelancerProfileBody,
   UpdateMyFreelancerProfileBody,
@@ -87,6 +88,13 @@ router.get("/freelancers", async (req, res) => {
           WHERE subject ILIKE ${subjectPattern}
         )`,
       );
+    }
+
+    if (params.countryCode) {
+      conditions.push(eq(freelancerProfilesTable.countryCode, params.countryCode));
+    }
+    if (params.currencyCode) {
+      conditions.push(eq(freelancerProfilesTable.currencyCode, params.currencyCode));
     }
 
     conditions.push(gte(freelancerProfilesTable.completenessScore, 60));
@@ -299,7 +307,17 @@ router.post("/freelancers", async (req, res) => {
   try {
     const [user] = await db.select().from(usersTable).where(eq(usersTable.clerkId, clerkId)).limit(1);
     if (!user) { res.status(400).json({ error: "User profile not found" }); return; }
-    const insertData = { ...parsed.data as any, clerkId, userId: user.id, name: user.name, isAvailable: true, isVerified: false, verificationLevel: "unverified" };
+    const insertData = {
+      ...parsed.data as any,
+      clerkId,
+      userId: user.id,
+      name: user.name,
+      isAvailable: true,
+      isVerified: false,
+      verificationLevel: "unverified",
+      countryCode: user.countryCode,
+      currencyCode: user.currencyCode,
+    };
     const [profile] = await db.insert(freelancerProfilesTable)
       .values(insertData)
       .onConflictDoUpdate({
@@ -327,10 +345,13 @@ router.post("/freelancers", async (req, res) => {
           researchPublications: insertData.researchPublications ?? null,
           preferredTeachingMode: insertData.preferredTeachingMode ?? null,
           location: insertData.location ?? null,
+          countryCode: insertData.countryCode,
+          currencyCode: insertData.currencyCode,
           updatedAt: new Date(),
         },
       })
       .returning();
+    await syncFreelancerLocationFromUser(db, user.id);
     res.status(201).json(mapProfile(profile));
   } catch (err) {
     req.log.error({ err }, "Failed to create freelancer profile");

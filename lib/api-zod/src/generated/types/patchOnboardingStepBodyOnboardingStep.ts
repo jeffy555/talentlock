@@ -12,6 +12,7 @@ export type PatchOnboardingStepBodyOnboardingStep =
 export const PatchOnboardingStepBodyOnboardingStep = {
   role: "role",
   profession_category: "profession_category",
+  location: "location",
   freelancer_details: "freelancer_details",
   employer_details: "employer_details",
 } as const;

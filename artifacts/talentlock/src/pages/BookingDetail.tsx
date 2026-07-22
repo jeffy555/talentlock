@@ -393,7 +393,7 @@ export default function BookingDetail() {
                 <p className="text-sm text-blue-700 mt-0.5">
                   {lastProposedBy === "employer" ? "Employer" : "Freelancer"} proposes:{" "}
                   <span className="font-bold text-blue-900 text-base">
-                    {proposedRate != null ? formatRate(proposedRate, bookingRateType) : "—"}
+                    {proposedRate != null ? formatRate(proposedRate, bookingRateType, booking.currencyCode ?? "USD") : "—"}
                   </span>
                 </p>
               </div>
@@ -430,7 +430,7 @@ export default function BookingDetail() {
         <div className="rounded-xl border border-green-200 bg-green-50/60 p-4 flex items-center gap-3">
           <CheckCircle2 className="h-5 w-5 text-green-600 flex-shrink-0" />
           <p className="text-sm font-medium text-green-800">
-            Rate agreed: <span className="font-bold">{formatRate(Number(booking.rate), bookingRateType)}</span>. You can now generate the legal agreement.
+            Rate agreed: <span className="font-bold">{formatRate(Number(booking.rate), bookingRateType, booking.currencyCode ?? "USD")}</span>. You can now generate the legal agreement.
           </p>
         </div>
       )}

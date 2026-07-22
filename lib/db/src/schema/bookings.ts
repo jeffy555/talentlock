@@ -45,6 +45,14 @@ export interface BookingDebriefContent {
   generatedAt: string;
 }
 
+/** USD-base exchange rate snapshot frozen at booking creation (analytics only). */
+export interface ExchangeRateSnapshot {
+  baseCurrency: "USD";
+  rates: Record<string, number>;
+  fetchedAt: string;
+  source: "api" | "cache" | "fallback";
+}
+
 export const bookingsTable = pgTable("bookings", {
   id: serial("id").primaryKey(),
   freelancerId: integer("freelancer_id").notNull(),
@@ -63,6 +71,8 @@ export const bookingsTable = pgTable("bookings", {
   debriefContent: jsonb("debrief_content").$type<BookingDebriefContent>(),
   debriefGeneratedAt: timestamp("debrief_generated_at", { withTimezone: true }),
   debriefRegeneratedAt: timestamp("debrief_regenerated_at", { withTimezone: true }),
+  currencyCode: text("currency_code").notNull().default("USD"),
+  exchangeRateAtCreation: jsonb("exchange_rate_at_creation").$type<ExchangeRateSnapshot>(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });

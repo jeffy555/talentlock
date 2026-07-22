@@ -11,6 +11,17 @@ import type { PatchOnboardingStepBodyOnboardingStep } from "./patchOnboardingSte
 export interface PatchOnboardingStepBody {
   onboardingRole: PatchOnboardingStepBodyOnboardingRole;
   onboardingStep: PatchOnboardingStepBodyOnboardingStep;
+  /**
+   * Required when onboardingStep is location
+   * @minLength 2
+   * @maxLength 2
+   */
+  countryCode?: string;
+  /**
+   * State/province code when required by country
+   * @nullable
+   */
+  stateCode?: string | null;
   email: string;
   name: string;
   /** @nullable */

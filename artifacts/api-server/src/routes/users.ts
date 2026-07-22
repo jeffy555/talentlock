@@ -5,6 +5,8 @@ import { usersTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import { UpsertMeBody, PatchNotificationPreferencesBody, PatchOnboardingStepBody } from "@workspace/api-zod";
 import { sanitiseText } from "../lib/sanitise";
+import { validateLocationInput } from "../lib/countryData";
+import { syncFreelancerLocationFromUser } from "../lib/locationSync";
 import { z } from "zod/v4";
 
 const router = Router();
@@ -96,7 +98,7 @@ router.patch("/users/me/onboarding-step", async (req, res) => {
       res.status(409).json({ error: "Onboarding already complete" });
       return;
     }
-    const payload = {
+    const payload: Record<string, unknown> = {
       clerkId,
       role: "pending" as const,
       email: parsed.data.email,
@@ -106,18 +108,43 @@ router.patch("/users/me/onboarding-step", async (req, res) => {
       onboardingStep: parsed.data.onboardingStep,
       updatedAt: new Date(),
     };
+
+    if (parsed.data.onboardingStep === "location") {
+      const countryCode = (parsed.data as { countryCode?: string }).countryCode;
+      const stateCode = (parsed.data as { stateCode?: string | null }).stateCode ?? null;
+      if (!countryCode) {
+        res.status(400).json({ error: "countryCode is required for location step" });
+        return;
+      }
+      const loc = validateLocationInput(countryCode, stateCode);
+      if (!loc.ok) {
+        res.status(400).json({ error: loc.error });
+        return;
+      }
+      payload.countryCode = countryCode;
+      payload.stateCode = stateCode;
+      payload.currencyCode = loc.currencyCode;
+    }
+
     const [user] = await db
       .insert(usersTable)
-      .values(payload)
+      .values(payload as typeof usersTable.$inferInsert)
       .onConflictDoUpdate({
         target: usersTable.clerkId,
         set: {
-          email: payload.email,
-          name: payload.name,
-          avatarUrl: payload.avatarUrl,
-          onboardingRole: payload.onboardingRole,
-          onboardingStep: payload.onboardingStep,
-          updatedAt: payload.updatedAt,
+          email: payload.email as string,
+          name: payload.name as string,
+          avatarUrl: payload.avatarUrl as string | null,
+          onboardingRole: payload.onboardingRole as string,
+          onboardingStep: payload.onboardingStep as string,
+          ...(parsed.data.onboardingStep === "location"
+            ? {
+                countryCode: payload.countryCode as string,
+                stateCode: payload.stateCode as string | null,
+                currencyCode: payload.currencyCode as string,
+              }
+            : {}),
+          updatedAt: payload.updatedAt as Date,
         },
       })
       .returning();
@@ -128,6 +155,52 @@ router.patch("/users/me/onboarding-step", async (req, res) => {
     res.json(user);
   } catch (err) {
     req.log.error({ err }, "Failed to save onboarding step");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+const PatchLocationBody = z.object({
+  countryCode: z.string().min(2).max(2),
+  stateCode: z.string().min(1).max(16).nullable().optional(),
+});
+
+router.patch("/users/me/location", async (req, res) => {
+  const { userId: clerkId } = getAuth(req);
+  if (!clerkId) {
+    res.status(401).json({ error: "Unauthorized" });
+    return;
+  }
+  const parsed = PatchLocationBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+  const loc = validateLocationInput(parsed.data.countryCode, parsed.data.stateCode ?? null);
+  if (!loc.ok) {
+    res.status(400).json({ error: loc.error });
+    return;
+  }
+  try {
+    const [updated] = await db
+      .update(usersTable)
+      .set({
+        countryCode: parsed.data.countryCode,
+        stateCode: parsed.data.stateCode ?? null,
+        currencyCode: loc.currencyCode,
+        updatedAt: new Date(),
+      })
+      .where(eq(usersTable.clerkId, clerkId))
+      .returning();
+    if (!updated) {
+      res.status(404).json({ error: "User not found" });
+      return;
+    }
+    if (updated.role === "freelancer") {
+      await syncFreelancerLocationFromUser(db, updated.id);
+    }
+    res.json(updated);
+  } catch (err) {
+    req.log.error({ err }, "Failed to update user location");
     res.status(500).json({ error: "Internal server error" });
   }
 });

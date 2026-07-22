@@ -1,3 +1,5 @@
+import { currencySymbol } from "./currencyUtils";
+
 export type RateType = "hourly" | "per_day" | "per_session" | "per_course";
 
 const RATE_UNIT_LABELS: Record<RateType, string> = {
@@ -10,10 +12,11 @@ const RATE_UNIT_LABELS: Record<RateType, string> = {
 export function formatRate(
   amount: number,
   rateType: RateType | null | undefined,
-  currencySymbol = "$",
+  currency: string = "USD",
 ): string {
+  const symbol = currency.length === 3 ? currencySymbol(currency) : currency;
   const unit = RATE_UNIT_LABELS[rateType ?? "hourly"];
-  return `${currencySymbol}${amount.toLocaleString()}${unit}`;
+  return `${symbol}${amount.toLocaleString()}${unit}`;
 }
 
 export function rateUnitLabel(rateType: RateType | null | undefined): string {

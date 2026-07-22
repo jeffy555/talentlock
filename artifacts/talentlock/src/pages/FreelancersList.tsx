@@ -4,6 +4,7 @@ import { format } from "date-fns";
 import {
   useListFreelancers,
   useGetMe,
+  useListCountries,
   useGetMySubscription,
   useGetTeam,
   useListSavedFreelancers,
@@ -39,6 +40,8 @@ import { resolveVerificationLevel } from "@/lib/verification";
 import { DatePicker } from "@/components/ui/date-picker";
 import { formatNextAvailable, nextAvailableColour, toApiDateString } from "@/lib/availabilityUtils";
 import { formatRate, profileDefaultRateType } from "@/lib/rateFormatUtils";
+import { DualRateDisplay } from "@/components/currency/DualRateDisplay";
+import { useExchangeRates, countryName } from "@/lib/currencyUtils";
 import { EDUCATION_TYPE_LABELS } from "@/components/onboarding/TeachingDetailsSection";
 import { cn } from "@/lib/utils";
 import type { ProfessionCategory } from "@workspace/api-client-react";
@@ -121,6 +124,8 @@ function FreelancerCard({
   onRemove,
   vaultHidden,
   watchlistNotes,
+  employerCurrency,
+  exchangeRates,
 }: {
   freelancer: FreelancerProfile;
   index: number;
@@ -130,6 +135,8 @@ function FreelancerCard({
   onRemove?: () => void;
   vaultHidden?: boolean;
   watchlistNotes?: string | null;
+  employerCurrency: string;
+  exchangeRates: ReturnType<typeof useExchangeRates>["data"];
 }) {
   const verificationLevel = resolveVerificationLevel(freelancer as { verificationLevel?: string; isVerified?: boolean });
 
@@ -163,6 +170,11 @@ function FreelancerCard({
           )}
         </div>
         <CardDescription className="text-primary font-medium text-sm mt-1.5 line-clamp-1">{freelancer.tagline}</CardDescription>
+        {(freelancer.location || freelancer.countryCode) && (
+          <p className="text-xs text-muted-foreground mt-1">
+            {freelancer.location ?? countryName(freelancer.countryCode ?? "US")}
+          </p>
+        )}
         {vaultHidden && (
           <Badge variant="outline" className="text-xs text-muted-foreground w-fit mt-1.5">
             No longer in Talent Vault
@@ -211,15 +223,37 @@ function FreelancerCard({
           </div>
           <div>
             <span className="text-muted-foreground block text-[10px] font-bold uppercase tracking-widest mb-1">Rate</span>
-            <span className="font-semibold text-foreground">
-              {freelancer.paymentPreference === "hourly" && freelancer.hourlyRate != null
-                ? formatRate(Number(freelancer.hourlyRate), profileDefaultRateType(freelancer.professionCategory))
-                : null}
-              {freelancer.paymentPreference === "daily" && freelancer.dailyRate != null
-                ? formatRate(Number(freelancer.dailyRate), "per_day")
-                : null}
+            <div className="font-semibold text-foreground">
+              {freelancer.paymentPreference === "hourly" && freelancer.hourlyRate != null ? (
+                <DualRateDisplay
+                  amount={Number(freelancer.hourlyRate)}
+                  rateType={profileDefaultRateType(freelancer.professionCategory)}
+                  primaryCurrency={freelancer.currencyCode ?? "USD"}
+                  secondaryCurrency={
+                    employerCurrency !== (freelancer.currencyCode ?? "USD")
+                      ? employerCurrency
+                      : undefined
+                  }
+                  rates={exchangeRates}
+                  ratesSource={exchangeRates?.source}
+                />
+              ) : null}
+              {freelancer.paymentPreference === "daily" && freelancer.dailyRate != null ? (
+                <DualRateDisplay
+                  amount={Number(freelancer.dailyRate)}
+                  rateType="per_day"
+                  primaryCurrency={freelancer.currencyCode ?? "USD"}
+                  secondaryCurrency={
+                    employerCurrency !== (freelancer.currencyCode ?? "USD")
+                      ? employerCurrency
+                      : undefined
+                  }
+                  rates={exchangeRates}
+                  ratesSource={exchangeRates?.source}
+                />
+              ) : null}
               {freelancer.paymentPreference === "fixed" && "Fixed Rate"}
-            </span>
+            </div>
           </div>
         </div>
       </CardContent>
@@ -283,6 +317,12 @@ export default function FreelancersList() {
   const [availableFromDate, setAvailableFromDate] = useState<Date | undefined>();
   const [professionCategoryFilter, setProfessionCategoryFilter] = useState<ProfessionCategory | undefined>(undefined);
   const [teachingSubject, setTeachingSubject] = useState("");
+  const [countryFilter, setCountryFilter] = useState<string>("all");
+  const [currencyFilter, setCurrencyFilter] = useState<string>("all");
+
+  const { data: countriesData } = useListCountries();
+  const { data: exchangeRates } = useExchangeRates();
+  const employerCurrency = user?.currencyCode ?? "USD";
 
   const listParams = {
     ...(verifiedOnly ? { verified: true } : {}),
@@ -290,6 +330,8 @@ export default function FreelancersList() {
     ...(debouncedQuery ? { q: debouncedQuery } : {}),
     ...(professionCategoryFilter ? { professionCategory: professionCategoryFilter } : {}),
     ...(professionCategoryFilter === "education" && teachingSubject ? { teachingSubject } : {}),
+    ...(countryFilter !== "all" ? { countryCode: countryFilter } : {}),
+    ...(currencyFilter !== "all" ? { currencyCode: currencyFilter } : {}),
   };
   const { data: freelancers, isLoading } = useListFreelancers(listParams, {
     query: { enabled: vaultView === "search" } as any,
@@ -336,10 +378,10 @@ export default function FreelancersList() {
     return true;
   });
 
-  const hasActiveFilters = fieldFilter !== "all" || minRate || maxRate || availableOnly || verifiedOnly || availableFromDate || debouncedQuery || professionCategoryFilter || teachingSubject;
+  const hasActiveFilters = fieldFilter !== "all" || minRate || maxRate || availableOnly || verifiedOnly || availableFromDate || debouncedQuery || professionCategoryFilter || teachingSubject || countryFilter !== "all" || currencyFilter !== "all";
 
   const clearFilters = () => {
-    setFieldFilter("all"); setMinRate(""); setMaxRate(""); setAvailableOnly(false); setVerifiedOnly(false); setAvailableFromDate(undefined); setSearchQuery(""); setProfessionCategoryFilter(undefined); setTeachingSubject("");
+    setFieldFilter("all"); setMinRate(""); setMaxRate(""); setAvailableOnly(false); setVerifiedOnly(false); setAvailableFromDate(undefined); setSearchQuery(""); setProfessionCategoryFilter(undefined); setTeachingSubject(""); setCountryFilter("all"); setCurrencyFilter("all");
   };
 
   const watchlistCount = saved?.length ?? 0;
@@ -519,6 +561,34 @@ export default function FreelancersList() {
                     </Label>
                   </div>
                   <div className="space-y-1.5 min-w-[200px]">
+                    <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Country</Label>
+                    <Select value={countryFilter} onValueChange={setCountryFilter}>
+                      <SelectTrigger className="h-9 bg-background text-sm">
+                        <SelectValue placeholder="All countries" />
+                      </SelectTrigger>
+                      <SelectContent className="max-h-64">
+                        <SelectItem value="all">All countries</SelectItem>
+                        {(countriesData?.countries ?? []).map((c) => (
+                          <SelectItem key={c.code} value={c.code}>{c.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5 min-w-[200px]">
+                    <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Currency</Label>
+                    <Select value={currencyFilter} onValueChange={setCurrencyFilter}>
+                      <SelectTrigger className="h-9 bg-background text-sm">
+                        <SelectValue placeholder="All currencies" />
+                      </SelectTrigger>
+                      <SelectContent className="max-h-64">
+                        <SelectItem value="all">All currencies</SelectItem>
+                        {[...new Set((countriesData?.countries ?? []).map((c) => c.currencyCode))].map((code) => (
+                          <SelectItem key={code} value={code}>{code}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5 min-w-[200px]">
                     <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Available from</Label>
                     <DatePicker
                       value={availableFromDate}
@@ -594,6 +664,8 @@ export default function FreelancersList() {
                   index={index}
                   useTeamShortlist={isTeamMember}
                   teamShortlisted={teamShortlistIds.has(freelancer.id)}
+                  employerCurrency={employerCurrency}
+                  exchangeRates={exchangeRates}
                 />
               ))}
             </div>
@@ -638,6 +710,8 @@ export default function FreelancersList() {
                   useTeamShortlist={false}
                   vaultHidden={(item.freelancer.completenessScore ?? 0) < 60}
                   watchlistNotes={item.notes}
+                  employerCurrency={employerCurrency}
+                  exchangeRates={exchangeRates}
                 />
               ))}
             </div>
@@ -683,6 +757,8 @@ export default function FreelancersList() {
                   teamShortlisted
                   addedByLabel={formatAddedBy(item)}
                   onRemove={() => handleRemoveFromTeamShortlist(item.freelancer.id)}
+                  employerCurrency={employerCurrency}
+                  exchangeRates={exchangeRates}
                 />
               ))}
             </div>

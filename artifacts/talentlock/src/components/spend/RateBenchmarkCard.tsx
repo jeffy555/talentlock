@@ -4,6 +4,7 @@ import type { SpendAnalyticsRateBenchmark } from "@workspace/api-client-react";
 
 interface RateBenchmarkCardProps {
   data: SpendAnalyticsRateBenchmark | null | undefined;
+  currencyCode?: string;
   isLoading?: boolean;
 }
 
@@ -33,7 +34,7 @@ function fieldComparison(differencePercent: number): { text: string; className: 
   return { text: "─ At market", className: "text-slate-500" };
 }
 
-export function RateBenchmarkCard({ data, isLoading }: RateBenchmarkCardProps) {
+export function RateBenchmarkCard({ data, currencyCode = "USD", isLoading }: RateBenchmarkCardProps) {
   if (isLoading) {
     return <Skeleton className="h-48 w-full rounded-lg" />;
   }
@@ -76,10 +77,10 @@ export function RateBenchmarkCard({ data, isLoading }: RateBenchmarkCardProps) {
 
       <div className="mt-4 space-y-1">
         <p className="text-sm text-slate-700">
-          Your avg paid: <span className="font-semibold">{formatRate(data.averageRatePaid)}</span>
+          Your avg paid: <span className="font-semibold">{formatRate(data.averageRatePaid, currencyCode)}</span>
         </p>
         <p className="text-sm text-slate-700">
-          Market median: <span className="font-semibold">{formatRate(data.marketMedian)}</span>
+          Market median: <span className="font-semibold">{formatRate(data.marketMedian, currencyCode)}</span>
         </p>
         <p className={`text-sm font-medium ${overallTrendClass}`}>{overallTrendText}</p>
         <p className={`text-xs ${overall.className}`}>{overall.text}</p>
@@ -98,7 +99,7 @@ export function RateBenchmarkCard({ data, isLoading }: RateBenchmarkCardProps) {
                 >
                   <span className="text-slate-700 truncate">{field.field}</span>
                   <span className="text-slate-600 shrink-0 tabular-nums">
-                    {formatRate(field.avgPaid)}
+                    {formatRate(field.avgPaid, currencyCode)}
                   </span>
                   <span className={`shrink-0 ${comparison.className}`}>{comparison.text}</span>
                 </div>

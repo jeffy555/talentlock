@@ -5,10 +5,10 @@
  * TalentLock API specification
  * OpenAPI spec version: 0.1.0
  */
-import type { EarningsIntelligenceProjectionCurrency } from "./earningsIntelligenceProjectionCurrency";
 
 export interface EarningsIntelligenceProjection {
   projectedAmount: number;
   milestoneCount: number;
-  currency: EarningsIntelligenceProjectionCurrency;
+  /** ISO 4217 currency code for earnings amounts */
+  currency: string;
 }
