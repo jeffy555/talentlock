@@ -4,14 +4,17 @@
 > Every new feature follows the same folder structure and document execution order defined here.
 > Read this file first. Always.
 
+> **Path note:** Feature specs live under `spec/` at the repo root (not `specs/`). Some older docs and Cursor rules still say `specs/` — treat `spec/` as canonical. One legacy spec folder (`agreement-ai-summary/`) lives at the repo root beside `spec/`.
+
 ---
 
 ## Folder Structure
 
-All feature specification files live under a top-level `specs/` directory at the repository root, alongside `artifacts/`, `lib/`, and other workspace packages.
+All feature specification files live under a top-level `spec/` directory at the repository root, alongside `artifacts/`, `lib/`, and other workspace packages.
 
 ```
 talentlock/
+├── agreement-ai-summary/          ← ✅ Complete (legacy location at repo root)
 ├── artifacts/
 │   ├── talentlock/              ← React + Vite frontend
 │   └── api-server/              ← Express 5 API server
@@ -21,7 +24,7 @@ talentlock/
 │   ├── api-client-react/
 │   ├── api-zod/
 │   └── ...
-├── specs/                                          ← ALL specification files live here
+├── spec/                                           ← ALL specification files live here
 │   ├── spec.md                                     ← THIS FILE — master index + execution rules
 │   │
 │   ├── token-usage/                                ← ✅ Complete
@@ -184,53 +187,19 @@ talentlock/
 │   │   ├── UI.md
 │   │   └── validation.md
 │   │
-│   ├── agreement-ai-summary/                       ← 🟡 Ready to Execute
-│   │   ├── features.md
-│   │   ├── clarify.md
-│   │   ├── plan.md
-│   │   ├── task.md
-│   │   ├── UI.md
-│   │   └── validation.md
-│   │
-│   ├── agreement-pdf-download/                     ← 🟡 Ready to Execute
-│   │   ├── features.md
-│   │   ├── clarify.md
-│   │   ├── plan.md
-│   │   ├── task.md
-│   │   ├── UI.md
-│   │   └── validation.md
-│   │
-│   ├── cruise-mode/                                ← 🟡 Ready to Execute
-│   │   ├── features.md
-│   │   ├── clarify.md
-│   │   ├── plan.md
-│   │   ├── task.md
-│   │   ├── UI.md
-│   │   └── validation.md
-│   │
-│   ├── teaching-professional-profile/             ← 🟡 Ready to Execute
-│   │   ├── features.md
-│   │   ├── clarify.md
-│   │   ├── plan.md
-│   │   ├── task.md
-│   │   ├── UI.md
-│   │   └── validation.md
-│   │
-│   ├── talent-search/                             ← 🟡 Ready to Execute
-│   │   ├── features.md
-│   │   ├── clarify.md
-│   │   ├── plan.md
-│   │   ├── task.md
-│   │   ├── UI.md
-│   │   └── validation.md
-│   │
-│   ├── ai-meeting-brief/                          ← 🟡 Ready to Execute
-│   │   ├── features.md
-│   │   ├── clarify.md
-│   │   ├── plan.md
-│   │   ├── task.md
-│   │   ├── UI.md
-│   │   └── validation.md
+│   ├── agreement-pdf-download/                     ← ✅ Complete
+│   ├── cruisemode/                                   ← ✅ Complete (Cruise Mode)
+│   ├── teaching-professional-profile/              ← ✅ Complete
+│   ├── employer-cruisemode/                          ← ✅ Complete (TalentSearch)
+│   ├── aimeetingdebrief/                             ← ✅ Complete (AI Meeting Brief)
+│   ├── employee-verification/                        ← ✅ Complete (Employer Verification)
+│   ├── messaging-service/                            ← ✅ Complete (In-App Direct Messaging)
+│   ├── onboarding-scaffolding/                       ← ✅ Complete
+│   ├── credential-expiry-tracking/                   ← ✅ Complete
+│   ├── freelancer-watchlist/                         ← ✅ Complete
+│   ├── post-engagement-ai-debrief/                   ← ✅ Complete
+│   ├── api-testing/                                  ← 🔄 In progress (Phase 0 harness live)
+│   ├── ui-ux-improvements/                           ← 🟡 Ready to Execute
 │   │
 │   └── {next-feature}/                             ← Future features follow the same pattern
 │       ├── features.md
@@ -453,7 +422,7 @@ The agent never needs `features.md` or `clarify.md` — those are already absorb
 Every Cursor Agent session that implements a feature must begin with this prompt pattern:
 
 ```
-Read @project.md @specs/{feature}/plan.md @specs/{feature}/task.md
+Read @project.md @spec/{feature}/plan.md @spec/{feature}/task.md
 before writing any code.
 
 Execute Phase {N} only. Do not touch any files outside this phase.
@@ -467,39 +436,40 @@ The `.cursor/rules/talentlock.mdc` file at the repo root enforces these rules au
 
 | Feature | Folder | Status |
 |---|---|---|
-| AI Token Consumption Dashboard | `specs/token-usage/` | ✅ Complete · 🟢 P1 follow-up (full 9-feature breakdown) validated 2026-06-09 |
-| AI Enhancements | `specs/ai-enhancements/` | ✅ Complete |
-| Document Verification | `specs/document-verification/` | ✅ Complete |
-| Smarter Matching Explanation | `specs/smarter-matching/` | ✅ Complete |
-| Agreement Templates + Redlining | `specs/agreement-templates-redlining/` | ✅ Complete |
-| Job Description Assistant | `specs/job-description-assistant/` | ✅ Complete |
-| Per-Conversation Token Breakdown | `specs/per-conversation-token-breakdown/` | ✅ Complete |
-| Reviews & Ratings | `specs/reviews-ratings/` | ✅ Complete |
-| Notifications Centre | `specs/notifications-centre/` | ✅ Complete |
-| Earnings Intelligence | `specs/earnings-intelligence/` | ✅ Complete |
-| Employer Spend Analytics | `specs/employer-spend-analytics/` | ✅ Complete |
-| Employer Analytics Dashboard | `specs/employer-analytics-dashboard/` | ✅ Complete |
-| Availability Calendar (Visual) | `specs/availability-calendar/` | ✅ Complete · 🟢 P1 follow-up (defer lock to confirmation) validated 2026-06-09 |
-| Security Hardening | `specs/security-hardening/` | ✅ Complete · 🟢 P1 follow-up (sanitisation on 6 routes) validated 2026-06-09 |
-| Product Gaps | `specs/product-gaps/` | ✅ Complete (validated 2026-06-08) |
-| AI Proposal Generator | `specs/ai-proposal-generator/` | ✅ Complete (validated 2026-06-08) |
-| Smart Rate Suggestions | `specs/smart-rate-suggestions/` | ✅ Complete |
-| Team Accounts (Enterprise) | `specs/team-accounts-enterprise/` | ✅ Complete |
-| AI Contract Health Score | `specs/ai-contract-health-score/` | ✅ Complete (validated 2026-06-09) |
-| **Auth Hardening (Access Control)** | `specs/AuthHardening/` | ✅ Complete (validated 2026-06-09) |
-| Agreement AI Summary | `specs/agreement-ai-summary/` | 🟡 Ready to Execute |
-| Agreement PDF Download | `specs/agreement-pdf-download/` | 🟡 Ready to Execute |
-| Cruise Mode | `specs/cruise-mode/` | 🟡 Ready to Execute |
-| Teaching Professional Profile | `specs/teaching-professional-profile/` | 🟡 Ready to Execute |
-| TalentSearch (Employer Cruise Mode) | `specs/talent-search/` | 🟡 Ready to Execute |
-| AI Meeting Brief Generator | `specs/ai-meeting-brief/` | 🟡 Ready to Execute |
-| TalentSearch (Employer Cruise Mode) | `specs/talent-search/` | 🟡 Ready to Execute |
-| AI Meeting Brief Generator | `specs/ai-meeting-brief/` | 🟡 Ready to Execute |
-| **Automated API Testing (Regression)** | `spec/api-testing/` | 🔄 In progress — Phase 0 harness on `cursor/regression-tests-9a23` |
+| AI Token Consumption Dashboard | `spec/token-usage/` | ✅ Complete · 🟢 P1 follow-up (full 9-feature breakdown) validated 2026-06-09 |
+| AI Enhancements | _(absorbed into other specs — no standalone folder)_ | ✅ Complete |
+| Document Verification | `spec/document-verification/` | ✅ Complete |
+| Smarter Matching Explanation | `spec/smarter-matching/` | ✅ Complete |
+| Agreement Templates + Redlining | `spec/agreement-templates-redlining/` | ✅ Complete |
+| Job Description Assistant | `spec/JobDescAssistant/` | ✅ Complete |
+| Per-Conversation Token Breakdown | `spec/PerConTokenBreakdown/` | ✅ Complete |
+| Reviews & Ratings | `spec/ReviewRatings/` | ✅ Complete |
+| Notifications Centre | `spec/NotificationCenter/` | ✅ Complete |
+| Earnings Intelligence | `spec/EarningsIntelligence/` | ✅ Complete |
+| Employer Spend Analytics | `spec/EmployerSpendAnalytics/` | ✅ Complete |
+| Employer Analytics Dashboard | `spec/EmployerAnalyticsDashboard/` | ✅ Complete |
+| Availability Calendar (Visual) | `spec/AvailabilityCalendar/` | ✅ Complete · 🟢 P1 follow-up (defer lock to confirmation) validated 2026-06-09 |
+| Security Hardening | `spec/SecurityHardening/` | ✅ Complete · 🟢 P1 follow-up (sanitisation on 6 routes) validated 2026-06-09 |
+| Product Gaps | `spec/ProductGaps/` | ✅ Complete (validated 2026-06-08) |
+| AI Proposal Generator | `spec/ai-proposal-generator/` | ✅ Complete (validated 2026-06-08) |
+| Smart Rate Suggestions | `spec/smart-rate-suggestions/` | ✅ Complete |
+| Team Accounts (Enterprise) | `spec/team-accounts-enterprise/` | ✅ Complete |
+| AI Contract Health Score | `spec/ai-contract-health-score/` | ✅ Complete (validated 2026-06-09) |
+| **Auth Hardening (Access Control)** | `spec/AuthHardening/` | ✅ Complete (validated 2026-06-09) |
+| Agreement AI Summary | `agreement-ai-summary/` (repo root) | ✅ Complete |
+| Agreement PDF Download | `spec/agreement-pdf-download/` | ✅ Complete |
+| Cruise Mode | `spec/cruisemode/` | ✅ Complete |
+| Teaching Professional Profile | `spec/teaching-professional-profile/` | ✅ Complete |
+| TalentSearch (Employer Cruise Mode) | `spec/employer-cruisemode/` | ✅ Complete |
+| AI Meeting Brief Generator | `spec/aimeetingdebrief/` | ✅ Complete |
+| Employer Verification | `spec/employee-verification/` | ✅ Complete |
+| In-App Direct Messaging | `spec/messaging-service/` | ✅ Complete |
 | Onboarding Scaffolding | `spec/onboarding-scaffolding/` | ✅ Complete |
-| Credential Expiry Tracking | `spec/credential-expiry-tracking/` | ✅ Complete — backend live-verified end-to-end against the real database (16/16 checks); frontend visual QA pending a running dev server |
-| Freelancer Watchlist | `spec/freelancer-watchlist/` | 🔄 In progress — implementation on `cursor/freelancer-watchlist-9a23` |
-| Post-Engagement AI Debrief | `spec/post-engagement-ai-debrief/` | ✅ Implemented |
+| Credential Expiry Tracking | `spec/credential-expiry-tracking/` | ✅ Complete |
+| Freelancer Watchlist | `spec/freelancer-watchlist/` | ✅ Complete |
+| Post-Engagement AI Debrief | `spec/post-engagement-ai-debrief/` | ✅ Complete (DB synced 2026-07-22) |
+| UI/UX Improvements | `spec/ui-ux-improvements/` | 🟡 Ready to Execute |
+| **Automated API Testing (Regression)** | `spec/api-testing/` | 🔄 In progress — Vitest harness + integration suites live; legacy `validate-*.mjs` migration incomplete |
 
 > Add new features to this table when their `features.md` is created.
 > Update status as work progresses: 🟡 Ready → 🔄 In Progress → ✅ Complete
@@ -519,14 +489,14 @@ Tracking the findings from the TalentLock Security & Production Readiness review
 | 🟠 P1 | Token breakdown — extend to all 9 features | `token-usage/` (Module 5 addendum) | ✅ Implemented & validated 2026-06-09 |
 | 🟠 P1 | Apply `sanitiseText()` to 6 missing free-text fields | `security-hardening/` (Module 2 addendum) | ✅ Implemented & validated 2026-06-09 |
 | 🟠 P1 | Fix premature availability lock | `availability-calendar/` (Module 8 addendum) | ✅ Implemented & validated 2026-06-09 |
-| 🟠 P1 | Add 4 missing endpoint groups to OpenAPI + fix raw `fetch` | `specs/OpenApiContractCleanup/` | ⬜ Not started |
+| 🟠 P1 | Add 4 missing endpoint groups to OpenAPI + fix raw `fetch` | `spec/OpenApiContractCleanup/` | ⬜ Not started |
 | 🟡 P2 | Automated tests (Vitest + Supertest) + wire `validate-*.mjs` to CI | `spec/api-testing/` | 🔄 In progress (Phase 0 on `cursor/regression-tests-9a23`) |
 | 🟡 P2 | Fix N+1 on bookings/meetings/agreements list endpoints | _backend perf_ | ⬜ Not started |
 | 🟡 P2 | Schema & type hygiene (FKs, `as any`, tx scope, Zod, split large routes) | _backend cleanup_ | ⬜ Not started |
-| 🟡 P2 | Stripe real checkout + webhook signature verification | `specs/stripe-billing/` | ⬜ Not started |
+| 🟡 P2 | Stripe real checkout + webhook signature verification | `spec/stripe-billing/` | ⬜ Not started |
 | 🟡 P2 | AI match history cap + profile caching | _backend perf_ | ⬜ Not started |
-| 🟡 P2 | Booking acceptance state machine (freelancer accept/decline) | `specs/booking-acceptance/` | ⬜ Not started |
-| 🟢 P3 | Boot guard (reject default creds), CORS lockdown, trust proxy, remove demo route | `specs/production-readiness/` | ⬜ Not started |
+| 🟡 P2 | Booking acceptance state machine (freelancer accept/decline) | `spec/booking-acceptance/` | ⬜ Not started |
+| 🟢 P3 | Boot guard (reject default creds), CORS lockdown, trust proxy, remove demo route | `spec/production-readiness/` | ⬜ Not started |
 
 > P0 and P1 from the review are **closed**. Remaining work is P2 (important, non-blocking) and P3 (production config / enterprise). See the P2 plan tracked with the team.
 
@@ -536,7 +506,7 @@ Tracking the findings from the TalentLock Security & Production Readiness review
 
 When a new feature request comes in:
 
-1. Create `specs/{feature-slug}/` folder
+1. Create `spec/{feature-slug}/` folder
 2. Add the feature to the Feature Index table above with status `🟡 Ready`
 3. Follow Steps 1–7 in order — do not skip or reorder
 4. Never commit `task.md` until all blockers in `clarify.md` are resolved in `plan.md`

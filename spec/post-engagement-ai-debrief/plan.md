@@ -335,10 +335,10 @@ Employer starter: hide sections 3–5 with upgrade CTA.
 
 | Phase | Description | Status |
 |-------|-------------|--------|
-| 1 | Database schema + verify-schema + push | ⬜ |
-| 2 | Backend generator, routes, OpenAPI, codegen, tests | ⬜ |
-| 3 | Frontend DebriefCard + BookingDetail + notifications | ⬜ |
-| 4 | Validation.md checklist | ⬜ |
+| 1 | Database schema + verify-schema + push | ✅ (Neon synced 2026-07-22) |
+| 2 | Backend generator, routes, OpenAPI, codegen, tests | ✅ |
+| 3 | Frontend DebriefCard + BookingDetail + notifications | ✅ |
+| 4 | Validation.md checklist | 🔄 Manual UI + integration env checks pending |
 
 ---
 
