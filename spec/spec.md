@@ -499,6 +499,7 @@ The `.cursor/rules/talentlock.mdc` file at the repo root enforces these rules au
 | Onboarding Scaffolding | `spec/onboarding-scaffolding/` | ✅ Complete |
 | Credential Expiry Tracking | `spec/credential-expiry-tracking/` | ✅ Complete — backend live-verified end-to-end against the real database (16/16 checks); frontend visual QA pending a running dev server |
 | Freelancer Watchlist | `spec/freelancer-watchlist/` | 🔄 In progress — implementation on `cursor/freelancer-watchlist-9a23` |
+| Post-Engagement AI Debrief | `spec/post-engagement-ai-debrief/` | ✅ Implemented |
 
 > Add new features to this table when their `features.md` is created.
 > Update status as work progresses: 🟡 Ready → 🔄 In Progress → ✅ Complete

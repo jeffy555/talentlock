@@ -46,5 +46,8 @@ export interface Booking {
   employerName?: string | null;
   employerVerificationLevel?: BookingEmployerVerificationLevel;
   review: PublicReview | null;
+  /** @nullable */
+  debriefGeneratedAt?: Date | null;
+  hasDebrief: boolean;
   createdAt: Date;
 }

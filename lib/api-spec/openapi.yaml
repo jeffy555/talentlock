@@ -955,6 +955,95 @@ paths:
               schema:
                 $ref: "#/components/schemas/Booking"
 
+  /bookings/{id}/debrief:
+    get:
+      operationId: getBookingDebrief
+      tags: [bookings]
+      summary: Get role-filtered post-engagement debrief for a completed booking
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Debrief slice for the authenticated participant
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BookingDebriefResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "404":
+          description: Booking not found or debrief not ready
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+    post:
+      operationId: postBookingDebrief
+      tags: [bookings]
+      summary: Generate or regenerate post-engagement debrief (participant only, completed bookings)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "202":
+          description: Debrief generation started
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                required:
+                  - message
+        "402":
+          description: Token limit reached
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TokenLimitError"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "422":
+          description: Booking not completed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "429":
+          description: Regeneration cooldown active
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DebriefRegenCooldownError"
+
   /bookings/{id}/negotiate:
     post:
       operationId: negotiateBooking
@@ -4753,6 +4842,11 @@ components:
           oneOf:
             - $ref: "#/components/schemas/PublicReview"
             - type: "null"
+        debriefGeneratedAt:
+          type: ["string", "null"]
+          format: date-time
+        hasDebrief:
+          type: boolean
         createdAt:
           type: string
           format: date-time
@@ -4767,6 +4861,150 @@ components:
         - negotiationStatus
         - createdAt
         - review
+        - hasDebrief
+
+    EmployerDebriefEngagementSnapshot:
+      type: object
+      properties:
+        freelancerName:
+          type: string
+        field:
+          type: string
+        startDate:
+          type: string
+        endDate:
+          type: string
+        rate:
+          type: number
+        rateType:
+          type: string
+        milestonesCompleted:
+          type: integer
+        milestonesTotal:
+          type: integer
+      required:
+        - freelancerName
+        - field
+        - startDate
+        - endDate
+        - rate
+        - rateType
+        - milestonesCompleted
+        - milestonesTotal
+
+    RehireRecommendation:
+      type: object
+      properties:
+        verdict:
+          type: string
+          enum: [strong_rehire, rehire_with_caveats, one_off]
+        reasons:
+          type: array
+          items:
+            type: string
+      required:
+        - verdict
+        - reasons
+
+    EmployerDebrief:
+      type: object
+      properties:
+        engagementSnapshot:
+          $ref: "#/components/schemas/EmployerDebriefEngagementSnapshot"
+        outcomeSummary:
+          type: string
+        performanceSignals:
+          type: array
+          items:
+            type: string
+        rehireRecommendation:
+          $ref: "#/components/schemas/RehireRecommendation"
+        internalNotesTemplate:
+          type: string
+      required:
+        - engagementSnapshot
+        - outcomeSummary
+        - performanceSignals
+        - rehireRecommendation
+        - internalNotesTemplate
+
+    FreelancerDebriefEngagementSnapshot:
+      type: object
+      properties:
+        companyName:
+          type: string
+        jobTitle:
+          type: string
+        startDate:
+          type: string
+        endDate:
+          type: string
+        rate:
+          type: number
+        rateType:
+          type: string
+      required:
+        - companyName
+        - jobTitle
+        - startDate
+        - endDate
+        - rate
+        - rateType
+
+    FreelancerDebrief:
+      type: object
+      properties:
+        engagementSnapshot:
+          $ref: "#/components/schemas/FreelancerDebriefEngagementSnapshot"
+        whatYouDelivered:
+          type: string
+        strengthsDemonstrated:
+          type: array
+          items:
+            type: string
+        growthAreas:
+          type: array
+          items:
+            type: string
+        profileSuggestions:
+          type: array
+          items:
+            type: string
+      required:
+        - engagementSnapshot
+        - whatYouDelivered
+        - strengthsDemonstrated
+        - growthAreas
+        - profileSuggestions
+
+    BookingDebriefResponse:
+      type: object
+      properties:
+        debrief:
+          oneOf:
+            - $ref: "#/components/schemas/EmployerDebrief"
+            - $ref: "#/components/schemas/FreelancerDebrief"
+        generatedAt:
+          type: string
+          format: date-time
+        disclaimer:
+          type: string
+      required:
+        - debrief
+        - generatedAt
+        - disclaimer
+
+    DebriefRegenCooldownError:
+      type: object
+      properties:
+        error:
+          type: string
+        code:
+          type: string
+          enum: [DEBRIEF_REGEN_COOLDOWN]
+      required:
+        - error
+        - code
 
     CreateBookingBody:
       type: object

@@ -28,6 +28,12 @@ import { sanitiseText } from "../lib/sanitise";
 import { sendNotificationEmailAsync } from "../lib/emailService";
 import { parsePagination, paginatedResponse } from "../lib/paginationUtils";
 import { resolveUserByClerkId, canAccessBooking, profileIdsForUser } from "../lib/accessControl";
+import {
+  DEBRIEF_DISCLAIMER,
+  generateBookingDebrief,
+  isWithinDebriefRegenCooldown,
+} from "../lib/bookingDebriefGenerator";
+import { checkTokenQuota } from "../lib/subscriptionGating";
 
 const BOOKING_CONFIRMED_STATUS = "active";
 const BOOKING_CANCELLED_STATUS = "cancelled";
@@ -212,6 +218,115 @@ router.post("/bookings", async (req, res) => {
   }
 });
 
+function mapBookingResponse(
+  b: typeof bookingsTable.$inferSelect,
+  extras: Record<string, unknown> = {},
+) {
+  return {
+    ...enrichRate(b),
+    debriefGeneratedAt: b.debriefGeneratedAt ?? null,
+    hasDebrief: b.debriefGeneratedAt != null,
+    ...extras,
+  };
+}
+
+router.get("/bookings/:id/debrief", async (req, res) => {
+  const id = parseInt(req.params.id);
+  if (isNaN(id)) { res.status(400).json({ error: "Invalid ID" }); return; }
+  const { userId: clerkId } = getAuth(req);
+  if (!clerkId) { res.status(401).json({ error: "Unauthorized" }); return; }
+  try {
+    const user = await resolveUserByClerkId(clerkId);
+    if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
+    const access = await canAccessBooking(user.id, id);
+    if (!access.ok) {
+      res.status(access.status).json({ error: access.status === 404 ? "Booking not found" : "Forbidden" });
+      return;
+    }
+    const [b] = await db.select().from(bookingsTable).where(eq(bookingsTable.id, id)).limit(1);
+    if (!b) { res.status(404).json({ error: "Booking not found" }); return; }
+    if (!b.debriefGeneratedAt || !b.debriefContent) {
+      res.status(404).json({ error: "Debrief not ready" });
+      return;
+    }
+
+    const { employerId, freelancerId } = await profileIdsForUser(user.id);
+    const isEmployer = employerId !== null && employerId === b.employerId;
+    const isFreelancer = freelancerId !== null && freelancerId === b.freelancerId;
+    if (!isEmployer && !isFreelancer) {
+      res.status(403).json({ error: "Forbidden" });
+      return;
+    }
+
+    const debrief = isEmployer ? b.debriefContent.employer : b.debriefContent.freelancer;
+    res.json({
+      debrief,
+      generatedAt: b.debriefContent.generatedAt,
+      disclaimer: DEBRIEF_DISCLAIMER,
+    });
+  } catch (err) {
+    req.log.error({ err }, "Failed to get booking debrief");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.post("/bookings/:id/debrief", async (req, res) => {
+  const id = parseInt(req.params.id);
+  if (isNaN(id)) { res.status(400).json({ error: "Invalid ID" }); return; }
+  const { userId: clerkId } = getAuth(req);
+  if (!clerkId) { res.status(401).json({ error: "Unauthorized" }); return; }
+  try {
+    const user = await resolveUserByClerkId(clerkId);
+    if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
+    const access = await canAccessBooking(user.id, id);
+    if (!access.ok) {
+      res.status(access.status).json({ error: access.status === 404 ? "Booking not found" : "Forbidden" });
+      return;
+    }
+    const [b] = await db.select().from(bookingsTable).where(eq(bookingsTable.id, id)).limit(1);
+    if (!b) { res.status(404).json({ error: "Booking not found" }); return; }
+    if (b.status !== BOOKING_COMPLETED_STATUS) {
+      res.status(422).json({ error: "Booking must be completed to generate a debrief" });
+      return;
+    }
+    if (isWithinDebriefRegenCooldown(b.debriefRegeneratedAt)) {
+      res.status(429).json({
+        error: "Debrief was regenerated recently",
+        code: "DEBRIEF_REGEN_COOLDOWN",
+      });
+      return;
+    }
+
+    const employerUserId = await userIdFromEmployerProfileId(b.employerId);
+    if (!employerUserId) {
+      res.status(500).json({ error: "Employer account not found" });
+      return;
+    }
+    const quota = await checkTokenQuota(db, employerUserId);
+    if (!quota.allowed) {
+      res.status(402).json({
+        error: "Monthly AI token limit reached",
+        code: "TOKEN_LIMIT",
+        planNeeded: quota.planNeeded,
+      });
+      return;
+    }
+
+    await db.update(bookingsTable)
+      .set({ debriefRegeneratedAt: new Date(), updatedAt: new Date() })
+      .where(eq(bookingsTable.id, id));
+
+    res.status(202).json({ message: "Debrief generation started" });
+
+    generateBookingDebrief(db, id, req.log).catch((err) =>
+      req.log.warn({ err, bookingId: id }, "booking debrief manual generation failed"),
+    );
+  } catch (err) {
+    req.log.error({ err }, "Failed to start booking debrief generation");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 router.get("/bookings/:id", async (req, res) => {
   const id = parseInt(req.params.id);
   if (isNaN(id)) { res.status(400).json({ error: "Invalid ID" }); return; }
@@ -240,13 +355,12 @@ router.get("/bookings/:id", async (req, res) => {
       review = toPublicReview(reviewRow, employerDisplayName);
     }
 
-    res.json({
-      ...enrichRate(b),
+    res.json(mapBookingResponse(b, {
       freelancerName: f?.name ?? null,
       employerName: e?.name ?? null,
       employerVerificationLevel: e?.verificationLevel ?? "unverified",
       review,
-    });
+    }));
   } catch (err) {
     req.log.error({ err }, "Failed to get booking");
     res.status(500).json({ error: "Internal server error" });
@@ -321,7 +435,13 @@ router.patch("/bookings/:id", async (req, res) => {
       }
     }
 
-    res.json(enrichRate(updated));
+    if (updated.status === BOOKING_COMPLETED_STATUS && before.status !== BOOKING_COMPLETED_STATUS) {
+      generateBookingDebrief(db, updated.id, req.log).catch((err) =>
+        req.log.warn({ err, bookingId: updated.id }, "booking debrief generation failed"),
+      );
+    }
+
+    res.json(mapBookingResponse(updated));
   } catch (err) {
     req.log.error({ err }, "Failed to update booking");
     res.status(500).json({ error: "Internal server error" });

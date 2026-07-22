@@ -38,6 +38,7 @@ import type {
   AvailabilityMeResponse,
   AvailabilityPublicResponse,
   Booking,
+  BookingDebriefResponse,
   BookingNotPendingError,
   ContentTooShortError,
   ConversationTokenBreakdown,
@@ -58,6 +59,7 @@ import type {
   CruiseModeConfig,
   CruiseModeStats,
   DashboardStats,
+  DebriefRegenCooldownError,
   DeleteAvailabilityBlockResponse,
   DeletePortfolioItem200,
   DirectConversationPage,
@@ -148,6 +150,7 @@ import type {
   PostAiMatchExplanationBody,
   PostAiProposalBody,
   PostAiRateSuggestionBody,
+  PostBookingDebrief202,
   PublicFreelancerProfile,
   PublicReview,
   RateSuggestionResponse,
@@ -3375,6 +3378,183 @@ export const useUpdateBooking = <
   TContext
 > => {
   return useMutation(getUpdateBookingMutationOptions(options));
+};
+
+/**
+ * @summary Get role-filtered post-engagement debrief for a completed booking
+ */
+export const getGetBookingDebriefUrl = (id: number) => {
+  return `/api/bookings/${id}/debrief`;
+};
+
+export const getBookingDebrief = async (
+  id: number,
+  options?: RequestInit,
+): Promise<BookingDebriefResponse> => {
+  return customFetch<BookingDebriefResponse>(getGetBookingDebriefUrl(id), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetBookingDebriefQueryKey = (id: number) => {
+  return [`/api/bookings/${id}/debrief`] as const;
+};
+
+export const getGetBookingDebriefQueryOptions = <
+  TData = Awaited<ReturnType<typeof getBookingDebrief>>,
+  TError = ErrorType<ErrorEnvelope>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getBookingDebrief>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetBookingDebriefQueryKey(id);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getBookingDebrief>>
+  > = ({ signal }) => getBookingDebrief(id, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!id,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getBookingDebrief>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetBookingDebriefQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getBookingDebrief>>
+>;
+export type GetBookingDebriefQueryError = ErrorType<ErrorEnvelope>;
+
+/**
+ * @summary Get role-filtered post-engagement debrief for a completed booking
+ */
+
+export function useGetBookingDebrief<
+  TData = Awaited<ReturnType<typeof getBookingDebrief>>,
+  TError = ErrorType<ErrorEnvelope>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getBookingDebrief>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetBookingDebriefQueryOptions(id, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Generate or regenerate post-engagement debrief (participant only, completed bookings)
+ */
+export const getPostBookingDebriefUrl = (id: number) => {
+  return `/api/bookings/${id}/debrief`;
+};
+
+export const postBookingDebrief = async (
+  id: number,
+  options?: RequestInit,
+): Promise<PostBookingDebrief202> => {
+  return customFetch<PostBookingDebrief202>(getPostBookingDebriefUrl(id), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getPostBookingDebriefMutationOptions = <
+  TError = ErrorType<
+    TokenLimitError | ErrorEnvelope | DebriefRegenCooldownError
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof postBookingDebrief>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof postBookingDebrief>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  const mutationKey = ["postBookingDebrief"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof postBookingDebrief>>,
+    { id: number }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return postBookingDebrief(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type PostBookingDebriefMutationResult = NonNullable<
+  Awaited<ReturnType<typeof postBookingDebrief>>
+>;
+
+export type PostBookingDebriefMutationError = ErrorType<
+  TokenLimitError | ErrorEnvelope | DebriefRegenCooldownError
+>;
+
+/**
+ * @summary Generate or regenerate post-engagement debrief (participant only, completed bookings)
+ */
+export const usePostBookingDebrief = <
+  TError = ErrorType<
+    TokenLimitError | ErrorEnvelope | DebriefRegenCooldownError
+  >,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof postBookingDebrief>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof postBookingDebrief>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  return useMutation(getPostBookingDebriefMutationOptions(options));
 };
 
 /**

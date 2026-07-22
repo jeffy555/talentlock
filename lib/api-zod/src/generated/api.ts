@@ -1202,6 +1202,8 @@ export const ListBookingsResponse = zod.object({
         }),
         zod.null(),
       ]),
+      debriefGeneratedAt: zod.coerce.date().nullish(),
+      hasDebrief: zod.boolean(),
       createdAt: zod.coerce.date(),
     }),
   ),
@@ -1277,6 +1279,8 @@ export const GetBookingResponse = zod.object({
     }),
     zod.null(),
   ]),
+  debriefGeneratedAt: zod.coerce.date().nullish(),
+  hasDebrief: zod.boolean(),
   createdAt: zod.coerce.date(),
 });
 
@@ -1331,7 +1335,63 @@ export const UpdateBookingResponse = zod.object({
     }),
     zod.null(),
   ]),
+  debriefGeneratedAt: zod.coerce.date().nullish(),
+  hasDebrief: zod.boolean(),
   createdAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Get role-filtered post-engagement debrief for a completed booking
+ */
+export const GetBookingDebriefParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const GetBookingDebriefResponse = zod.object({
+  debrief: zod.union([
+    zod.object({
+      engagementSnapshot: zod.object({
+        freelancerName: zod.string(),
+        field: zod.string(),
+        startDate: zod.string(),
+        endDate: zod.string(),
+        rate: zod.number(),
+        rateType: zod.string(),
+        milestonesCompleted: zod.number(),
+        milestonesTotal: zod.number(),
+      }),
+      outcomeSummary: zod.string(),
+      performanceSignals: zod.array(zod.string()),
+      rehireRecommendation: zod.object({
+        verdict: zod.enum(["strong_rehire", "rehire_with_caveats", "one_off"]),
+        reasons: zod.array(zod.string()),
+      }),
+      internalNotesTemplate: zod.string(),
+    }),
+    zod.object({
+      engagementSnapshot: zod.object({
+        companyName: zod.string(),
+        jobTitle: zod.string(),
+        startDate: zod.string(),
+        endDate: zod.string(),
+        rate: zod.number(),
+        rateType: zod.string(),
+      }),
+      whatYouDelivered: zod.string(),
+      strengthsDemonstrated: zod.array(zod.string()),
+      growthAreas: zod.array(zod.string()),
+      profileSuggestions: zod.array(zod.string()),
+    }),
+  ]),
+  generatedAt: zod.coerce.date(),
+  disclaimer: zod.string(),
+});
+
+/**
+ * @summary Generate or regenerate post-engagement debrief (participant only, completed bookings)
+ */
+export const PostBookingDebriefParams = zod.object({
+  id: zod.coerce.number(),
 });
 
 /**
@@ -1396,6 +1456,8 @@ export const NegotiateBookingResponse = zod.object({
     }),
     zod.null(),
   ]),
+  debriefGeneratedAt: zod.coerce.date().nullish(),
+  hasDebrief: zod.boolean(),
   createdAt: zod.coerce.date(),
 });
 

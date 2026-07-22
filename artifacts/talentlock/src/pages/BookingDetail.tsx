@@ -32,6 +32,7 @@ import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, Calendar, CheckCircle2, FileText, XCircle, Sparkles, ShieldCheck, Clock, DollarSign, Flag, Plus, Check, ArrowLeftRight, RefreshCw } from "lucide-react";
 import ReviewPrompt from "@/components/ReviewPrompt";
 import ReviewCard from "@/components/ReviewCard";
+import { DebriefCard } from "@/components/bookings/DebriefCard";
 import ProposalGeneratorDrawer, { AcceptedProposalBlock } from "@/components/ProposalGeneratorDrawer";
 import { BookingMessageThread } from "@/components/messages/BookingMessageThread";
 import RateSuggestionWidget from "@/components/RateSuggestionWidget";
@@ -366,26 +367,6 @@ export default function BookingDetail() {
         </div>
       </div>
 
-      {showReviewPrompt && (
-        <ReviewPrompt
-          bookingId={bookingId}
-          freelancerName={booking.freelancerName ?? "this freelancer"}
-          onSubmit={handleSubmitReview}
-          onDismiss={() => {
-            dismissReviewPrompt(bookingId);
-            setReviewDismissed(true);
-          }}
-          isSubmitting={createReview.isPending}
-        />
-      )}
-
-      {isEmployer && booking.review != null && (
-        <div>
-          <h3 className="text-sm font-semibold text-slate-700 mb-2">Your Review</h3>
-          <ReviewCard review={booking.review} />
-        </div>
-      )}
-
       <section className="space-y-3">
         <Tabs defaultValue="messages">
           <TabsList>
@@ -681,6 +662,40 @@ export default function BookingDetail() {
               )}
             </CardContent>
           </Card>
+
+          {isCompleted && (
+            <DebriefCard
+              bookingId={booking.id}
+              hasDebrief={booking.hasDebrief ?? false}
+              debriefGeneratedAt={booking.debriefGeneratedAt ?? null}
+              userRole={isEmployer ? "employer" : "freelancer"}
+              employerPlanId={isEmployer ? userPlan : undefined}
+              refetchBooking={async () => {
+                const r = await refetch();
+                return { data: r.data };
+              }}
+            />
+          )}
+
+          {showReviewPrompt && (
+            <ReviewPrompt
+              bookingId={bookingId}
+              freelancerName={booking.freelancerName ?? "this freelancer"}
+              onSubmit={handleSubmitReview}
+              onDismiss={() => {
+                dismissReviewPrompt(bookingId);
+                setReviewDismissed(true);
+              }}
+              isSubmitting={createReview.isPending}
+            />
+          )}
+
+          {isEmployer && booking.review != null && (
+            <div>
+              <h3 className="text-sm font-semibold text-slate-700 mb-2">Your Review</h3>
+              <ReviewCard review={booking.review} />
+            </div>
+          )}
 
           {/* Legal Agreements */}
           <Card className="shadow-sm border-border bg-card">

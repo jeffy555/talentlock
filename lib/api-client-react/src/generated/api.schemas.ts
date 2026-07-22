@@ -616,7 +616,78 @@ export interface Booking {
   employerName?: string | null;
   employerVerificationLevel?: BookingEmployerVerificationLevel;
   review: PublicReview | null;
+  /** @nullable */
+  debriefGeneratedAt?: string | null;
+  hasDebrief: boolean;
   createdAt: string;
+}
+
+export interface EmployerDebriefEngagementSnapshot {
+  freelancerName: string;
+  field: string;
+  startDate: string;
+  endDate: string;
+  rate: number;
+  rateType: string;
+  milestonesCompleted: number;
+  milestonesTotal: number;
+}
+
+export type RehireRecommendationVerdict =
+  (typeof RehireRecommendationVerdict)[keyof typeof RehireRecommendationVerdict];
+
+export const RehireRecommendationVerdict = {
+  strong_rehire: "strong_rehire",
+  rehire_with_caveats: "rehire_with_caveats",
+  one_off: "one_off",
+} as const;
+
+export interface RehireRecommendation {
+  verdict: RehireRecommendationVerdict;
+  reasons: string[];
+}
+
+export interface EmployerDebrief {
+  engagementSnapshot: EmployerDebriefEngagementSnapshot;
+  outcomeSummary: string;
+  performanceSignals: string[];
+  rehireRecommendation: RehireRecommendation;
+  internalNotesTemplate: string;
+}
+
+export interface FreelancerDebriefEngagementSnapshot {
+  companyName: string;
+  jobTitle: string;
+  startDate: string;
+  endDate: string;
+  rate: number;
+  rateType: string;
+}
+
+export interface FreelancerDebrief {
+  engagementSnapshot: FreelancerDebriefEngagementSnapshot;
+  whatYouDelivered: string;
+  strengthsDemonstrated: string[];
+  growthAreas: string[];
+  profileSuggestions: string[];
+}
+
+export interface BookingDebriefResponse {
+  debrief: EmployerDebrief | FreelancerDebrief;
+  generatedAt: string;
+  disclaimer: string;
+}
+
+export type DebriefRegenCooldownErrorCode =
+  (typeof DebriefRegenCooldownErrorCode)[keyof typeof DebriefRegenCooldownErrorCode];
+
+export const DebriefRegenCooldownErrorCode = {
+  DEBRIEF_REGEN_COOLDOWN: "DEBRIEF_REGEN_COOLDOWN",
+} as const;
+
+export interface DebriefRegenCooldownError {
+  error: string;
+  code: DebriefRegenCooldownErrorCode;
 }
 
 export interface CreateBookingBody {
@@ -2706,6 +2777,10 @@ export type ListBookingsParams = {
   role?: string;
   page?: number;
   pageSize?: number;
+};
+
+export type PostBookingDebrief202 = {
+  message: string;
 };
 
 export type ListAgreementsParams = {
