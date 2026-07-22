@@ -30,6 +30,7 @@ import { resolveVerificationLevel } from "@/lib/verification";
 import { useQueryClient } from "@tanstack/react-query";
 import TeachingDetailsSection, { emptyTeachingDetails, type TeachingDetailsValues } from "@/components/onboarding/TeachingDetailsSection";
 import EmployerVerificationSection from "@/components/employer/EmployerVerificationSection";
+import { LocationSettingsCard } from "@/components/profile/LocationSettingsCard";
 
 const BASE = import.meta.env.BASE_URL ?? "/";
 
@@ -545,6 +546,16 @@ export default function Profile() {
           </div>
         </CardContent>
       </Card>
+
+      {dbUser && (isFreelancer || isEmployer) && (
+        <LocationSettingsCard
+          countryCode={dbUser.countryCode ?? "US"}
+          stateCode={dbUser.stateCode ?? null}
+          currencyCode={dbUser.currencyCode ?? "USD"}
+          role={isFreelancer ? "freelancer" : "employer"}
+          onUpdated={() => refetchUser()}
+        />
+      )}
 
       {isFreelancer && freelancerProfile && (
         <>
