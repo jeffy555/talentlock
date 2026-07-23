@@ -39,24 +39,23 @@ grep "talentSearchNotifications\|talent_search_notifications" lib/db/src/schema/
 
 ---
 
-### Q1 — Trigger Point on `PUT /api/freelancers/me`
+### Q1 — Trigger Point on `PATCH /api/freelancers/me`
 
-**Decision: Fire after `db.update()` returns, conditioned on completeness score >= 60.**
+**Decision: Fire after `db.update()` returns, conditioned on completeness score >= 60. Route is PATCH, not PUT.**
 
 ```ts
-// In PUT /api/freelancers/me handler — AFTER db.update() returns and response is sent:
+// In PATCH /api/freelancers/me handler — AFTER db.update() returns:
 import { evaluateTalentSearchForUpdatedProfile } from '../lib/talentSearchEvaluator';
 
-// Calculate completeness (already runs as part of the handler)
 const updatedProfile = await recalculateAndSaveCompleteness(db, freelancerId);
 
-return res.json(updatedProfile); // Response sent first
-
-// Fire-and-forget AFTER response — only if profile is complete enough to be in Talent Vault
+// Fire-and-forget BEFORE res.json — never awaited
 if (updatedProfile.completenessScore >= 60) {
   evaluateTalentSearchForUpdatedProfile(db, freelancerId, req.log)
     .catch(err => req.log.warn({ err, freelancerId }, 'talent-search hook failed'));
 }
+
+return res.json(updatedProfile);
 ```
 
 The `completenessScore >= 60` gate prevents evaluating skeleton profiles with no skills, no bio, and no photo — which would waste evaluation time and produce meaningless results.
@@ -255,6 +254,60 @@ await db.update(freelancerProfiles)
 
 ---
 
+### Q11 — Activation Backfill Scan (P1 Follow-up — 2026-07-23)
+
+**Reported:** Employer activates TalentSearch, adds exact-match freelancer, nothing happens.
+
+**Decision: On `PATCH /api/talent-search/activate`, fire-and-forget a one-time backfill scan of eligible Vault freelancers.**
+
+```ts
+// In PATCH /api/talent-search/activate handler — after setting isActive: true:
+evaluateTalentSearchBackfill(db, employerId, req.log).catch(err =>
+  req.log.warn({ err, employerId }, 'talent-search activation backfill failed'),
+);
+```
+
+`evaluateTalentSearchBackfill()`:
+- Query `freelancer_profiles` WHERE `completenessScore >= 60` AND `isAvailable = true` (or all Vault-visible profiles)
+- Cap at 50 profiles per activation (same as per-update evaluator cap)
+- Reuse same pipeline as `evaluateTalentSearchForUpdatedProfile` per freelancer
+- Log `decision: 'activation_backfill'` on activity rows from this scan
+- Must not block the activate response — fire-and-forget
+
+**Dry run activation:** backfill runs but notifications follow dry-run rules (no freelancer notifications).
+
+---
+
+### Q12 — Re-Trigger on Non-PATCH Profile Changes (P1 Follow-up — 2026-07-23)
+
+**Decision: Also fire TalentSearch evaluation when match-relevant fields change outside `PATCH /api/freelancers/me`:**
+
+| Trigger | When |
+|---|---|
+| Admin verifies freelancer document | `POST /api/admin/documents/:id` verdict `verified` |
+| Document AI review sets `verified` | `documentReview.ts` after status update |
+| Freelancer DBS / teaching licence fields change | Already covered if via PATCH |
+
+Extract shared helper `maybeEvaluateTalentSearch(db, freelancerId, log)` and call from document verification paths when verification status affects pre-filter (`hasAnyVerifiedDocument`, `dbsCheckStatus`).
+
+---
+
+### Q13 — Log Pre-Filter and Duplicate Skips (P1 Follow-up — 2026-07-23)
+
+**Decision: Silent skips are unacceptable for employer UX. Log activity rows for:**
+
+| Decision | When |
+|---|---|
+| `prefilter_rejected` | Stage 1 pre-filter returns false |
+| `duplicate_skipped` | 30-day `sent` dedup hit |
+| `completeness_too_low` | Evaluator called but score &lt; 60 (defensive) |
+
+Each row includes `skippedReason` with human-readable text (e.g. `"Required skill 'React' not found in profile"`).
+
+Employer activity feed shows these as "Skipped — [reason]" instead of empty feed.
+
+---
+
 ## Shared Utilities from Cruise Mode (Reuse Directly)
 
 ```ts
@@ -314,5 +367,6 @@ createNotification(db, {
 | Phase | Description | Status |
 |---|---|---|
 | Phase 1 | Schema — `talent_search_configs`, `talent_search_activity`, 2 new columns on `freelancer_profiles` | ⬜ Not started |
-| Phase 2 | Backend — evaluation engine, hook on `PUT /api/freelancers/me`, all API routes, OpenAPI + codegen | ⬜ Not started |
+| Phase 2 | Backend — evaluation engine, hook on `PATCH /api/freelancers/me`, all API routes, OpenAPI + codegen | ⬜ Not started |
 | Phase 3 | Frontend — `/talent-search` page, rule builder, activity feed, status bar | ⬜ Not started |
+| **P1 Follow-up** | Activation backfill (Q11), verification re-trigger (Q12), log pre-filter skips (Q13), UI activation copy | 🟠 **Required** — reported matches not detected |

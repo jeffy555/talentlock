@@ -6,7 +6,7 @@
 
 | Item | Verified Against |
 |---|---|
-| `PUT /api/freelancers/me` exists and is the profile update endpoint | Confirmed in `project.md` |
+| `PATCH /api/freelancers/me` exists and is the profile update endpoint | Confirmed in `project.md` and OpenAPI (not PUT) |
 | `employer_profiles` table exists with `id`, `employerId` | Confirmed in `project.md` schema |
 | `freelancer_profiles` table has `skills`, `fieldOfWork`, `rate`, `bio`, `completenessScore` | Confirmed |
 | `professionCategory`, `educationProfessionType`, `teachingSubjects`, `location`, `dbsCheckStatus` added by Teaching Professional Profile spec | Confirmed in `specs/teaching-professional-profile/` |
@@ -25,9 +25,11 @@
 
 ## ❓ Open Questions — Must Be Resolved Before Implementation
 
-### Q1 — Exact Trigger Point on `PUT /api/freelancers/me`
+### Q1 — Exact Trigger Point on `PATCH /api/freelancers/me`
 
-**Question:** The TalentSearch evaluation must fire after a freelancer saves their profile. Confirm the exact location of the `PUT /api/freelancers/me` handler and the pattern for attaching a fire-and-forget hook after the `db.update()` call.
+**Question:** The TalentSearch evaluation must fire after a freelancer saves their profile. Confirm the exact location of the `PATCH /api/freelancers/me` handler and the pattern for attaching a fire-and-forget hook after the `db.update()` call.
+
+> **Correction (2026-07-23):** Original spec said `PUT` — actual route is `PATCH /api/freelancers/me`.
 
 **Recommendation:**
 ```bash
@@ -188,17 +190,45 @@ talentSearchNotificationsToday: integer('talent_search_notifications_today').not
 talentSearchNotificationsResetAt: timestamp('talent_search_notifications_reset_at', { withTimezone: true }),
 ```
 
-### Risk 3 — `PUT /api/freelancers/me` Response Time
+### Risk 3 — `PATCH /api/freelancers/me` Response Time
 
-The TalentSearch hook fires fire-and-forget and must never delay the profile update response. Confirm the hook is attached AFTER `return res.json()` — not before. If Express flushes the response before the async hook completes, the hook still runs in the Node.js event loop.
+The TalentSearch hook fires fire-and-forget and must never delay the profile update response. The hook runs after `db.update()` returns but must not be awaited before `res.json()`.
 
-### Risk 4 — Employer Identity Disclosure to Freelancer
+### Risk 6 — Empty Activity Feed Misleading (P1 — reported 2026-07-23)
 
-The Express Interest notification tells the freelancer which employer is interested. This is intentional and required for the freelancer to make an informed decision about responding. However, employers should know that their identity (company name) will be disclosed to every freelancer TalentSearch contacts. Make this clear in the activation confirmation dialog and in the TalentSearch setup page copy.
+Stage 1 pre-filter rejections and 30-day duplicate skips produce **no activity rows**. Employers perceive TalentSearch as "not working" when the feed is empty. Resolution: log `prefilter_rejected` and `duplicate_skipped` decisions (see `plan.md` Q13).
 
-### Risk 5 — Cruise Mode Symmetry Maintenance
+### Risk 7 — No Retroactive Scan on Activation (P1 — reported 2026-07-23)
 
-TalentSearch shares the daily time budget model, the pre-filter → AI pattern, the fire-and-forget pipeline, and the activity feed structure with Cruise Mode. If Cruise Mode's core pipeline is ever updated (new decision values, new token label patterns, new notification types), TalentSearch must be updated in parallel. Document this dependency in both spec folders and in `project.md` Cursor notes.
+Employers expect turning TalentSearch on to immediately evaluate existing Vault profiles. Current implementation only evaluates on subsequent freelancer PATCH. Resolution: optional activation backfill (see `plan.md` Q11).
+
+---
+
+## P1 Open Questions — Reported 2026-07-23
+
+### Q7 — Employer Confusion: Cruise Mode vs TalentSearch
+
+**Question:** User reported "TalentSearch Cruisemode from Freelancer view not working." Is this Cruise Mode (freelancer `/cruise-mode`) or TalentSearch (employer `/talent-search`)?
+
+**Resolution:** TalentSearch is employer-only. Add UI copy distinguishing the two features. If user meant Cruise Mode, that is a separate spec (`spec/cruisemode/`).
+
+### Q8 — Saving Rules vs Activating
+
+**Question:** Does saving rules activate TalentSearch?
+
+**Resolution:** No. `POST /api/talent-search` creates/updates config with `isActive: false`. Employer must `PATCH /activate` or `/dry-run`. UI must make this explicit.
+
+### Q9 — Immediate Match on New Profile
+
+**Question:** Should a new exact-match freelancer trigger TalentSearch immediately?
+
+**Resolution:** Only if they `PATCH /api/freelancers/me` with completeness ≥ 60 after employer activation. `POST /api/freelancers` (onboarding create) does not fire evaluation. Q11 addresses activation backfill.
+
+### Q10 — Pre-Filter Silent Rejects
+
+**Question:** Why does activity feed show nothing when rules don't match?
+
+**Resolution:** Pre-filter failures return before activity insert. Q13 requires logging skipped evaluations.
 
 ---
 
@@ -206,8 +236,11 @@ TalentSearch shares the daily time budget model, the pre-filter → AI pattern, 
 
 | # | Question | Must Resolve Before |
 |---|---|---|
-| Q1 | Location of `PUT /api/freelancers/me` handler | Task 2.1 (hook attachment) |
-| Q2 | Completeness threshold trigger decision | Task 2.1 (hook condition) |
+| Q1 | Location of `PATCH /api/freelancers/me` handler | Task 2.4 (hook attachment) |
+| Q2 | Completeness threshold trigger decision | Task 2.4 (hook condition) |
 | Q3 | TalentSearch pre-filter inputs confirmed | Task 2.2 (`talentSearchUtils.ts`) |
 | Q4 | Duplicate window (30 days) confirmed | Task 2.3 (evaluator duplicate check) |
 | Q6 | New token labels confirmed | Task 2.1 (tokenLogger.ts update) |
+| Q11 | Activation backfill scan | Task 2.5 (P1 follow-up) |
+| Q12 | Re-trigger on verification/availability changes | Task 2.6 (P1 follow-up) |
+| Q13 | Log pre-filter / duplicate skips in activity feed | Task 2.7 (P1 follow-up) |

@@ -353,7 +353,7 @@ POST /api/admin/logout                            Admin: logout
 34. **Agreement PDF Download** — `GET /api/agreements/:id/download` returns a professionally formatted PDF for fully signed agreements; rendered via `@react-pdf/renderer` with both signature images (or cursive typed names), signing timestamps, metadata block, and TalentLock footer; cached in GCS after first generation; available to both parties on all plans; GDPR deletion removes cached PDFs
 35. **Cruise Mode** — `freelancer_pro` feature; freelancer defines rules (skills, rate range, exclusions, blackout windows) via form or free-form text/file; AI evaluates every new job post against the rules and sends a personalised interest message to the employer on the freelancer's behalf when score ≥ threshold; two-stage filter (pre-filter + AI evaluation); dry run mode; daily digest option; activity feed with match scores and sent messages; monthly quota of 10 messages; employer sees a "Cruise Mode ✦" badge; `cruise_mode_evaluation` token label
 36. **Teaching Professional Profile** — `professionCategory` (`technology`|`education`, NOT NULL DEFAULT `technology`) on `freelancer_profiles` and `job_requirements`; `rateType` (`hourly`|`per_day`|`per_session`|`per_course`, NOT NULL DEFAULT `hourly`) on `job_requirements`; 12 nullable education fields on `freelancer_profiles` for `educationProfessionType` (`school_teacher`|`university_lecturer`|`tutor`|`researcher`); onboarding gains a conditional profession-category step for freelancers (employers unaffected); Talent Vault gains `professionCategory`/`teachingSubject` filters; AI matching prompt gains profession-context injection that is byte-identical (empty string) for technology jobs; `formatRate()`/`rateUnitLabel()` utility centralises rate unit display
-37. **TalentSearch (Employer Cruise Mode)** — mirror of Cruise Mode for employers; fires on `PUT /api/freelancers/me` when matchable profile fields change; employer sets profession/skill/rate/location/required-document rules; AI evaluates freelancer profile fit 0–100; sends personalised "TalentSearch ✦" Express Interest notification to freelancer when score >= threshold; per-`rulesVersion` duplicate prevention; freelancer daily cap (3 notifications/day); 6h/day budget; `talent_search_evaluation` token label; employer-only `/talent-search` page with teal accent
+37. **TalentSearch (Employer Cruise Mode)** — mirror of Cruise Mode for employers; fires on `PATCH /api/freelancers/me` when `completenessScore >= 60`; **does not** scan existing profiles on activation (P1 follow-up: activation backfill in `spec/employer-cruisemode/`); employer sets profession/skill/rate/location/required-document rules; AI evaluates freelancer profile fit 0–100; sends personalised "TalentSearch ✦" Express Interest notification to freelancer when score >= threshold; 30-day `sent` duplicate prevention; freelancer daily cap (3 notifications/day); 6h/day budget; saving rules (`POST /api/talent-search`) does not activate — employer must `PATCH /activate`; dry run evaluates without notifying; `talent_search_evaluation` token label; employer-only `/talent-search` page
 38. **AI Meeting Brief Generator** — fires fire-and-forget when meeting `status → confirmed`; generates 5-section brief for employer: candidate snapshot, why they match, suggested questions, rate context, watch points; cached as `briefContent` jsonb on `meetings` table; manual regeneration via `POST /api/meetings/:id/brief` (202 Accepted); employer-only — freelancers never see it; plan-gated questions (Growth+ only in UI, always generated server-side); `meeting_brief` token label charged to employer; amber accent UI card on meeting detail page
 39. **In-App Direct Messaging** — extends existing `conversations` and `messages` tables with additive columns; AI chat (`type='ai_match'`) completely unchanged; human threads (`type='human_direct'`) support employer↔freelancer messaging scoped to optional booking or meeting; fire-and-forget `new_message` notification + email on each message; 30 messages/hour rate limit per user per conversation; `/messages` inbox + `/messages/:id` thread; unread badge in nav; all plans
 40. **Employer Verification** — parallel to freelancer document verification; `employer_documents` table (5 document types); `employer_profiles` gains `verificationLevel` and `isVerified` calculated atomically on every doc status change; AI vision review produces admin-facing `aiNotes` and employer-facing `employerNotes` separately; upsert on re-upload; `employer_doc_review` token label (tracked, not deducted from plan quota); Verified Employer badge on job posts, bookings, meetings
@@ -389,6 +389,13 @@ Shared server utilities: `artifacts/api-server/src/lib/earningsUtils.ts` (`getLa
 - Phase 1: JPEG/PNG/WebP only — PDF support is Phase 2
 - Admin reject route: adminNotes is REQUIRED — return 400 if missing
 
+### Cursor notes — Document Verification (Freelancer)
+
+- Admin document preview must use same-origin `GET /api/storage/objects/documents/*` with admin session — NOT external signed URLs in `<img src>` (P1 fix in `spec/document-verification/plan.md` Q10)
+- Local dev: AI vision must read file server-side (base64) — never pass `localhost:8080` signed URLs to OpenAI
+- `POST /api/documents/confirm` must verify `privateObjectExists()` before upsert
+- When AI review fails, document lands in `needs_review` — admin must be able to view JPEG to manually verify
+
 ### Cursor notes — In-App Direct Messaging
 
 - `conversations.type` NOT NULL DEFAULT 'ai_match' — all existing AI chat rows are backfilled; NEVER query human threads without `WHERE type = 'human_direct'`
@@ -413,11 +420,15 @@ Shared server utilities: `artifacts/api-server/src/lib/earningsUtils.ts` (`getLa
 
 ### Cursor notes — TalentSearch
 
-- TalentSearch fires on `PUT /api/freelancers/me` (profile update) — fire-and-forget, never awaited, never delays response
-- Duplicate prevention: per `(employerId, freelancerId, rulesVersion)` — changing rules version allows re-evaluation of same freelancer
-- Freelancer daily cap: max 3 TalentSearch notifications per day via `talentSearchNotificationsToday` / `talentSearchNotificationsResetAt`
+- TalentSearch fires on `PATCH /api/freelancers/me` (profile update) when `completenessScore >= 60` — fire-and-forget, never awaited
+- **Does NOT fire** on `POST /api/freelancers` (onboarding create) or on employer activation alone — P1 follow-up adds activation backfill (`spec/employer-cruisemode/plan.md` Q11)
+- Saving rules (`POST /api/talent-search`) sets `isActive: false` — employer must `PATCH /activate` or `/dry-run` separately
+- Dry run (`isDryRun: true`) evaluates but never notifies freelancers
+- Duplicate prevention: 30-day window on prior `sent` to same freelancer — not per-rulesVersion
+- Pre-filter rejections are currently silent (no activity row) — P1 follow-up logs `prefilter_rejected` (`plan.md` Q13)
+- Freelancer daily cap: max 3 TalentSearch notifications per day via `talentSearchNotificationsToday`
 - Reuses `isInBlackoutWindow()` and `getNextMidnightUTC()` from `cruiseModeUtils.ts` directly
-- Teaching Professional Profile spec MUST be implemented before TalentSearch — evaluator reads education columns
+- **Not Cruise Mode** — freelancers use `/cruise-mode` (job matching); employers use `/talent-search` (profile matching)
 
 ### Cursor notes — Teaching Professional Profile
 

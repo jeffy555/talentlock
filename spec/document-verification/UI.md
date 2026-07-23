@@ -448,9 +448,9 @@ Opens as a shadcn/ui `<Sheet side="right">` with `w-[520px]`:
 └─────────────────────────────────────────────────┘
 ```
 
-- Document image loads lazily by fetching `GET /api/admin/documents/:id/signed-url` when the sheet opens
+- Document image loads via same-origin `GET /api/storage/objects/${fileUrl}` with admin session (see `plan.md` Q10) — **not** via external signed URL in `<img src>`
+- Fallback: if same-origin load fails, show error state with "Open in new tab" link
 - Image displayed in a constrained box: `max-h-[300px] object-contain rounded-md border`
-- "Expires in 15min" note below the image: `text-xs text-muted-foreground`
 - AI Notes displayed verbatim in a `bg-slate-50 rounded p-3 text-sm` block
 - Admin note textarea: optional, max 300 chars, character counter
 - `[✗ Reject]` → `<Button variant="destructive">`, `[✓ Verify]` → `<Button variant="default" className="bg-emerald-600 hover:bg-emerald-700">`
@@ -530,7 +530,7 @@ All submitted documents have been processed.
 | VerificationBadge | `<Skeleton className="h-7 w-32 rounded-full" />` | Render nothing (fail silent) |
 | Employer Verification Display | Badge skeleton | Render nothing (fail silent) |
 | Admin Review Queue | Skeleton table rows | Alert at tab top + retry |
-| Admin Review Sheet — image | Spinner while fetching signed URL | `"Could not load document image."` |
+| Admin Review Sheet — image | Spinner while loading preview | `"Could not load document image."` + `Open in new tab` link |
 
 ---
 

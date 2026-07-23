@@ -166,6 +166,16 @@ After adding new document endpoints to `lib/api-spec/openapi.yaml` and running c
 - `lib/api-zod/src/index.ts` must only export `./generated/api`
 - Run `pnpm typecheck` before proceeding to Phase 3
 
+### Risk 6 — Admin Preview Unreachable in Local Dev (P1 — reported 2026-07-23)
+
+**Symptom:** Freelancer uploads JPEG during onboarding → AI review fails → document lands in `needs_review` → admin opens Document Review tab but image does not render.
+
+**Cause:** `GET /api/admin/documents/:id/signed-url` returns a URL pointing at `http://localhost:8080/api/storage/local-read?...` when `PRIVATE_OBJECT_DIR` is unset. The admin UI runs on the Vite dev server (port 25807) or an HTTPS tunnel — the browser cannot fetch `localhost:8080` as an `<img src>`. The same unreachable URL is passed to OpenAI vision, which also fails → double failure (AI + admin).
+
+**Impact:** Manual verification workflow is blocked — admins cannot approve documents queued after AI failure.
+
+**Resolution required in `plan.md` Q10 before next implementation pass.**
+
 ---
 
 ## Summary of Blockers
@@ -178,5 +188,6 @@ After adding new document endpoints to `lib/api-spec/openapi.yaml` and running c
 | Q4 | System user ID for token logging | Task 2.2 (logTokenUsage call) |
 | Q5 | Maximum file size | Task 2.1 (presigned URL request) |
 | Q6 | Re-upload behaviour | Task 1.1 (schema unique constraint) |
+| Q10 | Admin document image preview (P1 follow-up) | Task 2.9 |
 
 Questions Q7, Q8, Q9 are lower priority and can be resolved during implementation.

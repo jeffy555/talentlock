@@ -6,6 +6,12 @@ Employers miss great candidates every day — not because good freelancers do no
 
 **TalentSearch** solves this. It is the exact mirror of Cruise Mode, but working for the employer side.
 
+**Important — not Cruise Mode:** TalentSearch is an **employer-only** feature on `/talent-search`. It is unrelated to freelancer **Cruise Mode** on `/cruise-mode`. Employers who enable Cruise Mode (freelancer feature) will see no TalentSearch behaviour.
+
+**Important — activation vs saving rules:** Saving rules via `POST /api/talent-search` does **not** turn TalentSearch on. The employer must separately click **Turn On** (`PATCH /api/talent-search/activate`) or **Dry Run** (`PATCH /api/talent-search/dry-run`). Dry run evaluates matches but **never notifies freelancers**.
+
+**Important — no retroactive scan:** Turning TalentSearch on does **not** evaluate existing Talent Vault profiles. Evaluation fires only when a freelancer **saves their profile** (`PATCH /api/freelancers/me`) after activation. To match an existing profile, that freelancer must save their profile again (or a P1 backfill job must run — see `plan.md` Q11).
+
 The employer defines a set of rules — what profession category they hire for, the skills they need, the rate range they work within, the availability they require, and any hard exclusions. They write these rules once, in plain English or a markdown file, and activate TalentSearch manually. From that point on, when a new freelancer registers or an existing freelancer updates their profile and matches the employer's rules, TalentLock's AI:
 
 1. Evaluates the freelancer profile against the employer's rules
@@ -25,7 +31,7 @@ TalentSearch and Cruise Mode are the two sides of TalentLock's bilateral AI auto
 | Dimension | Cruise Mode (Freelancer) | TalentSearch (Employer) |
 |---|---|---|
 | Who activates it | Freelancer | Employer |
-| Triggered by | New job post (`POST /api/job-requirements`) | New/updated freelancer profile (`PUT /api/freelancers/me`) |
+| Triggered by | New job post (`POST /api/job-requirements`) | Freelancer profile save (`PATCH /api/freelancers/me`) when `completenessScore >= 60` |
 | AI evaluates | Job post against freelancer's rules | Freelancer profile against employer's rules |
 | Message sent to | Employer | Freelancer |
 | Message sent on behalf of | Freelancer | Employer |
@@ -117,19 +123,24 @@ The parsed rule set is stored as a structured JSON object in the `talent_search_
 
 ### Module 2 — Profile Evaluation Engine (Background Worker)
 
-When a freelancer updates their profile (`PUT /api/freelancers/me`) or registers for the first time, after the profile is saved, a background evaluation fires for all employers with TalentSearch active.
+When a freelancer saves their profile via `PATCH /api/freelancers/me` and `completenessScore >= 60`, after the profile is saved, a background evaluation fires for all employers with TalentSearch **active** (`isActive: true`).
+
+**Does NOT fire on:**
+- `POST /api/freelancers` (initial profile creation during onboarding) — completeness is typically &lt; 60 until profile is completed
+- Employer activating TalentSearch — no backfill of existing profiles (P1 follow-up: optional activation scan — see `plan.md` Q11)
+- Document verification status changes, availability auto-updates, or admin overrides — only explicit freelancer profile PATCH retriggers evaluation (P1 follow-up: see `plan.md` Q12)
 
 For each active TalentSearch employer:
-1. Pull their rule set
-2. Check blackout window — skip if currently in blackout
-3. Check if the employer already sent an interest to this freelancer recently — skip if duplicate
-4. Evaluate the freelancer profile against the rules using GPT
-5. Get a match score (0–100) + explanation
-6. If score ≥ threshold AND not dry run: send Express Interest notification to freelancer
-7. Log the evaluation result in `talent_search_activity`
-8. Create a notification for the employer
+1. Stage 1 pre-filter (silent — **no activity row** if rejected at this stage)
+2. Check blackout window — skip if currently in blackout (logs `blackout` activity)
+3. Check 30-day duplicate — skip if already `sent` to this freelancer within 30 days (silent — no activity row)
+4. Check employer daily hour budget
+5. Check freelancer daily notification cap (max 3/day across all employers)
+6. Stage 2 AI scoring
+7. If score ≥ threshold AND `isDryRun: false`: send Express Interest notification to freelancer
+8. Log evaluation result in `talent_search_activity` (except silent pre-filter / duplicate skips)
 
-The background evaluation runs fire-and-forget from the profile update handler — it must never slow down `PUT /api/freelancers/me`.
+The background evaluation runs fire-and-forget from the profile update handler — it must never slow down `PATCH /api/freelancers/me`.
 
 ---
 
@@ -306,3 +317,19 @@ Once testing is complete, the 6 hours/day limit will be gated behind `employer_g
 - Cruise Mode for freelancers — that is a separate feature (`specs/cruise-mode/`)
 - TalentSearch accessing freelancer data outside TalentLock
 - Auto-deactivating TalentSearch when daily limit is reached (always manual control)
+
+---
+
+## P1 Bug Report — TalentSearch Not Detecting Matches (2026-07-23)
+
+**Reported:** Employer turns TalentSearch on, adds a new freelancer profile that is an exact rule match, but no notification is sent and activity feed appears empty.
+
+**Most likely causes (in order):**
+1. **Rules saved but not activated** — `POST /api/talent-search` sets `isActive: false` by default; employer must `PATCH /activate`
+2. **Dry run mode** — evaluates but never notifies; activity shows `dry_run_would_send`
+3. **No profile PATCH after activation** — existing or newly onboarded freelancers are not scanned on activation; only `PATCH /api/freelancers/me` with completeness ≥ 60 triggers evaluation
+4. **Completeness &lt; 60** — profile invisible to Talent Vault and skipped by evaluator
+5. **Stage 1 pre-filter silent reject** — profession category mismatch, required skill substring miss, rate out of range, DBS not `verified` — **no activity row logged** (looks like "nothing happened")
+6. **30-day duplicate** — prior `sent` to same freelancer suppresses re-notification silently
+
+**Required spec fixes:** See `plan.md` Q11 (activation backfill), Q12 (re-trigger on verification changes), Q13 (log pre-filter rejects), and `validation.md` troubleshooting section.

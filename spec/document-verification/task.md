@@ -350,9 +350,26 @@ Post-codegen mandatory checks:
 2. `lib/api-zod/src/index.ts` — confirm only exports `./generated/api`
 3. `pnpm typecheck` — fix all errors before Phase 3
 
----
+### Task 2.11 — P1 Follow-up: Admin Document Image Preview Fix (2026-07-23)
 
-## Phase 3 — Frontend
+**Reported:** Admin cannot see JPEG in Document Review when AI review fails (onboarding upload path).
+
+**Files:**
+- `artifacts/talentlock/src/components/AdminDocumentReviewTab.tsx`
+- `artifacts/api-server/src/lib/documentReview.ts`
+- `artifacts/api-server/src/routes/documents.ts`
+
+**Backend:**
+1. In `documentReview.ts`, when using local storage, read file buffer server-side and pass base64 to OpenAI — do NOT pass `localhost` signed URLs to vision API
+2. On `POST /api/documents/confirm`, call `privateObjectExists(storagePath)` before upsert — return 400 if missing
+
+**Frontend:**
+1. Replace signed-URL `<img src>` with same-origin `GET /api/storage/objects/${fileUrl}` (Vite `/api` proxy + admin cookie)
+2. Add `<img onError>` → "Could not load document image" + "Open in new tab" link
+
+**Acceptance:** Admin can view and verify JPEG when AI queues document for `needs_review`.
+
+---
 
 ### Task 3.1 — Verify Generated Hooks
 

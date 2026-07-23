@@ -475,7 +475,7 @@ The `.cursor/rules/talentlock.mdc` file at the repo root enforces these rules au
 |---|---|---|
 | AI Token Consumption Dashboard | `spec/token-usage/` | ✅ Complete · 🟢 P1 follow-up (full 9-feature breakdown) validated 2026-06-09 |
 | AI Enhancements | _(no spec folder — pre-spec legacy feature)_ | ✅ Complete |
-| Document Verification | `spec/document-verification/` | ✅ Complete |
+| Document Verification | `spec/document-verification/` | ✅ Complete · 🟠 P1 follow-up — admin JPEG preview when AI fails (`plan.md` Q10) |
 | Smarter Matching Explanation | `spec/smarter-matching/` | ✅ Complete |
 | Agreement Templates + Redlining | `spec/agreement-templates-redlining/` | ✅ Complete |
 | Job Description Assistant | `spec/JobDescAssistant/` | ✅ Complete |
@@ -497,7 +497,7 @@ The `.cursor/rules/talentlock.mdc` file at the repo root enforces these rules au
 | Agreement PDF Download | `spec/agreement-pdf-download/` | ✅ Complete |
 | Cruise Mode | `spec/cruisemode/` | ✅ Complete |
 | Teaching Professional Profile | `spec/teaching-professional-profile/` | ✅ Complete |
-| TalentSearch (Employer Cruise Mode) | `spec/employer-cruisemode/` | ✅ Complete |
+| TalentSearch (Employer Cruise Mode) | `spec/employer-cruisemode/` | ✅ Complete · 🟠 P1 follow-up — activation backfill, pre-filter logging, trigger clarifications (`plan.md` Q11–Q13) |
 | AI Meeting Brief Generator | `spec/aimeetingdebrief/` | ✅ Complete |
 | In-App Direct Messaging | `spec/messaging-service/` | ✅ Complete |
 | Employer Verification | `spec/employee-verification/` | ✅ Complete |
@@ -519,6 +519,17 @@ The `.cursor/rules/talentlock.mdc` file at the repo root enforces these rules au
 
 ---
 
+## Production Bug Reports — P1 Follow-ups (2026-07-23)
+
+| Report | Spec home | Root cause (summary) | Required changes |
+|---|---|---|---|
+| Admin cannot view JPEG in Document Review when AI review fails (onboarding upload) | `spec/document-verification/` | Signed URLs point at unreachable `localhost:8080` in dev; same URL breaks OpenAI vision | `plan.md` Q10, `task.md` 2.11 — same-origin admin preview, server-side AI read, confirm existence check |
+| TalentSearch enabled but no matches / no freelancer notification | `spec/employer-cruisemode/` | Event-driven only on `PATCH /api/freelancers/me`; no activation backfill; silent pre-filter rejects; rules save ≠ activate; possible Cruise Mode confusion | `plan.md` Q11–Q13, `task.md` 2.8–2.10, `validation.md` troubleshooting |
+
+**Clarification:** TalentSearch is **employer-only** (`/talent-search`). Cruise Mode is **freelancer-only** (`/cruise-mode`). They are not interchangeable.
+
+---
+
 ## Security & Production Readiness Review — Status (2026-06-09)
 
 Tracking the findings from the TalentLock Security & Production Readiness review (`TalentLock-Security-Hardening.docx`):
@@ -530,6 +541,8 @@ Tracking the findings from the TalentLock Security & Production Readiness review
 | 🟠 P1 | Token breakdown — extend to all 9 features | `token-usage/` (Module 5 addendum) | ✅ Implemented & validated 2026-06-09 |
 | 🟠 P1 | Apply `sanitiseText()` to 6 missing free-text fields | `security-hardening/` (Module 2 addendum) | ✅ Implemented & validated 2026-06-09 |
 | 🟠 P1 | Fix premature availability lock | `availability-calendar/` (Module 8 addendum) | ✅ Implemented & validated 2026-06-09 |
+| 🟠 P1 | Admin freelancer document preview — same-origin image in admin console when AI review fails | `spec/document-verification/` (Q10) | ⬜ Not started |
+| 🟠 P1 | TalentSearch match detection — activation backfill, log pre-filter skips, trigger on verification | `spec/employer-cruisemode/` (Q11–Q13) | ⬜ Not started |
 | 🟠 P1 | Add 4 missing endpoint groups to OpenAPI + fix raw `fetch` | `spec/OpenApiContractCleanup/` | ⬜ Not started |
 | 🟡 P2 | Automated tests (Vitest + Supertest) + wire `validate-*.mjs` to CI | `spec/api-testing/` | 🔄 In progress (Phase 0 on `cursor/regression-tests-9a23`) |
 | 🟡 P2 | Fix N+1 on bookings/meetings/agreements list endpoints | _backend perf_ | ⬜ Not started |
