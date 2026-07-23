@@ -6,6 +6,7 @@
 pnpm run typecheck
 pnpm --filter @workspace/api-server test -- tests/unit/employerAgreementSummaryUtils.test.ts
 pnpm --filter @workspace/api-server test -- tests/unit/agreementEnrichUtils.test.ts
+pnpm --filter @workspace/api-server test -- tests/integration/agreements/employerUpload.test.ts
 ```
 
 ---
@@ -41,5 +42,5 @@ pnpm --filter @workspace/api-server test -- tests/unit/agreementEnrichUtils.test
 
 | Role | Name | Date | Status |
 |------|------|------|--------|
-| Agent | | | Pending |
+| Agent | Cursor Agent | 2026-07-23 | Automated checks passed |
 | Human QA | | | Pending |
