@@ -240,7 +240,7 @@ talentlock/
 │   │   ├── UI.md
 │   │   └── validation.md
 │   │
-│   ├── employer-uploaded-agreement/                  ← 🔄 In Progress
+│   ├── employer-uploaded-agreement/                  ← ✅ Complete
 │   │   ├── features.md
 │   │   ├── clarify.md
 │   │   ├── plan.md
@@ -517,7 +517,7 @@ The `.cursor/rules/talentlock.mdc` file at the repo root enforces these rules au
 | Freelancer Watchlist | `spec/freelancer-watchlist/` | 🔄 In progress — implementation on `cursor/freelancer-watchlist-9a23` |
 | Post-Engagement AI Debrief | `spec/post-engagement-ai-debrief/` | ✅ Implemented |
 | **Multi-Currency & Location** | `spec/multi-currency-location/` | ✅ Complete |
-| **Employer Uploaded Agreement** | `spec/employer-uploaded-agreement/` | 🔄 In progress — implementation on `cursor/employer-uploaded-agreement-9a23` |
+| **Employer Uploaded Agreement** | `spec/employer-uploaded-agreement/` | ✅ Complete — DB pushed; integration tests in `employerUpload.test.ts` |
 
 > Add new features to this table when their `features.md` is created.
 > Update status as work progresses: 🟡 Ready → 🔄 In Progress → ✅ Complete
