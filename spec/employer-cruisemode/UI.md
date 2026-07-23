@@ -460,6 +460,9 @@ The pulsing green dot when active gives the employer a persistent visual indicat
 | Status — inactive | `○ TalentSearch is off` |
 | Activate button | `Turn On` |
 | Dry run button | `Dry Run` |
+| Rules saved but inactive banner | `Rules saved — TalentSearch is not running until you click Turn On.` |
+| Activation tooltip | `TalentSearch evaluates freelancers when they save their profile. Turning on will also scan current Talent Vault profiles.` |
+| Cruise Mode distinction | `TalentSearch finds freelancers for you. Cruise Mode (freelancer feature) finds jobs for freelancers — they are different.` |
 | Stop button | `Turn Off` |
 | Confirm title | `Activate TalentSearch?` |
 | Confirm body | `When active, your AI assistant will automatically send Express Interest notifications to matching freelancers on your behalf. You will be notified of every message sent. You can turn it off at any time.` |

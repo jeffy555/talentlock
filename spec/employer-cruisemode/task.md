@@ -4,7 +4,7 @@
 
 ## Summary
 
-Three phases: Database (two new tables + two new columns on `freelancer_profiles`) → Backend (pre-filter utility, evaluator, hook on `PUT /api/freelancers/me`, all API routes, OpenAPI + codegen) → Frontend (`/talent-search` page mirroring `/cruise-mode`). No new routes change existing behaviour. No existing tables modified beyond two additive columns on `freelancer_profiles`.
+Three phases: Database (two new tables + two new columns on `freelancer_profiles`) → Backend (pre-filter utility, evaluator, hook on `PATCH /api/freelancers/me`, all API routes, OpenAPI + codegen) → Frontend (`/talent-search` page mirroring `/cruise-mode`). No new routes change existing behaviour. No existing tables modified beyond two additive columns on `freelancer_profiles`.
 
 Read `specs/cruise-mode/task.md` before implementing — TalentSearch mirrors that pattern with flipped roles.
 
@@ -15,7 +15,7 @@ Read `specs/cruise-mode/task.md` before implementing — TalentSearch mirrors th
 ### Task 1.1 — Codebase Inspection
 
 Run all pre-implementation checks from `plan.md`. Document:
-- Exact location of `PUT /api/freelancers/me` handler and `db.update()` call
+- Exact location of `PATCH /api/freelancers/me` handler and `db.update()` call
 - Confirmed `completenessScore` recalculation timing (before or after `res.json()`?)
 - `talent_search_parse` and `talent_search_evaluation` not yet in `TokenFeature` (confirm)
 - `employer_profiles` exact column names for `companyName` and sector
@@ -388,14 +388,14 @@ async function evaluateSingleEmployer(db, config, freelancerRow, freelancer, log
 }
 ```
 
-### Task 2.4 — Hook Into `PUT /api/freelancers/me`
+### Task 2.4 — Hook Into `PATCH /api/freelancers/me`
 
 **File:** `artifacts/api-server/src/routes/freelancers.ts`
 
 ```ts
 import { evaluateTalentSearchForUpdatedProfile } from '../lib/talentSearchEvaluator';
 
-// AFTER db.update() returns and AFTER res.json() is called:
+// AFTER db.update() returns — fire-and-forget, never awaited before res.json()
 if (updatedProfile.completenessScore >= 60) {
   evaluateTalentSearchForUpdatedProfile(db, updatedProfile.id, req.log)
     .catch(err => req.log.warn({ err, freelancerId: updatedProfile.id },
@@ -441,6 +441,35 @@ Add all 9 routes to `lib/api-spec/openapi.yaml`. Include:
 pnpm --filter @workspace/api-spec run codegen
 pnpm run typecheck
 ```
+
+### Task 2.8 — P1 Follow-up: Activation Backfill (plan.md Q11)
+
+**File:** `artifacts/api-server/src/lib/talentSearchEvaluator.ts`, `artifacts/api-server/src/routes/talentSearch.ts`
+
+On `PATCH /api/talent-search/activate`, fire-and-forget `evaluateTalentSearchBackfill(db, employerId, log)`:
+- Scan up to 50 Vault-visible freelancers (`completenessScore >= 60`)
+- Run same evaluation pipeline per freelancer
+- Respect dry-run rules if activating in dry-run mode
+
+### Task 2.9 — P1 Follow-up: Re-Trigger on Verification Changes (plan.md Q12)
+
+**Files:** `artifacts/api-server/src/lib/documentReview.ts`, `artifacts/api-server/src/routes/admin.ts`
+
+After document status → `verified`, call `maybeEvaluateTalentSearch(db, freelancerId, log)` when verification affects match criteria.
+
+### Task 2.10 — P1 Follow-up: Log Pre-Filter Skips (plan.md Q13)
+
+**File:** `artifacts/api-server/src/lib/talentSearchEvaluator.ts`
+
+Log activity rows for `prefilter_rejected`, `duplicate_skipped` with `skippedReason`. Update activity feed UI to display skip reasons.
+
+### Task 3.0 — P1 Follow-up: Activation UX Copy
+
+**Files:** `TalentSearchStatusBar.tsx`, `TalentSearchRuleBuilder.tsx`
+
+- Banner when rules saved but inactive: "Rules saved — TalentSearch is not running until you click Turn On"
+- Distinguish Dry Run vs Live in status bar
+- Tooltip: "TalentSearch only evaluates freelancers when they save their profile. Turning on will also scan current Talent Vault profiles."
 
 ---
 
@@ -510,8 +539,10 @@ Mirrors `CruiseModeActivityFeed`. Each entry shows: score badge, decision pill, 
 - [ ] `talent_search_parse` and `talent_search_evaluation` in `TokenFeature`
 - [ ] `talentSearchPreFilter()` correctly rejects profession mismatch, rate mismatch, missing skills, excluded keywords, DBS requirement
 - [ ] `isInBlackoutWindow()` reused from `cruiseModeUtils.ts` without modification
-- [ ] Evaluation fires AFTER `PUT /api/freelancers/me` response — confirmed via response time test (<300ms)
-- [ ] Evaluation does NOT fire when `completenessScore < 60`
+- [ ] Evaluation fires on `PATCH /api/freelancers/me` when `completenessScore >= 60` — response time unaffected (<300ms)
+- [ ] Evaluation does NOT fire on `POST /api/freelancers` (onboarding create) alone
+- [ ] Activation backfill scans existing Vault profiles (Task 2.8)
+- [ ] Pre-filter rejects logged in activity feed with reason (Task 2.10)
 - [ ] 30-day duplicate check prevents re-notifying the same freelancer within 30 days
 - [ ] Freelancer receives max 3 TalentSearch notifications per day across all employers
 - [ ] `isActive` is NEVER changed automatically — only via `/activate` and `/deactivate`
@@ -521,7 +552,7 @@ Mirrors `CruiseModeActivityFeed`. Each entry shows: score badge, decision pill, 
 - [ ] Dry Run: evaluates and logs `dry_run_would_send` but sends NO freelancer notifications
 - [ ] All `/api/talent-search/*` routes return 403 for `userRole === 'freelancer'`
 - [ ] All `/api/talent-search/*` routes return 401 for unauthenticated requests
-- [ ] `PUT /api/freelancers/me` response time unaffected — TalentSearch hook is fire-and-forget
+- [ ] `PATCH /api/freelancers/me` response time unaffected — TalentSearch hook is fire-and-forget
 - [ ] `pnpm run typecheck` passes with zero errors
 - [ ] `/talent-search` page renders for employers, 403/redirect for freelancers
 - [ ] Status bar shows Active / Inactive — manual toggle only

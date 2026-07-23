@@ -93,13 +93,13 @@ Employer rule: `requireDbs: true`. Freelancer `dbsCheckStatus: 'uploaded'` (not 
 Freelancer updates profile but `completenessScore = 45` (below 60 threshold).
 
 - [ ] TalentSearch hook does NOT fire
-- [ ] `PUT /api/freelancers/me` response time unaffected
+- [ ] `PATCH /api/freelancers/me` response time unaffected
 - [ ] No `talent_search_activity` row created
 
 ### V2.6 — Profile Update Does Not Slow Response
 
 ```bash
-time curl -X PUT http://localhost:8080/api/freelancers/me \
+time curl -X PATCH http://localhost:8080/api/freelancers/me \
   -H "Authorization: Bearer <freelancer_token>" \
   -d '{"bio": "Updated bio"}'
 ```
@@ -164,7 +164,30 @@ Activate employer TalentSearch in dry run mode. Update a matching freelancer pro
 
 - [ ] Activity row created with `decision: 'dry_run_would_send'`
 - [ ] Freelancer receives NO notification
-- [ ] Employer receives notification about the dry run evaluation
+- [ ] Employer sees dry-run entry in activity feed (employer push notification optional — not required for P1)
+
+### V2.11b — Activation Backfill (P1 — plan.md Q11)
+
+Employer has active TalentSearch with matching rules. Vault already contains matching freelancer (completeness ≥ 60) who has NOT patched profile since activation.
+
+```bash
+curl -X PATCH http://localhost:8080/api/talent-search/activate \
+  -H "Authorization: Bearer <employer_token>"
+```
+
+Wait 10 seconds, check activity:
+
+- [ ] At least one activity row created for existing matching freelancer
+- [ ] `decision` is `sent` (live mode) or `dry_run_would_send` (dry run)
+- [ ] Activate response returns in < 300ms (backfill is fire-and-forget)
+
+### V2.11c — Pre-Filter Reject Logged (P1 — plan.md Q13)
+
+Employer rule requires skill "React". Freelancer profile has only "Vue". Freelancer PATCHes profile.
+
+- [ ] Activity row created with `decision: 'prefilter_rejected'`
+- [ ] `skippedReason` explains missing skill
+- [ ] Employer activity feed is NOT empty
 
 ### V2.12 — Blackout Window Skips
 
@@ -335,10 +358,10 @@ pnpm --filter @workspace/api-server run build
 
 ## Regression Validation
 
-### R1 — `PUT /api/freelancers/me` Unaffected
+### R1 — `PATCH /api/freelancers/me` Unaffected
 
 ```bash
-curl -X PUT http://localhost:8080/api/freelancers/me \
+curl -X PATCH http://localhost:8080/api/freelancers/me \
   -H "Authorization: Bearer <freelancer_token>" \
   -d '{"bio": "Updated bio", "skills": ["React"]}'
 ```
@@ -380,6 +403,25 @@ GROUP BY feature, user_id;
 - [ ] Profile update flow works
 - [ ] Talent Vault profile visible
 - [ ] Bookings, agreements, meetings all work
+
+---
+
+## Troubleshooting — "TalentSearch Not Working" (P1 — 2026-07-23)
+
+Use this checklist when an employer reports no matches after enabling TalentSearch:
+
+| Step | Check | Expected |
+|---|---|---|
+| 1 | Config `isActive` | Must be `true` — saving rules alone is not enough |
+| 2 | Config `isDryRun` | `false` for live notifications; `true` only logs `dry_run_would_send` |
+| 3 | Freelancer trigger | Matching freelancer must `PATCH /api/freelancers/me` after activation (or wait for activation backfill after Q11 fix) |
+| 4 | Completeness | Freelancer `completenessScore >= 60` |
+| 5 | Activity feed | Empty = pre-filter silent reject (before Q13 fix) or no trigger event |
+| 6 | Pre-filter | Profession category, required skills (substring), rate range, DBS `verified`, verified docs |
+| 7 | Duplicate | Prior `sent` within 30 days suppresses re-notification |
+| 8 | Daily limits | Employer 6h budget or freelancer 3 notifications/day cap |
+
+**Not Cruise Mode:** Freelancers use `/cruise-mode` (job matching). Employers use `/talent-search` (profile matching). These are separate features.
 
 ---
 

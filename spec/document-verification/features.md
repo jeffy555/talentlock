@@ -66,9 +66,11 @@ On the freelancer's `/profile` page, a dedicated "Verification" section shows:
 
 Documents with status `needs_review` appear in a new "Document Review" tab in the admin console (`/admin`). Admins can:
 
-- View the document image
+- View the document image (JPEG, PNG, WebP, or PDF preview)
 - Override the AI verdict to `verified` or `rejected`
 - Add a note explaining the decision (shown to the freelancer)
+
+**P1 follow-up (2026-07-23):** When AI review fails (common in local dev or when signed URLs are unreachable), admins must still be able to view the uploaded file in the review panel. The admin UI must not rely solely on external signed URLs that the browser cannot fetch — see `plan.md` §Q10.
 
 ---
 
@@ -107,3 +109,4 @@ Token usage for AI review is NOT charged against the employer's monthly token qu
 - Sharing verified document status across platforms (portable verification)
 - Verification required to receive payment (gating payouts on verification)
 - More than 3 documents per freelancer in this phase
+- Fixing admin preview in a future phase — **now in scope as P1 follow-up** (see `plan.md` §Q10) when AI review queues documents for manual verification

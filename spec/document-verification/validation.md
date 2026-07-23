@@ -301,6 +301,42 @@ pnpm typecheck
 
 - [ ] Zero TypeScript errors across the entire workspace
 
+### V2.18 — Admin: Document Image Visible in Review Panel (P1 — 2026-07-23)
+
+**Setup:** Freelancer uploads JPEG during onboarding → AI review fails or times out → document status `needs_review`.
+
+1. Log in to `/admin` → Document Review tab → click **Review** on the queued document.
+
+- [ ] Document image renders in the review sheet (not a broken image icon)
+- [ ] Preview uses same-origin `GET /api/storage/objects/documents/{userId}/{type}/{file}.jpg` with admin cookie
+- [ ] If file is missing, UI shows explicit "Could not load document image" message (not silent failure)
+- [ ] Admin can click **Verify** after viewing the image
+
+```bash
+# Same-origin path must work with admin cookie:
+curl -s "http://localhost:8080/api/storage/objects/documents/<userId>/government_id/<file>.jpg" \
+  -H "Cookie: tl_admin=<session>" -o /tmp/admin-preview.jpg && file /tmp/admin-preview.jpg
+```
+
+### V2.19 — AI Review Uses Server-Side File Read in Local Dev
+
+With `PRIVATE_OBJECT_DIR` unset, upload a JPEG and confirm:
+
+- [ ] `POST /api/documents/confirm` returns 201
+- [ ] AI review completes OR queues `needs_review` with a reason other than "unreachable URL"
+- [ ] OpenAI is NOT called with a `localhost:8080` URL
+
+### V2.20 — Confirm Rejects Missing Storage Object
+
+```bash
+curl -X POST http://localhost:8080/api/documents/confirm \
+  -H "Authorization: Bearer <clerk_token>" \
+  -H "Content-Type: application/json" \
+  -d '{"documentType":"government_id","storagePath":"documents/999/government_id/nonexistent.jpg"}'
+```
+
+- [ ] Returns `HTTP 400` with clear error — does not create orphan DB row
+
 ---
 
 ## Phase 3 Validation — Frontend
