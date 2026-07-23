@@ -24,12 +24,13 @@ The Vite dev server has a proxy rule that forwards `/api` calls to `localhost:80
 
 | Table | Purpose |
 |-------|---------|
-| `users` | Core accounts (linked to Clerk IDs). Has `signatureImageUrl`, `emailNotificationsEnabled` columns. |
-| `freelancer_profiles` | Freelancer professional info, skills, rate, availability. Has `averageRating`, `reviewCount`, `nextAvailableDate`, `completenessScore` columns. |
-| `employer_profiles` | Employer company info |
-| `job_requirements` | Job postings by employers |
-| `bookings` | Exclusive engagements. Has negotiation columns: `proposedRate`, `lastProposedBy`, `negotiationStatus`, optional employer `message`, and post-engagement debrief cache: `debriefContent` (jsonb — dual employer/freelancer slices), `debriefGeneratedAt`, `debriefRegeneratedAt` |
-| `agreements` | AI-generated legal agreements. Has `freelancerSignatureImageUrl`, `employerSignatureImageUrl`, `status`, `healthScore`, `healthScoreDetail`, `healthScoredAt`, `freelancerSummary`, `freelancerSummaryScoredAt`, `employerSignedAt`, `freelancerSignedAt` columns. |
+| `users` | Core accounts (linked to Clerk IDs). Has `signatureImageUrl`, `emailNotificationsEnabled`, `countryCode`, `stateCode`, `currencyCode`, `onboardingRole`, `onboardingStep` columns. |
+| `freelancer_profiles` | Freelancer professional info, skills, rate, availability. Has `averageRating`, `reviewCount`, `nextAvailableDate`, `completenessScore`, `countryCode`, `currencyCode`, `talentSearchNotificationsToday`, `talentSearchNotificationsResetAt`, `teachingLicenceAlertStage`, and education-profile columns. |
+| `employer_profiles` | Employer company info. Has `verificationLevel`, `isVerified` (recalculated from `employer_documents`). |
+| `job_requirements` | Job postings by employers. Has `professionCategory`, `rateType`. |
+| `bookings` | Exclusive engagements. Has negotiation columns: `proposedRate`, `lastProposedBy`, `negotiationStatus`, optional employer `message`; frozen `currencyCode` + `exchangeRateAtCreation` snapshot; post-engagement debrief cache: `debriefContent` (jsonb — dual employer/freelancer slices), `debriefGeneratedAt`, `debriefRegeneratedAt`. |
+| `agreements` | AI-generated or employer-uploaded legal agreements. Has signature fields, `status`, `healthScore`, `healthScoreDetail`, `healthScoredAt`, `freelancerSummary`, `freelancerSummaryScoredAt`, `source` (`ai_generated`\|`employer_upload`), `employerSummary`, `employerSummaryScoredAt`, `amendments`, `uploadFilename`, `uploadStage`, `finalizedAt`. |
+| `exchange_rate_cache` | Cached FX rates from external API. Has `baseCurrency`, `rates` (jsonb), `fetchedAt`, `source`. |
 | `conversations` | AI match chat sessions. Has `jobRequirementId` column. |
 | `messages` | Individual chat messages |
 | `meetings` | Discovery meeting requests |
@@ -46,32 +47,16 @@ The Vite dev server has a proxy rule that forwards `/api` calls to `localhost:80
 | `saved_freelancers` | Employer personal watchlist (heart icon on Talent Vault). Has `employerUserId`, `freelancerId`, `createdAt`, `notes` (nullable private employer note, max 500 chars), `lastAlertAt` (nullable — debounces `WATCHLIST_UPDATE` notifications to once per 24 h per pair). UNIQUE on `(employerUserId, freelancerId)`. |
 | `team_shortlist` | Shared freelancer shortlist for enterprise teams. |
 | `cruise_mode_configs` | One per freelancer. Has `isActive`, `isDryRun`, `rules` (jsonb), `rulesVersion`, `messagesThisMonth`, `messagesResetAt` columns. |
-| `cruise_mode_activity` | Per-job evaluation log.
-| `employer_documents` | Employer business identity document uploads. Has `id`, `employerId`, `documentType`, `fileUrl`, `status` (pending|verified|rejected|needs_review), `confidence`, `aiNotes` (admin-facing — never returned to employer), `employerNotes` (employer-facing plain English), `adminNotes`, `reviewedBy`, `reviewedAt`. UNIQUE on `(employerId, documentType)`. Upsert on re-upload — single row per type. |
-| `talent_search_configs` | One per employer. Mirror of `cruise_mode_configs`. Has `isActive`, `isDryRun`, `rules` (jsonb), `rulesVersion`, `hoursUsedToday`, `dailyLimitHours`, `hoursResetAt` columns. UNIQUE on `employerId`. |
-| `talent_search_activity` | Per-freelancer evaluation log. Has `employerId`, `freelancerId`, `score`, `decision`, `matchReasons`, `proposedMessage`, `sentAt` columns. | Has `freelancerId`
+| `cruise_mode_activity` | Per-job evaluation log. Has `freelancerId`, `jobRequirementId`, `score`, `decision`, `matchReasons`, `proposedMessage`, `sentAt` columns. |
+| `employer_documents` | Employer business identity document uploads. Has `id`, `employerId`, `documentType`, `fileUrl`, `status` (pending\|verified\|rejected\|needs_review), `confidence`, `aiNotes` (admin-facing — never returned to employer), `employerNotes` (employer-facing plain English), `adminNotes`, `reviewedBy`, `reviewedAt`. UNIQUE on `(employerId, documentType)`. Upsert on re-upload — single row per type. |
+| `talent_search_configs` | One per employer. Mirror of `cruise_mode_configs`. Has `isActive`, `isDryRun`, `rules` (jsonb), `rulesVersion`, `hoursUsedToday`, `dailyLimitHours`, `hoursResetAt`. UNIQUE on `employerId`. |
+| `talent_search_activity` | Per-freelancer evaluation log. Has `employerId`, `freelancerId`, `rulesVersion`, `score`, `decision`, `matchReasons`, `proposedMessage`, `sentAt`, `skippedReason`. |
 
-`conversations` gains 5 new nullable columns: `type` (text NOT NULL DEFAULT 'ai_match' — 'ai_match'|'human_direct'), `employerId`, `freelancerId`, `bookingId`, `meetingId`, `lastMessageAt`. `messages` gains `senderType` (text NOT NULL DEFAULT 'ai' — 'ai'|'human') and `readAt` (timestamptz nullable). All existing rows backfilled to 'ai_match' / 'ai' via column defaults — AI chat is completely unchanged.
+### Messaging & meetings additions (additive, non-breaking)
 
-`meetings` gains `briefContent` (jsonb nullable — `MeetingBrief` type) and `briefGeneratedAt` (timestamptz nullable). Brief is generated fire-and-forget when meeting `status` changes to `confirmed`. Cached on the meeting row. Regeneratable via `POST /api/employer-documents/upload-url              Presigned GCS upload URL for employer business document (employer only, image types only)
-POST /api/employer-documents/confirm                 Confirm employer document upload and trigger AI review fire-and-forget; upserts row
-GET  /api/employer-documents/me                      Employer own document statuses (allowlist: documentType, status, employerNotes, updatedAt — never aiNotes/fileUrl)
-GET  /api/employer-documents/me/:documentType/view-url  Short-lived 15-min signed URL for employer to preview own document
-GET  /api/admin/employer-documents                   Paginated admin queue of pending/needs_review employer documents with signed file URLs and aiNotes
-POST /api/admin/employer-documents/:id/verify        Admin verify employer document; recalculates verificationLevel; notifies employer
-POST /api/admin/employer-documents/:id/reject        Admin reject employer document; adminNotes required; notifies employer
+`conversations` gains nullable columns: `type` (text NOT NULL DEFAULT `ai_match` — `ai_match`\|`human_direct`), `employerId`, `freelancerId`, `bookingId`, `meetingId`, `lastMessageAt`. `messages` gains `senderType` (text NOT NULL DEFAULT `ai` — `ai`\|`human`) and `readAt` (timestamptz nullable). All existing rows backfilled via column defaults — AI chat is unchanged.
 
-POST /api/conversations/direct                    Create or retrieve a human_direct conversation between employer and freelancer
-GET  /api/conversations/direct                    Paginated inbox of human_direct conversations for current user
-GET  /api/conversations/:id/messages              Paginated message history (human thread — marks messages read on fetch)
-POST /api/conversations/:id/messages              Send a human message (rate-limited 30/hr; 403 non-participant; 422 for ai_match conversations)
-PATCH /api/conversations/:id/read                 Mark all unread messages in this conversation as read
-GET  /api/messages/unread-count                   Count of conversations with unread messages for current user
-
-POST /api/meetings/:id/brief`., `jobRequirementId`, `score`, `decision`, `matchReasons`, `proposedMessage`, `sentAt` columns. |
-| `employer_documents` | Employer business identity document uploads. Has `id`, `employerId`, `documentType`, `fileUrl`, `status` (pending|verified|rejected|needs_review), `confidence`, `aiNotes` (admin-facing — never returned to employer), `employerNotes` (employer-facing plain English), `adminNotes`, `reviewedBy`, `reviewedAt`. UNIQUE on `(employerId, documentType)`. Upsert on re-upload — single row per type. |
-| `talent_search_configs` | One per employer. Has `isActive`, `isDryRun`, `rules` (jsonb), `rulesVersion`, `hoursUsedToday`, `dailyLimitHours`, `hoursResetAt`. UNIQUE on `employerId`. |
-| `talent_search_activity` | Per-freelancer evaluation log. Has `employerId`, `freelancerId`, `rulesVersion`, `score`, `decision`, `matchReasons`, `proposedMessage`, `sentAt`, `freelancerResponded`, `freelancerOptedOut`. |
+`meetings` gains `briefContent` (jsonb nullable — `MeetingBrief` type) and `briefGeneratedAt` (timestamptz nullable). Brief is generated fire-and-forget when meeting `status` changes to `confirmed`. Cached on the meeting row. Regeneratable via `POST /api/meetings/:id/brief`.
 
 ### Teaching Professional Profile additions (additive, non-breaking)
 
@@ -167,6 +152,10 @@ GET  /api/users/me                                Current user profile
 PUT  /api/users/me                                Update user profile
 PUT  /api/users/me/signature                      Save/clear signature image URL
 PATCH /api/users/me/notification-preferences      Toggle email notification opt-in/out
+PATCH /api/users/me/location                      Update country/state and derived currency (onboarding or profile)
+
+GET  /api/countries                               Country list with default currency codes (public)
+GET  /api/exchange-rates                          Cached FX rates for dual-currency display (public)
 
 GET  /api/freelancers                             List freelancers (filters + ?q=keyword + ?availableFrom=YYYY-MM-DD; completeness ≥ 60%)
                                                    Additive optional filters: ?professionCategory=technology|education, ?teachingSubject=<text> (case-insensitive array match)
@@ -196,6 +185,8 @@ POST /api/bookings/:id/debrief                    Generate or regenerate debrief
 
 GET  /api/agreements                              Paginated list (?page, ?pageSize)
 POST /api/agreements                              Generate agreement (AI)
+POST /api/agreements/upload-url                   Presigned upload URL for employer-uploaded agreement (PDF/DOCX/TXT)
+POST /api/agreements/upload-confirm               Confirm upload, extract text, create agreement with AI employer summary
 GET  /api/agreements/:id                          Agreement detail
 POST /api/agreements/:id/sign                     Sign agreement (image or typed name)
 GET  /api/agreements/:id/download                 Download fully signed agreement as a formatted PDF; cached in GCS after first generation; both parties; requires status = fully_signed
@@ -203,6 +194,9 @@ POST /api/agreements/:id/redline                  AI contract review suggestions
 PATCH /api/agreements/:id/accept-redline          Accept a redline suggestion
 POST /api/agreements/:id/health-score             AI contract quality score across 5 dimensions (0–100); cached on agreements table; invalidated on redline accept
 POST /api/agreements/:id/summarise               AI plain-English summary for freelancer (6 sections + attention flags); cached; invalidated on redline accept; freelancer-only (403 for employers)
+PATCH /api/agreements/:id/amendments              Update employer amendment points (employer-uploaded agreements only)
+POST /api/agreements/:id/enrich                   AI merge amendments + booking dates/rate into uploaded agreement content
+POST /api/agreements/:id/finalize                 Run health review and mark uploaded agreement finalized (required before employer sign)
 
 GET  /api/meetings                                Paginated list (?page, ?pageSize)
 POST /api/meetings                                Request meeting
@@ -263,49 +257,17 @@ PATCH /api/talent-search/dry-run                 Activate dry run mode
 PATCH /api/talent-search/deactivate              Deactivate
 POST /api/talent-search/parse-rules              AI parses free-form employer rules into structured TalentSearchRules
 GET  /api/talent-search/activity                 Paginated activity feed (freelancers evaluated, scores, decisions)
-PATCH /api/talent-search/activity/:id/responded  Mark freelancer as responded
-POST /api/talent-search/opt-out/:employerId      Freelancer opts out of notifications from specific employer
-GET  /api/talent-search/stats                    Today stats + hours used
-
-GET  /api/talent-search                          Employer TalentSearch config (null if none)
-POST /api/talent-search                          Create or update TalentSearch config
-PATCH /api/talent-search/activate                Activate live mode (employer only)
-PATCH /api/talent-search/dry-run                 Activate dry run mode
-PATCH /api/talent-search/deactivate              Deactivate
-POST /api/talent-search/parse-rules              AI parses free-form text into TalentSearchRules
-GET  /api/talent-search/activity                 Paginated activity feed (freelancers evaluated)
 POST /api/talent-search/activity/:id/follow-up   Mark employer follow-up sent
-GET  /api/talent-search/stats                    Today and monthly stats
+GET  /api/talent-search/stats                    Today stats + hours used
 
 GET  /api/cruise-mode                            Freelancer Cruise Mode config (null if none)
 POST /api/cruise-mode                            Create or update Cruise Mode config
 PATCH /api/cruise-mode/activate                  Activate live mode (freelancer_pro only)
 PATCH /api/cruise-mode/dry-run                   Activate dry run mode
-PATCH /api/cruise-mode/pause                     Pause Cruise Mode
 PATCH /api/cruise-mode/deactivate                Deactivate and clear
 POST /api/cruise-mode/parse-rules                AI parses free-form text into structured rules
-GET  /api/talent-search                          Employer TalentSearch config (null if none)
-POST /api/talent-search                          Create or update TalentSearch config
-PATCH /api/talent-search/activate                Activate live mode (employer only)
-PATCH /api/talent-search/dry-run                 Activate dry run mode
-PATCH /api/talent-search/deactivate              Deactivate
-POST /api/talent-search/parse-rules              AI parses free-form text into TalentSearchRules
-GET  /api/talent-search/activity                 Paginated activity feed (freelancers evaluated)
-POST /api/talent-search/activity/:id/follow-up   Mark employer follow-up sent
-GET  /api/talent-search/stats                    Today and monthly stats
-
 GET  /api/cruise-mode/activity                   Paginated activity feed (jobs evaluated, scores, decisions, messages)
 POST /api/cruise-mode/activity/:id/follow-up     Mark follow-up sent for an activity entry
-GET  /api/talent-search                          Employer TalentSearch config (null if none)
-POST /api/talent-search                          Create or update TalentSearch config
-PATCH /api/talent-search/activate                Activate live mode (employer only)
-PATCH /api/talent-search/dry-run                 Activate dry run mode
-PATCH /api/talent-search/deactivate              Deactivate
-POST /api/talent-search/parse-rules              AI parses free-form text into TalentSearchRules
-GET  /api/talent-search/activity                 Paginated activity feed (freelancers evaluated)
-POST /api/talent-search/activity/:id/follow-up   Mark employer follow-up sent
-GET  /api/talent-search/stats                    Today and monthly stats
-
 GET  /api/cruise-mode/stats                      Today and monthly stats
 
 POST /api/employer-documents/upload-url              Presigned GCS upload URL for employer business document (employer only, image types only)
@@ -387,44 +349,19 @@ POST /api/admin/logout                            Admin: logout
 30. **Team Accounts (Enterprise)**
 31. **AI Contract Health Score** — On-demand 0–100 composite score across 5 dimensions (Clarity, Fairness, Completeness, Enforceability, Industry Fit); letter grade A–F; cached on agreements table; invalidated when redline accepted; visible to both parties on `/agreements/:id`
 32. **Auth Hardening (Access Control)** — Per-resource authorization on 11 routes + storage ACL via `accessControl.ts`; server-side agreement signing role; namespaced upload paths; IDOR protection (401/403/404 convention)
-33. **Agreement AI Summary**
-34. **Agreement PDF Download**
-35. **Cruise Mode** — `freelancer_pro` feature; freelancer defines rules (skills, rate range, exclusions, blackout windows) via form or free-form text/file; AI evaluates every new job post against the rules and sends a personalised interest message to the employer on the freelancer's behalf when score ≥ threshold; two-stage filter (pre-filter + AI evaluation); dry run mode; daily digest option; activity feed with match scores and sent messages; monthly quota of 10 messages; employer sees a "Cruise Mode ✦" badge; `cruise_mode_evaluation` token label — `GET /api/agreements/:id/download` returns a professionally formatted PDF for fully signed agreements; rendered via `@react-pdf/renderer` with both signature images (or cursive typed names), signing timestamps, metadata block, and TalentLock footer; cached in GCS after first generation; available to both parties on all plans; GDPR deletion removes cached PDFs — Freelancer-only "✦ Summarise for me" button on `/agreements/:id`; AI produces 6-section plain-English summary (what you do, payment, IP, termination, restrictions, key dates) + up to 3 attention flags; disclaimer always first; cached on agreements table (`freelancerSummary`, `freelancerSummaryScoredAt`); invalidated on redline accept alongside health score; `agreement_summary` token label; 403 for employers
-
-37. **TalentSearch (Employer Cruise Mode)** — mirror of Cruise Mode for employers; fires on `PUT /api/freelancers/me` (not job post); two-stage pre-filter + AI evaluation against `talent_search_configs` rules; sends Express Interest notification to matching freelancers on employer's behalf; freelancer daily cap (3 notifications/day); 30-day duplicate window per employer–freelancer pair; 6h/day budget same model as Cruise Mode; `talent_search_evaluation` token label; `TalentSearch ✦` badge on freelancer notification; employer-only `/talent-search` page with teal accent
-
-36. **Teaching Professional Profile** — `professionCategory` (`technology`|`education`, NOT NULL DEFAULT 'technology') on `freelancer_profiles` and `job_requirements`; `rateType` (`hourly`|`per_day`|`per_session`|`per_course`, NOT NULL DEFAULT 'hourly') on `job_requirements`; 12 nullable education fields (subjects, levels, degree, teaching licence, DBS status, research profile, location) on `freelancer_profiles` for `educationProfessionType` (`school_teacher`|`university_lecturer`|`tutor`|`researcher`); onboarding gains a conditional profession-category step for freelancers (employers unaffected); Talent Vault gains `professionCategory`/`teachingSubject` filters (additive, default behaviour unchanged); AI matching prompt gains profession-context injection that is byte-identical (empty string) for technology jobs; `formatRate()`/`rateUnitLabel()` utility centralises rate unit display across 9 call sites
-
-37. **TalentSearch (Employer Cruise Mode)** — mirror of Cruise Mode for employers; fires on `PUT /api/freelancers/me` when matchable profile fields change (hash-based detection via `profileMatchHash`); employer sets profession/skill/rate/location/required-document rules; AI evaluates freelancer profile fit 0–100; sends personalised "TalentSearch ✦" Express Interest notification to freelancer when score >= threshold; per-`rulesVersion` duplicate prevention; freelancer opt-out per employer; 2 new tables (`talent_search_configs`, `talent_search_activity`); 1 new column on `freelancer_profiles` (`profileMatchHash`); `talent_search_evaluation` token label; employer-only `/talent-search` page
-
-40. **Employer Verification** — parallel to freelancer document verification; new `employer_documents` table (5 document types: company_registration, tax_vat_certificate, business_licence, representative_id, proof_of_business_address); `employer_profiles` gains `verificationLevel` and `isVerified` calculated atomically on every doc status change; AI vision review (employer-specific prompt) produces admin-facing `aiNotes` and employer-facing `employerNotes` separately; upsert on re-upload (UNIQUE constraint per employer+documentType); `employer_doc_review` token label (tracked, not deducted from plan quota); admin queue extension with Employer Docs tab; Verified Employer badge (✓ / ◐ / none) shown on job posts, bookings, meetings to freelancers; aiNotes/fileUrl/confidence NEVER returned to employers or freelancers; GDPR anonymises document content and deletes GCS files; all plans
-
-39. **In-App Direct Messaging** — extends existing `conversations` (adds `type`, `employerId`, `freelancerId`, `bookingId`, `meetingId`, `lastMessageAt`) and `messages` (adds `senderType`, `readAt`) tables with additive columns; AI chat (`type='ai_match'`) completely unchanged; human threads (`type='human_direct'`) support employer↔freelancer messaging scoped to optional booking or meeting; fire-and-forget `new_message` notification + email on each message; email suppressed if recipient read in last 5 min; 30 messages/hour rate limit per user per conversation; deduplication via UNIQUE partial indexes; GDPR anonymises message content to `[Message removed]` on account deletion; `/messages` inbox + `/messages/:id` thread + Messages tab on booking + Messages section on meeting + "Message" button on freelancer profile; unread badge in nav; 30-second polling; all plans
-
-38. **AI Meeting Brief Generator** — fires fire-and-forget when meeting `status → confirmed`; generates 5-section brief for employer: candidate snapshot (name/field/rate/credentials/reviews), why they match (3 specific reasons), suggested questions (5–8 tailored to job + candidate), rate context (vs market median + employer historical avg + budget check), watch points; cached as `briefContent` jsonb on `meetings` table; manual regeneration via `POST /api/employer-documents/upload-url              Presigned GCS upload URL for employer business document (employer only, image types only)
-POST /api/employer-documents/confirm                 Confirm employer document upload and trigger AI review fire-and-forget; upserts row
-GET  /api/employer-documents/me                      Employer own document statuses (allowlist: documentType, status, employerNotes, updatedAt — never aiNotes/fileUrl)
-GET  /api/employer-documents/me/:documentType/view-url  Short-lived 15-min signed URL for employer to preview own document
-GET  /api/admin/employer-documents                   Paginated admin queue of pending/needs_review employer documents with signed file URLs and aiNotes
-POST /api/admin/employer-documents/:id/verify        Admin verify employer document; recalculates verificationLevel; notifies employer
-POST /api/admin/employer-documents/:id/reject        Admin reject employer document; adminNotes required; notifies employer
-
-POST /api/conversations/direct                    Create or retrieve a human_direct conversation between employer and freelancer
-GET  /api/conversations/direct                    Paginated inbox of human_direct conversations for current user
-GET  /api/conversations/:id/messages              Paginated message history (human thread — marks messages read on fetch)
-POST /api/conversations/:id/messages              Send a human message (rate-limited 30/hr; 403 non-participant; 422 for ai_match conversations)
-PATCH /api/conversations/:id/read                 Mark all unread messages in this conversation as read
-GET  /api/messages/unread-count                   Count of conversations with unread messages for current user
-
-POST /api/meetings/:id/brief` (202 Accepted); employer-only — freelancers never see it; plan-gated questions (Growth+ only in UI, always generated server-side); `meeting_brief` token label charged to employer; amber accent UI card on meeting detail page
-
-41. **Credential Expiry Tracking** — daily scan (`POST /api/cron/credential-expiry`, machine-only, `x-cron-secret` header, triggered by a scheduled GitHub Actions workflow since the API runs on an autoscale deployment target) tracks two expiry sources: `documents.expiryDate` (freelancer-supplied, `professional_credential`/`government_id`) and `freelancer_profiles.teachingLicenceExpiry` (education professionals); alert schedule 90d email → 30d email + in-app + amber profile banner → 7d in-app + red urgent banner + "Expiring Soon" Talent Vault badge → expiry day flips `documents.status` to `expired` (badge auto-downgrades via existing `updateVerificationLevel()`); each credential tracks an `expiryAlertStage` (`none|90d|30d|7d|expired`) so the stage only ever advances — never duplicates an alert, safely catches up if a day is missed; Talent Vault removal (`GET /api/freelancers` exclusion) is scoped **only** to `professionCategory: 'education'` + `educationProfessionType: 'school_teacher'` freelancers with an expired `teachingLicenceExpiry` — the one credential already documented as required; generic `professional_credential` expiry never removes a freelancer from Vault, only degrades the badge and fires alerts; direct profile access (`GET /freelancers/:id`, `/f/:id`) is never blocked by Vault exclusion; re-uploading a document or renewing a teaching licence resets the alert stage to `none`; all plans, no token consumption
-42. **Freelancer Watchlist** — employer personal talent pipeline built on `saved_freelancers`; dedicated Watchlist tab on `/freelancers` (non-enterprise); private notes per entry (`PATCH /api/freelancers/:id/watchlist`); in-app `WATCHLIST_UPDATE` notifications when a watched freelancer becomes available or changes rate ≥ 5% (debounced 24 h via `lastAlertAt`); plan limits (starter 25 / growth 100); dashboard summary card; active enterprise team members use `team_shortlist` instead — personal watchlist API returns `[]`/`403`; freelancers never know they are on a watchlist
-
-43. **Post-Engagement AI Debrief** — fires fire-and-forget when booking `status → completed`; single OpenAI call (`gpt-4o-mini`) produces dual role-specific debrief cached as `debriefContent` jsonb on `bookings`; each party reads their slice via `GET /api/bookings/:id/debrief`; manual regeneration via `POST /api/bookings/:id/debrief` (202, 24h cooldown via `debriefRegeneratedAt`); `booking_debrief` token label charged to employer; `BOOKING_DEBRIEF_READY` notification + email to both parties; violet (employer) / indigo (freelancer) `DebriefCard` on `/bookings/:id`; employer starter plan gates sections 3–5 in UI only; GDPR nullifies debrief columns on account deletion
-
-44. **Multi-Currency & Location** — country-derived currency on `users` and denormalised on `freelancer_profiles`; booking `currencyCode` frozen at creation with `exchangeRateAtCreation` snapshot for employer spend analytics; `GET /api/countries` + `GET /api/exchange-rates`; onboarding `location` step; Talent Vault dual-currency display and country/currency filters; agreement rate clause uses booking currency (not hardcoded USD)
-45. **Employer Uploaded Agreement** — employers can upload PDF/DOCX/TXT agreements via presigned upload; AI employer-facing summary; amendment points; AI enrich with booking dates/rate; finalize runs contract health review; employer signs via existing e-sign flow (`agreements.source`, `uploadStage`, `employerSummary`, `amendments`)
+33. **Agreement AI Summary** — Freelancer-only "✦ Summarise for me" button on `/agreements/:id`; AI produces 6-section plain-English summary (what you do, payment, IP, termination, restrictions, key dates) + up to 3 attention flags; disclaimer always first; cached on agreements table (`freelancerSummary`, `freelancerSummaryScoredAt`); invalidated on redline accept alongside health score; `agreement_summary` token label; 403 for employers
+34. **Agreement PDF Download** — `GET /api/agreements/:id/download` returns a professionally formatted PDF for fully signed agreements; rendered via `@react-pdf/renderer` with both signature images (or cursive typed names), signing timestamps, metadata block, and TalentLock footer; cached in GCS after first generation; available to both parties on all plans; GDPR deletion removes cached PDFs
+35. **Cruise Mode** — `freelancer_pro` feature; freelancer defines rules (skills, rate range, exclusions, blackout windows) via form or free-form text/file; AI evaluates every new job post against the rules and sends a personalised interest message to the employer on the freelancer's behalf when score ≥ threshold; two-stage filter (pre-filter + AI evaluation); dry run mode; daily digest option; activity feed with match scores and sent messages; monthly quota of 10 messages; employer sees a "Cruise Mode ✦" badge; `cruise_mode_evaluation` token label
+36. **Teaching Professional Profile** — `professionCategory` (`technology`|`education`, NOT NULL DEFAULT `technology`) on `freelancer_profiles` and `job_requirements`; `rateType` (`hourly`|`per_day`|`per_session`|`per_course`, NOT NULL DEFAULT `hourly`) on `job_requirements`; 12 nullable education fields on `freelancer_profiles` for `educationProfessionType` (`school_teacher`|`university_lecturer`|`tutor`|`researcher`); onboarding gains a conditional profession-category step for freelancers (employers unaffected); Talent Vault gains `professionCategory`/`teachingSubject` filters; AI matching prompt gains profession-context injection that is byte-identical (empty string) for technology jobs; `formatRate()`/`rateUnitLabel()` utility centralises rate unit display
+37. **TalentSearch (Employer Cruise Mode)** — mirror of Cruise Mode for employers; fires on `PUT /api/freelancers/me` when matchable profile fields change; employer sets profession/skill/rate/location/required-document rules; AI evaluates freelancer profile fit 0–100; sends personalised "TalentSearch ✦" Express Interest notification to freelancer when score >= threshold; per-`rulesVersion` duplicate prevention; freelancer daily cap (3 notifications/day); 6h/day budget; `talent_search_evaluation` token label; employer-only `/talent-search` page with teal accent
+38. **AI Meeting Brief Generator** — fires fire-and-forget when meeting `status → confirmed`; generates 5-section brief for employer: candidate snapshot, why they match, suggested questions, rate context, watch points; cached as `briefContent` jsonb on `meetings` table; manual regeneration via `POST /api/meetings/:id/brief` (202 Accepted); employer-only — freelancers never see it; plan-gated questions (Growth+ only in UI, always generated server-side); `meeting_brief` token label charged to employer; amber accent UI card on meeting detail page
+39. **In-App Direct Messaging** — extends existing `conversations` and `messages` tables with additive columns; AI chat (`type='ai_match'`) completely unchanged; human threads (`type='human_direct'`) support employer↔freelancer messaging scoped to optional booking or meeting; fire-and-forget `new_message` notification + email on each message; 30 messages/hour rate limit per user per conversation; `/messages` inbox + `/messages/:id` thread; unread badge in nav; all plans
+40. **Employer Verification** — parallel to freelancer document verification; `employer_documents` table (5 document types); `employer_profiles` gains `verificationLevel` and `isVerified` calculated atomically on every doc status change; AI vision review produces admin-facing `aiNotes` and employer-facing `employerNotes` separately; upsert on re-upload; `employer_doc_review` token label (tracked, not deducted from plan quota); Verified Employer badge on job posts, bookings, meetings
+41. **Credential Expiry Tracking** — daily scan (`POST /api/cron/credential-expiry`, machine-only, `x-cron-secret` header) tracks `documents.expiryDate` and `freelancer_profiles.teachingLicenceExpiry`; alert schedule 90d → 30d → 7d → expiry; `expiryAlertStage` prevents duplicate alerts; Vault exclusion scoped only to expired school-teacher teaching licences; all plans, no token consumption
+42. **Freelancer Watchlist** — employer personal talent pipeline built on `saved_freelancers`; dedicated Watchlist tab on `/freelancers` (non-enterprise); private notes per entry; in-app `WATCHLIST_UPDATE` notifications when a watched freelancer becomes available or changes rate ≥ 5% (debounced 24 h); plan limits (starter 25 / growth 100); active enterprise team members use `team_shortlist` instead
+43. **Post-Engagement AI Debrief** — fires fire-and-forget when booking `status → completed`; dual role-specific debrief cached as `debriefContent` jsonb on `bookings`; each party reads their slice via `GET /api/bookings/:id/debrief`; manual regeneration via `POST /api/bookings/:id/debrief` (202, 24h cooldown); `booking_debrief` token label charged to employer; violet/indigo `DebriefCard` on `/bookings/:id`
+44. **Multi-Currency & Location** — country-derived currency on `users` and denormalised on `freelancer_profiles`; booking `currencyCode` frozen at creation with `exchangeRateAtCreation` snapshot; `GET /api/countries` + `GET /api/exchange-rates`; onboarding `location` step; Talent Vault dual-currency display and country/currency filters; agreement rate clause uses booking currency
+45. **Employer Uploaded Agreement** — employers can upload PDF/DOCX/TXT agreements via presigned upload; AI employer-facing summary; amendment points; AI enrich with booking dates/rate; finalize runs contract health review; employer signs via existing e-sign flow (`agreements.source`, `uploadStage`, `employerSummary`, `amendments`); `agreement_upload_summary` and `agreement_upload_enrich` token labels
 
 ### Dashboard analytics panels
 
@@ -470,39 +407,23 @@ Shared server utilities: `artifacts/api-server/src/lib/earningsUtils.ts` (`getLa
 - Re-fetch meeting at start of `generateMeetingBrief()` and exit early if `status !== confirmed` (guards against race where meeting is cancelled immediately after being confirmed)
 - `briefContent` is cached on the `meetings` row — no separate table, no version history, regeneration overwrites
 - Token `meeting_brief` is charged to the EMPLOYER account (not freelancer)
-- `POST /api/employer-documents/upload-url              Presigned GCS upload URL for employer business document (employer only, image types only)
-POST /api/employer-documents/confirm                 Confirm employer document upload and trigger AI review fire-and-forget; upserts row
-GET  /api/employer-documents/me                      Employer own document statuses (allowlist: documentType, status, employerNotes, updatedAt — never aiNotes/fileUrl)
-GET  /api/employer-documents/me/:documentType/view-url  Short-lived 15-min signed URL for employer to preview own document
-GET  /api/admin/employer-documents                   Paginated admin queue of pending/needs_review employer documents with signed file URLs and aiNotes
-POST /api/admin/employer-documents/:id/verify        Admin verify employer document; recalculates verificationLevel; notifies employer
-POST /api/admin/employer-documents/:id/reject        Admin reject employer document; adminNotes required; notifies employer
-
-POST /api/conversations/direct                    Create or retrieve a human_direct conversation between employer and freelancer
-GET  /api/conversations/direct                    Paginated inbox of human_direct conversations for current user
-GET  /api/conversations/:id/messages              Paginated message history (human thread — marks messages read on fetch)
-POST /api/conversations/:id/messages              Send a human message (rate-limited 30/hr; 403 non-participant; 422 for ai_match conversations)
-PATCH /api/conversations/:id/read                 Mark all unread messages in this conversation as read
-GET  /api/messages/unread-count                   Count of conversations with unread messages for current user
-
-POST /api/meetings/:id/brief` returns 202 Accepted — client polls `GET /api/meetings/:id` until `briefGeneratedAt` is populated
+- `POST /api/meetings/:id/brief` returns 202 Accepted — client polls `GET /api/meetings/:id` until `briefGeneratedAt` is populated
 - Plan gating is UI-only — server always generates full brief including questions regardless of plan
 - `rateSuggestionUtils.ts` functions called at brief generation time — read-only, no modification
 
 ### Cursor notes — TalentSearch
 
-- `profileMatchHash` (nullable text) added to `freelancer_profiles` — computed SHA-256 of matchable fields; TalentSearch evaluation only fires when this hash changes (bio/photo updates do not trigger evaluation)
 - TalentSearch fires on `PUT /api/freelancers/me` (profile update) — fire-and-forget, never awaited, never delays response
 - Duplicate prevention: per `(employerId, freelancerId, rulesVersion)` — changing rules version allows re-evaluation of same freelancer
-- Freelancer opt-out: `POST /api/talent-search/opt-out/:employerId` — permanently skips all future evaluations for that pair
+- Freelancer daily cap: max 3 TalentSearch notifications per day via `talentSearchNotificationsToday` / `talentSearchNotificationsResetAt`
 - Reuses `isInBlackoutWindow()` and `getNextMidnightUTC()` from `cruiseModeUtils.ts` directly
-- Teaching Professional Profile spec MUST be implemented before TalentSearch Phase 2 — evaluator reads education columns
+- Teaching Professional Profile spec MUST be implemented before TalentSearch — evaluator reads education columns
 
-Cursor notes — Teaching Professional Profile
+### Cursor notes — Teaching Professional Profile
 
 - `professionCategory` and `rateType` are NOT NULL with DB defaults (`'technology'` / `'hourly'`) — never write `?? 'technology'` fallback checks, the column guarantees a value
 - The 12 education fields are genuinely nullable — guard all education-specific UI on `educationProfessionType !== null`, never on `professionCategory` alone
-- AI matching prompt: `buildProfessionContext()` MUST return `''` (empty string, no whitespace) for `professionCategory !== 'education'` — this guarantees byte-identical prompts for all existing technology jobs. Any prompt change here requires the diff regression test in `specs/teaching-professional-profile/task.md` Task 2.3
+- AI matching prompt: `buildProfessionContext()` MUST return `''` (empty string, no whitespace) for `professionCategory !== 'education'` — this guarantees byte-identical prompts for all existing technology jobs
 - `calculateCompletenessScore()` is NOT modified by this feature — education fields do not affect the ≥60% Talent Vault visibility gate
 - No new columns on `bookings` or `agreements` — `professionCategory`/`rateType` are read via `booking.jobRequirementId` join when needed (e.g. agreement generation in a future spec)
 
@@ -540,6 +461,24 @@ Cursor notes — Teaching Professional Profile
 - Agreement `content` field must NEVER be passed to the debrief prompt
 - Plan gating for employer sections 3–5 is UI-only — server always generates full employer debrief
 
+### Cursor notes — Multi-Currency & Location
+
+- `users.countryCode` + `users.currencyCode` are set during onboarding `location` step or via `PATCH /api/users/me/location`
+- `freelancer_profiles.countryCode` + `currencyCode` are denormalised from `users` on location update — keep in sync via `syncFreelancerLocationFromUser()`
+- `bookings.currencyCode` is frozen at creation; `exchangeRateAtCreation` snapshot is stored for spend analytics conversion
+- `GET /api/exchange-rates` reads from `exchange_rate_cache` table — never call external FX API from route handlers directly
+- Agreement generation and enrichment must use booking currency, not hardcoded USD
+
+### Cursor notes — Employer Uploaded Agreement
+
+- `agreements.source = 'employer_upload'` distinguishes uploaded agreements from AI-generated ones
+- Upload workflow stages: `summary_ready` → `enriched` → `finalized` via `uploadStage` column
+- Employer cannot sign until `uploadStage === 'finalized'` — enforced in `POST /api/agreements/:id/sign`
+- `employerSummary` is stripped from API responses for non-employers in `enrichAgreementForViewer()`
+- Text extraction via `documentTextExtract.ts` — PDF (pdf-parse), DOCX/DOC (mammoth), TXT (utf-8)
+- Token features: `agreement_upload_summary` (on upload-confirm), `agreement_upload_enrich` (on enrich)
+- Storage path pattern: `uploads/{employerId}/agreements/{uuid}.{ext}` — validate ownership before confirm
+
 ### Utility file registry
 
 | File | Purpose |
@@ -563,21 +502,6 @@ Cursor notes — Teaching Professional Profile
 | `artifacts/api-server/src/routes/talentSearch.ts` | All `/api/talent-search/*` routes |
 | `artifacts/talentlock/src/components/talent-search/` | `TalentSearchStatusBar`, `TalentSearchRuleBuilder`, `TalentSearchActivityFeed` |
 | `artifacts/talentlock/src/lib/rateFormatUtils.ts` | `formatRate(amount, rateType, currencySymbol)`, `rateUnitLabel(rateType)` — centralised rate display for hourly/per_day/per_session/per_course |
-| `artifacts/api-server/src/lib/employerDocReviewUtils.ts` | `reviewEmployerDocument()`, `calculateVerificationLevel()`, `recalculateEmployerVerificationLevel()`, `buildEmployerDocReviewPrompt()`, `validateEmployerDocReviewResponse()`, `DOCUMENT_TYPE_LABELS`, `REQUIRED_FOR_PARTIAL`, `REQUIRED_FOR_FULL` |
-| `artifacts/api-server/src/routes/employerDocuments.ts` | All `/api/employer-documents/*` routes |
-| `artifacts/talentlock/src/components/employer/EmployerVerificationSection.tsx` | Employer profile verification section — disclaimer, status pill, 5-doc checklist, upload flow |
-| `artifacts/talentlock/src/components/employer/VerifiedEmployerBadge.tsx` | Trust badge component — renders green/amber/nothing based on verificationLevel |
-| `artifacts/api-server/src/lib/conversationsUtils.ts` | `findOrCreateConversation()`, `sendHumanMessage()`, `shouldSuppressEmail()`, `markConversationRead()`, `getUnreadConversationCount()` |
-| `artifacts/api-server/src/routes/conversations.ts` | All `/api/conversations/*` and `/api/messages/unread-count` routes |
-| `artifacts/talentlock/src/pages/MessagesInbox.tsx` | `/messages` inbox page with conversation list |
-| `artifacts/talentlock/src/pages/MessageThread.tsx` | `/messages/:id` full thread view |
-| `artifacts/talentlock/src/components/messages/` | `BookingMessageThread`, `MeetingMessageThread`, `InlineMessageThread` |
-| `artifacts/api-server/src/lib/meetingBriefGenerator.ts` | `generateMeetingBrief(db, meetingId, log)` — fire-and-forget brief generation; `resolveJobRequirement()` — 3-path job resolution; `buildMeetingBriefPrompt()` — verbatim prompt builder |
-| `artifacts/talentlock/src/components/meetings/MeetingBriefCard.tsx` | Brief card with 4 states: not-generated, generating (polling), loaded, error |
-| `artifacts/api-server/src/lib/talentSearchUtils.ts` | `employerPreFilter()`, `computeProfileMatchHash()`, `buildTalentSearchPrompt()`, `validateTalentSearchResponse()` |
-| `artifacts/api-server/src/lib/talentSearchEvaluator.ts` | `evaluateTalentSearchForUpdatedProfile()` — background pipeline; fires on profile update |
-| `artifacts/api-server/src/routes/talentSearch.ts` | All `/api/talent-search/*` routes |
-| `artifacts/talentlock/src/components/talent-search/` | `TalentSearchStatusBar`, `TalentSearchRuleBuilder`, `TalentSearchActivityFeed` |
 | `artifacts/talentlock/src/components/onboarding/TeachingDetailsSection.tsx` | Conditional onboarding/profile section for `professionCategory: 'education'` freelancers |
 | `lib/db/src/schema/` — `REQUIRED_DOCUMENTS_BY_EDUCATION_TYPE` | Static lookup: required/recommended documents per `educationProfessionType` |
 | `artifacts/api-server/src/lib/sanitise.ts` | `sanitiseText()`, `sanitiseRichText()` — strip HTML from all free-text writes |
@@ -625,6 +549,16 @@ Cursor notes — Teaching Professional Profile
 | `artifacts/talentlock/src/components/watchlist/WatchlistToggleButton.tsx` | Heart toggle for personal watchlist |
 | `artifacts/talentlock/src/components/watchlist/WatchlistNotesEditor.tsx` | Inline private notes editor on watchlist panel |
 | `artifacts/talentlock/src/components/watchlist/WatchlistSummaryCard.tsx` | Employer dashboard watchlist summary |
+| `artifacts/api-server/src/lib/documentTextExtract.ts` | `extractDocumentText()`, `extractTextFromBuffer()`, `isAllowedAgreementMimeType()` — PDF/DOCX/TXT text extraction |
+| `artifacts/api-server/src/lib/employerAgreementSummaryUtils.ts` | `buildEmployerSummaryPrompt()`, `validateEmployerSummaryResponse()`, `EMPLOYER_AGREEMENT_SUMMARY_DISCLAIMER` |
+| `artifacts/api-server/src/lib/agreementEnrichUtils.ts` | `buildEnrichPrompt()` — AI prompt for merging amendments + booking particulars into uploaded agreement |
+| `artifacts/talentlock/src/components/agreements/EmployerAgreementUploadPanel.tsx` | Drag-and-drop upload UI on BookingDetail "Upload Yours" tab |
+| `artifacts/talentlock/src/components/agreements/EmployerAgreementSummaryPanel.tsx` | Employer-facing AI summary display with attention flags |
+| `artifacts/talentlock/src/components/agreements/EmployerAgreementWorkflow.tsx` | Multi-step stepper: Summary → Amendments → Enrich → Review → Sign |
+| `artifacts/api-server/src/routes/countries.ts` | `GET /api/countries` — country list with default currencies |
+| `artifacts/api-server/src/routes/exchangeRates.ts` | `GET /api/exchange-rates` — cached FX rates |
+| `artifacts/api-server/src/lib/locationSync.ts` | `syncFreelancerLocationFromUser()` — denormalise location/currency to freelancer profile |
+| `scripts/src/reset-platform.ts` | Destructive platform reset — truncate all tables, optionally delete Clerk users, optional seed |
 
 ---
 
@@ -638,6 +572,8 @@ pnpm run typecheck
 pnpm --filter @workspace/talentlock run typecheck
 pnpm --filter @workspace/api-server run typecheck
 pnpm --filter @workspace/scripts run seed
+# Wipe all users/bookings/agreements (requires --confirm; deletes Clerk users by default)
+pnpm --filter @workspace/scripts run reset-platform -- --confirm
 pnpm --filter @workspace/api-server run dev
 pnpm --filter @workspace/talentlock run dev
 ```
@@ -735,3 +671,5 @@ pnpm --filter @workspace/talentlock run dev
 - **Cruise Mode plan gate** — `PATCH /api/cruise-mode/activate` requires `freelancer_pro`; return `402 PLAN_LIMIT` for `freelancer_free`
 - **Agreement PDF download** — `GET /api/agreements/:id/download` requires `status === 'fully_signed'` (403 with `code: NOT_FULLY_SIGNED` otherwise); GCS upload of cached PDF is fire-and-forget `.catch()` — never block the response
 - **Agreement summary is freelancer-only** — `POST /api/agreements/:id/summarise` returns 403 for any employer; `<AgreementSummaryPanel />` is conditionally rendered only when `userRole === 'freelancer'` — not hidden with CSS, not rendered at all
+- **Employer uploaded agreements** — employer sign blocked until `uploadStage === 'finalized'`; `employerSummary` never returned to freelancers; upload flow uses presigned URL pattern same as document uploads
+- **Multi-currency** — never hardcode USD in agreement text or rate display; use `booking.currencyCode` and `formatRate()` with currency symbol
