@@ -17,7 +17,6 @@ import { existsSync } from "node:fs";
 import { rm } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { db, pool, usersTable } from "@workspace/db";
 
 const TABLES = [
   "messages",
@@ -63,25 +62,28 @@ function parseArgs(argv: string[]) {
   };
 }
 
-async function countTable(table: string): Promise<number> {
+async function countTable(db: Awaited<typeof import("@workspace/db")>["db"], table: string): Promise<number> {
   const result = await db.execute(sql.raw(`SELECT COUNT(*)::int AS c FROM "${table}"`));
   const rows = result.rows as Array<{ c: number }>;
   return rows[0]?.c ?? 0;
 }
 
-async function collectClerkIds(): Promise<string[]> {
+async function collectClerkIds(db: Awaited<typeof import("@workspace/db")>["db"], usersTable: typeof import("@workspace/db").usersTable): Promise<string[]> {
   const rows = await db.select({ clerkId: usersTable.clerkId }).from(usersTable);
   return rows
     .map((r) => r.clerkId)
     .filter((id) => id !== SYSTEM_CLERK_ID && REAL_CLERK_ID.test(id));
 }
 
-async function truncatePlatformData(): Promise<void> {
+async function truncatePlatformData(db: Awaited<typeof import("@workspace/db")>["db"]): Promise<void> {
   const tableList = TABLES.map((t) => `"${t}"`).join(", ");
   await db.execute(sql.raw(`TRUNCATE TABLE ${tableList} RESTART IDENTITY CASCADE`));
 }
 
-async function ensureSystemUser(): Promise<void> {
+async function ensureSystemUser(
+  db: Awaited<typeof import("@workspace/db")>["db"],
+  usersTable: typeof import("@workspace/db").usersTable,
+): Promise<void> {
   await db.insert(usersTable).values({
     clerkId: SYSTEM_CLERK_ID,
     role: "employer",
@@ -169,19 +171,21 @@ Re-run with --confirm to proceed:
     process.exit(1);
   }
 
+  const { db, pool, usersTable } = await import("@workspace/db");
+
   console.log("Counting rows before reset...");
   for (const table of TABLES) {
-    const count = await countTable(table);
+    const count = await countTable(db, table);
     if (count > 0) console.log(`  ${table}: ${count}`);
   }
 
-  const clerkIds = args.deleteClerk ? await collectClerkIds() : [];
+  const clerkIds = args.deleteClerk ? await collectClerkIds(db, usersTable) : [];
   console.log(`\nTruncating ${TABLES.length} tables...`);
-  await truncatePlatformData();
+  await truncatePlatformData(db);
   console.log("Database wiped.");
 
   console.log("Ensuring system user...");
-  await ensureSystemUser();
+  await ensureSystemUser(db, usersTable);
 
   if (args.deleteClerk) {
     console.log("\nDeleting Clerk users...");
@@ -210,5 +214,10 @@ main()
     process.exit(1);
   })
   .finally(async () => {
-    await pool.end();
+    try {
+      const { pool } = await import("@workspace/db");
+      await pool.end();
+    } catch {
+      /* db never loaded */
+    }
   });
