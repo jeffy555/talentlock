@@ -2,6 +2,7 @@
 
 import { Router, type Request } from "express";
 import { getAuth } from "@clerk/express";
+import { randomUUID } from "crypto";
 import { db } from "@workspace/db";
 import {
   agreementsTable, bookingsTable, freelancerProfilesTable, employerProfilesTable, usersTable,
@@ -13,6 +14,9 @@ import {
   SignAgreementBody,
   ListAgreementsQueryParams,
   PatchAgreementsIdAcceptRedlineBody,
+  PostAgreementsUploadUrlBody,
+  PostAgreementsUploadConfirmBody,
+  PatchAgreementsIdAmendmentsBody,
 } from "@workspace/api-zod";
 import OpenAI from "openai";
 import { checkTokenQuota, getUserSubscription } from "../lib/subscriptionGating";
@@ -59,6 +63,147 @@ import {
 } from "../lib/agreementPdfCache";
 import { lockFreelancerForActiveBooking } from "../lib/availabilityUtils";
 import { buildRateDisplay, currencyName } from "../lib/countryData";
+import { ObjectStorageService } from "../lib/objectStorage";
+import { extractTextFromBuffer, isAllowedAgreementMimeType } from "../lib/documentTextExtract";
+import {
+  buildEmployerSummaryPrompt,
+  validateEmployerSummaryResponse,
+  EMPLOYER_AGREEMENT_SUMMARY_DISCLAIMER,
+} from "../lib/employerAgreementSummaryUtils";
+import { buildEnrichPrompt } from "../lib/agreementEnrichUtils";
+import type { AgreementAmendment } from "@workspace/db";
+
+const objectStorageService = new ObjectStorageService();
+const AGREEMENT_MAX_BYTES = 10 * 1024 * 1024;
+const AGREEMENT_MIME_TO_EXT: Record<string, string> = {
+  "application/pdf": ".pdf",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document": ".docx",
+  "application/msword": ".doc",
+  "text/plain": ".txt",
+};
+
+function safeAgreementFilename(filename: string): string {
+  return filename.replace(/[^a-zA-Z0-9._-]/g, "_").slice(-120);
+}
+
+function isOwnedAgreementStoragePath(storagePath: string, employerUserId: number, bookingId: number): boolean {
+  return storagePath.startsWith(`uploads/${employerUserId}/agreements/${bookingId}/`) &&
+    !storagePath.includes("..");
+}
+
+async function generateEmployerSummary(
+  content: string,
+  userId: number,
+  log: { warn: (obj: Record<string, unknown>, msg: string) => void },
+): Promise<{ summary: Record<string, unknown> | null; scoredAt: Date | null }> {
+  const truncated = content.length > 12000;
+  const prompt = buildEmployerSummaryPrompt(content, truncated);
+  let responseText = "";
+  let usage = { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 };
+  try {
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o",
+      temperature: 0,
+      messages: [{ role: "user", content: prompt }],
+    });
+    responseText = completion.choices[0]?.message?.content ?? "";
+    usage = completion.usage ?? usage;
+  } catch {
+    return { summary: null, scoredAt: null };
+  }
+
+  let parsed: unknown;
+  try {
+    const cleaned = responseText.replace(/```json|```/g, "").trim();
+    parsed = JSON.parse(cleaned);
+    if (!validateEmployerSummaryResponse(parsed)) throw new Error("invalid shape");
+  } catch {
+    return { summary: null, scoredAt: null };
+  }
+
+  logTokenUsage(db, userId, "agreement_upload_summary", usage)
+    .catch((err) => log.warn({ err }, "token usage log failed"));
+
+  return { summary: parsed as Record<string, unknown>, scoredAt: new Date() };
+}
+
+async function runHealthScoreForAgreement(
+  agreementId: number,
+  userId: number,
+  agreement: typeof agreementsTable.$inferSelect,
+  log: { warn: (obj: Record<string, unknown>, msg: string) => void },
+): Promise<{
+  totalScore: number | null;
+  healthScoreDetail: Record<string, unknown> | null;
+  healthScoredAt: Date | null;
+  parseError: boolean;
+}> {
+  let fieldOfWork = "general";
+  let jobTitle = "";
+  try {
+    const [booking] = await db.select().from(bookingsTable)
+      .where(eq(bookingsTable.id, agreement.bookingId)).limit(1);
+    if (booking?.freelancerId) {
+      const [fp] = await db.select().from(freelancerProfilesTable)
+        .where(eq(freelancerProfilesTable.id, booking.freelancerId)).limit(1);
+      if (fp?.fieldOfWork) fieldOfWork = fp.fieldOfWork;
+    }
+    if (booking?.jobRequirementId) {
+      const [jr] = await db.select().from(jobRequirementsTable)
+        .where(eq(jobRequirementsTable.id, booking.jobRequirementId)).limit(1);
+      if (jr?.title) jobTitle = jr.title;
+    }
+  } catch {
+    log.warn({ agreementId }, "health score field context resolution failed");
+  }
+
+  const content = agreement.content ?? "";
+  const truncated = content.length > 8000;
+  const prompt = buildHealthScorePrompt(content, fieldOfWork, jobTitle, truncated);
+
+  let responseText = "";
+  let usage = { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 };
+  try {
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o",
+      temperature: 0,
+      messages: [{ role: "user", content: prompt }],
+    });
+    responseText = completion.choices[0]?.message?.content ?? "";
+    usage = completion.usage ?? usage;
+  } catch {
+    return { totalScore: null, healthScoreDetail: null, healthScoredAt: null, parseError: true };
+  }
+
+  let parsed: unknown;
+  try {
+    const cleaned = responseText.replace(/```json|```/g, "").trim();
+    parsed = JSON.parse(cleaned);
+    if (!validateHealthScoreResponse(parsed)) throw new Error("invalid shape");
+  } catch {
+    return { totalScore: null, healthScoreDetail: null, healthScoredAt: null, parseError: true };
+  }
+
+  logTokenUsage(db, userId, "contract_health_score", usage)
+    .catch((err) => log.warn({ err }, "token usage log failed"));
+
+  const scored = parsed as { totalScore: number; dimensions: unknown; summary: string };
+  const healthScoredAt = new Date();
+  await db.update(agreementsTable)
+    .set({
+      healthScore: scored.totalScore,
+      healthScoreDetail: { dimensions: scored.dimensions, summary: scored.summary },
+      healthScoredAt,
+    })
+    .where(eq(agreementsTable.id, agreementId));
+
+  return {
+    totalScore: scored.totalScore,
+    healthScoreDetail: { dimensions: scored.dimensions, summary: scored.summary },
+    healthScoredAt,
+    parseError: false,
+  };
+}
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY_TALENTLOCK });
 
@@ -517,6 +662,406 @@ This agreement was generated and is administered through the TalentLock Platform
   }
 });
 
+router.post("/agreements/upload-url", async (req, res) => {
+  const { userId: clerkId } = getAuth(req);
+  if (!clerkId) { res.status(401).json({ error: "Unauthorized" }); return; }
+
+  const parsed = PostAgreementsUploadUrlBody.safeParse(req.body);
+  if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
+
+  const { bookingId, filename, mimeType, fileSize } = parsed.data;
+  if (!isAllowedAgreementMimeType(mimeType)) {
+    res.status(400).json({ error: "Only PDF, DOCX, DOC, or TXT files are accepted.", code: "INVALID_FILE_TYPE" });
+    return;
+  }
+  if (fileSize > AGREEMENT_MAX_BYTES) {
+    res.status(400).json({ error: "File must be 10MB or smaller.", code: "FILE_TOO_LARGE" });
+    return;
+  }
+
+  try {
+    const [user] = await db.select().from(usersTable).where(eq(usersTable.clerkId, clerkId)).limit(1);
+    if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
+    if (user.role !== "employer") { res.status(403).json({ error: "Only employers can upload agreements" }); return; }
+
+    const [employer] = await db.select().from(employerProfilesTable).where(eq(employerProfilesTable.clerkId, clerkId)).limit(1);
+    if (!employer) { res.status(403).json({ error: "Employer profile required" }); return; }
+
+    const [booking] = await db.select().from(bookingsTable).where(eq(bookingsTable.id, bookingId)).limit(1);
+    if (!booking) { res.status(404).json({ error: "Booking not found" }); return; }
+    if (booking.employerId !== employer.id) { res.status(403).json({ error: "Forbidden" }); return; }
+    if (booking.negotiationStatus === "negotiating") {
+      res.status(400).json({ error: "Rate negotiation must be completed before uploading an agreement.", code: "NEGOTIATION_PENDING" });
+      return;
+    }
+
+    const ext = AGREEMENT_MIME_TO_EXT[mimeType] ?? "";
+    const storageFilename = `${randomUUID()}${ext}`;
+    const storagePath = `uploads/${user.id}/agreements/${bookingId}/${storageFilename}`;
+    const uploadUrl = await objectStorageService.getSignedUploadUrlForKey(storagePath);
+
+    res.json({ uploadUrl, storagePath });
+  } catch (err) {
+    req.log.error({ err }, "Failed to generate agreement upload URL");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.post("/agreements/upload-confirm", async (req, res) => {
+  const { userId: clerkId } = getAuth(req);
+  if (!clerkId) { res.status(401).json({ error: "Unauthorized" }); return; }
+
+  const parsed = PostAgreementsUploadConfirmBody.safeParse(req.body);
+  if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
+
+  const { bookingId, storagePath, filename, mimeType } = parsed.data;
+  if (!isAllowedAgreementMimeType(mimeType)) {
+    res.status(400).json({ error: "Invalid file type", code: "INVALID_FILE_TYPE" });
+    return;
+  }
+
+  try {
+    const [user] = await db.select().from(usersTable).where(eq(usersTable.clerkId, clerkId)).limit(1);
+    if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
+    if (user.role !== "employer") { res.status(403).json({ error: "Only employers can upload agreements" }); return; }
+
+    const [employer] = await db.select().from(employerProfilesTable).where(eq(employerProfilesTable.clerkId, clerkId)).limit(1);
+    if (!employer) { res.status(403).json({ error: "Employer profile required" }); return; }
+
+    if (!isOwnedAgreementStoragePath(storagePath, user.id, bookingId)) {
+      res.status(400).json({ error: "Invalid storage path" });
+      return;
+    }
+
+    const [booking] = await db.select().from(bookingsTable).where(eq(bookingsTable.id, bookingId)).limit(1);
+    if (!booking) { res.status(404).json({ error: "Booking not found" }); return; }
+    if (booking.employerId !== employer.id) { res.status(403).json({ error: "Forbidden" }); return; }
+    if (booking.negotiationStatus === "negotiating") {
+      res.status(400).json({ error: "Rate negotiation must be completed before uploading an agreement.", code: "NEGOTIATION_PENDING" });
+      return;
+    }
+
+    const [existing] = await db.select({ id: agreementsTable.id }).from(agreementsTable)
+      .where(eq(agreementsTable.bookingId, bookingId)).limit(1);
+    if (existing) {
+      res.status(400).json({ error: "An agreement already exists for this booking" });
+      return;
+    }
+
+    const quota = await checkTokenQuota(db, user.id);
+    if (!quota.allowed) {
+      res.status(402).json({
+        error: "Monthly AI token limit reached",
+        code: "TOKEN_LIMIT",
+        planNeeded: quota.planNeeded,
+      });
+      return;
+    }
+
+    const exists = await objectStorageService.privateObjectExists(storagePath);
+    if (!exists) {
+      res.status(400).json({ error: "Uploaded file not found. Please upload again." });
+      return;
+    }
+
+    const buffer = await objectStorageService.readPrivateObjectBuffer(storagePath);
+    if (!buffer || buffer.length === 0) {
+      res.status(422).json({ error: "Could not read the uploaded file." });
+      return;
+    }
+
+    let extractedText: string;
+    try {
+      extractedText = await extractTextFromBuffer(buffer, mimeType);
+    } catch (err) {
+      req.log.error({ err }, "Failed to extract agreement text");
+      res.status(422).json({ error: "Could not read the file. Try uploading a DOCX or text-based PDF." });
+      return;
+    }
+
+    if (extractedText.trim().length < 200) {
+      res.status(422).json({
+        error: "The document appears empty or too short. Upload a complete agreement (at least 200 characters of text).",
+      });
+      return;
+    }
+
+    const { summary, scoredAt } = await generateEmployerSummary(extractedText, user.id, req.log);
+    const employerSummaryPayload = summary
+      ? { ...summary, disclaimer: EMPLOYER_AGREEMENT_SUMMARY_DISCLAIMER }
+      : null;
+
+    const [agreement] = await db.insert(agreementsTable)
+      .values({
+        bookingId: booking.id,
+        freelancerId: booking.freelancerId,
+        employerId: booking.employerId,
+        content: extractedText.trim(),
+        status: "draft",
+        source: "employer_upload",
+        documentUrl: storagePath,
+        uploadFilename: safeAgreementFilename(filename),
+        uploadStage: "summary_ready",
+        employerSummary: employerSummaryPayload,
+        employerSummaryScoredAt: scoredAt,
+        amendments: [],
+      })
+      .returning();
+
+    const readyMsg = "Your uploaded agreement is ready for review";
+    const employerUserId = await userIdFromEmployerProfileId(booking.employerId);
+    if (employerUserId) {
+      createNotification(db, {
+        userId: employerUserId,
+        type: NotificationType.AGREEMENT_READY,
+        entityType: "agreement",
+        entityId: agreement.id,
+        message: readyMsg,
+      }).catch((err) => req.log.warn({ err, agreementId: agreement.id }, "notification write failed"));
+    }
+
+    res.status(201).json(await enrichAgreementForViewer(agreement, user.role));
+  } catch (err) {
+    req.log.error({ err }, "Failed to confirm agreement upload");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.patch("/agreements/:id/amendments", async (req, res) => {
+  const id = parseInt(req.params.id);
+  if (isNaN(id)) { res.status(400).json({ error: "Invalid ID" }); return; }
+
+  const { userId: clerkId } = getAuth(req);
+  if (!clerkId) { res.status(401).json({ error: "Unauthorized" }); return; }
+
+  const parsed = PatchAgreementsIdAmendmentsBody.safeParse(req.body);
+  if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
+
+  try {
+    const [user] = await db.select().from(usersTable).where(eq(usersTable.clerkId, clerkId)).limit(1);
+    if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
+    if (user.role !== "employer") { res.status(403).json({ error: "Only employers can edit amendments" }); return; }
+
+    const [agreement] = await db.select().from(agreementsTable).where(eq(agreementsTable.id, id)).limit(1);
+    if (!agreement) { res.status(404).json({ error: "Agreement not found" }); return; }
+
+    const access = await canAccessAgreement(user.id, id);
+    if (!access.ok) {
+      res.status(access.status).json({ error: access.status === 404 ? "Agreement not found" : "Forbidden" });
+      return;
+    }
+
+    if (agreement.source !== "employer_upload") {
+      res.status(403).json({ error: "Amendments are only available for uploaded agreements" });
+      return;
+    }
+    if (agreement.uploadStage === "finalized" || agreement.employerSignedAt) {
+      res.status(400).json({ error: "Cannot edit amendments after finalization or signing" });
+      return;
+    }
+
+    const amendments: AgreementAmendment[] = [];
+    for (const text of parsed.data.amendments) {
+      const trimmed = sanitiseText(text).trim();
+      if (trimmed.length < 20) {
+        res.status(400).json({ error: "Each amendment must be at least 20 characters", code: "AMENDMENT_TOO_SHORT" });
+        return;
+      }
+      if (trimmed.length > 1000) {
+        res.status(400).json({ error: "Each amendment must be 1000 characters or fewer", code: "AMENDMENT_TOO_LONG" });
+        return;
+      }
+      amendments.push({ id: randomUUID(), text: trimmed, addedAt: new Date().toISOString() });
+    }
+
+    const [updated] = await db.update(agreementsTable)
+      .set({ amendments, uploadStage: agreement.uploadStage === "enriched" ? "summary_ready" : agreement.uploadStage })
+      .where(eq(agreementsTable.id, id))
+      .returning();
+
+    res.json(await enrichAgreementForViewer(updated, user.role));
+  } catch (err) {
+    req.log.error({ err }, "Failed to update amendments");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.post("/agreements/:id/enrich", async (req, res) => {
+  const id = parseInt(req.params.id);
+  if (isNaN(id)) { res.status(400).json({ error: "Invalid ID" }); return; }
+
+  const { userId: clerkId } = getAuth(req);
+  if (!clerkId) { res.status(401).json({ error: "Unauthorized" }); return; }
+
+  try {
+    const [user] = await db.select().from(usersTable).where(eq(usersTable.clerkId, clerkId)).limit(1);
+    if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
+    if (user.role !== "employer") { res.status(403).json({ error: "Only employers can enrich agreements" }); return; }
+
+    const [agreement] = await db.select().from(agreementsTable).where(eq(agreementsTable.id, id)).limit(1);
+    if (!agreement) { res.status(404).json({ error: "Agreement not found" }); return; }
+
+    const access = await canAccessAgreement(user.id, id);
+    if (!access.ok) {
+      res.status(access.status).json({ error: access.status === 404 ? "Agreement not found" : "Forbidden" });
+      return;
+    }
+
+    if (agreement.source !== "employer_upload") {
+      res.status(403).json({ error: "Enrichment is only available for uploaded agreements" });
+      return;
+    }
+    if (agreement.uploadStage === "finalized" || agreement.employerSignedAt) {
+      res.status(400).json({ error: "Agreement is already finalized or signed" });
+      return;
+    }
+
+    const quota = await checkTokenQuota(db, user.id);
+    if (!quota.allowed) {
+      res.status(402).json({
+        error: "Monthly AI token limit reached",
+        code: "TOKEN_LIMIT",
+        planNeeded: quota.planNeeded,
+      });
+      return;
+    }
+
+    const [booking] = await db.select().from(bookingsTable).where(eq(bookingsTable.id, agreement.bookingId)).limit(1);
+    if (!booking) { res.status(404).json({ error: "Booking not found" }); return; }
+
+    const [freelancer] = await db.select().from(freelancerProfilesTable)
+      .where(eq(freelancerProfilesTable.id, booking.freelancerId)).limit(1);
+    const [employer] = await db.select().from(employerProfilesTable)
+      .where(eq(employerProfilesTable.id, booking.employerId)).limit(1);
+
+    const startDate = booking.startDate.toISOString().split("T")[0];
+    const endDate = booking.endDate.toISOString().split("T")[0];
+    const bookingCurrencyCode = booking.currencyCode ?? "USD";
+    const rateDisplay = booking.rate
+      ? buildRateDisplay({ rate: booking.rate, paymentType: booking.paymentType, currencyCode: bookingCurrencyCode })
+      : "as mutually agreed in writing";
+
+    const truncated = agreement.content.length > 16000;
+    const { system, user: userPrompt } = buildEnrichPrompt({
+      originalContent: agreement.content,
+      amendments: (agreement.amendments ?? []) as AgreementAmendment[],
+      startDate,
+      endDate,
+      rateDisplay,
+      currencyCode: bookingCurrencyCode,
+      currencyName: currencyName(bookingCurrencyCode),
+      freelancerName: freelancer?.name ?? "The Freelancer",
+      employerName: employer?.companyName ?? "The Client",
+      truncated,
+    });
+
+    let enrichedContent = "";
+    let usage = { prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 };
+    try {
+      const completion = await openai.chat.completions.create({
+        model: "gpt-4o",
+        temperature: 0.2,
+        messages: [
+          { role: "system", content: system },
+          { role: "user", content: userPrompt },
+        ],
+        max_completion_tokens: 4096,
+      });
+      enrichedContent = completion.choices[0]?.message?.content?.trim() ?? "";
+      usage = completion.usage ?? usage;
+    } catch (err) {
+      req.log.error({ err, agreementId: id }, "enrich OpenAI call failed");
+      res.status(500).json({ error: "AI service unavailable. Please try again." });
+      return;
+    }
+
+    if (!enrichedContent) {
+      res.status(500).json({ error: "AI could not enrich the agreement. Please try again." });
+      return;
+    }
+
+    logTokenUsage(db, user.id, "agreement_upload_enrich", usage)
+      .catch((err) => req.log.warn({ err }, "token usage log failed"));
+
+    const [updated] = await db.update(agreementsTable)
+      .set({ content: enrichedContent, uploadStage: "enriched", healthScore: null, healthScoreDetail: null, healthScoredAt: null })
+      .where(eq(agreementsTable.id, id))
+      .returning();
+
+    res.json(await enrichAgreementForViewer(updated, user.role));
+  } catch (err) {
+    req.log.error({ err }, "Failed to enrich agreement");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.post("/agreements/:id/finalize", async (req, res) => {
+  const id = parseInt(req.params.id);
+  if (isNaN(id)) { res.status(400).json({ error: "Invalid ID" }); return; }
+
+  const { userId: clerkId } = getAuth(req);
+  if (!clerkId) { res.status(401).json({ error: "Unauthorized" }); return; }
+
+  try {
+    const [user] = await db.select().from(usersTable).where(eq(usersTable.clerkId, clerkId)).limit(1);
+    if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
+    if (user.role !== "employer") { res.status(403).json({ error: "Only employers can finalize agreements" }); return; }
+
+    const [agreement] = await db.select().from(agreementsTable).where(eq(agreementsTable.id, id)).limit(1);
+    if (!agreement) { res.status(404).json({ error: "Agreement not found" }); return; }
+
+    const access = await canAccessAgreement(user.id, id);
+    if (!access.ok) {
+      res.status(access.status).json({ error: access.status === 404 ? "Agreement not found" : "Forbidden" });
+      return;
+    }
+
+    if (agreement.source !== "employer_upload") {
+      res.status(403).json({ error: "Finalize is only available for uploaded agreements" });
+      return;
+    }
+    if (agreement.uploadStage !== "enriched") {
+      res.status(400).json({ error: "Apply dates and compensation before finalizing", code: "NOT_ENRICHED" });
+      return;
+    }
+    if (agreement.employerSignedAt) {
+      res.status(400).json({ error: "Agreement is already signed" });
+      return;
+    }
+
+    const quota = await checkTokenQuota(db, user.id);
+    if (!quota.allowed) {
+      res.status(402).json({
+        error: "Monthly AI token limit reached",
+        code: "TOKEN_LIMIT",
+        planNeeded: quota.planNeeded,
+      });
+      return;
+    }
+
+    const finalizedAt = new Date();
+    const [finalized] = await db.update(agreementsTable)
+      .set({ uploadStage: "finalized", finalizedAt })
+      .where(eq(agreementsTable.id, id))
+      .returning();
+
+    const health = await runHealthScoreForAgreement(id, user.id, finalized, req.log);
+
+    const [withHealth] = await db.select().from(agreementsTable).where(eq(agreementsTable.id, id)).limit(1);
+
+    res.json({
+      agreement: await enrichAgreementForViewer(withHealth ?? finalized, user.role),
+      healthScore: health.totalScore,
+      healthScoreDetail: health.healthScoreDetail,
+      healthScoredAt: health.healthScoredAt?.toISOString() ?? null,
+      parseError: health.parseError,
+    });
+  } catch (err) {
+    req.log.error({ err }, "Failed to finalize agreement");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 router.get("/agreements/:id", async (req, res) => {
   const id = parseInt(req.params.id);
   if (isNaN(id)) { res.status(400).json({ error: "Invalid ID" }); return; }
@@ -967,6 +1512,13 @@ router.post("/agreements/:id/sign", async (req, res) => {
 
     if (derivedRole === "employer") {
       if (agreement.employerSignedAt) { res.status(400).json({ error: "Employer has already signed" }); return; }
+      if (agreement.source === "employer_upload" && agreement.uploadStage !== "finalized") {
+        res.status(400).json({
+          error: "Finalize the uploaded agreement before signing",
+          code: "UPLOAD_NOT_FINALIZED",
+        });
+        return;
+      }
       updates.employerSignedAt = now;
       updates.employerSignatureName = cleanSignatureName;
       updates.employerSignatureImageUrl = signatureImageUrl?.trim() ?? null;
@@ -1220,6 +1772,20 @@ function stripHealthScoreForNonEmployer<T extends {
   };
 }
 
+function stripEmployerSummaryForNonEmployer<T extends {
+  employerSummary?: unknown;
+  employerSummaryScoredAt?: Date | string | null;
+  hasEmployerSummary?: boolean;
+}>(agreement: T, role: string | null | undefined): T {
+  if (role === "employer") return agreement;
+  return {
+    ...agreement,
+    employerSummary: null,
+    employerSummaryScoredAt: null,
+    hasEmployerSummary: false,
+  };
+}
+
 function stripSummaryForNonFreelancer<T extends {
   freelancerSummary?: unknown;
   freelancerSummaryScoredAt?: Date | string | null;
@@ -1243,6 +1809,7 @@ async function enrichAgreement(a: typeof agreementsTable.$inferSelect) {
     employerName: e?.name ?? null,
     estimatedRedlineTokens: Math.ceil((a.content?.length ?? 0) / 4) + 500,
     hasSummary: a.freelancerSummary !== null,
+    hasEmployerSummary: a.employerSummary !== null,
   };
 }
 
@@ -1251,8 +1818,11 @@ async function enrichAgreementForViewer(
   viewerRole: string | null | undefined,
 ) {
   const enriched = await enrichAgreement(a);
-  return stripSummaryForNonFreelancer(
-    stripHealthScoreForNonEmployer(enriched, viewerRole),
+  return stripEmployerSummaryForNonEmployer(
+    stripSummaryForNonFreelancer(
+      stripHealthScoreForNonEmployer(enriched, viewerRole),
+      viewerRole,
+    ),
     viewerRole,
   );
 }

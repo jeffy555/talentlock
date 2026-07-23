@@ -12,6 +12,8 @@ export type TokenFeature =
   | "rate_suggestion"
   | "contract_health_score"
   | "agreement_summary"
+  | "agreement_upload_summary"
+  | "agreement_upload_enrich"
   | "cruise_mode_parse"
   | "cruise_mode_evaluation"
   | "talent_search_parse"
@@ -27,6 +29,8 @@ export const TOKEN_FEATURES: TokenFeature[] = [
   "contract_redlining",
   "contract_health_score",
   "agreement_summary",
+  "agreement_upload_summary",
+  "agreement_upload_enrich",
   "job_description_assistant",
   "ai_proposal",
   "document_verification",

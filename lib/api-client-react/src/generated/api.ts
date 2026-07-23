@@ -137,6 +137,7 @@ import type {
   ParseCruiseModeRulesResult,
   ParseTalentSearchRulesBody,
   ParseTalentSearchRulesResult,
+  PatchAgreementsIdAmendmentsBody,
   PatchDocumentExpiryBody,
   PatchDocumentExpiryResponse,
   PatchLocationBody,
@@ -147,8 +148,12 @@ import type {
   PlanDef,
   PlanLimitError,
   PortfolioItem,
+  PostAgreementsIdFinalizeResponse,
   PostAgreementsIdHealthScoreParams,
   PostAgreementsIdSummariseParams,
+  PostAgreementsUploadConfirmBody,
+  PostAgreementsUploadUrlBody,
+  PostAgreementsUploadUrlResponse,
   PostAiJobDescriptionBody,
   PostAiMatchExplanationBody,
   PostAiProposalBody,
@@ -4064,6 +4069,183 @@ export const useCreateAgreement = <
 };
 
 /**
+ * @summary Request presigned URL to upload employer agreement document
+ */
+export const getPostAgreementsUploadUrlUrl = () => {
+  return `/api/agreements/upload-url`;
+};
+
+export const postAgreementsUploadUrl = async (
+  postAgreementsUploadUrlBody: PostAgreementsUploadUrlBody,
+  options?: RequestInit,
+): Promise<PostAgreementsUploadUrlResponse> => {
+  return customFetch<PostAgreementsUploadUrlResponse>(
+    getPostAgreementsUploadUrlUrl(),
+    {
+      ...options,
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(postAgreementsUploadUrlBody),
+    },
+  );
+};
+
+export const getPostAgreementsUploadUrlMutationOptions = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof postAgreementsUploadUrl>>,
+    TError,
+    { data: BodyType<PostAgreementsUploadUrlBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof postAgreementsUploadUrl>>,
+  TError,
+  { data: BodyType<PostAgreementsUploadUrlBody> },
+  TContext
+> => {
+  const mutationKey = ["postAgreementsUploadUrl"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof postAgreementsUploadUrl>>,
+    { data: BodyType<PostAgreementsUploadUrlBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return postAgreementsUploadUrl(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type PostAgreementsUploadUrlMutationResult = NonNullable<
+  Awaited<ReturnType<typeof postAgreementsUploadUrl>>
+>;
+export type PostAgreementsUploadUrlMutationBody =
+  BodyType<PostAgreementsUploadUrlBody>;
+export type PostAgreementsUploadUrlMutationError = ErrorType<ErrorEnvelope>;
+
+/**
+ * @summary Request presigned URL to upload employer agreement document
+ */
+export const usePostAgreementsUploadUrl = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof postAgreementsUploadUrl>>,
+    TError,
+    { data: BodyType<PostAgreementsUploadUrlBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof postAgreementsUploadUrl>>,
+  TError,
+  { data: BodyType<PostAgreementsUploadUrlBody> },
+  TContext
+> => {
+  return useMutation(getPostAgreementsUploadUrlMutationOptions(options));
+};
+
+/**
+ * @summary Confirm employer agreement upload, extract text, and generate employer summary
+ */
+export const getPostAgreementsUploadConfirmUrl = () => {
+  return `/api/agreements/upload-confirm`;
+};
+
+export const postAgreementsUploadConfirm = async (
+  postAgreementsUploadConfirmBody: PostAgreementsUploadConfirmBody,
+  options?: RequestInit,
+): Promise<Agreement> => {
+  return customFetch<Agreement>(getPostAgreementsUploadConfirmUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(postAgreementsUploadConfirmBody),
+  });
+};
+
+export const getPostAgreementsUploadConfirmMutationOptions = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof postAgreementsUploadConfirm>>,
+    TError,
+    { data: BodyType<PostAgreementsUploadConfirmBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof postAgreementsUploadConfirm>>,
+  TError,
+  { data: BodyType<PostAgreementsUploadConfirmBody> },
+  TContext
+> => {
+  const mutationKey = ["postAgreementsUploadConfirm"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof postAgreementsUploadConfirm>>,
+    { data: BodyType<PostAgreementsUploadConfirmBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return postAgreementsUploadConfirm(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type PostAgreementsUploadConfirmMutationResult = NonNullable<
+  Awaited<ReturnType<typeof postAgreementsUploadConfirm>>
+>;
+export type PostAgreementsUploadConfirmMutationBody =
+  BodyType<PostAgreementsUploadConfirmBody>;
+export type PostAgreementsUploadConfirmMutationError = ErrorType<ErrorEnvelope>;
+
+/**
+ * @summary Confirm employer agreement upload, extract text, and generate employer summary
+ */
+export const usePostAgreementsUploadConfirm = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof postAgreementsUploadConfirm>>,
+    TError,
+    { data: BodyType<PostAgreementsUploadConfirmBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof postAgreementsUploadConfirm>>,
+  TError,
+  { data: BodyType<PostAgreementsUploadConfirmBody> },
+  TContext
+> => {
+  return useMutation(getPostAgreementsUploadConfirmMutationOptions(options));
+};
+
+/**
  * @summary Get an agreement
  */
 export const getGetAgreementUrl = (id: number) => {
@@ -4713,6 +4895,265 @@ export const usePostAgreementsIdSummarise = <
   TContext
 > => {
   return useMutation(getPostAgreementsIdSummariseMutationOptions(options));
+};
+
+/**
+ * @summary Update employer amendment points on an uploaded agreement
+ */
+export const getPatchAgreementsIdAmendmentsUrl = (id: number) => {
+  return `/api/agreements/${id}/amendments`;
+};
+
+export const patchAgreementsIdAmendments = async (
+  id: number,
+  patchAgreementsIdAmendmentsBody: PatchAgreementsIdAmendmentsBody,
+  options?: RequestInit,
+): Promise<Agreement> => {
+  return customFetch<Agreement>(getPatchAgreementsIdAmendmentsUrl(id), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(patchAgreementsIdAmendmentsBody),
+  });
+};
+
+export const getPatchAgreementsIdAmendmentsMutationOptions = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof patchAgreementsIdAmendments>>,
+    TError,
+    { id: number; data: BodyType<PatchAgreementsIdAmendmentsBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof patchAgreementsIdAmendments>>,
+  TError,
+  { id: number; data: BodyType<PatchAgreementsIdAmendmentsBody> },
+  TContext
+> => {
+  const mutationKey = ["patchAgreementsIdAmendments"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof patchAgreementsIdAmendments>>,
+    { id: number; data: BodyType<PatchAgreementsIdAmendmentsBody> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return patchAgreementsIdAmendments(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type PatchAgreementsIdAmendmentsMutationResult = NonNullable<
+  Awaited<ReturnType<typeof patchAgreementsIdAmendments>>
+>;
+export type PatchAgreementsIdAmendmentsMutationBody =
+  BodyType<PatchAgreementsIdAmendmentsBody>;
+export type PatchAgreementsIdAmendmentsMutationError = ErrorType<ErrorEnvelope>;
+
+/**
+ * @summary Update employer amendment points on an uploaded agreement
+ */
+export const usePatchAgreementsIdAmendments = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof patchAgreementsIdAmendments>>,
+    TError,
+    { id: number; data: BodyType<PatchAgreementsIdAmendmentsBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof patchAgreementsIdAmendments>>,
+  TError,
+  { id: number; data: BodyType<PatchAgreementsIdAmendmentsBody> },
+  TContext
+> => {
+  return useMutation(getPatchAgreementsIdAmendmentsMutationOptions(options));
+};
+
+/**
+ * @summary AI enrich uploaded agreement with amendments, dates, and compensation
+ */
+export const getPostAgreementsIdEnrichUrl = (id: number) => {
+  return `/api/agreements/${id}/enrich`;
+};
+
+export const postAgreementsIdEnrich = async (
+  id: number,
+  options?: RequestInit,
+): Promise<Agreement> => {
+  return customFetch<Agreement>(getPostAgreementsIdEnrichUrl(id), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getPostAgreementsIdEnrichMutationOptions = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof postAgreementsIdEnrich>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof postAgreementsIdEnrich>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  const mutationKey = ["postAgreementsIdEnrich"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof postAgreementsIdEnrich>>,
+    { id: number }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return postAgreementsIdEnrich(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type PostAgreementsIdEnrichMutationResult = NonNullable<
+  Awaited<ReturnType<typeof postAgreementsIdEnrich>>
+>;
+
+export type PostAgreementsIdEnrichMutationError = ErrorType<ErrorEnvelope>;
+
+/**
+ * @summary AI enrich uploaded agreement with amendments, dates, and compensation
+ */
+export const usePostAgreementsIdEnrich = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof postAgreementsIdEnrich>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof postAgreementsIdEnrich>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  return useMutation(getPostAgreementsIdEnrichMutationOptions(options));
+};
+
+/**
+ * @summary Run thorough AI review and mark uploaded agreement ready for employer signature
+ */
+export const getPostAgreementsIdFinalizeUrl = (id: number) => {
+  return `/api/agreements/${id}/finalize`;
+};
+
+export const postAgreementsIdFinalize = async (
+  id: number,
+  options?: RequestInit,
+): Promise<PostAgreementsIdFinalizeResponse> => {
+  return customFetch<PostAgreementsIdFinalizeResponse>(
+    getPostAgreementsIdFinalizeUrl(id),
+    {
+      ...options,
+      method: "POST",
+    },
+  );
+};
+
+export const getPostAgreementsIdFinalizeMutationOptions = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof postAgreementsIdFinalize>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof postAgreementsIdFinalize>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  const mutationKey = ["postAgreementsIdFinalize"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof postAgreementsIdFinalize>>,
+    { id: number }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return postAgreementsIdFinalize(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type PostAgreementsIdFinalizeMutationResult = NonNullable<
+  Awaited<ReturnType<typeof postAgreementsIdFinalize>>
+>;
+
+export type PostAgreementsIdFinalizeMutationError = ErrorType<ErrorEnvelope>;
+
+/**
+ * @summary Run thorough AI review and mark uploaded agreement ready for employer signature
+ */
+export const usePostAgreementsIdFinalize = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof postAgreementsIdFinalize>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof postAgreementsIdFinalize>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  return useMutation(getPostAgreementsIdFinalizeMutationOptions(options));
 };
 
 /**

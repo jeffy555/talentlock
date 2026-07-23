@@ -17,6 +17,8 @@ export interface TokenUsageBreakdown {
   rate_suggestion: number;
   contract_health_score: number;
   agreement_summary: number;
+  agreement_upload_summary: number;
+  agreement_upload_enrich: number;
   cruise_mode_parse: number;
   cruise_mode_evaluation: number;
   talent_search_parse: number;

@@ -29,7 +29,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Calendar, CheckCircle2, FileText, XCircle, Sparkles, ShieldCheck, Clock, DollarSign, Flag, Plus, Check, ArrowLeftRight, RefreshCw } from "lucide-react";
+import { ArrowLeft, Calendar, CheckCircle2, FileText, XCircle, Sparkles, ShieldCheck, Clock, DollarSign, Flag, Plus, Check, ArrowLeftRight, RefreshCw, Upload } from "lucide-react";
 import ReviewPrompt from "@/components/ReviewPrompt";
 import ReviewCard from "@/components/ReviewCard";
 import { DebriefCard } from "@/components/bookings/DebriefCard";
@@ -47,6 +47,7 @@ import { VerifiedEmployerBadge } from "@/components/employer/VerifiedEmployerBad
 import { BookingCurrencyBanner } from "@/components/currency/BookingCurrencyBanner";
 import { DualRateDisplay } from "@/components/currency/DualRateDisplay";
 import { useExchangeRates, currencySymbol } from "@/lib/currencyUtils";
+import EmployerAgreementUploadPanel from "@/components/agreements/EmployerAgreementUploadPanel";
 
 const statusColors: Record<string, { bg: string, text: string, border: string }> = {
   pending: { bg: "bg-yellow-50", text: "text-yellow-700", border: "border-yellow-200" },
@@ -451,17 +452,33 @@ export default function BookingDetail() {
       )}
 
       {isEmployer && !hasAgreement && !isCancelled && !isNegotiating && (
-        <div className="rounded-xl border border-gold/30 bg-gold/5 p-6 flex items-start gap-4">
-          <div className="h-10 w-10 bg-gold/20 rounded-full flex items-center justify-center flex-shrink-0">
-            <Sparkles className="h-5 w-5 text-gold" />
+        <div className="rounded-xl border border-gold/30 bg-gold/5 p-6">
+          <div className="flex items-start gap-4 mb-4">
+            <div className="h-10 w-10 bg-gold/20 rounded-full flex items-center justify-center flex-shrink-0">
+              <FileText className="h-5 w-5 text-gold" />
+            </div>
+            <div>
+              <h3 className="font-bold text-primary mb-1">Create Legal Agreement</h3>
+              <p className="text-sm text-muted-foreground leading-relaxed max-w-2xl">
+                Rate agreed. Generate a new agreement with AI or upload your own document.
+              </p>
+            </div>
           </div>
-          <div className="flex-1">
-            <h3 className="font-bold text-primary mb-1">Generate Legal Agreement</h3>
-            <p className="text-sm text-muted-foreground leading-relaxed mb-4 max-w-2xl">
-              Rate agreed. TalentLock AI can now generate a binding legal agreement encompassing exclusivity, scope, and payment terms ready for signature.
-            </p>
 
-            <div className="space-y-4 mb-4 max-w-xl">
+          <Tabs defaultValue="ai" className="max-w-2xl">
+            <TabsList className="mb-4">
+              <TabsTrigger value="ai" className="gap-1.5">
+                <Sparkles className="h-3.5 w-3.5" />
+                AI Generate
+              </TabsTrigger>
+              <TabsTrigger value="upload" className="gap-1.5">
+                <Upload className="h-3.5 w-3.5" />
+                Upload Yours
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="ai" className="space-y-4">
+            <div className="space-y-4">
               <div>
                 <Label className="text-sm font-medium">Agreement Template</Label>
                 <Select value={industry} onValueChange={(v) => setIndustry(v as AgreementIndustry)}>
@@ -552,6 +569,11 @@ export default function BookingDetail() {
                 {hasClauseErrors && (
                   <TooltipContent>Fix clause errors before generating</TooltipContent>
                 )}
+                {isAtLimit && (
+                  <TooltipContent>
+                    <p>Monthly token limit reached</p>
+                  </TooltipContent>
+                )}
               </Tooltip>
             </TooltipProvider>
             {isAtLimit && resetLabel && (
@@ -563,7 +585,30 @@ export default function BookingDetail() {
                 </Link>
               </p>
             )}
-          </div>
+            </TabsContent>
+
+            <TabsContent value="upload">
+              {isAtLimit ? (
+                <p className="text-sm text-destructive">
+                  AI Agreement processing is paused — your monthly token limit has been reached.
+                </p>
+              ) : (
+                <EmployerAgreementUploadPanel
+                  bookingId={bookingId}
+                  disabled={isAtLimit}
+                  onSuccess={(agreementId) => {
+                    toast({
+                      title: "Agreement uploaded",
+                      description: "Review the AI summary and complete the workflow before signing.",
+                    });
+                    refetchAgreements();
+                    setLocation(`/agreements/${agreementId}`);
+                  }}
+                  onError={(msg) => toast({ title: msg, variant: "destructive" })}
+                />
+              )}
+            </TabsContent>
+          </Tabs>
         </div>
       )}
 
