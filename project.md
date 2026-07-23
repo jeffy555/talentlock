@@ -638,6 +638,8 @@ pnpm run typecheck
 pnpm --filter @workspace/talentlock run typecheck
 pnpm --filter @workspace/api-server run typecheck
 pnpm --filter @workspace/scripts run seed
+# Wipe all users/bookings/agreements (requires --confirm; deletes Clerk users by default)
+pnpm --filter @workspace/scripts run reset-platform -- --confirm
 pnpm --filter @workspace/api-server run dev
 pnpm --filter @workspace/talentlock run dev
 ```
