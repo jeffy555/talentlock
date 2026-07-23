@@ -21,6 +21,46 @@ import { sanitiseText } from "../lib/sanitise";
 
 const router = Router();
 
+function profileCompletenessInput(
+  profile: typeof freelancerProfilesTable.$inferSelect,
+) {
+  return {
+    bio: profile.bio,
+    skills: profile.skills,
+    hourlyRate: profile.hourlyRate,
+    dailyRate: profile.dailyRate,
+    paymentPreference: profile.paymentPreference,
+    fieldOfWork: profile.fieldOfWork,
+    isAvailable: profile.isAvailable,
+  };
+}
+
+async function finalizeFreelancerProfileAfterWrite(
+  profile: typeof freelancerProfilesTable.$inferSelect,
+  avatarUrl: string | null | undefined,
+  log: Parameters<typeof evaluateTalentSearchForUpdatedProfile>[2],
+): Promise<typeof freelancerProfilesTable.$inferSelect> {
+  const completenessScore = calculateCompletenessScore(
+    profileCompletenessInput(profile),
+    avatarUrl,
+  );
+  let result = profile;
+  if (completenessScore !== profile.completenessScore) {
+    const [updated] = await db
+      .update(freelancerProfilesTable)
+      .set({ completenessScore, updatedAt: new Date() })
+      .where(eq(freelancerProfilesTable.id, profile.id))
+      .returning();
+    if (updated) result = updated;
+  }
+  if (completenessScore >= 60) {
+    evaluateTalentSearchForUpdatedProfile(db, result.id, log).catch((err) =>
+      log.warn({ err, freelancerId: result.id }, "talent-search evaluation hook failed"),
+    );
+  }
+  return result;
+}
+
 router.get("/freelancers", async (req, res) => {
   const parsed = ListFreelancersQueryParams.safeParse(req.query);
   const params = parsed.success ? parsed.data : {};
@@ -304,11 +344,15 @@ router.post("/freelancers", async (req, res) => {
   if (!clerkId) { res.status(401).json({ error: "Unauthorized" }); return; }
   const parsed = CreateFreelancerProfileBody.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
+  const profileData = { ...parsed.data };
+  if (profileData.bio !== undefined && profileData.bio !== null) {
+    profileData.bio = sanitiseText(profileData.bio);
+  }
   try {
     const [user] = await db.select().from(usersTable).where(eq(usersTable.clerkId, clerkId)).limit(1);
     if (!user) { res.status(400).json({ error: "User profile not found" }); return; }
     const insertData = {
-      ...parsed.data as any,
+      ...profileData as any,
       clerkId,
       userId: user.id,
       name: user.name,
@@ -324,6 +368,7 @@ router.post("/freelancers", async (req, res) => {
         target: freelancerProfilesTable.clerkId,
         set: {
           tagline: insertData.tagline,
+          bio: insertData.bio ?? null,
           fieldOfWork: insertData.fieldOfWork,
           skills: insertData.skills,
           yearsExperience: insertData.yearsExperience,
@@ -352,7 +397,13 @@ router.post("/freelancers", async (req, res) => {
       })
       .returning();
     await syncFreelancerLocationFromUser(db, user.id);
-    res.status(201).json(mapProfile(profile));
+    const [fresh] = await db
+      .select()
+      .from(freelancerProfilesTable)
+      .where(eq(freelancerProfilesTable.id, profile.id))
+      .limit(1);
+    const saved = await finalizeFreelancerProfileAfterWrite(fresh ?? profile, user.avatarUrl, req.log);
+    res.status(201).json(mapProfile(saved));
   } catch (err) {
     req.log.error({ err }, "Failed to create freelancer profile");
     res.status(500).json({ error: "Internal server error" });

@@ -45,7 +45,7 @@ export const GetMeResponse = zod.object({
     .string()
     .nullish()
     .describe(
-      "role | profession_category | location | freelancer_details | employer_details",
+      "role | profession_category | location | freelancer_details | employer_details | employer_documents",
     ),
   countryCode: zod
     .string()
@@ -100,7 +100,7 @@ export const UpsertMeResponse = zod.object({
     .string()
     .nullish()
     .describe(
-      "role | profession_category | location | freelancer_details | employer_details",
+      "role | profession_category | location | freelancer_details | employer_details | employer_documents",
     ),
   countryCode: zod
     .string()
@@ -131,6 +131,7 @@ export const PatchOnboardingStepBody = zod.object({
     "location",
     "freelancer_details",
     "employer_details",
+    "employer_documents",
   ]),
   countryCode: zod
     .string()
@@ -174,7 +175,7 @@ export const PatchOnboardingStepResponse = zod.object({
     .string()
     .nullish()
     .describe(
-      "role | profession_category | location | freelancer_details | employer_details",
+      "role | profession_category | location | freelancer_details | employer_details | employer_documents",
     ),
   countryCode: zod
     .string()
@@ -232,7 +233,7 @@ export const PatchMyLocationResponse = zod.object({
     .string()
     .nullish()
     .describe(
-      "role | profession_category | location | freelancer_details | employer_details",
+      "role | profession_category | location | freelancer_details | employer_details | employer_documents",
     ),
   countryCode: zod
     .string()
@@ -434,6 +435,12 @@ export const ListFreelancersResponse = zod.array(ListFreelancersResponseItem);
  */
 export const CreateFreelancerProfileBody = zod.object({
   tagline: zod.string(),
+  bio: zod
+    .string()
+    .nullish()
+    .describe(
+      "Professional summary; populated from resume import when available",
+    ),
   fieldOfWork: zod.string(),
   skills: zod.array(zod.string()),
   yearsExperience: zod.number(),
@@ -3964,7 +3971,10 @@ export const GetEmployerDocumentsMeDocumentTypeViewUrlResponse = zod.object({
 });
 
 /**
- * @summary List employer documents awaiting review
+ * Paginated employer document list. Default filter is the pending review queue (`pending,needs_review`).
+Pass `status=verified` or `status=rejected` for the approved/rejected history trackers.
+
+ * @summary List employer documents for admin review
  */
 export const getAdminEmployerDocumentsQueryPageDefault = 1;
 
@@ -3985,7 +3995,10 @@ export const GetAdminEmployerDocumentsQueryParams = zod.object({
     .default(getAdminEmployerDocumentsQueryPageSizeDefault),
   status: zod.coerce
     .string()
-    .default(getAdminEmployerDocumentsQueryStatusDefault),
+    .default(getAdminEmployerDocumentsQueryStatusDefault)
+    .describe(
+      "Comma-separated statuses — pending, needs_review, verified, rejected",
+    ),
 });
 
 export const GetAdminEmployerDocumentsResponse = zod.object({
@@ -4004,6 +4017,7 @@ export const GetAdminEmployerDocumentsResponse = zod.object({
       status: zod.enum(["pending", "verified", "rejected", "needs_review"]),
       confidence: zod.number().nullish(),
       aiNotes: zod.string().nullish(),
+      adminNotes: zod.string().nullish(),
       signedFileUrl: zod.string(),
       createdAt: zod.coerce.date(),
       reviewedAt: zod.coerce.date().nullish(),
@@ -4839,6 +4853,8 @@ export const ListCruiseModeActivityResponse = zod.object({
           blockers: zod.array(zod.string()),
         }),
         proposedMessage: zod.string().nullish(),
+        conversationId: zod.number().nullish(),
+        messageId: zod.number().nullish(),
         sentAt: zod.coerce.date().nullish(),
         skippedReason: zod.string().nullish(),
         freelancerFollowUpSent: zod.boolean(),
@@ -4876,6 +4892,8 @@ export const MarkCruiseModeFollowUpResponse = zod.object({
     blockers: zod.array(zod.string()),
   }),
   proposedMessage: zod.string().nullish(),
+  conversationId: zod.number().nullish(),
+  messageId: zod.number().nullish(),
   sentAt: zod.coerce.date().nullish(),
   skippedReason: zod.string().nullish(),
   freelancerFollowUpSent: zod.boolean(),
@@ -5353,6 +5371,8 @@ export const ListTalentSearchActivityResponse = zod.object({
           blockers: zod.array(zod.string()),
         }),
         proposedMessage: zod.string().nullish(),
+        conversationId: zod.number().nullish(),
+        messageId: zod.number().nullish(),
         sentAt: zod.coerce.date().nullish(),
         skippedReason: zod.string().nullish(),
         employerFollowUpSent: zod.boolean(),
@@ -5390,6 +5410,8 @@ export const MarkTalentSearchFollowUpResponse = zod.object({
     blockers: zod.array(zod.string()),
   }),
   proposedMessage: zod.string().nullish(),
+  conversationId: zod.number().nullish(),
+  messageId: zod.number().nullish(),
   sentAt: zod.coerce.date().nullish(),
   skippedReason: zod.string().nullish(),
   employerFollowUpSent: zod.boolean(),

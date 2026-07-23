@@ -202,12 +202,12 @@ PDF uploads are Phase 2. UI clearly states: "Upload as a JPEG, PNG, or WebP imag
 
 New routes under the admin router (CSRF-protected, admin session required):
 ```ts
-GET  /api/admin/employer-documents          — paginated pending/needs_review queue
+GET  /api/admin/employer-documents          — paginated list; ?status= pending,needs_review (default) | verified | rejected
 POST /api/admin/employer-documents/:id/verify  — admin verify
 POST /api/admin/employer-documents/:id/reject  — admin reject (adminNotes required)
 ```
 
-These are modelled exactly on whatever pattern the freelancer document admin routes use (confirm in inspection Q4). Admin console UI adds an "Employer Docs" tab to the existing documents section.
+Admin console UI adds an "Employer Docs" tab with **Pending / Approved / Rejected** sub-sections. Reviewed documents remain visible in the history sections (not deleted from admin view after action).
 
 ---
 
@@ -431,6 +431,19 @@ export const REQUIRED_FOR_FULL: EmployerDocumentType[] = [
 
 ---
 
+## Q10 — Onboarding access before `role: employer`
+
+**Decision:** `resolveEmployerContext()` in `employerDocuments.ts` allows document routes when:
+
+```ts
+user.role === "employer"
+|| (user.role === "pending" && user.onboardingRole === "employer" && employerProfile exists)
+```
+
+Registration completes via `PUT /users/me` with `role: employer` only after onboarding upload step (see `spec/onboarding-scaffolding/` Module 2b).
+
+---
+
 ## Pre-Implementation Checklist
 
 - [ ] `project.md` read in full
@@ -451,5 +464,5 @@ export const REQUIRED_FOR_FULL: EmployerDocumentType[] = [
 |---|---|---|
 | Phase 1 | Schema — `employer_documents` table, 2 columns on `employer_profiles` | ⬜ Not started |
 | Phase 2 | Backend — upload/confirm/status routes, AI review utility, admin routes, GDPR extension, OpenAPI + codegen | ⬜ Not started |
-| Phase 3 | Frontend — employer verification section, document upload/status UI, admin tab | ⬜ Not started |
+| Phase 3 | Frontend — employer verification section, onboarding document step, document upload/status UI, admin tab | ⬜ Not started |
 | Phase 4 | Trust signals — Verified Employer badge on job posts, bookings, meetings | ⬜ Not started |

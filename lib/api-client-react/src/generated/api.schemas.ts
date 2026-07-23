@@ -35,7 +35,7 @@ export interface User {
    */
   onboardingRole?: string | null;
   /**
-   * role | profession_category | location | freelancer_details | employer_details
+   * role | profession_category | location | freelancer_details | employer_details | employer_documents
    * @nullable
    */
   onboardingStep?: string | null;
@@ -133,6 +133,7 @@ export const PatchOnboardingStepBodyOnboardingStep = {
   location: "location",
   freelancer_details: "freelancer_details",
   employer_details: "employer_details",
+  employer_documents: "employer_documents",
 } as const;
 
 export interface PatchOnboardingStepBody {
@@ -375,6 +376,11 @@ export interface ResumeAnalysis {
 
 export interface CreateFreelancerProfileBody {
   tagline: string;
+  /**
+   * Professional summary; populated from resume import when available
+   * @nullable
+   */
+  bio?: string | null;
   fieldOfWork: string;
   skills: string[];
   yearsExperience: number;
@@ -1992,6 +1998,8 @@ export interface AdminEmployerDocument {
   confidence?: number | null;
   /** @nullable */
   aiNotes?: string | null;
+  /** @nullable */
+  adminNotes?: string | null;
   signedFileUrl: string;
   createdAt: string;
   /** @nullable */
@@ -2680,6 +2688,10 @@ export interface CruiseModeActivity {
   /** @nullable */
   proposedMessage?: string | null;
   /** @nullable */
+  conversationId?: number | null;
+  /** @nullable */
+  messageId?: number | null;
+  /** @nullable */
   sentAt?: string | null;
   /** @nullable */
   skippedReason?: string | null;
@@ -2815,6 +2827,10 @@ export interface TalentSearchActivity {
   matchReasons: MatchReasons;
   /** @nullable */
   proposedMessage?: string | null;
+  /** @nullable */
+  conversationId?: number | null;
+  /** @nullable */
+  messageId?: number | null;
   /** @nullable */
   sentAt?: string | null;
   /** @nullable */
@@ -3072,6 +3088,9 @@ export type GetAdminEmployerDocumentsParams = {
    * @maximum 50
    */
   pageSize?: number;
+  /**
+   * Comma-separated statuses — pending, needs_review, verified, rejected
+   */
   status?: string;
 };
 

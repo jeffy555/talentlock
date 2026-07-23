@@ -204,14 +204,11 @@ Add three new admin routes (CSRF-protected, admin session required):
 
 **`GET /api/admin/employer-documents`:**
 ```ts
-// Paginated: ?page, ?pageSize, ?status (default: pending,needs_review)
-// Returns: { data: [{
-//   id, employerName, companyName, documentType, status, confidence,
-//   aiNotes,  // admin-facing technical assessment
-//   signedFileUrl,  // short-lived 15-min signed URL generated per request
-//   createdAt, reviewedAt
-// }], total, page, pageSize, totalPages }
-// Generates signed URLs for each document in the response
+// Query: page, pageSize, status (comma-separated — pending|needs_review|verified|rejected; default pending,needs_review)
+// Returns paginated list with:
+//   employerName, companyName, documentType, status, confidence,
+//   aiNotes, adminNotes, signedFileUrl, createdAt, reviewedAt
+// verified/rejected lists ordered by reviewedAt DESC
 ```
 
 **`POST /api/admin/employer-documents/:id/verify`:**
@@ -351,12 +348,37 @@ Add `<VerifiedEmployerBadge />` next to employer name. Visible to freelancers.
 
 ### Task 3.8 — Admin UI — Employer Documents Tab
 
-**File:** `artifacts/talentlock/src/pages/Admin.tsx` (or admin documents component)
+**File:** `artifacts/talentlock/src/components/AdminEmployerDocumentTab.tsx`
 
-Add "Employer Docs" tab to the existing admin document review section:
-- List of pending/needs_review employer documents
-- Card per document: employer name, company name, document type, AI confidence, AI notes, document preview (signed URL)
-- Verify and Reject buttons with admin notes input
+Add "Employer Docs" tab to the existing admin document review section with **three sub-sections**:
+
+| Section | API | UI |
+|---------|-----|-----|
+| Pending | `GET /admin/employer-documents?status=pending,needs_review` | Approve / Reject actions |
+| Approved | `GET /admin/employer-documents?status=verified` | Read-only history |
+| Rejected | `GET /admin/employer-documents?status=rejected` | Read-only history with admin notes |
+
+- Card per document: employer name, company name, document type, status badge, AI confidence, AI notes, document preview (signed URL)
+- Pending cards: Approve and Reject buttons with admin notes input
+- Approved/Rejected cards: `reviewedAt`, `adminNotes`, view document — no action buttons
+- Main admin nav badge count = Pending total only
+
+### Task 3.9 — Onboarding mandatory document step
+
+**Backend:** `artifacts/api-server/src/routes/employerDocuments.ts`
+
+Update `resolveEmployerContext()` to allow `users.role = 'pending'` when `onboardingRole = 'employer'` and employer profile exists.
+
+**OpenAPI:** Add `employer_documents` to `PatchOnboardingStepBody.onboardingStep` enum (shared with onboarding-scaffolding).
+
+**Frontend:** `artifacts/talentlock/src/components/onboarding/EmployerDocumentOnboardingStep.tsx`
+
+- Single required upload: `representative_id`
+- Finish calls `PUT /users/me` with `role: employer` only after upload
+
+**Integration:** `artifacts/talentlock/src/pages/Onboarding.tsx` — employer flow step 4; company profile save must `PATCH onboarding-step` before `PUT /employers/me`.
+
+See `spec/onboarding-scaffolding/` Tasks 3.4–3.5 and `UI.md` onboarding section below.
 
 ---
 
@@ -388,13 +410,18 @@ Add "Employer Docs" tab to the existing admin document review section:
 - [ ] All 5 document type rows shown with correct status states
 - [ ] Upload flow: file picker → GCS upload → confirm → status updates to `pending`
 - [ ] Re-upload on rejected document resets to `pending` and triggers new AI review
+- [ ] Onboarding: pending employer with company profile can upload Representative ID (403 without profile)
+- [ ] Onboarding: employer cannot complete registration without at least one uploaded document
+- [ ] Onboarding: `PUT /users/me` with `role: employer` only after document upload step
 - [ ] Disclaimer banner shown prominently on the verification section
 - [ ] `<VerifiedEmployerBadge />` renders nothing for `unverified`
 - [ ] Badge renders amber pill for `partially_verified`
 - [ ] Badge renders green pill for `fully_verified`
 - [ ] Badge shown on job postings, booking detail, meeting detail — freelancer-visible
 - [ ] No `aiNotes`, `fileUrl`, `confidence`, or registration numbers exposed in freelancer-facing responses
-- [ ] Admin employer docs tab shows pending queue with verify/reject actions
+- [ ] Admin employer docs tab shows Pending / Approved / Rejected sub-sections
+- [ ] Pending section: verify/reject actions; Approved/Rejected: read-only history with reviewedAt and adminNotes
+- [ ] `GET /admin/employer-documents?status=verified` and `?status=rejected` return reviewed documents
 - [ ] `pnpm run typecheck` passes with zero errors
 
 ---

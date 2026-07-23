@@ -164,9 +164,9 @@ Insert `LocationStep` in flow:
 | Role | Order |
 |------|-------|
 | Freelancer | role → profession_category → **location** → freelancer_details |
-| Employer | role → **location** → employer_details |
+| Employer | role → **location** → employer_details → **employer_documents** |
 
-Progress indicator updated to include location step.
+Progress indicator: four steps for employers (verification document upload is step 4 — see `spec/employee-verification/`).
 
 ### Talent Vault (`FreelancersList.tsx`)
 

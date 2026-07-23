@@ -26,11 +26,13 @@ import { createNotification, NotificationType, userIdFromFreelancerProfileId } f
 import { sendNotificationEmailAsync } from "../lib/emailService";
 import { isPdfStoragePath } from "../lib/documentConstants";
 import { ObjectStorageService } from "../lib/objectStorage";
-import { logAudit } from "../lib/auditLogger";
 import {
   DOCUMENT_TYPE_LABELS,
   recalculateEmployerVerificationLevel,
+  reviewEmployerDocument,
 } from "../lib/employerDocReviewUtils";
+import { resolveStorageReadUrl } from "../lib/visionImageUrl";
+import { logAudit } from "../lib/auditLogger";
 import { sanitiseText } from "../lib/sanitise";
 import {
   verifyAdminCredentials,
@@ -950,10 +952,14 @@ router.get("/admin/employer-documents", requireAdmin, async (req, res) => {
     const page = Math.max(1, parseInt(String(req.query.page ?? "1"), 10) || 1);
     const pageSize = Math.min(50, Math.max(1, parseInt(String(req.query.pageSize ?? "20"), 10) || 20));
     const offset = (page - 1) * pageSize;
+    const allowedStatuses = ["pending", "needs_review", "verified", "rejected"] as const;
+    type AllowedStatus = typeof allowedStatuses[number];
     const requestedStatuses = String(req.query.status ?? "pending,needs_review")
       .split(",")
-      .filter((status): status is "pending" | "needs_review" => status === "pending" || status === "needs_review");
-    const statuses = requestedStatuses.length > 0 ? requestedStatuses : ["pending", "needs_review"] as const;
+      .map((status) => status.trim())
+      .filter((status): status is AllowedStatus =>
+        allowedStatuses.includes(status as AllowedStatus));
+    const statuses = requestedStatuses.length > 0 ? requestedStatuses : ["pending", "needs_review"];
 
     const [totalRow] = await db
       .select({ total: count() })
@@ -968,6 +974,7 @@ router.get("/admin/employer-documents", requireAdmin, async (req, res) => {
         status: employerDocumentsTable.status,
         confidence: employerDocumentsTable.confidence,
         aiNotes: employerDocumentsTable.aiNotes,
+        adminNotes: employerDocumentsTable.adminNotes,
         fileUrl: employerDocumentsTable.fileUrl,
         createdAt: employerDocumentsTable.createdAt,
         reviewedAt: employerDocumentsTable.reviewedAt,
@@ -976,7 +983,11 @@ router.get("/admin/employer-documents", requireAdmin, async (req, res) => {
       .innerJoin(employerProfilesTable, eq(employerDocumentsTable.employerId, employerProfilesTable.id))
       .innerJoin(usersTable, eq(employerProfilesTable.userId, usersTable.id))
       .where(inArray(employerDocumentsTable.status, [...statuses]))
-      .orderBy(asc(employerDocumentsTable.createdAt))
+      .orderBy(
+        statuses.every((status) => status === "verified" || status === "rejected")
+          ? desc(employerDocumentsTable.reviewedAt)
+          : asc(employerDocumentsTable.createdAt),
+      )
       .limit(pageSize)
       .offset(offset);
 
@@ -988,7 +999,8 @@ router.get("/admin/employer-documents", requireAdmin, async (req, res) => {
       status: row.status,
       confidence: row.confidence,
       aiNotes: row.aiNotes,
-      signedFileUrl: await objectStorageService.getSignedReadUrlForKey(row.fileUrl, 15 * 60),
+      adminNotes: row.adminNotes,
+      signedFileUrl: await resolveStorageReadUrl(row.fileUrl, 15 * 60),
       createdAt: row.createdAt.toISOString(),
       reviewedAt: row.reviewedAt?.toISOString() ?? null,
     })));
@@ -1074,6 +1086,56 @@ async function updateEmployerDocumentFromAdmin(
     res.status(500).json({ error: "Internal server error" });
   }
 }
+
+router.get("/admin/employer-documents/:id/view-url", requireAdmin, async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id)) {
+    res.status(400).json({ error: "Invalid employer document ID" });
+    return;
+  }
+  try {
+    const [doc] = await db
+      .select({ fileUrl: employerDocumentsTable.fileUrl })
+      .from(employerDocumentsTable)
+      .where(eq(employerDocumentsTable.id, id))
+      .limit(1);
+    if (!doc) {
+      res.status(404).json({ error: "Document not found" });
+      return;
+    }
+    const signedUrl = await resolveStorageReadUrl(doc.fileUrl, 15 * 60);
+    res.json({ signedUrl, expiresInSeconds: 15 * 60 });
+  } catch (err) {
+    req.log.error({ err, employerDocumentId: id }, "Failed to generate employer document view URL");
+    res.status(500).json({ error: "Failed to generate view URL" });
+  }
+});
+
+router.post("/admin/employer-documents/:id/review", requireAdmin, async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id)) {
+    res.status(400).json({ error: "Invalid employer document ID" });
+    return;
+  }
+  try {
+    const [doc] = await db
+      .select({ id: employerDocumentsTable.id })
+      .from(employerDocumentsTable)
+      .where(eq(employerDocumentsTable.id, id))
+      .limit(1);
+    if (!doc) {
+      res.status(404).json({ error: "Document not found" });
+      return;
+    }
+    reviewEmployerDocument(db, id, req.log).catch((err) =>
+      req.log.error({ err, employerDocumentId: id }, "Admin-triggered employer document review failed"),
+    );
+    res.json({ ok: true, message: "AI review started" });
+  } catch (err) {
+    req.log.error({ err, employerDocumentId: id }, "Failed to queue employer document review");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
 
 router.post("/admin/employer-documents/:id/verify", requireAdmin, async (req, res) => {
   const id = Number(req.params.id);

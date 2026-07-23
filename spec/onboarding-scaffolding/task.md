@@ -12,7 +12,7 @@ Three phases: Database → Backend (OpenAPI + route) → Frontend.
 
 ```ts
 onboardingRole: text("onboarding_role"), // freelancer | employer | null
-onboardingStep: text("onboarding_step"), // role | profession_category | freelancer_details | employer_details | null
+onboardingStep: text("onboarding_step"), // role | profession_category | location | freelancer_details | employer_details | employer_documents | null
 ```
 
 Both nullable. No default.
@@ -44,7 +44,7 @@ onboardingRole:
   description: "freelancer | employer — in-progress onboarding role"
 onboardingStep:
   type: ["string", "null"]
-  description: "role | profession_category | freelancer_details | employer_details"
+  description: "role | profession_category | location | freelancer_details | employer_details | employer_documents"
 ```
 
 Add path `/users/me/onboarding-step`:
@@ -110,12 +110,30 @@ Props: `score: number`, `profile`, `avatarUrl: string | null`.
 
 - Import `usePatchOnboardingStep` from codegen
 - `persistOnboardingStep(role, step)` helper — PATCH with Clerk user fields
-- On role select: PATCH then advance step
-- On profession continue: PATCH `freelancer_details`
-- On employer path from role: PATCH `employer_details`
-- `useEffect` when `dbUser?.role === "pending"`: restore `role` + `step` from server
-- Fix step indicator for 3-step freelancer / 2-step employer paths
+- On role select: await PATCH then advance step
+- On freelancer work category continue: advance UI to Location **without** PATCH (server stays at `profession_category`)
+- On location continue: await PATCH with `countryCode` then advance step
+- On employer company profile submit:
+  1. `PATCH` → `employer_details` (ensure pending user exists)
+  2. `PUT /employers/me`
+  3. `PATCH` → `employer_documents`
+  4. Advance to document upload step (do **not** set `role: employer` yet)
+- `useEffect` when `dbUser?.role === "pending"`: restore `role` + `step` from server without regressing local step
+- Fix step indicator for 4-step freelancer / 4-step employer paths (includes location from multi-currency spec)
+- Pre-fill employer form from `GET /employers/me` when profile already saved
 - Remove or demote `localStorage` intended role when server state exists
+- **Resume import:** `handleResumeParsed` sets `bio` from parser output; include `bio` in both auto-create (`POST /freelancers` after parse) and manual freelancer submit so completeness bio factor is satisfied without a separate onboarding bio field
+
+### Task 3.5 — Employer mandatory document onboarding step
+
+**File:** `artifacts/talentlock/src/components/onboarding/EmployerDocumentOnboardingStep.tsx` (create)
+
+- Single required upload: `representative_id`
+- Reuse employer document upload hooks (`POST upload-url`, `POST confirm`, `GET me`)
+- "Finish registration" disabled until one document row exists (any status except not uploaded)
+- On finish: `PUT /api/users/me` with `role: employer` → redirect `/dashboard`
+
+See `spec/employee-verification/` Module 10 and `UI.md` onboarding section.
 
 ---
 
@@ -126,6 +144,9 @@ Props: `score: number`, `profile`, `avatarUrl: string | null`.
 - [ ] `GET /api/users/me` includes nullable `onboardingRole` and `onboardingStep`
 - [ ] Completing onboarding clears onboarding columns
 - [ ] `/onboarding` resumes from saved step after refresh
+- [ ] Employer path: company profile saves on first submit (pending user created before `PUT /employers/me`)
+- [ ] Employer path: cannot finish registration without uploading Representative ID
+- [ ] Employer path: `PUT /users/me` with `role: employer` only runs after document upload
 - [ ] Freelancer dashboard shows checklist when score < 80% with point labels and profile links
 - [ ] Checklist hidden when score >= 80%
 - [ ] Employers never see checklist

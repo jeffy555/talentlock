@@ -28,11 +28,14 @@ describe.skipIf(!integrationEnvReady())("freelancer document verification", () =
     expect(res.status).toBe(403);
   });
 
-  it("GET /api/documents/me returns status list for freelancer", async () => {
+  it("GET /api/documents/me returns verificationLevel and documents for freelancer", async () => {
     const flToken = await freelancerToken();
     const res = await (await createApiClient(flToken)).get("/api/documents/me");
     expect(res.status).toBe(200);
-    expect(Array.isArray(res.body)).toBe(true);
+    expect(res.body).toHaveProperty("verificationLevel");
+    expect(Array.isArray(res.body.documents)).toBe(true);
+    const json = JSON.stringify(res.body);
+    expect(json).not.toContain("fileUrl");
   });
 });
 

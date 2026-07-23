@@ -26,12 +26,14 @@ router.put("/employers/me", async (req, res) => {
   if (!clerkId) { res.status(401).json({ error: "Unauthorized" }); return; }
   const parsed = UpsertMyEmployerProfileBody.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
+  // website is in OpenAPI but not yet in employer_profiles — omit until schema migration
+  const { website: _website, ...profileInput } = parsed.data;
   const data = {
-    ...parsed.data,
-    companyName: sanitiseText(parsed.data.companyName),
-    industry: sanitiseText(parsed.data.industry),
-    companySize: parsed.data.companySize != null ? sanitiseText(parsed.data.companySize) : parsed.data.companySize,
-    description: parsed.data.description != null ? sanitiseText(parsed.data.description) : parsed.data.description,
+    companyName: sanitiseText(profileInput.companyName),
+    industry: sanitiseText(profileInput.industry),
+    companySize: profileInput.companySize != null ? sanitiseText(profileInput.companySize) : profileInput.companySize,
+    description: profileInput.description != null ? sanitiseText(profileInput.description) : profileInput.description,
+    subscriptionPlan: profileInput.subscriptionPlan,
   };
   try {
     const [user] = await db.select().from(usersTable).where(eq(usersTable.clerkId, clerkId)).limit(1);

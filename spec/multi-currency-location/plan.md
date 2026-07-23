@@ -38,12 +38,15 @@ rg "professionCategory|availableFrom" artifacts/api-server/src/routes/freelancer
 type OnboardingStep =
   | "role"
   | "profession_category"  // freelancers only
-  | "location"             // NEW — both roles
+  | "location"             // both roles
   | "freelancer_details"
-  | "employer_details";
+  | "employer_details"
+  | "employer_documents";  // employers only — mandatory Representative ID upload (see employee-verification Module 10)
 ```
 
 `PATCH /api/users/me/onboarding-step` accepts `location`. Persist `countryCode`, `stateCode`, `currencyCode` on `users` in same request body.
+
+**Validation:** When `onboardingStep === "location"`, `countryCode` is **required** (400 if missing). Frontend must not PATCH `location` when leaving the Work category step — only after the user picks country/region on the Location step.
 
 ---
 

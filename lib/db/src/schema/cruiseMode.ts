@@ -11,6 +11,8 @@ import {
 } from "drizzle-orm/pg-core";
 import { freelancerProfilesTable } from "./freelancerProfiles";
 import { jobRequirementsTable } from "./jobRequirements";
+import { conversations } from "./conversations";
+import { messages } from "./messages";
 
 export interface BlackoutWindow {
   start: string; // "HH:MM"
@@ -92,9 +94,13 @@ export const cruiseModeActivityTable = pgTable(
     rulesVersion: integer("rules_version").notNull(),
     score: integer("score").notNull(),
     decision: text("decision").notNull(),
-    // sent | skipped | dry_run_would_send | dry_run_skipped | blackout | daily_limit_reached | cruise_mode_off
+    // sent | skipped | dry_run_would_send | dry_run_skipped | blackout | daily_limit_reached | dm_failed
     matchReasons: jsonb("match_reasons").notNull().$type<MatchReasons>(),
     proposedMessage: text("proposed_message"),
+    conversationId: integer("conversation_id").references(() => conversations.id, {
+      onDelete: "set null",
+    }),
+    messageId: integer("message_id").references(() => messages.id, { onDelete: "set null" }),
     sentAt: timestamp("sent_at", { withTimezone: true }),
     skippedReason: text("skipped_reason"),
     freelancerFollowUpSent: boolean("freelancer_follow_up_sent").notNull().default(false),

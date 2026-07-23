@@ -102,6 +102,25 @@ curl -X POST http://localhost:8080/api/employer-documents/upload-url \
 - [ ] Returns 403
 
 ```bash
+# Pending employer (onboarding) with company profile — should 200
+# User: role=pending, onboardingRole=employer, employer_profiles row exists
+curl -X POST http://localhost:8080/api/employer-documents/upload-url \
+  -H "Authorization: Bearer <pending_employer_token>" \
+  -d '{"documentType": "representative_id", "filename": "passport.jpg", "mimeType": "image/jpeg"}'
+```
+
+- [ ] Returns 200 (onboarding document step)
+
+```bash
+# Pending user without employer profile — should 403
+curl -X POST http://localhost:8080/api/employer-documents/upload-url \
+  -H "Authorization: Bearer <pending_employer_no_profile_token>" \
+  -d '{"documentType": "representative_id", "filename": "x.jpg", "mimeType": "image/jpeg"}'
+```
+
+- [ ] Returns 403
+
+```bash
 # Invalid MIME type
 curl -X POST http://localhost:8080/api/employer-documents/upload-url \
   -H "Authorization: Bearer <employer_token>" \
@@ -344,7 +363,16 @@ Manually set document statuses via DB, reload page:
 - [ ] `rejected` → red X, "Action required", `employerNotes` shown, "Re-upload →" button
 - [ ] `needs_review` → amber warning, `employerNotes` shown, no upload button (admin reviews)
 
-### V3.5 — Re-upload on Rejected
+### V3.5 — Onboarding mandatory document step
+
+1. New employer: complete role, location, company profile.
+2. Land on Verification step.
+
+- [ ] Only Representative ID row shown (not full 5-doc checklist)
+- [ ] Finish registration disabled until upload completes
+- [ ] After upload + Finish → `/dashboard`, `role: employer`
+
+### V3.6 — Re-upload on Rejected
 
 Click "Re-upload →" on a rejected document, select new file:
 
@@ -352,19 +380,19 @@ Click "Re-upload →" on a rejected document, select new file:
 - [ ] Status resets to "Under review" after confirm
 - [ ] Previous error notes disappear
 
-### V3.6 — Overall Status Pill
+### V3.7 — Overall Status Pill
 
 - [ ] No documents verified → "Unverified" grey pill
 - [ ] Only rep ID verified → "Partially Verified" amber pill
 - [ ] Rep ID + company reg + tax verified → "Fully Verified" green pill
 
-### V3.7 — Next Steps Prompts
+### V3.8 — Next Steps Prompts
 
 - [ ] Unverified employer → sees "Start with your Representative ID" prompt
 - [ ] Partially verified employer → sees "Almost there" prompt
 - [ ] Fully verified employer → no prompt shown
 
-### V3.8 — Verified Employer Badge on Job Posts
+### V3.9 — Verified Employer Badge on Job Posts
 
 Log in as freelancer, browse Talent Vault or job listings:
 
@@ -372,36 +400,51 @@ Log in as freelancer, browse Talent Vault or job listings:
 - [ ] Partially verified employer's job shows amber "◐ ID Verified" badge
 - [ ] Unverified employer's job shows NO badge
 
-### V3.9 — Badge on Booking Detail (Freelancer View)
+### V3.10 — Badge on Booking Detail (Freelancer View)
 
 Freelancer views `/bookings/:id` for a booking with a fully verified employer:
 
 - [ ] "✓ Verified Employer" badge shown next to employer name
 - [ ] No documents, file URLs, or AI notes shown to freelancer
 
-### V3.10 — Badge on Meeting Detail (Freelancer View)
+### V3.11 — Badge on Meeting Detail (Freelancer View)
 
 Freelancer views `/meetings/:id` for a meeting with a fully verified employer:
 
 - [ ] "✓ Verified Employer" badge shown
 - [ ] No sensitive data exposed
 
-### V3.11 — Admin Employer Docs Tab
+### V3.12 — Admin Employer Docs Tab
 
 Log in as admin:
 
 - [ ] "Employer Documents" tab visible on the admin documents section
-- [ ] Tab shows count of pending/needs_review employer documents
-- [ ] Each card shows: employer name, document type, confidence, AI notes, document preview link, verify/reject buttons
+- [ ] Tab badge shows count of pending/needs_review documents only
+- [ ] Three sub-sections: **Pending**, **Approved**, **Rejected** — each with count badge
+- [ ] Pending: cards show verify/reject actions
+- [ ] After approving a document, it appears under Approved (not lost)
+- [ ] After rejecting a document, it appears under Rejected with admin notes
 
-### V3.12 — Admin Reject Without Notes
+### V3.12b — Admin Approved / Rejected history API
+
+```bash
+curl "http://localhost:8080/api/admin/employer-documents?status=verified&page=1" \
+  -H "Cookie: tl_admin=<admin_cookie>"
+curl "http://localhost:8080/api/admin/employer-documents?status=rejected&page=1" \
+  -H "Cookie: tl_admin=<admin_cookie>"
+```
+
+- [ ] Each returns 200 with reviewed documents including `reviewedAt` and `adminNotes`
+- [ ] Results ordered by `reviewedAt` descending (most recent first)
+
+### V3.13 — Admin Reject Without Notes
 
 In admin console, click "Reject" without entering admin notes:
 
 - [ ] Client-side error: "Admin notes required for rejection"
 - [ ] No API call made until notes are entered
 
-### V3.13 — Build Passes
+### V3.14 — Build Passes
 
 ```bash
 pnpm run typecheck

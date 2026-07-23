@@ -17,19 +17,9 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import { EMPLOYER_DOCUMENT_DEFINITIONS } from "@/lib/employerDocuments";
 
-const DOCUMENTS: Array<{
-  type: EmployerDocumentType;
-  label: string;
-  description: string;
-  required: boolean;
-}> = [
-  { type: "representative_id", label: "Representative ID", description: "Government-issued photo ID of company director or authorised representative", required: true },
-  { type: "company_registration", label: "Company Registration Certificate", description: "Official company registration document", required: true },
-  { type: "tax_vat_certificate", label: "Tax / VAT Certificate", description: "VAT registration or equivalent tax document", required: true },
-  { type: "business_licence", label: "Business Licence", description: "Trading licence or sector-specific permit", required: false },
-  { type: "proof_of_business_address", label: "Proof of Business Address", description: "Utility bill or bank statement (less than 3 months old)", required: false },
-];
+const DOCUMENTS = EMPLOYER_DOCUMENT_DEFINITIONS;
 
 type Status = "pending" | "verified" | "rejected" | "needs_review" | "not_uploaded";
 

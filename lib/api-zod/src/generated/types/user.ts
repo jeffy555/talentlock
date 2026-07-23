@@ -28,7 +28,7 @@ export interface User {
    */
   onboardingRole?: string | null;
   /**
-   * role | profession_category | location | freelancer_details | employer_details
+   * role | profession_category | location | freelancer_details | employer_details | employer_documents
    * @nullable
    */
   onboardingStep?: string | null;

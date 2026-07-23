@@ -10,7 +10,8 @@ import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PaginationControls } from "@/components/PaginationControls";
-import { CheckCircle2, ChevronDown, Loader2 } from "lucide-react";
+import { CheckCircle2, ChevronDown, Loader2, MessageSquare } from "lucide-react";
+import { Link } from "wouter";
 import { formatRelativeTime } from "@/lib/formatRelativeTime";
 import {
   decisionBadgeClass,
@@ -29,7 +30,7 @@ function ActivityEntry({
   followUpPending: boolean;
 }) {
   const [open, setOpen] = useState(false);
-  const { matchReasons, decision, score, freelancerName, proposedMessage, skippedReason, employerFollowUpSent } =
+  const { matchReasons, decision, score, freelancerName, proposedMessage, skippedReason, employerFollowUpSent, conversationId } =
     item;
 
   const reasonLine =
@@ -80,6 +81,15 @@ function ActivityEntry({
               </div>
             </CollapsibleContent>
           </Collapsible>
+        )}
+
+        {decision === "sent" && conversationId != null && (
+          <Button variant="outline" size="sm" className="mt-2 h-7 text-xs" asChild>
+            <Link href={`/messages/${conversationId}`}>
+              <MessageSquare className="h-3 w-3 mr-1" />
+              Open conversation
+            </Link>
+          </Button>
         )}
 
         {decision === "sent" && !employerFollowUpSent && (

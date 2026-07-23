@@ -33,7 +33,7 @@
 
 **Question:** Should step values match frontend state names exactly?
 
-**Recommendation:** Use snake_case API values: `role`, `profession_category`, `freelancer_details`, `employer_details`. Map in `Onboarding.tsx` 1:1 with existing `step` state union.
+**Recommendation:** Use snake_case API values: `role`, `profession_category`, `location`, `freelancer_details`, `employer_details`, `employer_documents`. Map in `Onboarding.tsx` 1:1 with existing `step` state union. (`location` from multi-currency spec; `employer_documents` from employee-verification Module 10.)
 
 ---
 

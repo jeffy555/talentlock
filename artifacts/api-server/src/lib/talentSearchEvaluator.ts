@@ -17,6 +17,7 @@ import {
 import { desc } from "drizzle-orm";
 import type { Logger } from "pino";
 import { createNotification, NotificationType } from "./createNotification";
+import { sendAutomatedOutreachMessage } from "./automatedOutreachMessaging";
 import { logTokenUsage } from "./tokenLogger";
 import { getNextMidnightUTC, isInBlackoutWindow, parseHoursValue } from "./cruiseModeUtils";
 import {
@@ -39,6 +40,8 @@ interface ActivityLogParams {
   matchReasons: MatchReasons;
   proposedMessage: string | null;
   skippedReason: string | null;
+  conversationId?: number | null;
+  messageId?: number | null;
 }
 
 async function logTalentSearchActivity(
@@ -57,6 +60,8 @@ async function logTalentSearchActivity(
     decision: params.decision,
     matchReasons: params.matchReasons,
     proposedMessage: params.proposedMessage,
+    conversationId: params.conversationId ?? null,
+    messageId: params.messageId ?? null,
     sentAt: params.decision === "sent" ? new Date() : null,
     skippedReason: params.skippedReason,
     createdAt: new Date(),
@@ -131,6 +136,46 @@ export async function evaluateTalentSearchForUpdatedProfile(
     batch.map((config) =>
       evaluateSingleEmployer(dbClient, config, freelancerRow, freelancer, log),
     ),
+  );
+}
+
+/** Scan existing Talent-Vault-visible freelancers when an employer activates TalentSearch. */
+export async function backfillTalentSearchForEmployer(
+  dbClient: DbClient,
+  employerId: number,
+  log: Log,
+): Promise<void> {
+  const [config] = await dbClient
+    .select()
+    .from(talentSearchConfigsTable)
+    .where(
+      and(
+        eq(talentSearchConfigsTable.employerId, employerId),
+        eq(talentSearchConfigsTable.isActive, true),
+        isNull(talentSearchConfigsTable.deletedAt),
+      ),
+    )
+    .limit(1);
+  if (!config) return;
+
+  const freelancerRows = await dbClient
+    .select()
+    .from(freelancerProfilesTable)
+    .where(gte(freelancerProfilesTable.completenessScore, 60))
+    .limit(50);
+
+  log.info(
+    { employerId, freelancerCount: freelancerRows.length },
+    "talent-search activate backfill",
+  );
+
+  await Promise.allSettled(
+    freelancerRows.map(async (freelancerRow) => {
+      const verified = await hasAnyVerifiedDocument(dbClient, freelancerRow.id);
+      const freelancer = normaliseFreelancer(freelancerRow, verified);
+      if (!talentSearchPreFilter(config.rules, freelancer)) return;
+      await evaluateSingleEmployer(dbClient, config, freelancerRow, freelancer, log);
+    }),
   );
 }
 
@@ -291,28 +336,55 @@ async function evaluateSingleEmployer(
         ? "sent"
         : "skipped";
 
+    let finalDecision = decision;
+    let conversationId: number | null = null;
+    let messageId: number | null = null;
+    let skippedReason =
+      decision === "skipped"
+        ? `Score ${evaluation.score} below threshold ${config.rules.matchThreshold ?? 70}`
+        : null;
+
+    if (decision === "sent") {
+      try {
+        const dm = await sendAutomatedOutreachMessage(
+          dbClient,
+          {
+            source: "talent_search",
+            employerId: config.employerId,
+            freelancerId: freelancer.id,
+            senderRole: "employer",
+            senderUserId: employerProfile.userId,
+            senderProfileId: config.employerId,
+            recipientUserId: freelancerRow.userId,
+            content: evaluation.proposedMessage ?? "",
+            notificationMessage: `${employerProfile.companyName} expressed interest in your profile`,
+            senderDisplayName: employerProfile.companyName,
+          },
+          log,
+        );
+        conversationId = dm.conversationId;
+        messageId = dm.messageId;
+      } catch (err) {
+        log.warn(
+          { err, employerId: config.employerId, freelancerId: freelancer.id },
+          "talent-search DM delivery failed",
+        );
+        finalDecision = "dm_failed";
+        skippedReason = "Direct message delivery failed";
+      }
+    }
+
     const activityId = await logTalentSearchActivity(dbClient, config, freelancer.id, {
-      decision,
+      decision: finalDecision,
       score: evaluation.score,
       matchReasons: evaluation.reasons,
       proposedMessage: evaluation.proposedMessage,
-      skippedReason:
-        decision === "skipped"
-          ? `Score ${evaluation.score} below threshold ${config.rules.matchThreshold ?? 70}`
-          : null,
+      conversationId,
+      messageId,
+      skippedReason,
     });
 
-    if (decision === "sent") {
-      // Notify freelancer — type drives the "TalentSearch ✦" badge in the UI
-      createNotification(dbClient, {
-        userId: freelancerRow.userId,
-        type: NotificationType.TALENT_SEARCH_INTEREST,
-        entityType: "talent_search_activity",
-        entityId: activityId,
-        message: `${employerProfile.companyName} expressed interest in your profile`,
-      }).catch((err) => log.warn({ err }, "talent-search freelancer notification failed"));
-
-      // Notify employer
+    if (finalDecision === "sent") {
       createNotification(dbClient, {
         userId: employerProfile.userId,
         type: NotificationType.TALENT_SEARCH_SENT,
@@ -321,13 +393,20 @@ async function evaluateSingleEmployer(
         message: `Your AI assistant expressed interest in ${freelancerRow.name}'s profile (match score: ${evaluation.score}/100)`,
       }).catch((err) => log.warn({ err }, "talent-search employer notification failed"));
 
-      // Increment the freelancer's daily notification counter
       await dbClient
         .update(freelancerProfilesTable)
         .set({
           talentSearchNotificationsToday: sql`${freelancerProfilesTable.talentSearchNotificationsToday} + 1`,
         })
         .where(eq(freelancerProfilesTable.id, freelancer.id));
+    } else if (decision === "dry_run_would_send") {
+      createNotification(dbClient, {
+        userId: employerProfile.userId,
+        type: NotificationType.TALENT_SEARCH_SENT,
+        entityType: "talent_search_activity",
+        entityId: activityId,
+        message: `Dry run: would have reached out to ${freelancerRow.name} (match score: ${evaluation.score}/100)`,
+      }).catch((err) => log.warn({ err }, "talent-search dry-run employer notification failed"));
     }
   } catch (err) {
     log.error(

@@ -207,6 +207,7 @@ talentlock/
 │   │   └── validation.md
 │   │
 │   ├── employer-cruisemode/                        ← ✅ Complete (TalentSearch)
+│   ├── cruise-mode-dm-delivery/                    ← ✅ Complete (real DM for Cruise Mode + TalentSearch)
 │   │   ├── features.md
 │   │   ├── clarify.md
 │   │   ├── plan.md
@@ -495,18 +496,19 @@ The `.cursor/rules/talentlock.mdc` file at the repo root enforces these rules au
 | **Auth Hardening (Access Control)** | `spec/AuthHardening/` | ✅ Complete (validated 2026-06-09) |
 | Agreement AI Summary | `agreement-ai-summary/` (repo root) | ✅ Complete |
 | Agreement PDF Download | `spec/agreement-pdf-download/` | ✅ Complete |
-| Cruise Mode | `spec/cruisemode/` | ✅ Complete |
+| Cruise Mode | `spec/cruisemode/` | ✅ Complete · DM delivery spec in `spec/cruise-mode-dm-delivery/` |
 | Teaching Professional Profile | `spec/teaching-professional-profile/` | ✅ Complete |
-| TalentSearch (Employer Cruise Mode) | `spec/employer-cruisemode/` | ✅ Complete |
+| TalentSearch (Employer Cruise Mode) | `spec/employer-cruisemode/` | ✅ Complete · DM delivery spec in `spec/cruise-mode-dm-delivery/` |
+| **Cruise Mode & TalentSearch DM Delivery** | `spec/cruise-mode-dm-delivery/` | ✅ Complete |
 | AI Meeting Brief Generator | `spec/aimeetingdebrief/` | ✅ Complete |
 | In-App Direct Messaging | `spec/messaging-service/` | ✅ Complete |
-| Employer Verification | `spec/employee-verification/` | ✅ Complete |
+| Employer Verification | `spec/employee-verification/` | ✅ Complete · admin employer docs tab with Pending / Approved / Rejected trackers |
 | Credential Expiry Tracking | `spec/credential-expiry-tracking/` | ✅ Complete |
 | Freelancer Watchlist | `spec/freelancer-watchlist/` | ✅ Complete |
 | Post-Engagement AI Debrief | `spec/post-engagement-ai-debrief/` | ✅ Complete |
 | Multi-Currency & Location | `spec/multi-currency-location/` | ✅ Complete |
 | Employer Uploaded Agreement | `spec/employer-uploaded-agreement/` | ✅ Complete |
-| Onboarding Scaffolding | `spec/onboarding-scaffolding/` | ✅ Complete |
+| Onboarding Scaffolding | `spec/onboarding-scaffolding/` | ✅ Complete · freelancer work category→location is UI-only until country selected; resume import persists `bio` on profile create |
 | **Automated API Testing (Regression)** | `spec/api-testing/` | 🔄 In progress — Phase 0 harness on `cursor/regression-tests-9a23` |
 | UI/UX Improvements | `spec/ui-ux-improvements/` | 🟡 Ready to Execute |
 

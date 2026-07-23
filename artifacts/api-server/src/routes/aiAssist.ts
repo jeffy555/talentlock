@@ -18,6 +18,7 @@ import {
   getEmployerHistoricalAvg,
   type RatePaymentType,
 } from "../lib/rateSuggestionUtils";
+import { buildRateDisplay } from "../lib/countryData";
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY_TALENTLOCK });
 
@@ -112,6 +113,24 @@ Write the proposal in first person. Do not use markdown. Return only the proposa
   return prompt;
 }
 
+function paymentTypeForRate(paymentType: RatePaymentType): "hourly" | "daily" | "fixed" {
+  if (paymentType === "daily") return "daily";
+  if (paymentType === "fixed") return "fixed";
+  return "hourly";
+}
+
+function formatRateAmountLine(
+  amount: number,
+  paymentType: RatePaymentType,
+  currencyCode: string,
+): string {
+  return buildRateDisplay({
+    rate: String(amount),
+    paymentType: paymentTypeForRate(paymentType),
+    currencyCode,
+  });
+}
+
 function buildRateSuggestionSystemPrompt(params: {
   freelancerRate: number;
   field: string;
@@ -119,16 +138,26 @@ function buildRateSuggestionSystemPrompt(params: {
   historicalAvg: number | null;
   proposedRate: number | null;
   roleContext: string;
-  rateUnit: string;
+  paymentType: RatePaymentType;
+  currencyCode: string;
 }): string {
-  const { freelancerRate, field, marketMedian, historicalAvg, proposedRate, roleContext, rateUnit } = params;
+  const {
+    freelancerRate,
+    field,
+    marketMedian,
+    historicalAvg,
+    proposedRate,
+    roleContext,
+    paymentType,
+    currencyCode,
+  } = params;
   return `You are a rate advisor for a freelance platform.
-Given the following data, suggest an appropriate hourly rate and explain why.
+Given the following data, suggest an appropriate rate in ${currencyCode} and explain why.
 
-Freelancer's listed rate: $${freelancerRate}/${rateUnit}
-${marketMedian ? `Market median for ${field}: $${marketMedian}/${rateUnit}` : "Market median: insufficient data"}
-${historicalAvg ? `Employer's historical average for ${field}: $${historicalAvg}/${rateUnit}` : ""}
-${proposedRate ? `Employer's proposed rate: $${proposedRate}/${rateUnit}` : ""}
+Freelancer's listed rate: ${formatRateAmountLine(freelancerRate, paymentType, currencyCode)}
+${marketMedian ? `Market median for ${field} (${currencyCode} freelancers): ${formatRateAmountLine(marketMedian, paymentType, currencyCode)}` : `Market median: insufficient data for ${field} in ${currencyCode}`}
+${historicalAvg ? `Employer's historical average for ${field}: ${formatRateAmountLine(historicalAvg, paymentType, currencyCode)}` : ""}
+${proposedRate ? `Employer's proposed rate: ${formatRateAmountLine(proposedRate, paymentType, currencyCode)}` : ""}
 ${roleContext}
 
 Return ONLY a JSON object — no preamble, no markdown:
@@ -158,12 +187,6 @@ function resolveFreelancerRate(
   if (Number.isFinite(hourly) && hourly > 0) return Math.round(hourly);
   const daily = Number(freelancer.dailyRate);
   return Number.isFinite(daily) && daily > 0 ? Math.round(daily) : 0;
-}
-
-function rateUnitForPaymentType(paymentType: RatePaymentType): string {
-  if (paymentType === "daily") return "day";
-  if (paymentType === "fixed") return "project";
-  return "hr";
 }
 
 const router = Router();
@@ -444,7 +467,8 @@ router.post("/ai/rate-suggestion", async (req, res) => {
 
     const freelancerRate = resolveFreelancerRate(freelancer, paymentType);
     const field = freelancer.fieldOfWork;
-    const marketMedian = await getMarketMedian(db, field, paymentType);
+    const currencyCode = freelancer.currencyCode ?? "USD";
+    const marketMedian = await getMarketMedian(db, field, paymentType, currencyCode);
     const yourHistoricalAvg = await getEmployerHistoricalAvg(db, employer.id, field);
 
     const proposedRate = proposedRateInput != null && Number.isFinite(proposedRateInput)
@@ -460,7 +484,6 @@ router.post("/ai/rate-suggestion", async (req, res) => {
     }
 
     const roleContext = jobContext ?? `Field: ${field}`;
-    const rateUnit = rateUnitForPaymentType(paymentType);
 
     const staticResponse = {
       freelancerRate,
@@ -484,7 +507,8 @@ router.post("/ai/rate-suggestion", async (req, res) => {
       historicalAvg: yourHistoricalAvg,
       proposedRate,
       roleContext,
-      rateUnit,
+      paymentType,
+      currencyCode,
     });
 
     const completion = await openai.chat.completions.create({

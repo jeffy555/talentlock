@@ -18,6 +18,10 @@ export interface CruiseModeActivity {
   /** @nullable */
   proposedMessage?: string | null;
   /** @nullable */
+  conversationId?: number | null;
+  /** @nullable */
+  messageId?: number | null;
+  /** @nullable */
   sentAt?: Date | null;
   /** @nullable */
   skippedReason?: string | null;

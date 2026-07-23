@@ -37,6 +37,7 @@ export function decisionBadgeClass(decision: string): string {
       return "text-slate-500 bg-slate-50 border-slate-200";
     case "blackout":
     case "daily_limit_reached":
+    case "dm_failed":
       return "text-red-600 bg-red-50 border-red-200";
     default:
       return "text-slate-500 bg-slate-50 border-slate-200";
@@ -57,6 +58,8 @@ export function decisionLabel(decision: string): string {
       return "⊘ Blocked";
     case "daily_limit_reached":
       return "⏱ Daily limit";
+    case "dm_failed":
+      return "✕ Delivery failed";
     default:
       return decision;
   }

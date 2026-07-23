@@ -19,6 +19,8 @@ export interface AdminEmployerDocument {
   confidence?: number | null;
   /** @nullable */
   aiNotes?: string | null;
+  /** @nullable */
+  adminNotes?: string | null;
   signedFileUrl: string;
   createdAt: Date;
   /** @nullable */

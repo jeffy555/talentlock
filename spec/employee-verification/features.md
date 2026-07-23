@@ -119,12 +119,13 @@ function calculateVerificationLevel(
 
 Three new employer-facing routes, all requiring Clerk authentication and employer profile ownership:
 
+**Access rule:** `role = employer`, OR (`role = pending` AND `onboardingRole = employer` AND `employer_profiles` row exists). Freelancers and other pending users receive 403.
+
 ```
 POST /api/employer-documents/upload-url
   Generate a presigned GCS upload URL for a specific document type.
   Body: { documentType: EmployerDocumentType, filename: string, mimeType: string }
   Returns: { uploadUrl: string, fileUrl: string }
-  Access: employer only — 403 for freelancers
   Validates: documentType must be one of the 5 valid values
 
 POST /api/employer-documents/confirm
@@ -134,13 +135,11 @@ POST /api/employer-documents/confirm
   Triggers AI review fire-and-forget.
   Recalculates verificationLevel on employer_profiles atomically.
   Returns: { documentId, status: 'pending' }
-  Access: employer only — 403 for freelancers
 
 GET /api/employer-documents/me
   Returns all document statuses for the current employer.
   Returns: array of { documentType, status, employerNotes, updatedAt }
   NEVER returns: fileUrl (use signed URL endpoint), aiNotes, adminNotes, confidence
-  Access: employer only — 403 for freelancers
 ```
 
 Signed URL for viewing an uploaded document (employer re-downloading their own):
@@ -233,6 +232,24 @@ Five status badge variants:
 
 ---
 
+### Module 10 — Onboarding Mandatory Document Gate
+
+During employer registration (`/onboarding`), one document upload is **required** before the account is activated:
+
+| Requirement | Detail |
+|---|---|
+| Required document | `representative_id` only |
+| Minimum to proceed | One row exists for `(employerId, representative_id)` with status `pending`, `verified`, `rejected`, or `needs_review` (upload counts; verification can complete later) |
+| When account activates | `PUT /api/users/me` with `role: employer` runs only after upload |
+| Additional documents | Optional — full 5-document checklist remains on `/profile` via `EmployerVerificationSection` |
+| UI component | `EmployerDocumentOnboardingStep.tsx` — step 4 of employer onboarding |
+
+This gates **registration completion**, not job posting (employers may use the platform unverified for jobs per Non-Goals).
+
+**Company profile prerequisite:** `PUT /api/employers/me` must succeed before document upload (creates `employer_profiles` row used by upload routes).
+
+---
+
 ### Module 7 — Admin Review Queue Extension
 
 The existing `GET /api/admin/documents` queue shows freelancer documents. Employer documents are surfaced in the same admin console under a new tab or filter.
@@ -240,10 +257,14 @@ The existing `GET /api/admin/documents` queue shows freelancer documents. Employ
 **New admin routes:**
 ```
 GET  /api/admin/employer-documents
-  Paginated queue of employer documents with status pending or needs_review.
+  Paginated employer document list for admin review.
+  Query `status` (comma-separated): pending | needs_review | verified | rejected
+  Default: pending,needs_review (action queue).
+  Use status=verified or status=rejected for the approved/rejected history trackers.
   Returns: { employerName, companyName, documentType, status, confidence,
-             aiNotes, signedFileUrl (short expiry), createdAt }
+             aiNotes, adminNotes, signedFileUrl (short expiry), createdAt, reviewedAt }
   Secured: admin session + CSRF
+  Ordering: pending queue ascending by createdAt; verified/rejected descending by reviewedAt
 
 POST /api/admin/employer-documents/:id/verify
   Admin marks document as verified.
@@ -260,14 +281,25 @@ POST /api/admin/employer-documents/:id/reject
   Logs audit event.
 ```
 
+**Admin console UI — three sub-sections on the Employer Documents tab:**
+
+| Section | API filter | Purpose |
+|---------|------------|---------|
+| Pending | `status=pending,needs_review` | Action queue — Approve / Reject buttons |
+| Approved | `status=verified` | Read-only history — reviewedAt, adminNotes, view document |
+| Rejected | `status=rejected` | Read-only history — rejection notes, reviewedAt, view document |
+
+The main admin nav badge count reflects **Pending** only (not approved/rejected totals).
+
 **Admin queue card shows:**
 - Employer name + company name
 - Document type (human-readable label)
 - AI confidence score + status badge
 - `aiNotes` (technical AI assessment — admin only)
 - Secure signed file URL (15-minute expiry, regenerated on each queue load)
-- Verify / Reject buttons with optional admin notes field
+- Verify / Reject buttons with optional admin notes field (Pending section only)
 - Timestamp of upload
+- On Approved/Rejected sections: `reviewedAt`, `adminNotes`, status badge — no action buttons
 
 ---
 
@@ -298,7 +330,7 @@ All 9 security requirements from the feature brief, mapped to existing patterns:
 
 | Requirement | Implementation |
 |---|---|
-| Employer-only access to own statuses | `resolveEmployerByClerkId()` + ownership check in all 3 upload routes |
+| Employer-only access to own statuses | `resolveEmployerContext()` — `role = employer` OR (`role = pending` AND `onboardingRole = employer` AND employer profile exists) |
 | Admin-only access to raw files | GCS path never returned in employer APIs — signed URL only, admin queue only |
 | Signed URLs with 15-min expiry | Same GCS presigned URL generation as freelancer docs |
 | Storage paths scoped to employer ID | `uploads/{employerId}/employer-docs/{type}/` |
@@ -325,7 +357,8 @@ Employer verification is available on all employer plans. It is a trust infrastr
 - Legal KYC or AML (Anti-Money Laundering) compliance — this is platform trust only
 - Third-party verification service integration (Companies House API, Dun & Bradstreet) — Phase 2
 - Automatic rejection without admin override — AI result is always overridable
-- Blocking employers from posting jobs until verified — verification is encouraged, not gating
+- Blocking employers from posting jobs until verified — verification is encouraged, not gating job creation
+- Blocking employer **registration** until Representative ID is uploaded — **in scope** (onboarding gate; see Module 10)
 - Freelancer-facing breakdown of which documents are verified (only overall level shown)
 - Document versioning history — one row per type, upsert replaces on re-upload
 - Team member document uploads — only the account owner uploads business documents

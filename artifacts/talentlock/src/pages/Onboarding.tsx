@@ -1,6 +1,17 @@
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
-import { useGetMe, useUpsertMe, useCreateFreelancerProfile, useUpsertMyEmployerProfile, usePatchOnboardingStep, useListCountries } from "@workspace/api-client-react";
+import { useQueryClient } from "@tanstack/react-query";
+import {
+  useGetMe,
+  useUpsertMe,
+  useCreateFreelancerProfile,
+  useUpsertMyEmployerProfile,
+  useGetMyEmployerProfile,
+  usePatchOnboardingStep,
+  useListCountries,
+  getGetMeQueryKey,
+  getGetMyEmployerProfileQueryKey,
+} from "@workspace/api-client-react";
 import { useUser } from "@clerk/react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,14 +27,23 @@ import { ResumeImporter, type ParsedResume } from "@/components/ResumeImporter";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import TeachingDetailsSection, { emptyTeachingDetails, type TeachingDetailsValues } from "@/components/onboarding/TeachingDetailsSection";
 import { LocationStep } from "@/components/onboarding/LocationStep";
+import { EmployerDocumentOnboardingStep } from "@/components/onboarding/EmployerDocumentOnboardingStep";
 import { cn } from "@/lib/utils";
+import { COMPANY_SIZE_OPTIONS } from "@/lib/employerDocuments";
 import type { EducationProfessionType, ProfessionCategory, PatchOnboardingStepBodyOnboardingStep } from "@workspace/api-client-react";
 
-type OnboardingUiStep = "role" | "profession_category" | "location" | "freelancer-details" | "employer-details";
+type OnboardingUiStep =
+  | "role"
+  | "profession_category"
+  | "location"
+  | "freelancer-details"
+  | "employer-details"
+  | "employer-documents";
 
 function toApiOnboardingStep(step: OnboardingUiStep): PatchOnboardingStepBodyOnboardingStep {
   if (step === "freelancer-details") return "freelancer_details";
   if (step === "employer-details") return "employer_details";
+  if (step === "employer-documents") return "employer_documents";
   if (step === "location") return "location";
   return step;
 }
@@ -31,6 +51,7 @@ function toApiOnboardingStep(step: OnboardingUiStep): PatchOnboardingStepBodyOnb
 function toUiOnboardingStep(step: string | null | undefined): OnboardingUiStep | null {
   if (step === "freelancer_details") return "freelancer-details";
   if (step === "employer_details") return "employer-details";
+  if (step === "employer_documents") return "employer-documents";
   if (step === "location") return "location";
   if (step === "profession_category") return "profession_category";
   if (step === "role") return "role";
@@ -46,10 +67,24 @@ function clearIntendedRole() {
   localStorage.removeItem("talentlock_intended_role");
 }
 
+const ONBOARDING_STEP_ORDER: Record<OnboardingUiStep, number> = {
+  role: 0,
+  profession_category: 1,
+  location: 2,
+  "freelancer-details": 3,
+  "employer-details": 3,
+  "employer-documents": 4,
+};
+
+function resolveOnboardingStep(current: OnboardingUiStep, resumed: OnboardingUiStep): OnboardingUiStep {
+  return ONBOARDING_STEP_ORDER[current] >= ONBOARDING_STEP_ORDER[resumed] ? current : resumed;
+}
+
 export default function Onboarding() {
   const [, setLocation] = useLocation();
   const { user } = useUser();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   const { data: dbUser, isLoading: isLoadingUser, isError: isMeError } = useGetMe();
   const upsertMe = useUpsertMe();
@@ -64,6 +99,8 @@ export default function Onboarding() {
   const [countryCode, setCountryCode] = useState("US");
   const [stateCode, setStateCode] = useState<string | null>(null);
   const [locationSubmitting, setLocationSubmitting] = useState(false);
+  const [employerFinishSubmitting, setEmployerFinishSubmitting] = useState(false);
+  const [employerProfileSubmitting, setEmployerProfileSubmitting] = useState(false);
 
   // Profession category (freelancers only)
   const [professionCategory, setProfessionCategory] = useState<ProfessionCategory | null>(null);
@@ -72,6 +109,7 @@ export default function Onboarding() {
 
   // Freelancer fields
   const [tagline, setTagline] = useState("");
+  const [bio, setBio] = useState("");
   const [fieldOfWork, setFieldOfWork] = useState("");
   const [skills, setSkills] = useState("");
   const [yearsExperience, setYearsExperience] = useState("");
@@ -81,6 +119,7 @@ export default function Onboarding() {
   const handleResumeParsed = async (data: ParsedResume) => {
     // Fill fields for display
     if (data.tagline) setTagline(data.tagline);
+    if (data.bio) setBio(data.bio);
     if (isFieldOfWork(data.fieldOfWork)) setFieldOfWork(data.fieldOfWork);
     if (data.skills?.length) setSkills(data.skills.join(", "));
     if (data.yearsExperience) setYearsExperience(String(data.yearsExperience));
@@ -102,6 +141,7 @@ export default function Onboarding() {
       await createFreelancerProfile.mutateAsync({
         data: {
           tagline: data.tagline || "",
+          bio: data.bio || null,
           fieldOfWork: isFieldOfWork(data.fieldOfWork) ? data.fieldOfWork : FIELDS_OF_WORK[0],
           skills: data.skills?.slice(0, 15) ?? [],
           yearsExperience: data.yearsExperience ?? 0,
@@ -126,6 +166,27 @@ export default function Onboarding() {
   const [companySize, setCompanySize] = useState("");
   const [description, setDescription] = useState("");
 
+  const { data: existingEmployerProfile, isError: employerProfileError } = useGetMyEmployerProfile({
+    query: {
+      enabled: (step === "employer-details" || step === "employer-documents") && !!user,
+      retry: false,
+    } as any,
+  });
+
+  const employerProfileLoadFailed =
+    employerProfileError &&
+    typeof employerProfileError === "object" &&
+    "status" in employerProfileError &&
+    (employerProfileError as { status: number }).status !== 404;
+
+  useEffect(() => {
+    if (!existingEmployerProfile) return;
+    setCompanyName(existingEmployerProfile.companyName ?? "");
+    setIndustry(existingEmployerProfile.industry ?? "");
+    setCompanySize(existingEmployerProfile.companySize ?? "");
+    setDescription(existingEmployerProfile.description ?? "");
+  }, [existingEmployerProfile]);
+
   useEffect(() => {
     const intended = getIntendedRole();
     if (intended && !dbUser?.onboardingStep) {
@@ -142,7 +203,7 @@ export default function Onboarding() {
     }
     const resumed = toUiOnboardingStep(dbUser.onboardingStep);
     if (resumed && resumed !== "role") {
-      setStep(resumed);
+      setStep((current) => resolveOnboardingStep(current, resumed));
     }
     if (dbUser.countryCode) setCountryCode(dbUser.countryCode);
     if (dbUser.stateCode) setStateCode(dbUser.stateCode);
@@ -194,10 +255,11 @@ export default function Onboarding() {
     const nextStep: OnboardingUiStep =
       selectedRole === "freelancer" ? "profession_category" : "location";
     setRole(selectedRole);
-    setStep(nextStep);
     try {
       await persistOnboardingStep(selectedRole, nextStep);
+      setStep(nextStep);
     } catch {
+      setStep(nextStep);
       toast({
         title: "Could not save progress",
         description: "Your selection was kept on this device. Try again if you switch devices.",
@@ -242,6 +304,7 @@ export default function Onboarding() {
       await createFreelancerProfile.mutateAsync({
         data: {
           tagline,
+          bio: bio.trim() || null,
           fieldOfWork,
           skills: skills.split(",").map((s) => s.trim()).filter(Boolean),
           yearsExperience: parseInt(yearsExperience, 10),
@@ -264,6 +327,46 @@ export default function Onboarding() {
   const handleEmployerSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
+    const employerRole = role ?? dbUser?.onboardingRole;
+    if (employerRole !== "employer") {
+      toast({
+        title: "Could not save company profile",
+        description: "Your account type was not detected. Go back and select Employer again.",
+        variant: "destructive",
+      });
+      return;
+    }
+    setEmployerProfileSubmitting(true);
+    try {
+      // Create/update the pending user row before employer profile (fixes first-attempt 400)
+      await persistOnboardingStep("employer", "employer-details");
+      const savedProfile = await upsertEmployerProfile.mutateAsync({
+        data: {
+          companyName,
+          industry,
+          companySize: companySize || null,
+          description,
+          subscriptionPlan: "basic",
+        },
+      });
+      queryClient.setQueryData(getGetMyEmployerProfileQueryKey(), savedProfile);
+      await persistOnboardingStep("employer", "employer-documents");
+      await queryClient.invalidateQueries({ queryKey: getGetMeQueryKey() });
+      setStep("employer-documents");
+      toast({
+        title: "Company profile saved",
+        description: "Upload one verification document to finish registration.",
+      });
+    } catch {
+      toast({ title: "Error", description: "Could not save company profile. Please try again.", variant: "destructive" });
+    } finally {
+      setEmployerProfileSubmitting(false);
+    }
+  };
+
+  const handleEmployerFinish = async () => {
+    if (!user) return;
+    setEmployerFinishSubmitting(true);
     try {
       await upsertMe.mutateAsync({
         data: {
@@ -273,28 +376,26 @@ export default function Onboarding() {
           avatarUrl: user.imageUrl,
         },
       });
-      await upsertEmployerProfile.mutateAsync({
-        data: {
-          companyName,
-          industry,
-          companySize,
-          description,
-          subscriptionPlan: "basic",
-        },
-      });
-      toast({ title: "Profile created", description: "Welcome to TalentLock." });
+      toast({ title: "Welcome to TalentLock", description: "Your employer account is ready." });
       setLocation("/dashboard");
     } catch {
-      toast({ title: "Error", description: "Could not create profile. Please try again.", variant: "destructive" });
+      toast({
+        title: "Error",
+        description: "Could not finish registration. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setEmployerFinishSubmitting(false);
     }
   };
 
-  const isEmployerPath = role === "employer" || step === "employer-details";
+  const isEmployerPath = role === "employer" || step === "employer-details" || step === "employer-documents";
   const stepConfig = isEmployerPath
     ? [
         { n: 1, label: "Account type", active: step === "role" },
         { n: 2, label: "Location", active: step === "location" },
-        { n: 3, label: "Profile details", active: step === "employer-details" },
+        { n: 3, label: "Company profile", active: step === "employer-details" },
+        { n: 4, label: "Verification", active: step === "employer-documents" },
       ]
     : [
         { n: 1, label: "Account type", active: step === "role" },
@@ -311,6 +412,8 @@ export default function Onboarding() {
           ? isEmployerPath
             ? 2
             : 3
+          : step === "employer-documents"
+            ? 4
           : isEmployerPath
             ? 3
             : 4;
@@ -485,19 +588,10 @@ export default function Onboarding() {
             <Button
               type="button"
               disabled={!professionCategory || (professionCategory === "education" && !educationProfessionType)}
-              onClick={async () => {
+              onClick={() => {
+                // Location step is persisted only when country/state are chosen (countryCode required).
+                // Do not PATCH onboardingStep=location here — it returns 400 without countryCode.
                 setStep("location");
-                if (role === "freelancer") {
-                  try {
-                    await persistOnboardingStep("freelancer", "location");
-                  } catch {
-                    toast({
-                      title: "Could not save progress",
-                      description: "Continue on this device — progress may not sync.",
-                      variant: "destructive",
-                    });
-                  }
-                }
               }}
             >
               Continue →
@@ -525,12 +619,12 @@ export default function Onboarding() {
             const nextStep: OnboardingUiStep =
               role === "freelancer" ? "freelancer-details" : "employer-details";
             setLocationSubmitting(true);
-            setStep(nextStep);
             try {
               await persistOnboardingStep(role, nextStep, {
                 countryCode,
                 stateCode,
               });
+              setStep(nextStep);
             } catch {
               toast({
                 title: "Could not save location",
@@ -650,6 +744,11 @@ export default function Onboarding() {
               </div>
             </div>
           </CardHeader>
+          {employerProfileLoadFailed ? (
+            <CardContent>
+              <p className="text-sm text-destructive">Could not load your saved company profile. Try again in a moment.</p>
+            </CardContent>
+          ) : (
           <form onSubmit={handleEmployerSubmit}>
             <CardContent className="space-y-4">
               <div className="grid md:grid-cols-2 gap-4">
@@ -667,11 +766,11 @@ export default function Onboarding() {
                 <Select value={companySize} onValueChange={setCompanySize}>
                   <SelectTrigger><SelectValue placeholder="Select company size" /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="1-10">1–10 employees</SelectItem>
-                    <SelectItem value="11-50">11–50 employees</SelectItem>
-                    <SelectItem value="51-200">51–200 employees</SelectItem>
-                    <SelectItem value="201-500">201–500 employees</SelectItem>
-                    <SelectItem value="500+">500+ employees</SelectItem>
+                    {COMPANY_SIZE_OPTIONS.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -682,12 +781,21 @@ export default function Onboarding() {
             </CardContent>
             <CardFooter className="flex justify-between">
               <Button type="button" variant="outline" onClick={() => setStep("location")}>Back</Button>
-              <Button type="submit" disabled={upsertMe.isPending || upsertEmployerProfile.isPending}>
-                {upsertEmployerProfile.isPending ? "Saving..." : "Create Profile →"}
+              <Button type="submit" disabled={employerProfileSubmitting}>
+                {employerProfileSubmitting ? "Saving..." : "Continue →"}
               </Button>
             </CardFooter>
           </form>
+          )}
         </Card>
+      )}
+
+      {step === "employer-documents" && (
+        <EmployerDocumentOnboardingStep
+          onBack={() => setStep("employer-details")}
+          onContinue={handleEmployerFinish}
+          isSubmitting={employerFinishSubmitting}
+        />
       )}
     </div>
   );

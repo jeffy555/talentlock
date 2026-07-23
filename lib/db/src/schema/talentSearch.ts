@@ -11,6 +11,8 @@ import {
 } from "drizzle-orm/pg-core";
 import { employerProfilesTable } from "./employerProfiles";
 import { freelancerProfilesTable } from "./freelancerProfiles";
+import { conversations } from "./conversations";
+import { messages } from "./messages";
 import { getNextMidnightUTC, type BlackoutWindow, type MatchReasons } from "./cruiseMode";
 
 export interface TalentSearchRules {
@@ -88,9 +90,13 @@ export const talentSearchActivityTable = pgTable(
     score: integer("score").notNull(),
     decision: text("decision").notNull(),
     // sent | skipped | dry_run_would_send | dry_run_skipped | blackout | duplicate |
-    // daily_limit_reached | daily_freelancer_limit_reached | talent_search_off
+    // daily_limit_reached | daily_freelancer_limit_reached | dm_failed
     matchReasons: jsonb("match_reasons").notNull().$type<MatchReasons>(),
     proposedMessage: text("proposed_message"),
+    conversationId: integer("conversation_id").references(() => conversations.id, {
+      onDelete: "set null",
+    }),
+    messageId: integer("message_id").references(() => messages.id, { onDelete: "set null" }),
     sentAt: timestamp("sent_at", { withTimezone: true }),
     skippedReason: text("skipped_reason"),
     employerFollowUpSent: boolean("employer_follow_up_sent").notNull().default(false),

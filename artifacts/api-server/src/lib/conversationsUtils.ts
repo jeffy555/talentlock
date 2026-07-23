@@ -15,6 +15,17 @@ type DB = typeof database;
 type Log = { warn: (obj: object, message: string) => void };
 type HumanRole = "employer" | "freelancer";
 
+export type SendHumanMessageOptions = {
+  notificationOverride?: {
+    type: string;
+    entityType: string;
+    entityId: number | string;
+    message: string;
+  };
+  emailSubject?: string;
+  emailPath?: string;
+};
+
 export async function findOrCreateConversation(
   db: DB,
   params: {
@@ -63,6 +74,7 @@ export async function sendHumanMessage(
     content: string;
   },
   log: Log,
+  options?: SendHumanMessageOptions,
 ) {
   const [conversation] = await db.select().from(conversations)
     .where(eq(conversations.id, params.conversationId)).limit(1);
@@ -120,21 +132,29 @@ export async function sendHumanMessage(
   if (!recipient?.userId) return saved;
 
   const senderName = sender?.name || "Someone";
+  const notifType = options?.notificationOverride?.type ?? NotificationType.NEW_MESSAGE;
+  const notifEntityType = options?.notificationOverride?.entityType ?? "conversation";
+  const notifEntityId = options?.notificationOverride?.entityId ?? params.conversationId;
+  const notifMessage = options?.notificationOverride?.message
+    ?? `New message from ${senderName}: ${content.slice(0, 100)}${content.length > 100 ? "..." : ""}`;
+
   createNotification(db, {
     userId: recipient.userId,
-    type: NotificationType.NEW_MESSAGE,
-    entityType: "conversation",
-    entityId: params.conversationId,
-    message: `New message from ${senderName}: ${content.slice(0, 100)}${content.length > 100 ? "..." : ""}`,
+    type: notifType,
+    entityType: notifEntityType,
+    entityId: notifEntityId,
+    message: notifMessage,
   }).catch((err) => log.warn({ err, conversationId: params.conversationId }, "message notification failed"));
 
   if (!await shouldSuppressEmail(db, params.conversationId, params.senderUserId)) {
+    const emailPath = options?.emailPath ?? `/messages/${params.conversationId}`;
+    const emailSubject = options?.emailSubject ?? `New message from ${senderName} on TalentLock`;
     sendNotificationEmailAsync(
       db,
       recipient.userId,
-      `New message from ${senderName} on TalentLock`,
+      emailSubject,
       `${senderName} sent you a message: "${content.slice(0, 200)}${content.length > 200 ? "..." : ""}"`,
-      `/messages/${params.conversationId}`,
+      emailPath,
       log,
     );
   }

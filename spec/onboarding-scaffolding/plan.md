@@ -35,8 +35,10 @@ Use Drizzle `onConflictDoUpdate` on `clerkId` unique constraint.
 export const ONBOARDING_STEPS = [
   "role",
   "profession_category",
+  "location",
   "freelancer_details",
   "employer_details",
+  "employer_documents",
 ] as const;
 export type OnboardingStep = (typeof ONBOARDING_STEPS)[number];
 ```
@@ -135,6 +137,37 @@ function resolveOnboardingStep(dbUser: User): OnboardingStep | "role" {
 On mount when `dbUser.role === "pending"`:
 - Set `role` state from `dbUser.onboardingRole`
 - Set `step` from `dbUser.onboardingStep` (default `role`)
+- **Never regress** local step when server `onboardingStep` is behind (compare step order)
+
+### Resume import → profile fields (freelancer profile step)
+
+`POST /api/freelancers/parse-resume` returns structured fields including `bio`. On first upload during `/onboarding`:
+
+| Parsed field | Onboarding state | Persisted via |
+|---|---|---|
+| `tagline`, `fieldOfWork`, `skills`, rates, `resumeAnalysis` | Form state + auto `POST /freelancers` | Existing create payload |
+| **`bio`** | `bio` state (no separate onboarding field) | **`POST /freelancers` `bio` on auto-create and final submit** |
+
+**Contract:** `CreateFreelancerProfileBody` accepts optional `bio`. When the resume parser returns a bio (typically ≥50 chars), it is saved on profile create so completeness scoring and the dashboard checklist do **not** re-prompt for bio after a successful resume import.
+
+Manual profile submit without resume may still leave bio empty — checklist nudge remains valid in that case.
+
+---
+
+## Employer company profile save (Q6)
+
+**Decision:** Before `PUT /api/employers/me` during onboarding:
+
+```ts
+await persistOnboardingStep("employer", "employer_details");
+await upsertEmployerProfile.mutateAsync({ ... });
+await persistOnboardingStep("employer", "employer_documents");
+setStep("employer-documents");
+```
+
+Do **not** call `PUT /api/users/me` with `role: employer` until document upload step completes.
+
+`PATCH /onboarding-step` upserts the pending user row — this must run before the first employer profile save.
 
 ---
 
@@ -142,10 +175,20 @@ On mount when `dbUser.role === "pending"`:
 
 | Path | Steps |
 |------|-------|
-| Employer | 1 Account type → 2 Profile details |
-| Freelancer | 1 Account type → 2 Work category → 3 Profile details |
+| Freelancer | 1 Account type → 2 Work category → 3 Location → 4 Profile details |
+| Employer | 1 Account type → 2 Location → 3 Company profile → 4 Verification |
 
-Compute `progressStep` from current `step` + `onboardingRole`, not hardcoded 2-step array.
+Compute `progressStep` from current `step` + `onboardingRole`, not a hardcoded 2-step array.
+
+---
+
+## Freelancer work category → location (Q7)
+
+**Decision:** Advancing from the Work category screen to the Location screen is **UI-only** — do **not** call `PATCH /onboarding-step` with `onboardingStep: "location"` until the user selects a country.
+
+Reason: `location` PATCH requires `countryCode` (see `spec/multi-currency-location/`). Calling PATCH early returns **400** and shows a false "Could not save progress" warning.
+
+Server `onboardingStep` remains `profession_category` until Location Continue succeeds with `countryCode` + `stateCode`.
 
 ---
 
@@ -163,5 +206,5 @@ Compute `progressStep` from current `step` + `onboardingRole`, not hardcoded 2-s
 | Phase | Description | Status |
 |-------|-------------|--------|
 | 1 | Database — `onboarding_role`, `onboarding_step` on `users` | ✅ |
-| 2 | Backend — PATCH route, OpenAPI, codegen, clear on PUT | ✅ |
-| 3 | Frontend — resume onboarding, dashboard checklist | ✅ |
+| 2 | Backend — PATCH route, OpenAPI (`employer_documents` step), codegen, clear on PUT | ✅ |
+| 3 | Frontend — resume onboarding, dashboard checklist, employer 4-step flow + mandatory doc gate, company profile first-save fix | ✅ |

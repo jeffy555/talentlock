@@ -10,22 +10,45 @@ Frontend-only surfaces: `/onboarding` step indicator + resume, `/dashboard` prof
 
 **File:** `artifacts/talentlock/src/pages/Onboarding.tsx`
 
-### Freelancer path (3 steps)
+### Freelancer path (4 steps)
 
 | Step | Label | Active when |
 |------|-------|-------------|
 | 1 | Account type | `step === "role"` |
 | 2 | Work category | `step === "profession_category"` |
-| 3 | Profile details | `step === "freelancer-details"` |
+| 3 | Location | `step === "location"` |
+| 4 | Profile details | `step === "freelancer-details"` |
 
-### Employer path (2 steps)
+### Employer path (4 steps)
 
 | Step | Label | Active when |
 |------|-------|-------------|
 | 1 | Account type | `step === "role"` |
-| 2 | Profile details | `step === "employer-details"` |
+| 2 | Location | `step === "location"` |
+| 3 | Company profile | `step === "employer-details"` |
+| 4 | Verification | `step === "employer-documents"` |
 
-Visual: existing gold/navy circular indicators — extend to 3 circles for freelancers (third hidden on employer path).
+Visual: existing gold/navy circular indicators — four circles on employer path; freelancer path uses four after profession category.
+
+### Work category Continue (freelancers)
+
+- **Continue** advances UI to Location only — no `PATCH /onboarding-step` call.
+- Server stays at `onboardingStep: profession_category` until Location Continue sends `location` + `countryCode`.
+- Must **not** show "Could not save progress" on this transition.
+
+---
+
+## Surface 1b — Employer Document Onboarding Step
+
+**File:** `artifacts/talentlock/src/components/onboarding/EmployerDocumentOnboardingStep.tsx`
+
+Full UI spec: `spec/employee-verification/UI.md` — Onboarding Integration section.
+
+Summary:
+- Card title: **Verify your business**
+- One required row: Representative ID
+- Primary CTA **Finish registration →** disabled until upload confirmed
+- Back returns to company profile step (form pre-filled from `GET /employers/me`)
 
 ---
 
@@ -101,6 +124,9 @@ Toast: none on resume (silent).
 | factor.availability | Set your availability |
 | step.account_type | Account type |
 | step.work_category | Work category |
+| step.location | Location |
+| step.company_profile | Company profile |
+| step.verification | Verification |
 | step.profile_details | Profile details |
 
 ---
@@ -112,4 +138,5 @@ Toast: none on resume (silent).
 | `components/onboarding/ProfileStrengthChecklist.tsx` | Create | 3.2 |
 | `pages/Dashboard.tsx` | Modified | 3.3 |
 | `pages/Onboarding.tsx` | Modified | 3.4 |
+| `components/onboarding/EmployerDocumentOnboardingStep.tsx` | Create | 3.5 |
 | `lib/completenessUtils.ts` | Modified | 3.1 |

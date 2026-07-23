@@ -10,7 +10,9 @@ import {
   isPdfStoragePath,
 } from "./documentConstants";
 import { pdfFirstPageDataUrl } from "./documentPdfPreview";
+import { usesLocalObjectStorage } from "./localObjectStorage";
 import { ObjectStorageService } from "./objectStorage";
+import { resolveVisionImageUrl } from "./visionImageUrl";
 import { logTokenUsage } from "./tokenLogger";
 import { getSystemUserId } from "./systemUser";
 import { createNotification, NotificationType, userIdFromFreelancerProfileId } from "./createNotification";
@@ -124,10 +126,9 @@ export async function triggerDocumentReview(
   };
 
   try {
-    const signedUrl = await objectStorageService.getSignedReadUrlForKey(doc.fileUrl, 15 * 60);
     const visionImageUrl = isPdfStoragePath(doc.fileUrl)
-      ? await loadPdfVisionImageUrl(signedUrl)
-      : signedUrl;
+      ? await loadPdfVisionImageUrl(doc.fileUrl)
+      : await resolveVisionImageUrl(doc.fileUrl);
 
     const response = await openai.chat.completions.create({
       model: "gpt-4o",
@@ -218,8 +219,14 @@ export async function countVerifiedDocuments(freelancerId: number): Promise<numb
   return row?.count ?? 0;
 }
 
-async function loadPdfVisionImageUrl(signedPdfUrl: string): Promise<string> {
-  const response = await fetch(signedPdfUrl);
+async function loadPdfVisionImageUrl(relativeKey: string): Promise<string> {
+  if (usesLocalObjectStorage()) {
+    const buffer = await objectStorageService.readPrivateObjectBuffer(relativeKey);
+    if (!buffer) throw new Error("PDF object not found");
+    return pdfFirstPageDataUrl(buffer);
+  }
+  const signedUrl = await objectStorageService.getSignedReadUrlForKey(relativeKey, 15 * 60);
+  const response = await fetch(signedUrl);
   if (!response.ok) {
     throw new Error(`Failed to download PDF (${response.status})`);
   }

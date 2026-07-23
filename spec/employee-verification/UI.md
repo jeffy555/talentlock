@@ -360,9 +360,23 @@ export function VerifiedEmployerBadge({
 [Freelancer Documents]  [Employer Documents (3)]
 ```
 
-The employer tab shows the count of pending/needs_review documents.
+The employer tab badge shows the count of **pending** documents only (`pending` + `needs_review`).
 
-### Admin Queue Card
+### Sub-sections (Employer Documents tab)
+
+```
+[ Pending (3) ]  [ Approved (12) ]  [ Rejected (2) ]
+```
+
+| Section | Content |
+|---------|---------|
+| **Pending** | Action queue — Approve / Reject with admin notes |
+| **Approved** | Read-only history of `status=verified` documents |
+| **Rejected** | Read-only history of `status=rejected` documents with admin notes |
+
+After admin approves or rejects a document, it disappears from Pending and appears in the matching history section.
+
+### Pending queue card
 
 ```
 ┌──────────────────────────────────────────────────────────────────┐
@@ -378,9 +392,23 @@ The employer tab shows the count of pending/needs_review documents.
 │                                                                   │
 │  Admin notes: [___________________________]                       │
 │                                                                   │
-│  [✅ Verify]                           [❌ Reject]                │
+│  [✅ Approve]                           [❌ Reject]                │
 └──────────────────────────────────────────────────────────────────┘
 ```
+
+### Approved / Rejected history card (read-only)
+
+```
+┌──────────────────────────────────────────────────────────────────┐
+│  Jefferson Academy Ltd              [Approved]                   │
+│  Company Registration Certificate        [View document ↗]       │
+│  Uploaded Jun 18, 2026 · Reviewed Jun 19, 2026                   │
+│                                                                   │
+│  Admin notes: Verified manually — clean document                 │
+└──────────────────────────────────────────────────────────────────┘
+```
+
+Rejected cards use a red status badge and show rejection admin notes. No Approve/Reject buttons on history cards.
 
 ```tsx
 function AdminEmployerDocCard({ doc }: { doc: AdminEmployerDocRow }) {
@@ -502,10 +530,12 @@ function AdminEmployerDocCard({ doc }: { doc: AdminEmployerDocRow }) {
 | Document upload | GCS failure | Toast error: "Upload failed. Please try again." |
 | Document upload | Confirm failure | Toast error: "Could not start review. Try again." |
 | Admin queue | Loading | Skeleton cards |
-| Admin queue | Empty | "No documents pending review." |
-| Admin verify | Success | Card removed from queue, success toast |
+| Admin pending | Empty | "No documents pending review." |
+| Admin approved | Empty | "No approved employer documents yet." |
+| Admin rejected | Empty | "No rejected employer documents yet." |
+| Admin approve | Success | Card removed from Pending, appears in Approved section |
 | Admin reject | No notes | Inline error: "Admin notes required for rejection" |
-| Admin reject | Success | Card removed from queue, success toast |
+| Admin reject | Success | Card removed from Pending, appears in Rejected section |
 | Badge | Unverified | Nothing rendered — no empty badge |
 
 ---
@@ -522,3 +552,55 @@ function AdminEmployerDocCard({ doc }: { doc: AdminEmployerDocRow }) {
 | `src/pages/BookingDetail.tsx` | Modified (badge) | 3.6 |
 | `src/pages/MeetingDetail.tsx` | Modified (badge) | 3.7 |
 | Admin console component | Modified (Employer Docs tab) | 3.8 |
+| `src/components/onboarding/EmployerDocumentOnboardingStep.tsx` | New | 3.9 |
+| `src/pages/Onboarding.tsx` | Modified (employer step 4) | 3.9 |
+
+---
+
+## Onboarding Integration — Employer Document Step (Step 4)
+
+**File:** `artifacts/talentlock/src/components/onboarding/EmployerDocumentOnboardingStep.tsx`
+
+**When shown:** `Onboarding.tsx` step `employer-documents` (after company profile saved).
+
+### Layout
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│  Verify your business                                       │
+│  Upload one document so freelancers can trust who they      │
+│  are working with.                                          │
+│                                                             │
+│  ⚠ One document is required to finish registration.         │
+│    Additional business documents can be added later         │
+│    from your profile.                                       │
+│                                                             │
+│  ○ Representative ID          Required    [ Upload ]          │
+│    Government-issued photo ID of a director or              │
+│    authorised representative.                               │
+│                                                             │
+│  JPEG, PNG, or WebP image.                                  │
+│                                                             │
+│  [ Back ]                        [ Finish registration → ]  │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Behaviour
+
+| Rule | Detail |
+|------|--------|
+| Required doc | `representative_id` only |
+| Finish enabled | When GET `/employer-documents/me` shows a row for `representative_id` (any status except not uploaded) |
+| Finish action | `PUT /users/me` with `role: employer` → redirect `/dashboard` |
+| Back | Returns to company profile step; form pre-filled via `GET /employers/me` |
+| Upload flow | Same as `EmployerVerificationSection` (presigned URL → GCS PUT → confirm) |
+
+### Copy
+
+| Key | Copy |
+|-----|------|
+| onboarding.verify.title | Verify your business |
+| onboarding.verify.subtitle | Upload one document so freelancers can trust who they are working with. |
+| onboarding.verify.required_banner | One document is required to finish registration. Additional business documents can be added later from your profile. |
+| onboarding.verify.finish | Finish registration → |
+| onboarding.verify.uploaded_badge | Uploaded |

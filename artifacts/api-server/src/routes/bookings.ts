@@ -43,8 +43,9 @@ const BOOKING_COMPLETED_STATUS = "completed";
 const router = Router();
 
 function enrichRate(b: typeof bookingsTable.$inferSelect) {
+  const { exchangeRateAtCreation: _snapshot, ...rest } = b;
   return {
-    ...b,
+    ...rest,
     rate: b.rate ? parseFloat(b.rate) : null,
     proposedRate: b.proposedRate ? parseFloat(b.proposedRate) : null,
   };

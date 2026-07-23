@@ -28,7 +28,7 @@ import {
   CreditCard,
   Sparkles,
   Rocket,
-  Search,
+  Radar,
   MessageSquare,
   PanelLeftClose,
   PanelLeft,
@@ -217,7 +217,7 @@ function AppLayoutInner({ children }: { children: React.ReactNode }) {
           {
             name: "TalentSearch",
             href: "/talent-search",
-            icon: Search,
+            icon: Radar,
             pulse: talentSearchActive,
           },
         ]

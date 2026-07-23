@@ -9814,7 +9814,10 @@ export function useGetEmployerDocumentsMeDocumentTypeViewUrl<
 }
 
 /**
- * @summary List employer documents awaiting review
+ * Paginated employer document list. Default filter is the pending review queue (`pending,needs_review`).
+Pass `status=verified` or `status=rejected` for the approved/rejected history trackers.
+
+ * @summary List employer documents for admin review
  */
 export const getGetAdminEmployerDocumentsUrl = (
   params?: GetAdminEmployerDocumentsParams,
@@ -9893,7 +9896,7 @@ export type GetAdminEmployerDocumentsQueryResult = NonNullable<
 export type GetAdminEmployerDocumentsQueryError = ErrorType<unknown>;
 
 /**
- * @summary List employer documents awaiting review
+ * @summary List employer documents for admin review
  */
 
 export function useGetAdminEmployerDocuments<

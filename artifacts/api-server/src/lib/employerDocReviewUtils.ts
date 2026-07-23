@@ -17,9 +17,9 @@ import { sendNotificationEmailAsync } from "./emailService";
 import { ObjectStorageService } from "./objectStorage";
 import { logTokenUsage } from "./tokenLogger";
 import { sanitiseText } from "./sanitise";
+import { resolveVisionImageUrl } from "./visionImageUrl";
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY_TALENTLOCK });
-const objectStorageService = new ObjectStorageService();
 
 export const DOCUMENT_TYPE_LABELS: Record<EmployerDocumentType, string> = {
   company_registration: "Company Registration Certificate",
@@ -139,7 +139,7 @@ function fallbackReview(): EmployerDocReviewResult {
     hasExpiry: false,
     isExpired: null,
     tamperingConcern: false,
-    adminNotes: "AI review failed to parse response. Manual review required.",
+    adminNotes: "AI review could not access the document image. Manual review required.",
     employerNotes: "We are reviewing your document and will update you shortly.",
   };
 }
@@ -167,7 +167,7 @@ export async function reviewEmployerDocument(
   let usage: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number } | undefined;
 
   try {
-    const signedUrl = await objectStorageService.getSignedReadUrlForKey(doc.fileUrl, 15 * 60);
+    const visionImageUrl = await resolveVisionImageUrl(doc.fileUrl);
     const response = await openai.chat.completions.create({
       model: "gpt-4o",
       temperature: 0,
@@ -175,7 +175,7 @@ export async function reviewEmployerDocument(
       messages: [{
         role: "user",
         content: [
-          { type: "image_url", image_url: { url: signedUrl, detail: "high" } },
+          { type: "image_url", image_url: { url: visionImageUrl, detail: "high" } },
           { type: "text", text: buildEmployerDocReviewPrompt(doc.documentType as EmployerDocumentType, employer.companyName) },
         ],
       }],

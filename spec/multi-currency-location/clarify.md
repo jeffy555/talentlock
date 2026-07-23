@@ -11,7 +11,7 @@
 | Agreement generation hardcodes `USD ${booking.rate}` | `artifacts/api-server/src/routes/agreements.ts` ~line 245 |
 | `freelancer_profiles.location` exists as free-text nullable | `lib/db/src/schema/freelancerProfiles.ts` |
 | `teachingLicenceState` exists for education professionals | same schema — state concept already in product |
-| Onboarding has step machine: `role` → `profession_category` → `freelancer_details` / `employer_details` | `Onboarding.tsx`, `PATCH /users/me/onboarding-step` |
+| Onboarding has step machine: `role` → `profession_category` → `location` → `freelancer_details` (freelancers) or `role` → `location` → `employer_details` → `employer_documents` (employers) | `Onboarding.tsx`, `PATCH /users/me/onboarding-step` |
 | `users.onboardingRole` / `onboardingStep` persistence | `lib/db/src/schema/users.ts` |
 | Talent Vault filters: field, rate range, availability, verified, `professionCategory` | `GET /api/freelancers`, `FreelancersList.tsx` |
 | `getMarketMedian()` filters by `fieldOfWork` only — no currency | `rateSuggestionUtils.ts` |
@@ -32,7 +32,7 @@
 
 **Impact:** Affects `onboardingStep` enum, `Onboarding.tsx` state machine, and `PATCH /onboarding-step` values.
 
-**Recommendation:** Insert **after** `profession_category` (freelancers) or **after** `role` (employers), **before** `freelancer_details` / `employer_details`. New API step value: `location`.
+**Recommendation:** Insert **after** `profession_category` (freelancers) or **after** `role` (employers), **before** `freelancer_details` / `employer_details`. New API step value: `location`. Employer registration continues with `employer_documents` after company profile (see `spec/employee-verification/` Module 10).
 
 ---
 

@@ -22,7 +22,7 @@ New nullable columns on `users`:
 | Column | Type | Values |
 |--------|------|--------|
 | `onboardingRole` | text, nullable | `freelancer` \| `employer` |
-| `onboardingStep` | text, nullable | `role` \| `profession_category` \| `freelancer_details` \| `employer_details` |
+| `onboardingStep` | text, nullable | `role` \| `profession_category` \| `location` \| `freelancer_details` \| `employer_details` \| `employer_documents` |
 
 New endpoint:
 
@@ -47,12 +47,44 @@ Behaviour:
 |------------|--------------|
 | `role` or null | Role picker |
 | `profession_category` | Profession category (freelancer) |
+| `location` | Country / state / currency (freelancer and employer) |
 | `freelancer_details` | Freelancer profile form |
-| `employer_details` | Employer profile form |
+| `employer_details` | Employer company profile form |
+| `employer_documents` | Employer mandatory Representative ID upload |
 
-Step indicator updated to reflect actual freelancer path (3 steps: Account type → Work category → Profile details) vs employer path (2 steps).
+Step indicator reflects actual paths:
 
-`PATCH /api/users/me/onboarding-step` is called fire-and-forget on each step transition (role selected, profession continue, back navigation optional).
+| Path | Steps |
+|------|-------|
+| Freelancer | 1 Account type → 2 Work category → 3 Location → 4 Profile details |
+| Employer | 1 Account type → 2 Location → 3 Company profile → 4 Verification (1 document) |
+
+`PATCH /api/users/me/onboarding-step` is awaited on each step transition where server persistence is required. Step advances only after PATCH succeeds where ordering matters.
+
+**Freelancer PATCH rules:**
+
+| UI transition | PATCH? | `onboardingStep` | Notes |
+|---------------|--------|------------------|-------|
+| Role → Work category | Yes | `profession_category` | Creates pending user row |
+| Work category → Location (UI only) | **No** | — | Client advances UI; server stays at `profession_category` until country is chosen |
+| Location → Profile details | Yes | `location` | Must include `countryCode` (+ `stateCode` when required) |
+| Profile submit | — | cleared via `PUT /users/me` | — |
+
+**Employer PATCH rules:** role → `location` (with country) → `employer_details` → `employer_documents` → `PUT /users/me`.
+
+### Module 2b — Employer Registration Completion Order
+
+Employer onboarding does **not** call `PUT /api/users/me` with `role: employer` until after company profile **and** mandatory document upload:
+
+1. `PATCH /onboarding-step` through `location` and `employer_details` (creates/updates pending user).
+2. `PUT /api/employers/me` — company profile (requires existing `users` row).
+3. `PATCH /onboarding-step` → `employer_documents`.
+4. Upload Representative ID via `/api/employer-documents/*` (allowed while `role: pending`, `onboardingRole: employer`).
+5. `PUT /api/users/me` with `role: employer` — clears onboarding columns and unlocks dashboard.
+
+**First-attempt company profile save:** frontend must call `PATCH /onboarding-step` with `employer_details` immediately before `PUT /employers/me` so the pending user row exists (avoids 400 `User profile not found`).
+
+Form pre-fills from `GET /api/employers/me` when returning to the company profile step after a partial save.
 
 ### Module 3 — Dashboard Profile Strength Checklist
 
@@ -75,7 +107,7 @@ Freelancer dashboard shows a card when `completenessScore < 80`:
 
 ## Non-Goals
 
-- Employer onboarding checklist (employers have no completeness score)
+- Employer dashboard completeness checklist (employers have no completeness score) — **Note:** employer onboarding now includes a mandatory document upload step (see Module 2b); full 5-document verification remains optional on `/profile`
 - New completeness scoring weights or fields — reuse existing `completenessUtils.ts` formula
 - Profile Strength Nudges on `/profile` (separate roadmap Feature 2) — this feature only adds the **dashboard** nudge
 - Email reminders or push notifications for incomplete profiles

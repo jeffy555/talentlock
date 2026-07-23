@@ -41,7 +41,15 @@ const confirmBody = z.object({
 async function resolveEmployerContext(clerkId: string) {
   const [user] = await db.select().from(usersTable).where(eq(usersTable.clerkId, clerkId)).limit(1);
   if (!user) return null;
-  if (user.role !== "employer") return { user, profile: null, forbidden: true as const };
+
+  const isEmployer = user.role === "employer";
+  const isPendingEmployerOnboarding =
+    user.role === "pending" && user.onboardingRole === "employer";
+
+  if (!isEmployer && !isPendingEmployerOnboarding) {
+    return { user, profile: null, forbidden: true as const };
+  }
+
   const [profile] = await db
     .select()
     .from(employerProfilesTable)

@@ -19,6 +19,7 @@ import {
   userIdFromEmployerProfileId,
 } from "./createNotification";
 import { sendNotificationEmailAsync } from "./emailService";
+import { sendAutomatedOutreachMessage } from "./automatedOutreachMessaging";
 import { sanitiseText } from "./sanitise";
 import { logTokenUsage } from "./tokenLogger";
 import {
@@ -44,6 +45,8 @@ interface ActivityLogParams {
   matchReasons: MatchReasons;
   proposedMessage: string | null;
   skippedReason: string | null;
+  conversationId?: number | null;
+  messageId?: number | null;
 }
 
 async function logActivity(
@@ -62,6 +65,8 @@ async function logActivity(
     decision: params.decision,
     matchReasons: params.matchReasons,
     proposedMessage: params.proposedMessage,
+    conversationId: params.conversationId ?? null,
+    messageId: params.messageId ?? null,
     sentAt: params.decision === "sent" ? new Date() : null,
     skippedReason: params.skippedReason,
     createdAt: new Date(),
@@ -292,18 +297,57 @@ async function evaluateSingleCandidate(
         ? "sent"
         : "skipped";
 
+    let finalDecision = decision;
+    let conversationId: number | null = null;
+    let messageId: number | null = null;
+    let skippedReason =
+      decision === "skipped"
+        ? `Score ${evaluation.score} below threshold ${config.rules.matchThreshold ?? 70}`
+        : null;
+
+    if (decision === "sent") {
+      try {
+        const employerUserId = await userIdFromEmployerProfileId(job.employerId);
+        if (!employerUserId) throw new Error("employer user not found");
+        const dm = await sendAutomatedOutreachMessage(
+          dbClient,
+          {
+            source: "cruise_mode",
+            employerId: job.employerId,
+            freelancerId: config.freelancerId,
+            senderRole: "freelancer",
+            senderUserId: freelancerProfile.userId,
+            senderProfileId: config.freelancerId,
+            recipientUserId: employerUserId,
+            content: evaluation.proposedMessage ?? "",
+            notificationMessage: `${freelancerProfile.name} expressed interest in "${job.title}"`,
+            senderDisplayName: freelancerProfile.name,
+          },
+          log,
+        );
+        conversationId = dm.conversationId;
+        messageId = dm.messageId;
+      } catch (err) {
+        log.warn(
+          { err, jobId: job.id, freelancerId: config.freelancerId },
+          "cruise mode DM delivery failed",
+        );
+        finalDecision = "dm_failed";
+        skippedReason = "Direct message delivery failed";
+      }
+    }
+
     const activityId = await logActivity(dbClient, config, job.id, {
-      decision,
+      decision: finalDecision,
       score: evaluation.score,
       matchReasons: evaluation.reasons,
       proposedMessage: evaluation.proposedMessage,
-      skippedReason:
-        decision === "skipped"
-          ? `Score ${evaluation.score} below threshold ${config.rules.matchThreshold ?? 70}`
-          : null,
+      conversationId,
+      messageId,
+      skippedReason,
     });
 
-    if (decision === "sent") {
+    if (finalDecision === "sent") {
       await recordJobInterestFromCruiseMode(
         dbClient,
         job,
@@ -311,18 +355,6 @@ async function evaluateSingleCandidate(
         evaluation.proposedMessage,
         log,
       );
-
-      const employerUserId = await userIdFromEmployerProfileId(job.employerId);
-
-      if (employerUserId) {
-        createNotification(dbClient, {
-          userId: employerUserId,
-          type: NotificationType.CRUISE_MODE_INTEREST,
-          entityType: "cruise_mode_activity",
-          entityId: activityId,
-          message: `${freelancerProfile.name} expressed interest in "${job.title}"`,
-        }).catch((err) => log.warn({ err }, "cruise mode employer notification failed"));
-      }
 
       createNotification(dbClient, {
         userId: freelancerProfile.userId,

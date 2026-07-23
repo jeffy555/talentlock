@@ -40,6 +40,35 @@ describe.skipIf(!integrationEnvReady())("freelancers and Talent Vault", () => {
     expect(res.status).toBe(200);
   });
 
+  it("GET /api/freelancers/:id includes verification summary without sensitive fields", async () => {
+    const fixtures = await loadDemoFixtures();
+    if (!fixtures.freelancerProfileId) return;
+    const res = await (await createApiClient(null)).get(
+      `/api/freelancers/${fixtures.freelancerProfileId}`,
+    );
+    expect(res.status).toBe(200);
+    expect(res.body.verification).toMatchObject({
+      level: expect.stringMatching(/^(unverified|partially_verified|fully_verified)$/),
+      verifiedDocumentCount: expect.any(Number),
+    });
+    const json = JSON.stringify(res.body);
+    expect(json).not.toContain("aiNotes");
+    expect(json).not.toContain("fileUrl");
+    expect(json).not.toContain("adminNotes");
+    expect(res.body).not.toHaveProperty("documents");
+  });
+
+  it("GET /api/freelancers?verified=true filters to verified freelancers only", async () => {
+    const allRes = await (await createApiClient(null)).get("/api/freelancers");
+    expect(allRes.status).toBe(200);
+    const verifiedRes = await (await createApiClient(null)).get("/api/freelancers?verified=true");
+    expect(verifiedRes.status).toBe(200);
+    expect(Array.isArray(verifiedRes.body)).toBe(true);
+    expect((verifiedRes.body as unknown[]).length).toBeLessThanOrEqual(
+      (allRes.body as unknown[]).length,
+    );
+  });
+
   it("GET /api/freelancers/:id includes rating fields", async () => {
     const fixtures = await loadDemoFixtures();
     if (!fixtures.freelancerProfileId) return;

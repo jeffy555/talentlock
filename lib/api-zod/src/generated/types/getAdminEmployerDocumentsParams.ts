@@ -16,5 +16,8 @@ export type GetAdminEmployerDocumentsParams = {
    * @maximum 50
    */
   pageSize?: number;
+  /**
+   * Comma-separated statuses — pending, needs_review, verified, rejected
+   */
   status?: string;
 };

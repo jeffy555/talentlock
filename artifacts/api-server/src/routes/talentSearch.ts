@@ -21,6 +21,7 @@ import { logTokenUsage } from "../lib/tokenLogger";
 import { parsePagination, paginatedResponse } from "../lib/paginationUtils";
 import { sanitiseText } from "../lib/sanitise";
 import { getNextMidnightUTC, parseHoursValue } from "../lib/cruiseModeUtils";
+import { backfillTalentSearchForEmployer } from "../lib/talentSearchEvaluator";
 import {
   normaliseParsedTalentSearchRules,
   PARSE_TALENT_SEARCH_RULES_SYSTEM_PROMPT,
@@ -229,6 +230,10 @@ router.patch("/talent-search/activate", async (req, res) => {
       .where(eq(talentSearchConfigsTable.id, existing.id))
       .returning();
 
+    backfillTalentSearchForEmployer(db, ctx.profile.id, req.log).catch((err) =>
+      req.log.warn({ err, employerId: ctx.profile.id }, "talent-search activate backfill failed"),
+    );
+
     res.json(mapConfig(updated!));
   } catch (err) {
     req.log.error({ err }, "Failed to activate talent search");
@@ -269,6 +274,10 @@ router.patch("/talent-search/dry-run", async (req, res) => {
       })
       .where(eq(talentSearchConfigsTable.id, existing.id))
       .returning();
+
+    backfillTalentSearchForEmployer(db, ctx.profile.id, req.log).catch((err) =>
+      req.log.warn({ err, employerId: ctx.profile.id }, "talent-search dry-run backfill failed"),
+    );
 
     res.json(mapConfig(updated!));
   } catch (err) {

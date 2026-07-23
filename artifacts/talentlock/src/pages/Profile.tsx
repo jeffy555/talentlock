@@ -4,6 +4,7 @@ import {
   useGetMyEmployerProfile, useUpsertMyEmployerProfile,
   useListMyPortfolio, useCreatePortfolioItem, useUpdatePortfolioItem, useDeletePortfolioItem,
   useGetMyFreelancerProfile, usePatchNotificationPreferences, useGetDocumentsMe,
+  getGetMyEmployerProfileQueryKey,
 } from "@workspace/api-client-react";
 import { CompletenessBanner } from "@/components/CompletenessBanner";
 import CredentialExpiryBanner from "@/components/CredentialExpiryBanner";
@@ -31,6 +32,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import TeachingDetailsSection, { emptyTeachingDetails, type TeachingDetailsValues } from "@/components/onboarding/TeachingDetailsSection";
 import EmployerVerificationSection from "@/components/employer/EmployerVerificationSection";
 import { LocationSettingsCard } from "@/components/profile/LocationSettingsCard";
+import { COMPANY_SIZE_OPTIONS } from "@/lib/employerDocuments";
 
 const BASE = import.meta.env.BASE_URL ?? "/";
 
@@ -321,13 +323,26 @@ function SignatureCard() {
 export default function Profile() {
   const { user: clerkUser } = useUser();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const { data: dbUser, refetch: refetchUser } = useGetMe();
 
   const isFreelancer = dbUser?.role === "freelancer";
   const isEmployer = dbUser?.role === "employer";
 
   const { data: freelancerProfile, refetch: refetchFreelancer } = useGetMyFreelancerProfile({ query: { enabled: isFreelancer } as any });
-  const { data: employerProfile, refetch: refetchEmployer } = useGetMyEmployerProfile({ query: { enabled: isEmployer } as any });
+  const { data: employerProfile, refetch: refetchEmployer, isLoading: employerProfileLoading, isError: employerProfileError, error: employerProfileFetchError } = useGetMyEmployerProfile({
+    query: {
+      enabled: isEmployer,
+      retry: false,
+    } as any,
+  });
+  const employerProfileMissing =
+    employerProfileError &&
+    typeof employerProfileFetchError === "object" &&
+    employerProfileFetchError !== null &&
+    "status" in employerProfileFetchError &&
+    (employerProfileFetchError as { status: number }).status === 404;
+  const showEmployerCompanyProfile = isEmployer && (employerProfile || employerProfileMissing || employerProfileLoading);
   const { data: documentsMe } = useGetDocumentsMe({ query: { enabled: isFreelancer } as any });
 
   const updateFreelancer = useUpdateMyFreelancerProfile();
@@ -420,9 +435,16 @@ export default function Profile() {
 
   const handleSaveEmployer = async () => {
     try {
-      await upsertEmployer.mutateAsync({
-        data: { companyName, industry, companySize: companySize || undefined, description: description || undefined, website: website || undefined, subscriptionPlan: employerProfile?.subscriptionPlan ?? "basic" },
+      const saved = await upsertEmployer.mutateAsync({
+        data: {
+          companyName,
+          industry,
+          companySize: companySize || undefined,
+          description: description || undefined,
+          subscriptionPlan: employerProfile?.subscriptionPlan ?? "basic",
+        },
       });
+      queryClient.setQueryData(getGetMyEmployerProfileQueryKey(), saved);
       toast({ title: "Profile updated", description: "Your company profile has been saved." });
       refetchEmployer();
     } catch {
@@ -439,6 +461,15 @@ export default function Profile() {
       setEmailNotificationsEnabled(dbUser.emailNotificationsEnabled);
     }
   }, [dbUser?.emailNotificationsEnabled]);
+
+  useEffect(() => {
+    if (!employerProfile) return;
+    setCompanyName(employerProfile.companyName ?? "");
+    setIndustry(employerProfile.industry ?? "");
+    setCompanySize(employerProfile.companySize ?? "");
+    setDescription(employerProfile.description ?? "");
+    setWebsite("");
+  }, [employerProfile]);
 
   useEffect(() => {
     if (!freelancerProfile) return;
@@ -687,7 +718,7 @@ export default function Profile() {
         </>
       )}
 
-      {isEmployer && employerProfile && (
+      {showEmployerCompanyProfile && (
         <>
         <SignatureCard />
         <Card>
@@ -696,6 +727,12 @@ export default function Profile() {
             <CardDescription>Your organization's information shown to freelancers.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
+            {employerProfileLoading ? (
+              <p className="text-sm text-muted-foreground">Loading company profile…</p>
+            ) : employerProfileError && !employerProfileMissing ? (
+              <p className="text-sm text-destructive">Could not load your company profile. Refresh the page and try again.</p>
+            ) : (
+            <>
             <div className="space-y-2">
               <Label>Company Name</Label>
               <Input value={companyName} onChange={e => setCompanyName(e.target.value)} />
@@ -710,11 +747,11 @@ export default function Profile() {
                 <Select value={companySize} onValueChange={setCompanySize}>
                   <SelectTrigger><SelectValue placeholder="Select size" /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="1-10">1-10 employees</SelectItem>
-                    <SelectItem value="11-50">11-50 employees</SelectItem>
-                    <SelectItem value="51-200">51-200 employees</SelectItem>
-                    <SelectItem value="201-1000">201-1000 employees</SelectItem>
-                    <SelectItem value="1000+">1000+ employees</SelectItem>
+                    {COMPANY_SIZE_OPTIONS.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -730,9 +767,11 @@ export default function Profile() {
             <Button onClick={handleSaveEmployer} disabled={upsertEmployer.isPending}>
               {upsertEmployer.isPending ? "Saving..." : "Save Changes"}
             </Button>
+            </>
+            )}
           </CardContent>
         </Card>
-        <EmployerVerificationSection />
+        {employerProfile && <EmployerVerificationSection />}
         </>
       )}
 

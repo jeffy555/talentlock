@@ -27,9 +27,9 @@ TalentSearch and Cruise Mode are the two sides of TalentLock's bilateral AI auto
 | Who activates it | Freelancer | Employer |
 | Triggered by | New job post (`POST /api/job-requirements`) | New/updated freelancer profile (`PUT /api/freelancers/me`) |
 | AI evaluates | Job post against freelancer's rules | Freelancer profile against employer's rules |
-| Message sent to | Employer | Freelancer |
+| Message sent to | Employer (via **Messages DM**) | Freelancer (via **Messages DM**) |
 | Message sent on behalf of | Freelancer | Employer |
-| Badge shown | "Cruise Mode ✦" on employer notification | "TalentSearch ✦" on freelancer notification |
+| Badge shown | "Cruise Mode ✦" on employer notification → opens DM | "TalentSearch ✦" on freelancer notification → opens DM |
 | Activity table | `cruise_mode_activity` | `talent_search_activity` |
 | Config table | `cruise_mode_configs` | `talent_search_configs` |
 | Frontend page | `/cruise-mode` (freelancer only) | `/talent-search` (employer only) |
@@ -163,13 +163,15 @@ The AI evaluates each freelancer profile against the employer's rules:
 When the AI decides to send:
 1. A `bookings` record is NOT created — this is a pre-booking expression of interest
 2. A new `talent_search_activity` row is created with the full context
-3. The **freelancer** receives a notification with a **"TalentSearch ✦" badge** — making it clear this is AI-assisted employer outreach
-4. The notification links to the employer's profile and their open job postings
+3. The AI `proposedMessage` is delivered as a **real direct message (DM)** in a `human_direct` conversation to the freelancer — see `spec/cruise-mode-dm-delivery/`
+4. The **freelancer** receives a notification with a **"TalentSearch ✦" badge** linking to the DM thread (`/messages/:conversationId`)
 5. The **employer** is notified: "TalentSearch sent an interest message to [Freelancer Name]"
-6. The freelancer can respond, visit the employer's profile, or ignore — they are never auto-booked
+6. The freelancer can reply in Messages, visit the employer's profile, or ignore — they are never auto-booked
 
-**Freelancer notification body:**
-"Jefferson Academy expressed interest in your profile for a Mathematics teaching role. They are looking for a [educationSubType] with [required skills] at [rate/rateType]. View their profile to learn more."
+**Implementation note (2026-07-23):** Notification-only delivery was the original behaviour; DM delivery is required per `spec/cruise-mode-dm-delivery/features.md`.
+
+**Freelancer notification preview:**
+"[Company Name] expressed interest in your profile" — tap opens the full AI outreach message in Messages.
 
 ---
 

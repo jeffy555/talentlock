@@ -138,9 +138,12 @@ The AI evaluates each job against the freelancer's rules:
 When the AI decides to send:
 1. A `bookings` record is NOT created — this is a pre-booking interest expression
 2. A new `cruise_mode_activity` row is created with the full context
-3. The employer receives a notification with a **"Cruise Mode ✦" badge** — making it clear this is from Cruise Mode
-4. The notification links to the freelancer's profile so the employer can initiate a booking
-5. The freelancer is notified: "Cruise Mode sent a message for [Job Title]"
+3. The AI `proposedMessage` is delivered as a **real direct message (DM)** in a `human_direct` conversation to the employer — see `spec/cruise-mode-dm-delivery/`
+4. The employer receives a notification with a **"Cruise Mode ✦" badge** linking to the DM thread (`/messages/:conversationId`)
+5. A `job_interests` row is created for employer job-management UX (unchanged)
+6. The freelancer is notified: "Cruise Mode sent a message for [Job Title]" (activity feed confirmation)
+
+**Implementation note (2026-07-23):** Notification-only delivery was the original behaviour; DM delivery is required per `spec/cruise-mode-dm-delivery/features.md`.
 
 ---
 

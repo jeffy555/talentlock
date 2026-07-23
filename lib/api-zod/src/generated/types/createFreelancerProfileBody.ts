@@ -14,6 +14,11 @@ import type { ResumeAnalysis } from "./resumeAnalysis";
 
 export interface CreateFreelancerProfileBody {
   tagline: string;
+  /**
+   * Professional summary; populated from resume import when available
+   * @nullable
+   */
+  bio?: string | null;
   fieldOfWork: string;
   skills: string[];
   yearsExperience: number;

@@ -3103,7 +3103,10 @@ paths:
     get:
       operationId: getAdminEmployerDocuments
       tags: [admin]
-      summary: List employer documents awaiting review
+      summary: List employer documents for admin review
+      description: |
+        Paginated employer document list. Default filter is the pending review queue (`pending,needs_review`).
+        Pass `status=verified` or `status=rejected` for the approved/rejected history trackers.
       parameters:
         - name: page
           in: query
@@ -3123,6 +3126,7 @@ paths:
           schema:
             type: string
             default: "pending,needs_review"
+          description: Comma-separated statuses — pending, needs_review, verified, rejected
       responses:
         "200":
           description: Employer document review queue
@@ -4309,7 +4313,7 @@ components:
           description: "freelancer | employer — in-progress onboarding role while role is pending"
         onboardingStep:
           type: ["string", "null"]
-          description: "role | profession_category | location | freelancer_details | employer_details"
+          description: "role | profession_category | location | freelancer_details | employer_details | employer_documents"
         countryCode:
           type: string
           description: ISO 3166-1 alpha-2 country code
@@ -4445,7 +4449,7 @@ components:
           enum: [freelancer, employer]
         onboardingStep:
           type: string
-          enum: [role, profession_category, location, freelancer_details, employer_details]
+          enum: [role, profession_category, location, freelancer_details, employer_details, employer_documents]
         countryCode:
           type: string
           minLength: 2
@@ -4738,6 +4742,9 @@ components:
       properties:
         tagline:
           type: string
+        bio:
+          type: ["string", "null"]
+          description: Professional summary; populated from resume import when available
         fieldOfWork:
           type: string
         skills:
@@ -7287,6 +7294,8 @@ components:
           type: ["integer", "null"]
         aiNotes:
           type: ["string", "null"]
+        adminNotes:
+          type: ["string", "null"]
         signedFileUrl:
           type: string
         createdAt:
@@ -8556,6 +8565,10 @@ components:
           $ref: "#/components/schemas/MatchReasons"
         proposedMessage:
           type: ["string", "null"]
+        conversationId:
+          type: ["integer", "null"]
+        messageId:
+          type: ["integer", "null"]
         sentAt:
           type: ["string", "null"]
           format: date-time
@@ -8807,6 +8820,10 @@ components:
           $ref: "#/components/schemas/MatchReasons"
         proposedMessage:
           type: ["string", "null"]
+        conversationId:
+          type: ["integer", "null"]
+        messageId:
+          type: ["integer", "null"]
         sentAt:
           type: ["string", "null"]
           format: date-time

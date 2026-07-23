@@ -15,6 +15,7 @@ import {
   getEmployerHistoricalAvg,
   type RatePaymentType,
 } from "./rateSuggestionUtils";
+import { buildRateDisplay, currencySymbol } from "./countryData";
 import { logTokenUsage } from "./tokenLogger";
 import {
   createNotification,
@@ -105,12 +106,26 @@ async function resolveJobRequirement(
   return null;
 }
 
+function formatBriefRate(
+  amount: number,
+  rateType: RatePaymentType,
+  currencyCode: string,
+): string {
+  const paymentType = rateType === "daily" ? "daily" : "hourly";
+  return buildRateDisplay({
+    rate: String(amount),
+    paymentType,
+    currencyCode,
+  });
+}
+
 interface PromptContext {
   freelancer: FreelancerProfile;
   jobRequirement: JobRequirement | null;
   meeting: Meeting;
   rate: number;
   rateType: RatePaymentType;
+  currencyCode: string;
   marketMedian: number;
   employerAvg: number;
   jobBudget: number | null;
@@ -123,6 +138,13 @@ export function buildMeetingBriefPrompt(ctx: PromptContext): string {
   const scheduled = ctx.meeting.scheduledAt
     ? new Date(ctx.meeting.scheduledAt).toISOString().slice(0, 10)
     : "TBD";
+  const rateLabel = formatBriefRate(ctx.rate, ctx.rateType, ctx.currencyCode);
+  const medianLabel = formatBriefRate(ctx.marketMedian, ctx.rateType, ctx.currencyCode);
+  const employerAvgLabel = formatBriefRate(ctx.employerAvg, ctx.rateType, ctx.currencyCode);
+  const budgetLabel =
+    ctx.jobBudget != null
+      ? `${currencySymbol(ctx.currencyCode)}${ctx.jobBudget}`
+      : "not specified";
 
   return `You are an AI assistant for a professional hiring marketplace, generating a pre-meeting brief for an employer.
 
@@ -139,7 +161,7 @@ Skills:            ${(f.skills ?? []).join(", ") || "not specified"}
 Teaching subjects: ${(f.teachingSubjects ?? []).join(", ") || "N/A"}
 Experience:        ${f.yearsExperience} years
 Experience bio:    ${f.bio?.slice(0, 400) ?? "not provided"}
-Rate:              ${ctx.rate} ${ctx.rateType}
+Rate:              ${rateLabel}
 Completeness:      ${f.completenessScore}/100
 Average rating:    ${toNumber(f.averageRating)} stars (${f.reviewCount} reviews)
 Verified:          ${ctx.verifiedCredentials.join(", ") || "no verified documents"}
@@ -148,13 +170,13 @@ JOB REQUIREMENT (if linked):
 Title:       ${job?.title ?? "N/A"}
 Description: ${job?.description?.slice(0, 500) ?? "N/A"}
 Skills:      ${(job?.requiredSkills ?? []).join(", ") || "N/A"}
-Budget:      ${ctx.jobBudget != null ? "$" + ctx.jobBudget : "not specified"}
+Budget:      ${budgetLabel}
 Min experience: ${job?.minExperience ?? "not specified"}
 
-MARKET RATE CONTEXT:
-Market median for ${f.fieldOfWork}: $${ctx.marketMedian}/hr
-Employer historical avg for this field: $${ctx.employerAvg}/hr
-Freelancer's proposed rate: $${ctx.rate}
+MARKET RATE CONTEXT (all amounts in ${ctx.currencyCode}):
+Market median for ${f.fieldOfWork}: ${medianLabel}
+Employer historical avg for this field: ${employerAvgLabel}
+Freelancer's proposed rate: ${rateLabel}
 
 Generate a pre-meeting brief. Return ONLY a JSON object — no preamble, no markdown fences:
 
@@ -223,12 +245,13 @@ export async function generateMeetingBrief(
 
     const rateType: RatePaymentType =
       freelancer.paymentPreference === "daily" ? "daily" : "hourly";
+    const currencyCode = freelancer.currencyCode ?? "USD";
     const rate = toNumber(
       rateType === "daily" ? freelancer.dailyRate : freelancer.hourlyRate,
     );
 
     const [marketMedianRaw, employerAvgRaw] = await Promise.all([
-      getMarketMedian(dbClient, freelancer.fieldOfWork, rateType),
+      getMarketMedian(dbClient, freelancer.fieldOfWork, rateType, currencyCode),
       getEmployerHistoricalAvg(dbClient, meeting.employerId, freelancer.fieldOfWork),
     ]);
     const marketMedian = marketMedianRaw ?? 0;
@@ -282,10 +305,12 @@ export async function generateMeetingBrief(
     // Partial brief when no job requirement is linked (plan.md Q3): skip the AI
     // call and return a data-only brief with fixed placeholders.
     if (!jobRequirement) {
+      const rateLabel = formatBriefRate(rate, rateType, currencyCode);
+      const medianLabel = formatBriefRate(marketMedian, rateType, currencyCode);
       const assessment =
         marketMedian > 0
-          ? `Their rate of $${rate} is ${rate <= marketMedian ? "at or below" : "above"} the $${marketMedian} market median for ${freelancer.fieldOfWork}.`
-          : `Market rate data is limited for ${freelancer.fieldOfWork}.`;
+          ? `Their rate of ${rateLabel} is ${rate <= marketMedian ? "at or below" : "above"} the ${medianLabel} market median for ${freelancer.fieldOfWork}.`
+          : `Market rate data is limited for ${freelancer.fieldOfWork} in ${currencyCode}.`;
       await persistAndNotify({
         candidateSnapshot,
         whyTheyMatch: ["No job requirement linked to this meeting"],
@@ -313,6 +338,7 @@ export async function generateMeetingBrief(
       meeting,
       rate,
       rateType,
+      currencyCode,
       marketMedian,
       employerAvg,
       jobBudget,
