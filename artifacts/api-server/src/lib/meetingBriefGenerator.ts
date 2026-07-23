@@ -24,7 +24,14 @@ import {
 } from "./createNotification";
 import { sendNotificationEmailAsync } from "./emailService";
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY_TALENTLOCK });
+let openaiClient: OpenAI | null = null;
+
+function getOpenAI(): OpenAI {
+  if (!openaiClient) {
+    openaiClient = new OpenAI({ apiKey: process.env.OPENAI_API_KEY_TALENTLOCK });
+  }
+  return openaiClient;
+}
 
 type DB = typeof defaultDb;
 type Log = Pick<Logger, "info" | "warn" | "error">;
@@ -345,7 +352,7 @@ export async function generateMeetingBrief(
       verifiedCredentials,
     });
 
-    const response = await openai.chat.completions.create({
+    const response = await getOpenAI().chat.completions.create({
       model: "gpt-4o",
       temperature: 0.3,
       response_format: { type: "json_object" },

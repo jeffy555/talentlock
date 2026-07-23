@@ -21,7 +21,7 @@ import { sql, desc, eq, gte, count, and, asc, inArray } from "drizzle-orm";
 import { PLANS, type PlanId } from "../lib/plans";
 import { aggregateTokenUsageRows, type TokenUsageBreakdown } from "../lib/subscriptionGating";
 import { TOKEN_FEATURES } from "../lib/tokenLogger";
-import { updateVerificationLevel } from "../lib/documentReview";
+import { updateVerificationLevel, maybeTriggerTalentSearchAfterVerification } from "../lib/documentReview";
 import { createNotification, NotificationType, userIdFromFreelancerProfileId } from "../lib/createNotification";
 import { sendNotificationEmailAsync } from "../lib/emailService";
 import { isPdfStoragePath } from "../lib/documentConstants";
@@ -827,6 +827,7 @@ router.get("/admin/documents", requireAdmin, async (req, res) => {
         id: row.id,
         freelancerId: row.freelancerId,
         documentType: row.documentType,
+        fileUrl: row.fileUrl,
         aiNotes: row.aiNotes,
         confidence: row.confidence,
         updatedAt: row.updatedAt.toISOString(),
@@ -913,6 +914,12 @@ router.patch("/admin/documents/:id", requireAdmin, async (req, res) => {
       .returning();
 
     await updateVerificationLevel(db, doc.freelancerId);
+
+    if (verdict === "verified") {
+      maybeTriggerTalentSearchAfterVerification(doc.freelancerId, req.log).catch((err) =>
+        req.log.warn({ err, documentId: id }, "talent-search trigger after admin verify failed"),
+      );
+    }
 
     const userId = await userIdFromFreelancerProfileId(doc.freelancerId);
     const docLabel = doc.documentType.replace(/_/g, " ");

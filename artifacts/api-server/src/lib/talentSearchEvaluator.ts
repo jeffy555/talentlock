@@ -24,6 +24,7 @@ import {
   buildTalentSearchEvaluationPrompt,
   normaliseFreelancer,
   talentSearchPreFilter,
+  talentSearchPreFilterReason,
   validateTalentSearchResponse,
   type NormalisedFreelancer,
   type TalentSearchEvaluation,
@@ -173,7 +174,21 @@ export async function backfillTalentSearchForEmployer(
     freelancerRows.map(async (freelancerRow) => {
       const verified = await hasAnyVerifiedDocument(dbClient, freelancerRow.id);
       const freelancer = normaliseFreelancer(freelancerRow, verified);
-      if (!talentSearchPreFilter(config.rules, freelancer)) return;
+      const prefilterReason = talentSearchPreFilterReason(config.rules, freelancer);
+      if (prefilterReason) {
+        await logTalentSearchActivity(dbClient, config, freelancer.id, {
+          decision: "prefilter_rejected",
+          score: 0,
+          matchReasons: {
+            matched: [],
+            concerns: [],
+            blockers: [prefilterReason],
+          },
+          proposedMessage: null,
+          skippedReason: prefilterReason,
+        });
+        return;
+      }
       await evaluateSingleEmployer(dbClient, config, freelancerRow, freelancer, log);
     }),
   );
@@ -213,7 +228,20 @@ async function evaluateSingleEmployer(
         ),
       )
       .limit(1);
-    if (recentlySent) return; // Silent skip
+    if (recentlySent) {
+      await logTalentSearchActivity(dbClient, config, freelancer.id, {
+        decision: "duplicate_skipped",
+        score: 0,
+        matchReasons: {
+          matched: [],
+          concerns: [],
+          blockers: ["Already contacted within the last 30 days"],
+        },
+        proposedMessage: null,
+        skippedReason: "Already contacted within the last 30 days",
+      });
+      return;
+    }
 
     // Employer daily-hours budget
     const now = new Date();
@@ -320,6 +348,17 @@ async function evaluateSingleEmployer(
         { employerId: config.employerId, freelancerId: freelancer.id },
         "talent-search parse failed",
       );
+      await logTalentSearchActivity(dbClient, config, freelancer.id, {
+        decision: "ai_parse_failed",
+        score: 0,
+        matchReasons: {
+          matched: [],
+          concerns: [],
+          blockers: ["AI evaluation response could not be parsed"],
+        },
+        proposedMessage: null,
+        skippedReason: "AI evaluation response could not be parsed",
+      });
       return;
     }
 

@@ -157,7 +157,10 @@ export function TalentSearchRuleBuilder({
   const handleSave = async () => {
     try {
       await onSave(rules, rawText || null);
-      toast({ title: "Rules saved", description: "Your TalentSearch rules have been updated." });
+      toast({
+        title: "Rules saved",
+        description: "Click Turn On above to start evaluating freelancers.",
+      });
       if (mode === "onboarding") setMode("form");
     } catch {
       toast({ title: "Error", description: "Could not save rules.", variant: "destructive" });

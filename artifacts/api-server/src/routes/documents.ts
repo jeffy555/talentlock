@@ -170,6 +170,12 @@ router.post("/documents/confirm", async (req, res) => {
       return;
     }
 
+    const exists = await objectStorageService.privateObjectExists(storagePath);
+    if (!exists) {
+      res.status(400).json({ error: "Uploaded file not found. Please upload again." });
+      return;
+    }
+
     // Re-uploading (upsert on freelancerId+documentType) must reset expiry
     // tracking — otherwise a renewed credential could inherit a stale
     // 'expired' alert stage and immediately re-trigger a false alert cycle.

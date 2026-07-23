@@ -60,25 +60,25 @@ export function normaliseFreelancer(
   };
 }
 
-export function talentSearchPreFilter(
+export function talentSearchPreFilterReason(
   rules: TalentSearchRules,
   freelancer: NormalisedFreelancer,
-): boolean {
-  // 1. Profession category
+): string | null {
   if (rules.professionCategory && freelancer.professionCategory !== rules.professionCategory) {
-    return false;
+    return `Profession category does not match (requires ${rules.professionCategory})`;
   }
 
-  // 2. Education sub-type (only meaningful when professionCategory = 'education')
   if (rules.educationSubType && freelancer.educationProfessionType !== rules.educationSubType) {
-    return false;
+    return `Education sub-type does not match (requires ${rules.educationSubType})`;
   }
 
-  // 3. Rate range — freelancer's rate must be within the employer's acceptable range
-  if (rules.maxRate !== null && freelancer.rate > rules.maxRate) return false;
-  if (rules.minRate !== null && freelancer.rate < rules.minRate) return false;
+  if (rules.maxRate !== null && freelancer.rate > rules.maxRate) {
+    return `Rate above maximum (${rules.maxRate})`;
+  }
+  if (rules.minRate !== null && freelancer.rate < rules.minRate) {
+    return `Rate below minimum (${rules.minRate})`;
+  }
 
-  // Build a single lowercased blob of the freelancer's profile text
   const profileText = [
     ...(freelancer.skills ?? []),
     ...(freelancer.teachingSubjects ?? []),
@@ -89,24 +89,36 @@ export function talentSearchPreFilter(
     .join(" ")
     .toLowerCase();
 
-  // 4. Required skills — at least one must appear in the freelancer's profile text
   if (rules.requiredSkills?.length > 0) {
     const hasAny = rules.requiredSkills.some((s) => profileText.includes(s.toLowerCase()));
-    if (!hasAny) return false;
+    if (!hasAny) {
+      return `Missing required skills: ${rules.requiredSkills.join(", ")}`;
+    }
   }
 
-  // 5. Excluded keywords — must not appear anywhere on the profile
-  if (rules.excludedKeywords?.some((kw) => profileText.includes(kw.toLowerCase()))) {
-    return false;
+  const excludedHit = rules.excludedKeywords?.find((kw) =>
+    profileText.includes(kw.toLowerCase()),
+  );
+  if (excludedHit) {
+    return `Profile contains excluded keyword: ${excludedHit}`;
   }
 
-  // 6. DBS check — if the employer requires it, the freelancer must have a verified DBS
-  if (rules.requireDbs && freelancer.dbsCheckStatus !== "verified") return false;
+  if (rules.requireDbs && freelancer.dbsCheckStatus !== "verified") {
+    return "DBS check required but not verified";
+  }
 
-  // 7. Verified credentials — at least one verified document on file
-  if (rules.requireVerifiedCredentials && !freelancer.hasAnyVerifiedDocument) return false;
+  if (rules.requireVerifiedCredentials && !freelancer.hasAnyVerifiedDocument) {
+    return "Verified credentials required";
+  }
 
-  return true;
+  return null;
+}
+
+export function talentSearchPreFilter(
+  rules: TalentSearchRules,
+  freelancer: NormalisedFreelancer,
+): boolean {
+  return talentSearchPreFilterReason(rules, freelancer) === null;
 }
 
 export function buildTalentSearchEvaluationPrompt(

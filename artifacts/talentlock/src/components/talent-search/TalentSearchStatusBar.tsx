@@ -100,7 +100,14 @@ export function TalentSearchStatusBar({ config, stats, hasConfig }: TalentSearch
 
   return (
     <>
-      <div className="flex flex-wrap items-center gap-2 justify-end">
+      <div className="flex flex-col items-end gap-2">
+        {hasConfig && status === "inactive" && (
+          <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900 max-w-sm text-right">
+            Rules saved — click <span className="font-medium">Turn On</span> or{" "}
+            <span className="font-medium">Dry Run</span> to start evaluating freelancers.
+          </div>
+        )}
+        <div className="flex flex-wrap items-center gap-2 justify-end">
         {status === "inactive" && (
           <>
             <span className={`${badgeBase} bg-slate-100 text-slate-500 border-slate-200`}>
@@ -147,6 +154,7 @@ export function TalentSearchStatusBar({ config, stats, hasConfig }: TalentSearch
             </Button>
           </>
         )}
+        </div>
       </div>
 
       <AlertDialog open={confirmLive} onOpenChange={setConfirmLive}>

@@ -21,10 +21,28 @@ import { adminMutate } from "@/lib/adminCsrf";
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
 const PAGE_SIZE = 20;
 
+function proxiedStorageUrl(absoluteUrl: string): string {
+  try {
+    const parsed = new URL(absoluteUrl, window.location.origin);
+    const apiPathIndex = parsed.pathname.indexOf("/api/storage/");
+    if (apiPathIndex >= 0) {
+      return `${basePath}${parsed.pathname.slice(apiPathIndex)}${parsed.search}`;
+    }
+  } catch {
+    // fall through
+  }
+  return absoluteUrl;
+}
+
+function documentPreviewUrl(fileUrl: string): string {
+  return `${basePath}/api/storage/objects/${fileUrl}`;
+}
+
 type DocumentReviewRow = {
   id: number;
   freelancerId: number;
   documentType: string;
+  fileUrl: string;
   aiNotes: string | null;
   confidence: number | null;
   updatedAt: string;
@@ -86,14 +104,14 @@ async function fetchDocumentQueue(page: number): Promise<DocumentReviewResponse>
   return res.json();
 }
 
-async function fetchSignedUrl(documentId: number): Promise<{ signedUrl: string; isPdf: boolean }> {
+async function fetchSignedUrl(documentId: number): Promise<string> {
   const res = await fetch(`${basePath}/api/admin/documents/${documentId}/signed-url`, {
     credentials: "include",
   });
   if (res.status === 401) throw new Error("UNAUTHORIZED");
   if (!res.ok) throw new Error("Failed to load document");
-  const body = (await res.json()) as { signedUrl: string; isPdf?: boolean };
-  return { signedUrl: body.signedUrl, isPdf: body.isPdf ?? false };
+  const body = (await res.json()) as { signedUrl: string };
+  return proxiedStorageUrl(body.signedUrl);
 }
 
 async function patchDocumentVerdict(
@@ -180,27 +198,28 @@ export default function AdminDocumentReviewTab({
     setImageLoading(true);
     setImageError(false);
     setSignedUrl(null);
-    setPreviewIsPdf(false);
+    setPreviewIsPdf(selected.isPdf);
     setAdminNotes("");
 
-    void fetchSignedUrl(selected.id)
-      .then(({ signedUrl: url, isPdf }) => {
-        if (!cancelled) {
-          setSignedUrl(url);
-          setPreviewIsPdf(isPdf || selected.isPdf);
-        }
-      })
-      .catch((err: unknown) => {
+    const loadPreview = async () => {
+      try {
+        const url = selected.fileUrl
+          ? documentPreviewUrl(selected.fileUrl)
+          : await fetchSignedUrl(selected.id);
+        if (!cancelled) setSignedUrl(url);
+      } catch (err: unknown) {
         if (!cancelled) {
           setImageError(true);
           if (err instanceof Error && err.message === "UNAUTHORIZED") {
             onUnauthorized();
           }
         }
-      })
-      .finally(() => {
+      } finally {
         if (!cancelled) setImageLoading(false);
-      });
+      }
+    };
+
+    void loadPreview();
 
     return () => {
       cancelled = true;
@@ -371,7 +390,12 @@ export default function AdminDocumentReviewTab({
                         title={`${docTypeLabel(selected.documentType)} PDF for ${selected.freelancerName}`}
                         className="h-[300px] w-full rounded-md border bg-white"
                       />
-                      <p className="text-xs text-muted-foreground mt-2">PDF preview · expires in 15min</p>
+                      <p className="text-xs text-muted-foreground mt-2">
+                        PDF preview ·{" "}
+                        <a href={signedUrl} target="_blank" rel="noopener noreferrer" className="underline">
+                          Open in new tab
+                        </a>
+                      </p>
                     </>
                   ) : (
                     <>
@@ -379,8 +403,13 @@ export default function AdminDocumentReviewTab({
                         src={signedUrl}
                         alt={`${docTypeLabel(selected.documentType)} for ${selected.freelancerName}`}
                         className="max-h-[300px] w-full object-contain rounded-md border bg-white"
+                        onError={() => setImageError(true)}
                       />
-                      <p className="text-xs text-muted-foreground mt-2">Expires in 15min</p>
+                      <p className="text-xs text-muted-foreground mt-2">
+                        <a href={signedUrl} target="_blank" rel="noopener noreferrer" className="underline">
+                          Open in new tab
+                        </a>
+                      </p>
                     </>
                   )}
                 </div>

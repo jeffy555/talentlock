@@ -42,6 +42,10 @@ export function decisionBadgeClass(decision: string): string {
     case "daily_freelancer_limit_reached":
     case "dm_failed":
       return "text-red-600 bg-red-50 border-red-200";
+    case "prefilter_rejected":
+    case "duplicate_skipped":
+    case "ai_parse_failed":
+      return "text-amber-700 bg-amber-50 border-amber-200";
     default:
       return "text-slate-500 bg-slate-50 border-slate-200";
   }
@@ -64,6 +68,12 @@ export function decisionLabel(decision: string): string {
       return "⏱ Recipient cap";
     case "dm_failed":
       return "✕ Delivery failed";
+    case "prefilter_rejected":
+      return "⊘ Pre-filter";
+    case "duplicate_skipped":
+      return "↷ Duplicate";
+    case "ai_parse_failed":
+      return "⚠ Parse failed";
     default:
       return decision;
   }

@@ -17,6 +17,7 @@ import { logTokenUsage } from "./tokenLogger";
 import { getSystemUserId } from "./systemUser";
 import { createNotification, NotificationType, userIdFromFreelancerProfileId } from "./createNotification";
 import { sendNotificationEmailAsync } from "./emailService";
+import { evaluateTalentSearchForUpdatedProfile } from "./talentSearchEvaluator";
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY_TALENTLOCK });
 const objectStorageService = new ObjectStorageService();
@@ -105,6 +106,22 @@ export async function updateVerificationLevel(
     .where(eq(freelancerProfilesTable.id, freelancerId));
 }
 
+export async function maybeTriggerTalentSearchAfterVerification(
+  freelancerId: number,
+  log: Logger,
+): Promise<void> {
+  const [profile] = await db
+    .select({ completenessScore: freelancerProfilesTable.completenessScore })
+    .from(freelancerProfilesTable)
+    .where(eq(freelancerProfilesTable.id, freelancerId))
+    .limit(1);
+  if (!profile || profile.completenessScore < 60) return;
+
+  evaluateTalentSearchForUpdatedProfile(db, freelancerId, log).catch((err) =>
+    log.warn({ err, freelancerId }, "talent-search after document verify failed"),
+  );
+}
+
 export async function triggerDocumentReview(
   dbOrTx: DbClient,
   log: Logger,
@@ -161,6 +178,12 @@ export async function triggerDocumentReview(
       .where(and(eq(documentsTable.freelancerId, freelancerId), eq(documentsTable.documentType, documentType)));
 
     await updateVerificationLevel(dbOrTx, freelancerId);
+
+    if (verdict.verdict === "verified") {
+      maybeTriggerTalentSearchAfterVerification(freelancerId, log).catch((err) =>
+        log.warn({ err, freelancerId, documentType }, "talent-search trigger after AI verify failed"),
+      );
+    }
 
     if (verdict.verdict === "verified" || verdict.verdict === "rejected") {
       const userId = await userIdFromFreelancerProfileId(freelancerId);
