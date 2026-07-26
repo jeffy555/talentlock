@@ -12,6 +12,7 @@ import {
 } from "@workspace/db";
 import { PostAiJobDescriptionBody, PostAiProposalBody, PostAiRateSuggestionBody } from "@workspace/api-zod";
 import { checkTokenQuota, getUserSubscription } from "../lib/subscriptionGating";
+import { hasEmployerGrowthFeatures } from "../lib/plans";
 import { logTokenUsage } from "../lib/tokenLogger";
 import {
   getMarketMedian,
@@ -449,8 +450,7 @@ router.post("/ai/rate-suggestion", async (req, res) => {
     }
 
     const sub = await getUserSubscription(user.id);
-    const planId = sub.plan.id;
-    const canUseAi = planId === "employer_growth" || planId === "employer_enterprise";
+    const canUseAi = hasEmployerGrowthFeatures(sub.plan.id);
     const wantsAi = includeAi === true;
 
     if (wantsAi && canUseAi) {

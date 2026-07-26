@@ -27,6 +27,32 @@ export interface PlanDef {
   priority: number;
 }
 
+/**
+ * Temporary testing flag — Growth/Pro premium feature gates are open and
+ * Growth/Pro list at $0 while Stripe billing is deferred.
+ * Set to `false` (or `PREMIUM_FEATURES_FREE=false`) before paid launch.
+ */
+export const PREMIUM_FEATURES_FREE =
+  process.env.PREMIUM_FEATURES_FREE !== "false";
+
+/** Growth-tier employer features (AI rate suggest, redline, brief questions, etc.). */
+export function hasEmployerGrowthFeatures(planId: string | null | undefined): boolean {
+  if (PREMIUM_FEATURES_FREE) return true;
+  return planId === "employer_growth" || planId === "employer_enterprise";
+}
+
+/** Enterprise-tier employer features (team accounts, custom clauses, etc.). */
+export function hasEmployerEnterpriseFeatures(planId: string | null | undefined): boolean {
+  if (PREMIUM_FEATURES_FREE) return true;
+  return planId === "employer_enterprise";
+}
+
+/** Freelancer Pro features (Cruise Mode, unlimited Express Interest, etc.). */
+export function hasFreelancerProFeatures(planId: string | null | undefined): boolean {
+  if (PREMIUM_FEATURES_FREE) return true;
+  return planId === "freelancer_pro";
+}
+
 export const PLANS: Record<PlanId, PlanDef> = {
   free: {
     id: "free",
@@ -56,7 +82,7 @@ export const PLANS: Record<PlanId, PlanDef> = {
     id: "freelancer_pro",
     audience: "freelancer",
     name: "Freelancer Pro",
-    priceMonthly: 19,
+    priceMonthly: 0, // temporary — was 19; restore when PREMIUM_FEATURES_FREE is flipped off
     tagline: "Stand out and pitch unlimited",
     features: [
       "Unlimited Express Interest pitches",
@@ -86,7 +112,7 @@ export const PLANS: Record<PlanId, PlanDef> = {
     id: "employer_growth",
     audience: "employer",
     name: "Employer Growth",
-    priceMonthly: 199,
+    priceMonthly: 0, // temporary — was 199; restore when PREMIUM_FEATURES_FREE is flipped off
     tagline: "For scaling teams hiring regularly",
     features: [
       "10 active bookings",

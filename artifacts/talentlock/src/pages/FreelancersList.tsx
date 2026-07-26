@@ -26,6 +26,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Search, Lock, Briefcase, Heart, SlidersHorizontal, X, Star, Clock } from "lucide-react";
 import { FIELDS_OF_WORK } from "@/lib/fields";
+import { hasEmployerEnterpriseFeatures } from "@/lib/planAccess";
 import { useQueryClient } from "@tanstack/react-query";
 import VerificationBadge from "@/components/VerificationBadge";
 import {
@@ -291,7 +292,7 @@ export default function FreelancersList() {
   const search = useSearch();
   const { data: user } = useGetMe();
   const { data: subscription } = useGetMySubscription({ query: { enabled: !!user } as any });
-  const isEnterprise = subscription?.plan?.id === "employer_enterprise";
+  const isEnterprise = hasEmployerEnterpriseFeatures(subscription?.plan?.id);
   const { data: teamData } = useGetTeam({
     query: { enabled: !!user && isEnterprise, retry: false } as any,
   });

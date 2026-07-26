@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { Sparkles, Loader2, RefreshCw, CheckCircle2, AlertTriangle } from "lucide-react";
 import { format } from "date-fns";
+import { hasEmployerGrowthFeatures } from "@/lib/planAccess";
 
 interface MeetingBriefCardProps {
   brief: MeetingBrief | null | undefined;
@@ -35,7 +36,7 @@ export function MeetingBriefCard({
   const { toast } = useToast();
   const generateMutation = useGenerateMeetingBrief();
   const [isGenerating, setIsGenerating] = useState(false);
-  const isGrowth = userPlan === "employer_growth" || userPlan === "employer_enterprise";
+  const isGrowth = hasEmployerGrowthFeatures(userPlan);
 
   const handleGenerate = async () => {
     setIsGenerating(true);

@@ -36,6 +36,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { Users, Loader2, X, BarChart3, Copy, Mail } from "lucide-react";
 import type { TeamMember } from "@workspace/api-client-react";
+import { hasEmployerEnterpriseFeatures } from "@/lib/planAccess";
 
 function getApiErrorMessage(err: unknown): string | undefined {
   if (err && typeof err === "object") {
@@ -280,7 +281,7 @@ export default function Team() {
   const { data: user } = useGetMe();
   const { data: subscription } = useGetMySubscription({ query: { enabled: !!user } as any });
   const planId = subscription?.plan?.id ?? "employer_starter";
-  const isEnterprise = planId === "employer_enterprise";
+  const isEnterprise = hasEmployerEnterpriseFeatures(planId);
 
   const {
     data: teamData,

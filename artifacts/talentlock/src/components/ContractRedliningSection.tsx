@@ -11,6 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { CheckCircle2, Loader2, Sparkles } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { hasEmployerGrowthFeatures } from "@/lib/planAccess";
 
 function stripQuotes(text: string): string {
   return text.replace(/^[\s"'""'']+|[\s"'""'']+$/g, "");
@@ -90,7 +91,7 @@ export default function ContractRedliningSection({
   const freelancerSigned = !!agreement.freelancerSignedAt;
   if (employerSigned || freelancerSigned) return null;
 
-  const isStarter = userPlan === "employer_starter" || userPlan === "free";
+  const isStarter = !hasEmployerGrowthFeatures(userPlan);
   if (isStarter) {
     return (
       <div id="contract-redlining" className="rounded-md border border-dashed border-slate-300 bg-slate-50 p-4">

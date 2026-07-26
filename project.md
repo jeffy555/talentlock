@@ -608,10 +608,12 @@ pnpm --filter @workspace/talentlock run dev
 | Plan ID | Role | Price | Limits |
 |---------|------|-------|--------|
 | `freelancer_free` | Freelancer | $0 | 3 active bookings, 5 job interests/month, no token quota |
-| `freelancer_pro` | Freelancer | $19/mo | 10 active bookings, unlimited interests, no token quota |
+| `freelancer_pro` | Freelancer | $0/mo (temporary — was $19) | 10 active bookings, unlimited interests, no token quota |
 | `employer_starter` | Employer | $49/mo | 3 active bookings, 5 job posts/month, 50k tokens/month |
-| `employer_growth` | Employer | $199/mo | 15 active bookings, 30 job posts/month, 250k tokens/month |
+| `employer_growth` | Employer | $0/mo (temporary — was $199) | 15 active bookings, 30 job posts/month, 250k tokens/month |
 | `employer_enterprise` | Employer | Custom | Unlimited; team accounts enabled |
+
+> **Temporary:** `PREMIUM_FEATURES_FREE` is on — Growth, Pro, and Enterprise feature gates (including team accounts, custom clauses, quotas, and token limits) are open for all plans; Growth/Pro/Enterprise list as free/Start Free. Flip `PREMIUM_FEATURES_FREE` / `VITE_PREMIUM_FEATURES_FREE` to `false` and restore prices before paid launch (`artifacts/api-server/src/lib/plans.ts`, `artifacts/talentlock/src/lib/planAccess.ts`).
 
 ---
 

@@ -13,6 +13,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { Check, Sparkles, Crown, Building2, User as UserIcon } from "lucide-react";
+import { PREMIUM_FEATURES_FREE } from "@/lib/planAccess";
 
 export default function Pricing() {
   const [, setLocation] = useLocation();
@@ -75,7 +76,7 @@ export default function Pricing() {
                       <span className="text-4xl font-bold">${plan.priceMonthly}</span>
                       <span className="text-muted-foreground">/month</span>
                     </div>
-                  ) : plan.id === "employer_enterprise" ? (
+                  ) : plan.id === "employer_enterprise" && !PREMIUM_FEATURES_FREE ? (
                     <div className="text-3xl font-bold">Custom</div>
                   ) : (
                     <div className="text-4xl font-bold">Free</div>
@@ -95,7 +96,7 @@ export default function Pricing() {
               <CardFooter>
                 {isCurrent ? (
                   <Button disabled className="w-full" variant="outline">Current Plan</Button>
-                ) : plan.id === "employer_enterprise" ? (
+                ) : plan.id === "employer_enterprise" && !PREMIUM_FEATURES_FREE ? (
                   <Button className="w-full" variant="outline" onClick={() => toast({ title: "Contact sales", description: "Email enterprise@talentlock.com — we'll be in touch within one business day." })}>
                     Contact Sales
                   </Button>

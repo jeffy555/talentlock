@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import { Link } from "wouter";
+import { hasEmployerGrowthFeatures } from "@/lib/planAccess";
 
 const POLL_INTERVAL_MS = 3000;
 const MAX_POLL_ATTEMPTS = 20;
@@ -96,7 +97,7 @@ export function DebriefCard({
         btn: "bg-indigo-600 hover:bg-indigo-700 text-white",
       };
 
-  const isStarterEmployer = isEmployer && employerPlanId === "employer_starter";
+  const isStarterEmployer = isEmployer && !hasEmployerGrowthFeatures(employerPlanId);
 
   const {
     data: debriefResponse,
