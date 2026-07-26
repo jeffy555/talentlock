@@ -10,6 +10,7 @@ import {
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
+import { hasEmployerEnterpriseFeatures } from "@/lib/planAccess";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import {
@@ -161,7 +162,7 @@ function AppLayoutInner({ children }: { children: React.ReactNode }) {
 
   const isEmployer = dbUser?.role === "employer";
   const isFreelancer = dbUser?.role === "freelancer";
-  const isEnterprise = subscription?.plan?.id === "employer_enterprise";
+  const isEnterprise = hasEmployerEnterpriseFeatures(subscription?.plan?.id);
   const { data: cruiseConfig } = useGetCruiseMode({
     query: { enabled: isFreelancer } as any,
   });

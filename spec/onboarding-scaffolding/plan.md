@@ -208,3 +208,5 @@ Server `onboardingStep` remains `profession_category` until Location Continue su
 | 1 | Database — `onboarding_role`, `onboarding_step` on `users` | ✅ |
 | 2 | Backend — PATCH route, OpenAPI (`employer_documents` step), codegen, clear on PUT | ✅ |
 | 3 | Frontend — resume onboarding, dashboard checklist, employer 4-step flow + mandatory doc gate, company profile first-save fix | ✅ |
+
+> Registration safeguard: onboarding is unavailable until Clerk exposes a valid primary email address. Both onboarding persistence and final user upsert reject invalid email values. Country/state selectors are shared by the location step and detail forms.

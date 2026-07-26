@@ -10,13 +10,14 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatNextAvailable } from "@/lib/availabilityUtils";
 import { formatRate, profileDefaultRateType } from "@/lib/rateFormatUtils";
+import { hasEmployerEnterpriseFeatures } from "@/lib/planAccess";
 
 export function WatchlistSummaryCard() {
   const { data: user } = useGetMe();
   const { data: subscription } = useGetMySubscription({
     query: { enabled: user?.role === "employer" } as never,
   });
-  const isEnterprise = subscription?.plan?.id === "employer_enterprise";
+  const isEnterprise = hasEmployerEnterpriseFeatures(subscription?.plan?.id);
   const { data: teamData } = useGetTeam({
     query: { enabled: !!user && isEnterprise, retry: false } as never,
   });

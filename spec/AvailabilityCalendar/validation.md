@@ -3,7 +3,7 @@
 > **Purpose:** Verify the Availability Calendar feature is correctly implemented before it is considered complete.
 > **How to use:** Run each check in order. Mark ✅ pass or ❌ fail. Fix failures before marking a phase complete.
 
-**Automated runner:** `node artifacts/api-server/validate-availability-calendar.mjs` (API + DB + frontend routes + demo login).  
+**Automated runner:** `node artifacts/api-server/validate-availability-calendar.mjs` (API + DB + frontend routes).  
 **Smoke tests:** `node artifacts/api-server/smoke-availability.mjs`
 
 **Demo Clerk IDs (aligned with seeded Neon data, 2026-06-07):**
@@ -13,7 +13,7 @@
 | Freelancer | `user_3DBiBymDbIiXQnFqyk64WquLsdY` | Jefferson Immanuel — freelancer id 1 |
 | Employer | `user_3DBguOY4TbwT9bxOYc9NcYU5q9a` | LoavesFlash — employer id 1 |
 
-Set in `.env` as `DEMO_FREELANCER_CLERK_ID` / `DEMO_EMPLOYER_CLERK_ID`. Dev demo login on `/sign-in` uses these via `POST /api/demo/sign-in-token`.
+Set in `.env` as `DEMO_FREELANCER_CLERK_ID` / `DEMO_EMPLOYER_CLERK_ID` for scripted validation. The `/sign-in` Demo Login panel has been removed — use normal Clerk sign-in (or `POST /api/demo/sign-in-token` only from automation).
 
 ---
 

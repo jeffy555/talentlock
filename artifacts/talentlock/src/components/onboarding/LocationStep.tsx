@@ -1,10 +1,9 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { MapPin, Loader2 } from "lucide-react";
 import type { Country } from "@workspace/api-client-react";
 import { currencyName, currencySymbol } from "@/lib/currencyUtils";
+import { CountryStateFields, isLocationComplete } from "./CountryStateFields";
 
 export interface LocationStepProps {
   role: "freelancer" | "employer";
@@ -30,9 +29,7 @@ export function LocationStep({
   isSubmitting,
 }: LocationStepProps) {
   const selected = countries.find((c) => c.code === countryCode);
-  const stateRequired = selected?.stateRequired ?? false;
-  const canContinue =
-    !!countryCode && (!stateRequired || !!stateCode);
+  const canContinue = isLocationComplete(countries, countryCode, stateCode);
 
   return (
     <Card>
@@ -48,45 +45,14 @@ export function LocationStep({
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
-        <div className="space-y-2">
-          <Label htmlFor="country">Country</Label>
-          <Select value={countryCode || undefined} onValueChange={onCountryChange}>
-            <SelectTrigger id="country">
-              <SelectValue placeholder="Select country" />
-            </SelectTrigger>
-            <SelectContent>
-              {countries.map((c) => (
-                <SelectItem key={c.code} value={c.code}>
-                  {c.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        {selected && selected.states.length > 0 && (
-          <div className="space-y-2">
-            <Label htmlFor="state">
-              {stateRequired ? "State / Province" : "State / Province (optional)"}
-            </Label>
-            <Select
-              value={stateCode ?? undefined}
-              onValueChange={onStateChange}
-              disabled={!countryCode}
-            >
-              <SelectTrigger id="state">
-                <SelectValue placeholder={stateRequired ? "Select state" : "Select state (optional)"} />
-              </SelectTrigger>
-              <SelectContent>
-                {selected.states.map((s) => (
-                  <SelectItem key={s.code} value={s.code}>
-                    {s.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        )}
+        <CountryStateFields
+          countries={countries}
+          countryCode={countryCode}
+          stateCode={stateCode}
+          onCountryChange={onCountryChange}
+          onStateChange={onStateChange}
+          disabled={countries.length === 0 || isSubmitting}
+        />
 
         {selected && (
           <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800">
@@ -108,7 +74,7 @@ export function LocationStep({
         <Button type="button" variant="outline" onClick={onBack} disabled={isSubmitting}>
           Back
         </Button>
-        <Button type="button" onClick={onContinue} disabled={!canContinue || isSubmitting}>
+        <Button type="button" onClick={onContinue} disabled={!canContinue || countries.length === 0 || isSubmitting}>
           {isSubmitting ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />

@@ -7,6 +7,7 @@ import {
   type AgreementIndustry,
 } from "@workspace/api-client-react";
 import { formatRate, paymentTypeToRateType } from "@/lib/rateFormatUtils";
+import { hasEmployerEnterpriseFeatures } from "@/lib/planAccess";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -75,7 +76,7 @@ export default function BookingDetail() {
     query: { enabled: me?.role === "employer" } as any,
   });
   const userPlan = subscription?.plan?.id ?? "employer_starter";
-  const isEnterprise = userPlan === "employer_enterprise";
+  const isEnterprise = hasEmployerEnterpriseFeatures(userPlan);
 
   const [industry, setIndustry] = useState<AgreementIndustry>("general");
   const [customClauses, setCustomClauses] = useState<string[]>([]);

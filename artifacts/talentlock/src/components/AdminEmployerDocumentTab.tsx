@@ -7,21 +7,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { adminMutate } from "@/lib/adminCsrf";
 import { cn } from "@/lib/utils";
+import { openStorageDocument, proxiedStorageUrl } from "@/lib/proxiedStorageUrl";
 
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
-
-function proxiedStorageUrl(absoluteUrl: string): string {
-  try {
-    const parsed = new URL(absoluteUrl, window.location.origin);
-    const apiPathIndex = parsed.pathname.indexOf("/api/storage/");
-    if (apiPathIndex >= 0) {
-      return `${basePath}${parsed.pathname.slice(apiPathIndex)}${parsed.search}`;
-    }
-  } catch {
-    // fall through
-  }
-  return absoluteUrl;
-}
 
 async function fetchEmployerDocumentViewUrl(documentId: number): Promise<string> {
   const response = await fetch(`${basePath}/api/admin/employer-documents/${documentId}/view-url`, {
@@ -51,6 +39,7 @@ type Row = {
   confidence: number | null;
   aiNotes: string | null;
   adminNotes: string | null;
+  signedFileUrl?: string;
   createdAt: string;
   reviewedAt: string | null;
 };
@@ -168,7 +157,7 @@ export function AdminEmployerDocumentTab({ onCount }: { onCount?: (count: number
     setOpeningId(row.id);
     try {
       const url = await fetchEmployerDocumentViewUrl(row.id);
-      window.open(url, "_blank", "noopener,noreferrer");
+      openStorageDocument(url);
     } catch {
       toast({ title: "Could not open document", description: "Try again or re-run AI review.", variant: "destructive" });
     } finally {
@@ -219,22 +208,33 @@ export function AdminEmployerDocumentTab({ onCount }: { onCount?: (count: number
             </div>
             <div className="flex flex-col items-end gap-2 text-sm">
               <p>Confidence: {row.confidence == null ? "—" : `${row.confidence}%`}</p>
-              <Button
-                type="button"
-                variant="link"
-                className="h-auto p-0 text-xs"
-                disabled={openingId === row.id}
-                onClick={() => void openDocument(row)}
-              >
-                {openingId === row.id ? (
-                  <>
-                    <Loader2 className="mr-1 inline h-3 w-3 animate-spin" />
-                    Opening…
-                  </>
-                ) : (
-                  "View document ↗"
-                )}
-              </Button>
+              {row.signedFileUrl ? (
+                <a
+                  href={proxiedStorageUrl(row.signedFileUrl)}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-xs text-primary underline"
+                >
+                  View document ↗
+                </a>
+              ) : (
+                <Button
+                  type="button"
+                  variant="link"
+                  className="h-auto p-0 text-xs"
+                  disabled={openingId === row.id}
+                  onClick={() => void openDocument(row)}
+                >
+                  {openingId === row.id ? (
+                    <>
+                      <Loader2 className="mr-1 inline h-3 w-3 animate-spin" />
+                      Opening…
+                    </>
+                  ) : (
+                    "View document ↗"
+                  )}
+                </Button>
+              )}
             </div>
           </div>
 

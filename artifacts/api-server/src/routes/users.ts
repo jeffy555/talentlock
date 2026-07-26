@@ -7,6 +7,7 @@ import { UpsertMeBody, PatchNotificationPreferencesBody, PatchOnboardingStepBody
 import { sanitiseText } from "../lib/sanitise";
 import { validateLocationInput } from "../lib/countryData";
 import { syncFreelancerLocationFromUser } from "../lib/locationSync";
+import { isValidEmail } from "../lib/emailValidation";
 import { z } from "zod/v4";
 
 const router = Router();
@@ -39,6 +40,10 @@ router.put("/users/me", async (req, res) => {
   const parsed = UpsertMeBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+  if (!isValidEmail(parsed.data.email)) {
+    res.status(400).json({ error: "A valid email address is required." });
     return;
   }
   try {
@@ -90,6 +95,10 @@ router.patch("/users/me/onboarding-step", async (req, res) => {
   const parsed = PatchOnboardingStepBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+  if (!isValidEmail(parsed.data.email)) {
+    res.status(400).json({ error: "A valid email address is required." });
     return;
   }
   try {

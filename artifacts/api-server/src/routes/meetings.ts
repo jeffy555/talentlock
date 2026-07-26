@@ -127,6 +127,20 @@ router.post("/meetings", async (req, res) => {
     const employerName = await employerCompanyForProfile(employer.id);
     if (freelancerUserId) {
       const meetMsg = `${employerName} requested a discovery meeting`;
+      const scheduledAt = meeting.scheduledAt
+        ? new Intl.DateTimeFormat("en-GB", {
+            dateStyle: "full",
+            timeStyle: "short",
+            timeZone: "UTC",
+            timeZoneName: "short",
+          }).format(new Date(meeting.scheduledAt))
+        : "To be confirmed";
+      const emailBody = [
+        `${employerName} invited you to a discovery meeting.`,
+        `Scheduled for: ${scheduledAt}`,
+        meeting.meetingLink ? `Meeting link: ${meeting.meetingLink}` : null,
+        "Open TalentLock to accept or decline this invitation.",
+      ].filter(Boolean).join("\n\n");
       createNotification(db, {
         userId: freelancerUserId,
         type: NotificationType.MEETING_REQUESTED,
@@ -135,7 +149,7 @@ router.post("/meetings", async (req, res) => {
         message: meetMsg,
       }).catch((err) => req.log.warn({ err, meetingId: meeting.id }, "notification write failed"));
       sendNotificationEmailAsync(
-        db, freelancerUserId, "New meeting request on TalentLock", meetMsg,
+        db, freelancerUserId, `Discovery meeting invite from ${employerName}`, emailBody,
         `/meetings/${meeting.id}`, req.log,
       );
     }

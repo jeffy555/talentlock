@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from "react";
-import { ClerkProvider, SignIn, SignUp, Show, useClerk, useSignIn } from "@clerk/react";
+import { useEffect, useRef } from "react";
+import { ClerkProvider, SignIn, SignUp, Show, useClerk } from "@clerk/react";
 import { Switch, Route, useLocation, Router as WouterRouter, Redirect } from "wouter";
 import { QueryClient, QueryClientProvider, useQueryClient } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
@@ -182,120 +182,6 @@ function AuthPageWrapper({
   );
 }
 
-function DemoLoginPanel() {
-  const { signIn } = useSignIn();
-  const [, setLocation] = useLocation();
-  const [loading, setLoading] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  const loginAs = async (role: string, label: string) => {
-    if (!signIn) {
-      setError("Auth not ready yet, please try again.");
-      return;
-    }
-    setLoading(label);
-    setError(null);
-    try {
-      const res = await fetch(`${basePath}/api/demo/sign-in-token`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ role }),
-      });
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error((body as { error?: string }).error ?? `Server error ${res.status}`);
-      }
-      const payload = await res.json() as { token?: unknown };
-      const token = typeof payload.token === "string" ? payload.token : "";
-      if (!token) {
-        throw new Error("Demo sign-in token missing or malformed.");
-      }
-      const createResult = await signIn.create({ strategy: "ticket", ticket: token });
-      if (createResult.error) {
-        throw new Error(createResult.error.message ?? "Ticket sign-in failed.");
-      }
-      const finalizeResult = await signIn.finalize();
-      if (finalizeResult.error) {
-        throw new Error(finalizeResult.error.message ?? "Failed to activate session.");
-      }
-      setLocation("/dashboard");
-    } catch (err: unknown) {
-      console.error("[DemoLogin] sign-in error:", err);
-      let msg = "Sign-in failed.";
-      if (err && typeof err === "object" && "message" in err) {
-        msg = (err as { message: string }).message;
-      }
-      setError(msg);
-    } finally {
-      setLoading(null);
-    }
-  };
-
-  const accounts = [
-    {
-      role: "employer",
-      label: "Employer",
-      description: "Hire & lock exclusive talent",
-      bgClass: "bg-[hsl(222_47%_11%)]/5 hover:bg-[hsl(222_47%_11%)]/10 border-[hsl(222_47%_11%)]/15",
-      accent: "hsl(44, 52%, 42%)",
-    },
-    {
-      role: "freelancer",
-      label: "Freelancer",
-      description: "Get booked on exclusive work",
-      bgClass: "bg-white hover:bg-[hsl(40_20%_96%)] border-[hsl(40_10%_88%)]",
-      accent: "hsl(222, 47%, 11%)",
-    },
-  ];
-
-  return (
-    <div className="w-full mt-2 animate-fade-in" style={{ animationDelay: "120ms", animationFillMode: "both" }}>
-      <div className="relative mb-4">
-        <div className="absolute inset-0 flex items-center">
-          <span className="w-full border-t border-[hsl(40_10%_88%)]" />
-        </div>
-        <div className="relative flex justify-center">
-          <span className="bg-transparent px-3 text-[10px] text-[hsl(222_12%_48%)] font-semibold uppercase tracking-[0.18em]">
-            Dev demo
-          </span>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-2 gap-3">
-        {accounts.map((acc) => (
-          <button
-            key={acc.label}
-            type="button"
-            onClick={() => loginAs(acc.role, acc.label)}
-            disabled={!!loading}
-            className={`group flex flex-col gap-2 rounded-xl border p-4 text-left transition-all duration-200 disabled:opacity-50 active:scale-[0.98] ${acc.bgClass}`}
-          >
-            <div className="flex items-center justify-between w-full">
-              <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: acc.accent }}>
-                {loading === acc.label ? "Signing in…" : acc.label}
-              </span>
-              {loading === acc.label && (
-                <div className="h-3.5 w-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" style={{ color: acc.accent }} />
-              )}
-            </div>
-            <p className="text-xs text-[hsl(222_12%_40%)] leading-snug">{acc.description}</p>
-          </button>
-        ))}
-      </div>
-
-      {error && (
-        <div className="mt-3 p-3 rounded-lg bg-destructive/10 border border-destructive/20 text-xs text-destructive text-center">
-          {error}
-        </div>
-      )}
-    </div>
-  );
-}
-
-// Demo login is only shown in local dev. The published app relies on Google /
-// email sign-in via Clerk so we don't expose shared demo accounts publicly.
-const SHOW_DEMO_LOGIN = import.meta.env.DEV;
-
 function SignInPage() {
   return (
     <AuthPageWrapper mode="sign-in">
@@ -305,7 +191,6 @@ function SignInPage() {
         signUpUrl={`${basePath}/sign-up`}
         fallbackRedirectUrl={`${basePath}/dashboard`}
       />
-      {SHOW_DEMO_LOGIN && <DemoLoginPanel />}
     </AuthPageWrapper>
   );
 }
@@ -319,7 +204,9 @@ function SignUpPage() {
         signInUrl={`${basePath}/sign-in`}
         fallbackRedirectUrl={`${basePath}/onboarding`}
       />
-      {SHOW_DEMO_LOGIN && <DemoLoginPanel />}
+      <p className="px-1 text-center text-xs text-[hsl(222_12%_48%)]">
+        A valid email address is required to create a TalentLock account.
+      </p>
     </AuthPageWrapper>
   );
 }

@@ -17,22 +17,10 @@ import {
 import { useToast } from "@/hooks/use-toast";
 
 import { adminMutate } from "@/lib/adminCsrf";
+import { openStorageDocument, proxiedStorageUrl } from "@/lib/proxiedStorageUrl";
 
 const basePath = import.meta.env.BASE_URL.replace(/\/$/, "");
 const PAGE_SIZE = 20;
-
-function proxiedStorageUrl(absoluteUrl: string): string {
-  try {
-    const parsed = new URL(absoluteUrl, window.location.origin);
-    const apiPathIndex = parsed.pathname.indexOf("/api/storage/");
-    if (apiPathIndex >= 0) {
-      return `${basePath}${parsed.pathname.slice(apiPathIndex)}${parsed.search}`;
-    }
-  } catch {
-    // fall through
-  }
-  return absoluteUrl;
-}
 
 function documentPreviewUrl(fileUrl: string): string {
   return `${basePath}/api/storage/objects/${fileUrl}`;
@@ -43,6 +31,7 @@ type DocumentReviewRow = {
   freelancerId: number;
   documentType: string;
   fileUrl: string;
+  signedFileUrl?: string;
   aiNotes: string | null;
   confidence: number | null;
   updatedAt: string;
@@ -203,8 +192,10 @@ export default function AdminDocumentReviewTab({
 
     const loadPreview = async () => {
       try {
-        const url = selected.fileUrl
-          ? documentPreviewUrl(selected.fileUrl)
+        const url = selected.signedFileUrl
+          ? proxiedStorageUrl(selected.signedFileUrl)
+          : selected.fileUrl
+            ? documentPreviewUrl(selected.fileUrl)
           : await fetchSignedUrl(selected.id);
         if (!cancelled) setSignedUrl(url);
       } catch (err: unknown) {
@@ -392,9 +383,9 @@ export default function AdminDocumentReviewTab({
                       />
                       <p className="text-xs text-muted-foreground mt-2">
                         PDF preview ·{" "}
-                        <a href={signedUrl} target="_blank" rel="noopener noreferrer" className="underline">
+                        <button type="button" onClick={() => openStorageDocument(signedUrl)} className="underline">
                           Open in new tab
-                        </a>
+                        </button>
                       </p>
                     </>
                   ) : (
@@ -406,9 +397,9 @@ export default function AdminDocumentReviewTab({
                         onError={() => setImageError(true)}
                       />
                       <p className="text-xs text-muted-foreground mt-2">
-                        <a href={signedUrl} target="_blank" rel="noopener noreferrer" className="underline">
+                        <button type="button" onClick={() => openStorageDocument(signedUrl)} className="underline">
                           Open in new tab
-                        </a>
+                        </button>
                       </p>
                     </>
                   )}

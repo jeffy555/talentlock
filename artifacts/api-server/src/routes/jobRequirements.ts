@@ -46,6 +46,12 @@ router.post("/job-requirements", async (req, res) => {
   if (!clerkId) { res.status(401).json({ error: "Unauthorized" }); return; }
   const parsed = CreateJobRequirementBody.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
+  if (parsed.data.endDate < parsed.data.startDate) {
+    res.status(400).json({
+      error: "End date must be on or after the start date. Please select the dates correctly.",
+    });
+    return;
+  }
   try {
     const [employer] = await db.select().from(employerProfilesTable).where(eq(employerProfilesTable.clerkId, clerkId)).limit(1);
     if (!employer) { res.status(400).json({ error: "Employer profile not found" }); return; }

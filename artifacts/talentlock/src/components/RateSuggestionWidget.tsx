@@ -7,6 +7,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Loader2, Sparkles } from "lucide-react";
 import { rateUnitLabel, paymentTypeToRateType, type RateType } from "@/lib/rateFormatUtils";
+import { hasEmployerGrowthFeatures } from "@/lib/planAccess";
 
 interface RateSuggestionWidgetProps {
   freelancerId: string;
@@ -57,7 +58,7 @@ export default function RateSuggestionWidget({
   const [aiData, setAiData] = useState<RateSuggestionResponse | null>(null);
   const [showAiRow, setShowAiRow] = useState(false);
 
-  const isStarter = userPlan === "employer_starter" || userPlan === "free";
+  const isStarter = !hasEmployerGrowthFeatures(userPlan);
   const unit = rateUnitLabel(paymentTypeToRateType(paymentType, rateType)).replace("/", "");
 
   const buildRequestBody = useCallback(

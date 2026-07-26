@@ -8,6 +8,7 @@ import {
   getUserSubscription,
   getUtcTokenResetDate,
 } from "../lib/subscriptionGating";
+import { hasEmployerGrowthFeatures } from "../lib/plans";
 
 const router = Router();
 
@@ -61,7 +62,7 @@ router.get("/token-usage/conversation/:conversationId", async (req, res) => {
     }
 
     const sub = await getUserSubscription(user.id);
-    if (sub.plan.id === "employer_starter") {
+    if (!hasEmployerGrowthFeatures(sub.plan.id)) {
       res.status(402).json({
         error: "Per-conversation breakdown requires Growth or Enterprise plan",
         code: "PLAN_LIMIT",

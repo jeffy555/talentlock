@@ -4,6 +4,7 @@ import { db } from "@workspace/db";
 import { usersTable, teamMembersTable } from "@workspace/db";
 import { eq, and } from "drizzle-orm";
 import { getUserSubscription } from "../lib/subscriptionGating";
+import { hasEmployerEnterpriseFeatures } from "../lib/plans";
 
 export type TeamMemberContext = typeof teamMembersTable.$inferSelect;
 
@@ -26,7 +27,7 @@ export async function requireEnterpriseEmployer(req: Request, res: Response): Pr
   }
 
   const sub = await getUserSubscription(internalUserId);
-  if (sub.plan.id !== "employer_enterprise") {
+  if (!hasEmployerEnterpriseFeatures(sub.plan.id)) {
     res.status(402).json({
       error: "Team accounts require Enterprise plan",
       code: "PLAN_LIMIT",

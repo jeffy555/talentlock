@@ -11,6 +11,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ChevronDown } from "lucide-react";
 import { CONVERSATION_BREAKDOWN_LAUNCH_DATE } from "@/lib/constants";
 import { formatMessageTime } from "@/lib/formatMessageTime";
+import { hasEmployerGrowthFeatures } from "@/lib/planAccess";
 
 interface ConversationTokenBreakdownProps {
   conversationId: number;
@@ -28,21 +29,22 @@ export default function ConversationTokenBreakdown({
   userPlan,
 }: ConversationTokenBreakdownProps) {
   const [expanded, setExpanded] = useState(false);
+  const canViewBreakdown = hasEmployerGrowthFeatures(userPlan);
 
   const { data: monthlyUsage } = useGetTokenUsageMe({
-    query: { enabled: userPlan !== "employer_starter" } as any,
+    query: { enabled: canViewBreakdown } as any,
   });
 
   const { data, isLoading, isError, refetch } = useGetTokenUsageConversationId(
     conversationId,
     {
       query: {
-        enabled: userPlan !== "employer_starter" && expanded,
+        enabled: canViewBreakdown && expanded,
       } as any,
     },
   );
 
-  if (userPlan === "employer_starter") {
+  if (!canViewBreakdown) {
     return (
       <div className="rounded-md border border-dashed border-slate-300 bg-slate-50 p-3">
         <p className="text-sm text-slate-500">

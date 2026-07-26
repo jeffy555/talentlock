@@ -19,6 +19,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ArrowLeft, BarChart3, Loader2 } from "lucide-react";
+import { hasEmployerEnterpriseFeatures } from "@/lib/planAccess";
 
 function formatMoney(amount: number): string {
   return `$${Math.round(amount).toLocaleString()}`;
@@ -188,7 +189,7 @@ function OpenJobsList({
 export default function TeamAnalytics() {
   const { data: user } = useGetMe();
   const { data: subscription } = useGetMySubscription({ query: { enabled: !!user } as any });
-  const isEnterprise = subscription?.plan?.id === "employer_enterprise";
+  const isEnterprise = hasEmployerEnterpriseFeatures(subscription?.plan?.id);
 
   const { data: teamData, isLoading: teamLoading } = useGetTeam({
     query: { enabled: !!user && isEnterprise, retry: false } as any,

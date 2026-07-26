@@ -1,6 +1,7 @@
 // Conversation ID source: AiMatch.tsx — active conversation tracked via selectedId state.
 
 import { useGetTokenUsageConversationId } from "@workspace/api-client-react";
+import { hasEmployerGrowthFeatures } from "@/lib/planAccess";
 
 interface ConversationTokenBadgeProps {
   conversationId: number;
@@ -13,13 +14,14 @@ export default function ConversationTokenBadge({
   isActive,
   userPlan,
 }: ConversationTokenBadgeProps) {
+  const canView = hasEmployerGrowthFeatures(userPlan);
   const { data } = useGetTokenUsageConversationId(conversationId, {
     query: {
-      enabled: isActive && userPlan !== "employer_starter",
+      enabled: isActive && canView,
     } as any,
   });
 
-  if (!isActive || userPlan === "employer_starter" || !data) return null;
+  if (!isActive || !canView || !data) return null;
 
   return (
     <span className="text-xs text-muted-foreground bg-slate-100 rounded px-1.5 py-0.5 ml-2 shrink-0">

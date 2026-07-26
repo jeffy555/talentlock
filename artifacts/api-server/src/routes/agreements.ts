@@ -20,6 +20,7 @@ import {
 } from "@workspace/api-zod";
 import OpenAI from "openai";
 import { checkTokenQuota, getUserSubscription } from "../lib/subscriptionGating";
+import { hasEmployerGrowthFeatures, hasEmployerEnterpriseFeatures } from "../lib/plans";
 import { logTokenUsage } from "../lib/tokenLogger";
 import {
   buildIndustrySection,
@@ -357,7 +358,7 @@ router.post("/agreements", async (req, res) => {
     const customClauses = parsed.data.customClauses ?? [];
     if (customClauses.length > 0) {
       const sub = await getUserSubscription(user.id);
-      if (sub.plan.id !== "employer_enterprise") {
+      if (!hasEmployerEnterpriseFeatures(sub.plan.id)) {
         res.status(403).json({
           error: "Custom clauses require Enterprise plan",
           code: "PLAN_LIMIT",
@@ -1111,7 +1112,7 @@ router.post("/agreements/:id/redline", async (req, res) => {
     }
 
     const sub = await getUserSubscription(user.id);
-    if (!["employer_growth", "employer_enterprise"].includes(sub.plan.id)) {
+    if (!hasEmployerGrowthFeatures(sub.plan.id)) {
       res.status(402).json({
         error: "Contract redlining requires Growth plan or higher",
         code: "PLAN_LIMIT",

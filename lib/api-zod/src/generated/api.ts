@@ -18,6 +18,8 @@ export const HealthCheckResponse = zod.object({
 /**
  * @summary Get current user profile
  */
+export const getMeResponseEmailMin = 5;
+
 export const getMeResponseCountryCodeDefault = `US`;
 export const getMeResponseCurrencyCodeDefault = `USD`;
 
@@ -25,7 +27,7 @@ export const GetMeResponse = zod.object({
   id: zod.number(),
   clerkId: zod.string(),
   role: zod.string().describe("freelancer or employer"),
-  email: zod.string(),
+  email: zod.string().email().min(getMeResponseEmailMin),
   name: zod.string(),
   avatarUrl: zod.string().nullish(),
   signatureImageUrl: zod
@@ -65,13 +67,17 @@ export const GetMeResponse = zod.object({
 /**
  * @summary Create or update current user profile
  */
+export const upsertMeBodyEmailMin = 5;
+
 export const UpsertMeBody = zod.object({
   role: zod.string().describe("freelancer or employer"),
-  email: zod.string(),
+  email: zod.string().email().min(upsertMeBodyEmailMin),
   name: zod.string(),
   avatarUrl: zod.string().nullish(),
   signatureImageUrl: zod.string().nullish(),
 });
+
+export const upsertMeResponseEmailMin = 5;
 
 export const upsertMeResponseCountryCodeDefault = `US`;
 export const upsertMeResponseCurrencyCodeDefault = `USD`;
@@ -80,7 +86,7 @@ export const UpsertMeResponse = zod.object({
   id: zod.number(),
   clerkId: zod.string(),
   role: zod.string().describe("freelancer or employer"),
-  email: zod.string(),
+  email: zod.string().email().min(upsertMeResponseEmailMin),
   name: zod.string(),
   avatarUrl: zod.string().nullish(),
   signatureImageUrl: zod
@@ -123,6 +129,8 @@ export const UpsertMeResponse = zod.object({
 export const patchOnboardingStepBodyCountryCodeMin = 2;
 export const patchOnboardingStepBodyCountryCodeMax = 2;
 
+export const patchOnboardingStepBodyEmailMin = 5;
+
 export const PatchOnboardingStepBody = zod.object({
   onboardingRole: zod.enum(["freelancer", "employer"]),
   onboardingStep: zod.enum([
@@ -143,10 +151,12 @@ export const PatchOnboardingStepBody = zod.object({
     .string()
     .nullish()
     .describe("State\/province code when required by country"),
-  email: zod.string(),
+  email: zod.string().email().min(patchOnboardingStepBodyEmailMin),
   name: zod.string(),
   avatarUrl: zod.string().nullish(),
 });
+
+export const patchOnboardingStepResponseEmailMin = 5;
 
 export const patchOnboardingStepResponseCountryCodeDefault = `US`;
 export const patchOnboardingStepResponseCurrencyCodeDefault = `USD`;
@@ -155,7 +165,7 @@ export const PatchOnboardingStepResponse = zod.object({
   id: zod.number(),
   clerkId: zod.string(),
   role: zod.string().describe("freelancer or employer"),
-  email: zod.string(),
+  email: zod.string().email().min(patchOnboardingStepResponseEmailMin),
   name: zod.string(),
   avatarUrl: zod.string().nullish(),
   signatureImageUrl: zod
@@ -206,6 +216,8 @@ export const PatchMyLocationBody = zod.object({
   stateCode: zod.string().nullish(),
 });
 
+export const patchMyLocationResponseEmailMin = 5;
+
 export const patchMyLocationResponseCountryCodeDefault = `US`;
 export const patchMyLocationResponseCurrencyCodeDefault = `USD`;
 
@@ -213,7 +225,7 @@ export const PatchMyLocationResponse = zod.object({
   id: zod.number(),
   clerkId: zod.string(),
   role: zod.string().describe("freelancer or employer"),
-  email: zod.string(),
+  email: zod.string().email().min(patchMyLocationResponseEmailMin),
   name: zod.string(),
   avatarUrl: zod.string().nullish(),
   signatureImageUrl: zod

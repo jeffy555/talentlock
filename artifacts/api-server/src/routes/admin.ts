@@ -822,19 +822,21 @@ router.get("/admin/documents", requireAdmin, async (req, res) => {
       .limit(pageSize)
       .offset(offset);
 
-    res.json({
-      data: rows.map((row) => ({
+    const data = await Promise.all(rows.map(async (row) => ({
         id: row.id,
         freelancerId: row.freelancerId,
         documentType: row.documentType,
         fileUrl: row.fileUrl,
+        signedFileUrl: await resolveStorageReadUrl(row.fileUrl, 15 * 60),
         aiNotes: row.aiNotes,
         confidence: row.confidence,
         updatedAt: row.updatedAt.toISOString(),
         freelancerName: row.freelancerName,
         freelancerEmail: row.freelancerEmail,
         isPdf: isPdfStoragePath(row.fileUrl),
-      })),
+      })));
+    res.json({
+      data,
       total: totalRow?.total ?? 0,
     });
   } catch (err) {
@@ -865,6 +867,30 @@ router.get("/admin/documents/:id/signed-url", requireAdmin, async (req, res) => 
     });
   } catch (err) {
     req.log.error({ err, documentId: id }, "Failed to generate admin document signed URL");
+    res.status(500).json({ error: "Failed to generate signed URL" });
+  }
+});
+
+router.get("/admin/documents/:id/view-url", requireAdmin, async (req, res) => {
+  const id = parseInt(Array.isArray(req.params.id) ? req.params.id[0] : req.params.id, 10);
+  if (Number.isNaN(id)) {
+    res.status(400).json({ error: "Invalid document ID" });
+    return;
+  }
+  try {
+    const [doc] = await db.select({ fileUrl: documentsTable.fileUrl })
+      .from(documentsTable).where(eq(documentsTable.id, id)).limit(1);
+    if (!doc) {
+      res.status(404).json({ error: "Document not found" });
+      return;
+    }
+    res.json({
+      signedUrl: await resolveStorageReadUrl(doc.fileUrl, 15 * 60),
+      expiresInSeconds: 15 * 60,
+      isPdf: isPdfStoragePath(doc.fileUrl),
+    });
+  } catch (err) {
+    req.log.error({ err, documentId: id }, "Failed to generate admin document view URL");
     res.status(500).json({ error: "Failed to generate signed URL" });
   }
 });

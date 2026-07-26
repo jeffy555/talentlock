@@ -22,6 +22,7 @@ import {
   type DimensionVerdict,
 } from "@/lib/contractHealthUtils";
 import { CheckCircle2, Info, Loader2, Sparkles } from "lucide-react";
+import { hasEmployerGrowthFeatures } from "@/lib/planAccess";
 
 interface ContractHealthScoreCardProps {
   agreementId: number;
@@ -116,7 +117,7 @@ export default function ContractHealthScoreCard({
 
   const showRedlineNudge =
     userRole === "employer" &&
-    (userPlan === "employer_growth" || userPlan === "employer_enterprise") &&
+    hasEmployerGrowthFeatures(userPlan) &&
     cardState === "loaded" &&
     scoreData != null &&
     scoreData.totalScore < 75;

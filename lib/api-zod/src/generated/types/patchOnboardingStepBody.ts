@@ -22,6 +22,7 @@ export interface PatchOnboardingStepBody {
    * @nullable
    */
   stateCode?: string | null;
+  /** @minLength 5 */
   email: string;
   name: string;
   /** @nullable */

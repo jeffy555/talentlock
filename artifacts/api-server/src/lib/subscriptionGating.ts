@@ -1,7 +1,7 @@
 import { db } from "@workspace/db";
 import { subscriptionsTable, bookingsTable, jobRequirementsTable, jobInterestsTable, freelancerProfilesTable, tokenUsage } from "@workspace/db";
 import { eq, and, gte, inArray, sql } from "drizzle-orm";
-import { getPlan, type PlanDef, type PlanId } from "./plans";
+import { getPlan, PREMIUM_FEATURES_FREE, type PlanDef, type PlanId } from "./plans";
 import { getSystemUserId, isSystemUserId } from "./systemUser";
 import { TOKEN_FEATURES, type TokenFeature } from "./tokenLogger";
 
@@ -75,6 +75,10 @@ function planNeededForTokenLimit(planId: PlanId): string {
 export type TokenQuotaResult = { allowed: true } | { allowed: false; planNeeded: string };
 
 export async function checkTokenQuota(_db: typeof db, userId: number): Promise<TokenQuotaResult> {
+  if (PREMIUM_FEATURES_FREE) {
+    return { allowed: true };
+  }
+
   if (isSystemUserId(userId)) {
     return { allowed: true };
   }
@@ -148,6 +152,7 @@ export async function getCombinedUsage(opts: { employerProfileId?: number | null
 export type GateResult = { allowed: true } | { allowed: false; reason: string; planNeeded: string };
 
 export function checkLimit(plan: PlanDef, key: keyof PlanDef["limits"], current: number): GateResult {
+  if (PREMIUM_FEATURES_FREE) return { allowed: true };
   const limit = plan.limits[key];
   if (limit === null) return { allowed: true };
   if (current < limit) return { allowed: true };
