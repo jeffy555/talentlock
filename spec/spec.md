@@ -521,6 +521,25 @@ The `.cursor/rules/talentlock.mdc` file at the repo root enforces these rules au
 
 ---
 
+## Ad-hoc platform fixes (merged via PR #16 — 2026-07-26)
+
+These landed as product hardening outside a dedicated feature folder. Canonical detail lives in `project.md`; feature specs below carry the binding notes agents must respect.
+
+| Fix | Spec / doc home | Notes |
+|---|---|---|
+| Job start/end date validation | `spec/JobDescAssistant/plan.md` + `project.md` feature 46 | Form + `POST` job create reject `end < start` |
+| Enriched discovery meeting invite email | `spec/aimeetingdebrief/plan.md` | UTC time, meeting link, accept/decline CTA (in-app stays short) |
+| Mandatory registration email | `spec/onboarding-scaffolding/plan.md` | Clerk primary email required; `isValidEmail` on onboarding + `PUT /users/me` |
+| Country/State selectors | `spec/multi-currency-location/plan.md` + onboarding scaffolding | Shared `CountryStateFields` — no free-text country/state |
+| Demo Login panel removed | `spec/AvailabilityCalendar/validation.md` | `/sign-in` panel gone; automation may still call `POST /api/demo/sign-in-token` |
+| Admin document preview / `about:blank` | `spec/document-verification/plan.md` | Same-origin proxy + open blank tab without `noopener`, then navigate |
+| TalentSearch DM on match | `spec/cruise-mode-dm-delivery/` + `project.md` TalentSearch notes | Already on main before PR #16; live `sent` uses `sendAutomatedOutreachMessage` |
+| **Temporary** `PREMIUM_FEATURES_FREE` | `project.md` Subscription Plans | Growth/Pro/Enterprise feature gates, quotas, and token limits open for all plans; Pricing Start Free. Flip off before paid launch (`plans.ts` + `planAccess.ts`) |
+
+> When `PREMIUM_FEATURES_FREE` is on, plan-gated upgrade CTAs in Team / Redline / Debrief / Brief / Pricing specs are **suspended for testing** — restore paid gating when the flag is flipped to `false`.
+
+---
+
 ## Security & Production Readiness Review — Status (2026-06-09)
 
 Tracking the findings from the TalentLock Security & Production Readiness review (`TalentLock-Security-Hardening.docx`):

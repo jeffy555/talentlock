@@ -351,3 +351,5 @@ Employer starter: hide sections 3–5 with upgrade CTA.
 - Manual regen debounced 24h via `debriefRegeneratedAt` — auto-trigger on first completion is not debounced
 - GDPR: nullify `debriefContent` + timestamps on account deletion for participant bookings
 - Agreement `content` field must NEVER be passed to the debrief prompt
+
+> **Testing note:** While `PREMIUM_FEATURES_FREE` is on, employer starter UI no longer hides debrief sections 3–5 behind a Growth upgrade CTA. Restore UI plan gating when the flag is flipped off.

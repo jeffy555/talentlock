@@ -375,3 +375,5 @@ If no improvements are needed, return an empty array: []
 | Phase 1 | Database — `agreements.status` column + backfill | ⬜ Not started |
 | Phase 2 | Backend — templates, redlining endpoints, Vault guard, OpenAPI, codegen | ⬜ Not started |
 | Phase 3 | Frontend — industry selector, custom clauses, redlining UI, freelancer notice | ⬜ Not started |
+
+> **Testing note:** While `PREMIUM_FEATURES_FREE` is on, Growth redlining and Enterprise custom-clause gates are open for all employer plans. Restore plan checks when the flag is flipped off (`hasEmployerGrowthFeatures` / `hasEmployerEnterpriseFeatures`).

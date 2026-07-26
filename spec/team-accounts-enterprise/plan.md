@@ -189,3 +189,5 @@ await db.update(teamMembers).set({
 | B — Phase 3 | Frontend — shared shortlist in Talent Vault | ⬜ Not started |
 | C — Phase 1 | Backend — /api/team/analytics | ⬜ Not started |
 | C — Phase 2 | Frontend — /team/analytics page | ⬜ Not started |
+
+> **Testing note:** While `PREMIUM_FEATURES_FREE` is on (`project.md` / `plans.ts`), Enterprise team gates are open for all employer plans and Pricing offers Enterprise as Start Free. Re-enable paid Enterprise gating when the flag is flipped off.
