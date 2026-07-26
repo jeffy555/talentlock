@@ -382,3 +382,5 @@ Use the exact prompt from Q6 above.
 | Phase 1 | Type check — add `job_description_assistant` if missing | ⬜ Not started |
 | Phase 2 | Backend — endpoint + OpenAPI + codegen (skip if already done) | ⬜ Not started |
 | Phase 3 | Frontend — drawer component + page integration | ⬜ Not started |
+
+> Job form validation note: posting is blocked when the `yyyy-MM-dd` end date precedes the start date; the create API enforces the same rule.

@@ -17,6 +17,11 @@ import { rateUnitLabel } from "@/lib/rateFormatUtils";
 import type { ProfessionCategory, RateType } from "@workspace/api-client-react";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
 
+function validateTimeline(start: string, end: string): string | null {
+  if (!start || !end || end >= start) return null;
+  return "Estimated end date must be on or after the start date.";
+}
+
 export default function PostJob() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
@@ -32,6 +37,7 @@ export default function PostJob() {
   const [budget, setBudget] = useState("");
   const [startDate, setStartDate] = useState(format(new Date(), "yyyy-MM-dd"));
   const [endDate, setEndDate] = useState("");
+  const [dateError, setDateError] = useState<string | null>(null);
   const [isAssistantOpen, setIsAssistantOpen] = useState(false);
   const [professionCategory, setProfessionCategory] = useState<ProfessionCategory>("technology");
   const [rateType, setRateType] = useState<RateType>("hourly");
@@ -45,6 +51,12 @@ export default function PostJob() {
 
     if (!endDate) {
       toast({ title: "Validation Error", description: "Please provide an end date.", variant: "destructive" });
+      return;
+    }
+    const timelineError = validateTimeline(startDate, endDate);
+    if (timelineError) {
+      setDateError(timelineError);
+      toast({ title: "Validation Error", description: timelineError, variant: "destructive" });
       return;
     }
 
@@ -301,7 +313,11 @@ export default function PostJob() {
                   id="startDate" 
                   type="date" 
                   value={startDate} 
-                  onChange={e => setStartDate(e.target.value)} 
+                  onChange={e => {
+                    const nextStart = e.target.value;
+                    setStartDate(nextStart);
+                    setDateError(validateTimeline(nextStart, endDate));
+                  }}
                   className="h-11 bg-secondary/20 shadow-sm border-border"
                   required 
                 />
@@ -312,10 +328,16 @@ export default function PostJob() {
                   id="endDate" 
                   type="date" 
                   value={endDate} 
-                  onChange={e => setEndDate(e.target.value)} 
+                  min={startDate}
+                  onChange={e => {
+                    const nextEnd = e.target.value;
+                    setEndDate(nextEnd);
+                    setDateError(validateTimeline(startDate, nextEnd));
+                  }}
                   className="h-11 bg-secondary/20 shadow-sm border-border"
                   required 
                 />
+                {dateError && <p className="text-sm text-destructive">{dateError}</p>}
               </div>
             </CardContent>
           </Card>

@@ -350,3 +350,5 @@ export type TokenFeature =
 | Phase 2 | Backend — upload route, review pipeline, endpoints, OpenAPI, codegen | ⬜ Not started |
 | Phase 3 | Frontend — freelancer profile, employer views, Talent Vault filter | ⬜ Not started |
 | Phase 4 | Admin — document review queue tab | ⬜ Not started |
+
+> Admin preview note: document queues return short-lived signed file URLs. Browser previews route storage URLs through the same-origin proxy; new-tab fallbacks open `about:blank`, set `location.href`, then clear `opener`.

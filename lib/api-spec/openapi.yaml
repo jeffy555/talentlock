@@ -4298,6 +4298,8 @@ components:
           description: "freelancer or employer"
         email:
           type: string
+          format: email
+          minLength: 5
         name:
           type: string
         avatarUrl:
@@ -4430,6 +4432,8 @@ components:
           description: "freelancer or employer"
         email:
           type: string
+          format: email
+          minLength: 5
         name:
           type: string
         avatarUrl:
@@ -4460,6 +4464,8 @@ components:
           description: State/province code when required by country
         email:
           type: string
+          format: email
+          minLength: 5
         name:
           type: string
         avatarUrl:

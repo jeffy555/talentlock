@@ -11,6 +11,7 @@ export interface User {
   clerkId: string;
   /** freelancer or employer */
   role: string;
+  /** @minLength 5 */
   email: string;
   name: string;
   /** @nullable */

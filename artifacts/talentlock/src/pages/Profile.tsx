@@ -4,6 +4,7 @@ import {
   useGetMyEmployerProfile, useUpsertMyEmployerProfile,
   useListMyPortfolio, useCreatePortfolioItem, useUpdatePortfolioItem, useDeletePortfolioItem,
   useGetMyFreelancerProfile, usePatchNotificationPreferences, useGetDocumentsMe,
+  useListCountries, usePatchMyLocation,
   getGetMyEmployerProfileQueryKey,
 } from "@workspace/api-client-react";
 import { CompletenessBanner } from "@/components/CompletenessBanner";
@@ -31,7 +32,7 @@ import { resolveVerificationLevel } from "@/lib/verification";
 import { useQueryClient } from "@tanstack/react-query";
 import TeachingDetailsSection, { emptyTeachingDetails, type TeachingDetailsValues } from "@/components/onboarding/TeachingDetailsSection";
 import EmployerVerificationSection from "@/components/employer/EmployerVerificationSection";
-import { LocationSettingsCard } from "@/components/profile/LocationSettingsCard";
+import { CountryStateFields, formatLocationLabel, isLocationComplete } from "@/components/onboarding/CountryStateFields";
 import { COMPANY_SIZE_OPTIONS } from "@/lib/employerDocuments";
 
 const BASE = import.meta.env.BASE_URL ?? "/";
@@ -325,6 +326,7 @@ export default function Profile() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { data: dbUser, refetch: refetchUser } = useGetMe();
+  const { data: countriesData } = useListCountries();
 
   const isFreelancer = dbUser?.role === "freelancer";
   const isEmployer = dbUser?.role === "employer";
@@ -348,6 +350,7 @@ export default function Profile() {
   const updateFreelancer = useUpdateMyFreelancerProfile();
   const upsertEmployer = useUpsertMyEmployerProfile();
   const patchNotificationPrefs = usePatchNotificationPreferences();
+  const patchLocation = usePatchMyLocation();
 
   const [emailNotificationsEnabled, setEmailNotificationsEnabled] = useState(
     () => (dbUser as { emailNotificationsEnabled?: boolean } | undefined)?.emailNotificationsEnabled ?? true,
@@ -379,6 +382,8 @@ export default function Profile() {
   const [availableFrom, setAvailableFrom] = useState(fp?.availableFrom ? fp.availableFrom.substring(0, 10) : "");
   const [availabilityNote, setAvailabilityNote] = useState(fp?.availabilityNote ?? "");
   const [teachingDetails, setTeachingDetails] = useState<TeachingDetailsValues>(emptyTeachingDetails());
+  const [countryCode, setCountryCode] = useState(dbUser?.countryCode ?? "US");
+  const [stateCode, setStateCode] = useState<string | null>(dbUser?.stateCode ?? null);
 
   const [companyName, setCompanyName] = useState(employerProfile?.companyName ?? "");
   const [industry, setIndustry] = useState(employerProfile?.industry ?? "");
@@ -395,6 +400,11 @@ export default function Profile() {
 
   const handleSaveFreelancer = async () => {
     try {
+      if (!isLocationComplete(countriesData?.countries ?? [], countryCode, stateCode)) {
+        toast({ title: "Location required", description: "Select the required country and state.", variant: "destructive" });
+        return;
+      }
+      await patchLocation.mutateAsync({ data: { countryCode, stateCode } });
       const fp3 = freelancerProfile as typeof freelancerProfile & { professionCategory?: string; educationProfessionType?: string | null };
       const teachingPayload = fp3?.professionCategory === "education"
         ? {
@@ -410,7 +420,7 @@ export default function Profile() {
               : undefined,
             researchPublications: teachingDetails.researchPublications || undefined,
             preferredTeachingMode: teachingDetails.preferredTeachingMode ?? undefined,
-            location: teachingDetails.location || undefined,
+            location: formatLocationLabel(countriesData?.countries ?? [], countryCode, stateCode) || teachingDetails.location || undefined,
           }
         : {};
 
@@ -428,6 +438,7 @@ export default function Profile() {
       });
       toast({ title: "Profile updated", description: "Your freelancer profile has been saved." });
       refetchFreelancer();
+      refetchUser();
     } catch {
       toast({ title: "Update failed", variant: "destructive" });
     }
@@ -435,6 +446,11 @@ export default function Profile() {
 
   const handleSaveEmployer = async () => {
     try {
+      if (!isLocationComplete(countriesData?.countries ?? [], countryCode, stateCode)) {
+        toast({ title: "Location required", description: "Select the required country and state.", variant: "destructive" });
+        return;
+      }
+      await patchLocation.mutateAsync({ data: { countryCode, stateCode } });
       const saved = await upsertEmployer.mutateAsync({
         data: {
           companyName,
@@ -447,6 +463,7 @@ export default function Profile() {
       queryClient.setQueryData(getGetMyEmployerProfileQueryKey(), saved);
       toast({ title: "Profile updated", description: "Your company profile has been saved." });
       refetchEmployer();
+      refetchUser();
     } catch {
       toast({ title: "Update failed", variant: "destructive" });
     }
@@ -461,6 +478,12 @@ export default function Profile() {
       setEmailNotificationsEnabled(dbUser.emailNotificationsEnabled);
     }
   }, [dbUser?.emailNotificationsEnabled]);
+
+  useEffect(() => {
+    if (!dbUser) return;
+    setCountryCode(dbUser.countryCode ?? "US");
+    setStateCode(dbUser.stateCode ?? null);
+  }, [dbUser?.countryCode, dbUser?.stateCode]);
 
   useEffect(() => {
     if (!employerProfile) return;
@@ -578,16 +601,6 @@ export default function Profile() {
         </CardContent>
       </Card>
 
-      {dbUser && (isFreelancer || isEmployer) && (
-        <LocationSettingsCard
-          countryCode={dbUser.countryCode ?? "US"}
-          stateCode={dbUser.stateCode ?? null}
-          currencyCode={dbUser.currencyCode ?? "USD"}
-          role={isFreelancer ? "freelancer" : "employer"}
-          onUpdated={() => refetchUser()}
-        />
-      )}
-
       {isFreelancer && freelancerProfile && (
         <>
         <Card>
@@ -618,6 +631,14 @@ export default function Profile() {
               <Label>Skills (comma separated)</Label>
               <Input value={skills} onChange={e => setSkills(e.target.value)} placeholder="React, TypeScript, Node.js, PostgreSQL" />
             </div>
+            <CountryStateFields
+              countries={countriesData?.countries ?? []}
+              countryCode={countryCode}
+              stateCode={stateCode}
+              onCountryChange={setCountryCode}
+              onStateChange={setStateCode}
+              disabled={patchLocation.isPending}
+            />
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2" id="rate">
                 <Label>Hourly Rate ($)</Label>
@@ -764,6 +785,14 @@ export default function Profile() {
               <Label>Website</Label>
               <Input type="url" value={website} onChange={e => setWebsite(e.target.value)} placeholder="https://yourcompany.com" />
             </div>
+            <CountryStateFields
+              countries={countriesData?.countries ?? []}
+              countryCode={countryCode}
+              stateCode={stateCode}
+              onCountryChange={setCountryCode}
+              onStateChange={setStateCode}
+              disabled={patchLocation.isPending}
+            />
             <Button onClick={handleSaveEmployer} disabled={upsertEmployer.isPending}>
               {upsertEmployer.isPending ? "Saving..." : "Save Changes"}
             </Button>

@@ -28,6 +28,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import TeachingDetailsSection, { emptyTeachingDetails, type TeachingDetailsValues } from "@/components/onboarding/TeachingDetailsSection";
 import { LocationStep } from "@/components/onboarding/LocationStep";
 import { EmployerDocumentOnboardingStep } from "@/components/onboarding/EmployerDocumentOnboardingStep";
+import { CountryStateFields, formatLocationLabel, isLocationComplete } from "@/components/onboarding/CountryStateFields";
 import { cn } from "@/lib/utils";
 import { COMPANY_SIZE_OPTIONS } from "@/lib/employerDocuments";
 import type { EducationProfessionType, ProfessionCategory, PatchOnboardingStepBodyOnboardingStep } from "@workspace/api-client-react";
@@ -67,6 +68,10 @@ function clearIntendedRole() {
   localStorage.removeItem("talentlock_intended_role");
 }
 
+function hasValidPrimaryEmail(email: string | null | undefined): email is string {
+  return !!email && email.length >= 5 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
 const ONBOARDING_STEP_ORDER: Record<OnboardingUiStep, number> = {
   role: 0,
   profession_category: 1,
@@ -92,6 +97,7 @@ export default function Onboarding() {
   const upsertEmployerProfile = useUpsertMyEmployerProfile();
   const patchOnboardingStep = usePatchOnboardingStep();
   const { data: countriesData } = useListCountries();
+  const countries = countriesData?.countries ?? [];
 
   const [step, setStep] = useState<OnboardingUiStep>("role");
   const [role, setRole] = useState<"freelancer" | "employer" | null>(null);
@@ -127,13 +133,16 @@ export default function Onboarding() {
     if (data.hourlyRate) setHourlyRate(String(data.hourlyRate));
 
     // Auto-create the profile immediately using the parsed data directly
-    if (!user) return;
+    if (!user || !hasValidPrimaryEmail(user.primaryEmailAddress?.emailAddress)) {
+      toast({ title: "Email required", description: "Add a valid primary email address to continue.", variant: "destructive" });
+      return;
+    }
     setAutoCreating(true);
     try {
       await upsertMe.mutateAsync({
         data: {
           role: "freelancer",
-          email: user.primaryEmailAddress?.emailAddress || "",
+          email: user.primaryEmailAddress.emailAddress,
           name: user.fullName || "",
           avatarUrl: user.imageUrl,
         },
@@ -251,7 +260,22 @@ export default function Onboarding() {
     return null;
   }
 
+  if (!hasValidPrimaryEmail(user?.primaryEmailAddress?.emailAddress)) {
+    return (
+      <div className="mx-auto max-w-md py-16 text-center">
+        <h1 className="text-2xl font-bold">Email address required</h1>
+        <p className="mt-3 text-muted-foreground">
+          Add a valid primary email address to your account before completing registration.
+        </p>
+      </div>
+    );
+  }
+
   const handleRoleSelection = async (selectedRole: "freelancer" | "employer") => {
+    if (!hasValidPrimaryEmail(user?.primaryEmailAddress?.emailAddress)) {
+      toast({ title: "Email required", description: "Add a valid primary email address to continue.", variant: "destructive" });
+      return;
+    }
     const nextStep: OnboardingUiStep =
       selectedRole === "freelancer" ? "profession_category" : "location";
     setRole(selectedRole);
@@ -285,18 +309,26 @@ export default function Onboarding() {
         : undefined,
       researchPublications: teachingDetails.researchPublications || undefined,
       preferredTeachingMode: teachingDetails.preferredTeachingMode ?? undefined,
-      location: teachingDetails.location || undefined,
+      location: formatLocationLabel(countries, countryCode, stateCode) || teachingDetails.location || undefined,
     };
   };
 
   const handleFreelancerSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user) return;
+    if (!user || !hasValidPrimaryEmail(user.primaryEmailAddress?.emailAddress)) {
+      toast({ title: "Email required", description: "Add a valid primary email address to continue.", variant: "destructive" });
+      return;
+    }
+    if (!isLocationComplete(countries, countryCode, stateCode)) {
+      toast({ title: "Location required", description: "Select the required country and state.", variant: "destructive" });
+      return;
+    }
     try {
+      await persistOnboardingStep("freelancer", "freelancer-details", { countryCode, stateCode });
       await upsertMe.mutateAsync({
         data: {
           role: "freelancer",
-          email: user.primaryEmailAddress?.emailAddress || "",
+          email: user.primaryEmailAddress.emailAddress,
           name: user.fullName || "",
           avatarUrl: user.imageUrl,
         },
@@ -326,7 +358,14 @@ export default function Onboarding() {
 
   const handleEmployerSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user) return;
+    if (!user || !hasValidPrimaryEmail(user.primaryEmailAddress?.emailAddress)) {
+      toast({ title: "Email required", description: "Add a valid primary email address to continue.", variant: "destructive" });
+      return;
+    }
+    if (!isLocationComplete(countries, countryCode, stateCode)) {
+      toast({ title: "Location required", description: "Select the required country and state.", variant: "destructive" });
+      return;
+    }
     const employerRole = role ?? dbUser?.onboardingRole;
     if (employerRole !== "employer") {
       toast({
@@ -339,7 +378,7 @@ export default function Onboarding() {
     setEmployerProfileSubmitting(true);
     try {
       // Create/update the pending user row before employer profile (fixes first-attempt 400)
-      await persistOnboardingStep("employer", "employer-details");
+      await persistOnboardingStep("employer", "employer-details", { countryCode, stateCode });
       const savedProfile = await upsertEmployerProfile.mutateAsync({
         data: {
           companyName,
@@ -365,13 +404,16 @@ export default function Onboarding() {
   };
 
   const handleEmployerFinish = async () => {
-    if (!user) return;
+    if (!user || !hasValidPrimaryEmail(user.primaryEmailAddress?.emailAddress)) {
+      toast({ title: "Email required", description: "Add a valid primary email address to finish registration.", variant: "destructive" });
+      return;
+    }
     setEmployerFinishSubmitting(true);
     try {
       await upsertMe.mutateAsync({
         data: {
           role: "employer",
-          email: user.primaryEmailAddress?.emailAddress || "",
+          email: user.primaryEmailAddress.emailAddress,
           name: user.fullName || "",
           avatarUrl: user.imageUrl,
         },
@@ -603,7 +645,7 @@ export default function Onboarding() {
       {step === "location" && role && (
         <LocationStep
           role={role}
-          countries={countriesData?.countries ?? []}
+          countries={countries}
           countryCode={countryCode}
           stateCode={stateCode}
           onCountryChange={(code) => {
@@ -696,6 +738,14 @@ export default function Onboarding() {
                 <Label htmlFor="skills">Skills (comma separated)</Label>
                 <Input id="skills" placeholder="React, TypeScript, Node.js" value={skills} onChange={(e) => setSkills(e.target.value)} required />
               </div>
+              <CountryStateFields
+                countries={countries}
+                countryCode={countryCode}
+                stateCode={stateCode}
+                onCountryChange={setCountryCode}
+                onStateChange={setStateCode}
+                disabled={countries.length === 0}
+              />
               {professionCategory === "education" && (
                 <TeachingDetailsSection
                   educationProfessionType={educationProfessionType}
@@ -778,6 +828,14 @@ export default function Onboarding() {
                 <Label htmlFor="description">Company Description</Label>
                 <Textarea id="description" placeholder="Briefly describe what your company does..." value={description} onChange={(e) => setDescription(e.target.value)} required />
               </div>
+              <CountryStateFields
+                countries={countries}
+                countryCode={countryCode}
+                stateCode={stateCode}
+                onCountryChange={setCountryCode}
+                onStateChange={setStateCode}
+                disabled={countries.length === 0}
+              />
             </CardContent>
             <CardFooter className="flex justify-between">
               <Button type="button" variant="outline" onClick={() => setStep("location")}>Back</Button>

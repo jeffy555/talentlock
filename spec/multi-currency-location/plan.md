@@ -413,3 +413,4 @@ Dashboard formatters use freelancer's `currencyCode`.
 - `formatRate()` third arg is ISO 4217 code in new call sites; `'$'` legacy still works
 - `GET /api/countries` and `GET /api/exchange-rates` are public (no auth)
 - Existing users default to `US`/`USD` — zero behaviour change until they set country
+- Shared `CountryStateFields` drives Country + State selects on the onboarding location step, teaching/tech detail forms, and `/profile` location editors — do not reintroduce free-text location inputs for country/state

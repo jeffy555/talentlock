@@ -435,3 +435,4 @@ function calculatePercentile(rate: number, median: number): number {
 > - Freelancer rate from `hourlyRate`/`dailyRate` per `paymentPreference`; `getMarketMedian`/`getEmployerHistoricalAvg` return `number | null`.
 > - Tokens charged to the employer's **user** id via `userIdFromEmployerProfileId`; notification type `meeting_brief_ready` added; email via `sendNotificationEmailAsync`.
 > - Generated hooks: `useGenerateMeetingBrief` (operationId `generateMeetingBrief`) and existing `useGetMeeting`.
+> - Discovery-request notifications remain concise in-app; their email invite includes the UTC scheduled time, the meeting link when available, and an accept/decline CTA.

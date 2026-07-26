@@ -9,6 +9,7 @@
 export interface UpsertUserBody {
   /** freelancer or employer */
   role: string;
+  /** @minLength 5 */
   email: string;
   name: string;
   /** @nullable */

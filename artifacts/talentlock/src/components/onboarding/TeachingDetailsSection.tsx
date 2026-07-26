@@ -165,15 +165,6 @@ export default function TeachingDetailsSection({
           </RadioGroup>
         </div>
 
-        <div className="space-y-2">
-          <Label>Location</Label>
-          <Input
-            value={values.location}
-            onChange={(e) => set("location", e.target.value)}
-            placeholder="e.g. Manchester, UK"
-          />
-        </div>
-
         {educationProfessionType === "researcher" && (
           <div className="space-y-2">
             <Label>ORCID / Google Scholar profile (optional)</Label>
