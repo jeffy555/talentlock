@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useLocation } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -140,8 +140,8 @@ export default function Onboarding() {
     if (data.hourlyRate) setHourlyRate(String(data.hourlyRate));
 
     // Auto-create the profile immediately using the parsed data directly
-    if (!user || !hasValidPrimaryEmail(user.primaryEmailAddress?.emailAddress)) {
-      toast({ title: "Email required", description: "Add a valid primary email address to continue.", variant: "destructive" });
+    if (!user || !hasValidPrimaryEmail(contactEmail.trim())) {
+      toast({ title: "Email required", description: "Enter a valid contact email to continue.", variant: "destructive" });
       return;
     }
     if (!isLocationComplete(countries, countryCode, stateCode)) {
@@ -178,6 +178,10 @@ export default function Onboarding() {
     }
   };
 
+  // Contact email — required for both roles; used for meeting invites / calendar guests
+  const [contactEmail, setContactEmail] = useState("");
+  const contactEmailSeeded = useRef(false);
+
   // Employer fields
   const [companyName, setCompanyName] = useState("");
   const [industry, setIndustry] = useState("");
@@ -204,6 +208,19 @@ export default function Onboarding() {
     setCompanySize(existingEmployerProfile.companySize ?? "");
     setDescription(existingEmployerProfile.description ?? "");
   }, [existingEmployerProfile]);
+
+  useEffect(() => {
+    if (contactEmailSeeded.current) return;
+    const fromDb = dbUser?.email;
+    const fromClerk = user?.primaryEmailAddress?.emailAddress;
+    const seed =
+      (hasValidPrimaryEmail(fromDb) ? fromDb : null) ||
+      (hasValidPrimaryEmail(fromClerk) ? fromClerk : null) ||
+      "";
+    if (!seed) return;
+    setContactEmail(seed);
+    contactEmailSeeded.current = true;
+  }, [dbUser?.email, user?.primaryEmailAddress?.emailAddress]);
 
   useEffect(() => {
     const intended = getIntendedRole();
@@ -233,11 +250,15 @@ export default function Onboarding() {
     location?: { countryCode: string; stateCode: string | null },
   ) => {
     if (!user) return;
+    const email =
+      (hasValidPrimaryEmail(contactEmail.trim()) ? contactEmail.trim() : null) ||
+      user.primaryEmailAddress?.emailAddress ||
+      "";
     await patchOnboardingStep.mutateAsync({
       data: {
         onboardingRole,
         onboardingStep: toApiOnboardingStep(nextStep),
-        email: user.primaryEmailAddress?.emailAddress || "",
+        email,
         name: user.fullName || "",
         avatarUrl: user.imageUrl ?? null,
         ...(location
@@ -324,8 +345,8 @@ export default function Onboarding() {
 
   const handleFreelancerSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user || !hasValidPrimaryEmail(user.primaryEmailAddress?.emailAddress)) {
-      toast({ title: "Email required", description: "Add a valid primary email address to continue.", variant: "destructive" });
+    if (!user || !hasValidPrimaryEmail(contactEmail.trim())) {
+      toast({ title: "Email required", description: "Enter a valid contact email to continue.", variant: "destructive" });
       return;
     }
     if (!isLocationComplete(countries, countryCode, stateCode)) {
@@ -363,8 +384,8 @@ export default function Onboarding() {
   };
 
   const handleFreelancerFinish = async () => {
-    if (!user || !hasValidPrimaryEmail(user.primaryEmailAddress?.emailAddress)) {
-      toast({ title: "Email required", description: "Add a valid primary email address to finish registration.", variant: "destructive" });
+    if (!user || !hasValidPrimaryEmail(contactEmail.trim())) {
+      toast({ title: "Email required", description: "Enter a valid contact email to finish registration.", variant: "destructive" });
       return;
     }
     setFreelancerFinishSubmitting(true);
@@ -372,7 +393,7 @@ export default function Onboarding() {
       await upsertMe.mutateAsync({
         data: {
           role: "freelancer",
-          email: user.primaryEmailAddress.emailAddress,
+          email: contactEmail.trim(),
           name: user.fullName || "",
           avatarUrl: user.imageUrl,
         },
@@ -392,8 +413,8 @@ export default function Onboarding() {
 
   const handleEmployerSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user || !hasValidPrimaryEmail(user.primaryEmailAddress?.emailAddress)) {
-      toast({ title: "Email required", description: "Add a valid primary email address to continue.", variant: "destructive" });
+    if (!user || !hasValidPrimaryEmail(contactEmail.trim())) {
+      toast({ title: "Email required", description: "Enter a valid contact email to continue.", variant: "destructive" });
       return;
     }
     if (!isLocationComplete(countries, countryCode, stateCode)) {
@@ -438,8 +459,8 @@ export default function Onboarding() {
   };
 
   const handleEmployerFinish = async () => {
-    if (!user || !hasValidPrimaryEmail(user.primaryEmailAddress?.emailAddress)) {
-      toast({ title: "Email required", description: "Add a valid primary email address to finish registration.", variant: "destructive" });
+    if (!user || !hasValidPrimaryEmail(contactEmail.trim())) {
+      toast({ title: "Email required", description: "Enter a valid contact email to finish registration.", variant: "destructive" });
       return;
     }
     setEmployerFinishSubmitting(true);
@@ -447,7 +468,7 @@ export default function Onboarding() {
       await upsertMe.mutateAsync({
         data: {
           role: "employer",
-          email: user.primaryEmailAddress.emailAddress,
+          email: contactEmail.trim(),
           name: user.fullName || "",
           avatarUrl: user.imageUrl,
         },
@@ -520,7 +541,9 @@ export default function Onboarding() {
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-semibold text-foreground truncate">{user.fullName || "Your Account"}</p>
-            <p className="text-xs text-muted-foreground truncate">{user.primaryEmailAddress?.emailAddress}</p>
+            <p className="text-xs text-muted-foreground truncate">
+              {contactEmail || user.primaryEmailAddress?.emailAddress}
+            </p>
           </div>
           <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ backgroundColor: "rgba(201,168,76,0.15)", color: "#c9a84c" }}>
             Signed in
@@ -742,6 +765,21 @@ export default function Onboarding() {
           </CardHeader>
           <form onSubmit={handleFreelancerSubmit}>
             <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="freelancerContactEmail">Contact email</Label>
+                <Input
+                  id="freelancerContactEmail"
+                  type="email"
+                  autoComplete="email"
+                  placeholder="you@example.com"
+                  value={contactEmail}
+                  onChange={(e) => setContactEmail(e.target.value)}
+                  required
+                />
+                <p className="text-xs text-muted-foreground">
+                  Used for meeting invites and calendar guests. Required for both freelancers and employers.
+                </p>
+              </div>
               <div className="rounded-lg border border-dashed border-[#c9a84c]/40 bg-[#c9a84c]/5 p-4 space-y-2">
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-semibold text-foreground">Auto-create Profile from Resume</span>
@@ -848,6 +886,21 @@ export default function Onboarding() {
           ) : (
           <form onSubmit={handleEmployerSubmit}>
             <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="employerContactEmail">Contact email</Label>
+                <Input
+                  id="employerContactEmail"
+                  type="email"
+                  autoComplete="email"
+                  placeholder="you@company.com"
+                  value={contactEmail}
+                  onChange={(e) => setContactEmail(e.target.value)}
+                  required
+                />
+                <p className="text-xs text-muted-foreground">
+                  Used for meeting invites and calendar guests. Required for both freelancers and employers.
+                </p>
+              </div>
               <div className="grid md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="companyName">Company Name</Label>

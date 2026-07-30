@@ -5959,6 +5959,14 @@ components:
           type: ["string", "null"]
         employerName:
           type: ["string", "null"]
+        freelancerEmail:
+          type: ["string", "null"]
+          format: email
+          description: Freelancer contact email for calendar guests / invites
+        employerEmail:
+          type: ["string", "null"]
+          format: email
+          description: Employer contact email for calendar guests / invites
         employerVerificationLevel:
           type: string
           enum: [unverified, partially_verified, fully_verified]
