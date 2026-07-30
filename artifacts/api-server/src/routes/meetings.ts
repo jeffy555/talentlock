@@ -127,10 +127,15 @@ router.post("/meetings", async (req, res) => {
     const employerName = await employerCompanyForProfile(employer.id);
     if (freelancerUserId) {
       const meetMsg = `${employerName} requested a discovery meeting`;
+      // dateStyle/timeStyle cannot be combined with timeZoneName in Node/V8.
       const scheduledAt = meeting.scheduledAt
         ? new Intl.DateTimeFormat("en-GB", {
-            dateStyle: "full",
-            timeStyle: "short",
+            weekday: "long",
+            year: "numeric",
+            month: "long",
+            day: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
             timeZone: "UTC",
             timeZoneName: "short",
           }).format(new Date(meeting.scheduledAt))

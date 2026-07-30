@@ -14,7 +14,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { currencyName, currencySymbol } from "@/lib/currencyUtils";
 
 interface LocationSettingsCardProps {
   countryCode: string;
@@ -27,7 +26,7 @@ interface LocationSettingsCardProps {
 export function LocationSettingsCard({
   countryCode: initialCountry,
   stateCode: initialState,
-  currencyCode,
+  currencyCode: _currencyCode,
   role,
   onUpdated,
 }: LocationSettingsCardProps) {
@@ -57,7 +56,7 @@ export function LocationSettingsCard({
           stateCode: stateCode ?? null,
         },
       });
-      toast({ title: "Location updated", description: "Your country and display currency have been saved." });
+      toast({ title: "Location updated", description: "Your country and state have been saved." });
       setConfirmOpen(false);
       onUpdated();
     } catch {
@@ -71,12 +70,12 @@ export function LocationSettingsCard({
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
             <MapPin className="h-4 w-4" />
-            Location &amp; Currency
+            Location
           </CardTitle>
           <CardDescription>
             {role === "freelancer"
-              ? "Your country sets the currency shown on your profile and bookings."
-              : "Your country sets your display currency for indicative rate conversions."}
+              ? "Your country and state shown on your profile."
+              : "Your company country and state."}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -120,15 +119,6 @@ export function LocationSettingsCard({
             </div>
           )}
 
-          <div className="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">
-            Current currency: {currencySymbol(currencyCode)} {currencyName(currencyCode)} ({currencyCode})
-            {dirty && selected && (
-              <p className="mt-1 text-blue-700">
-                After save: {currencySymbol(selected.currencyCode)} {currencyName(selected.currencyCode)} ({selected.currencyCode})
-              </p>
-            )}
-          </div>
-
           <Button
             type="button"
             disabled={!dirty || (stateRequired && !stateCode) || patchLocation.isPending}
@@ -144,8 +134,7 @@ export function LocationSettingsCard({
           <DialogHeader>
             <DialogTitle>Update your location?</DialogTitle>
             <DialogDescription>
-              Changing your country updates your {role === "freelancer" ? "primary" : "display"} currency.
-              Existing bookings keep their original currency — only new bookings and rate displays will use the new currency.
+              This updates the country and state on your profile. Existing bookings are unchanged.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>

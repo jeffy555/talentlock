@@ -128,7 +128,7 @@ Post-codegen mandatory checks:
 |------|------|--------|
 | `/` | Landing page | Public |
 | `/sign-in` `/sign-up` | Clerk auth pages | Public |
-| `/onboarding` | Role selection, location, profile setup, and employer document verification | Authenticated |
+| `/onboarding` | Account type, then one registration form (location, profile, Aadhaar) | Authenticated |
 | `/dashboard` | Role-specific metrics + charts; employer sees Spend Analytics and Hiring Analytics panels; freelancer sees Earnings Intelligence | Authenticated |
 | `/freelancers` | Talent Vault (browse + filter + `?q=` keyword + `?availableFrom=` date filter; completeness ≥ 60%) | Employer only |
 | `/freelancers/:id` | Freelancer detail + book + read-only availability calendar + rate suggestion widget | Employer only |
@@ -388,7 +388,7 @@ Shared server utilities: `artifacts/api-server/src/lib/earningsUtils.ts` (`getLa
 - Employer document routes allow `users.role = 'pending'` when `onboardingRole = 'employer'` and an `employer_profiles` row exists (onboarding document step before final `PUT /users/me`)
 - Employer document AI review uses `resolveVisionImageUrl()` — local dev reads files as base64 data URLs (OpenAI cannot fetch `localhost` signed URLs)
 - `PUT /api/employers/me` requires a `users` row — onboarding must call `PATCH /api/users/me/onboarding-step` (creates pending user) **before** the first company profile save
-- `onboardingStep` values: `role`, `profession_category`, `location`, `freelancer_details`, `employer_details`, `employer_documents`
+- `onboardingStep` API values: `role`, `profession_category`, `location`, `freelancer_details`, `freelancer_documents`, `employer_details`, `employer_documents` (legacy multi-step). **UI:** account type → single form; form progress persisted as `freelancer_details` / `employer_details`
 - `POST /api/employer-documents/confirm` uses UPSERT (`ON CONFLICT (employer_id, document_type) DO UPDATE`) — re-upload resets to pending
 - `recalculateEmployerVerificationLevel(tx, employerId)` receives a transaction object — always called inside a Drizzle transaction alongside the document status update
 - `aiNotes` is NEVER returned in any employer-facing or freelancer-facing API response — it is admin-only
@@ -504,12 +504,13 @@ Shared server utilities: `artifacts/api-server/src/lib/earningsUtils.ts` (`getLa
 | `artifacts/api-server/src/lib/employerDocReviewUtils.ts` | `reviewEmployerDocument()`, `calculateVerificationLevel()`, `recalculateEmployerVerificationLevel()`, `buildEmployerDocReviewPrompt()`, `validateEmployerDocReviewResponse()`, `DOCUMENT_TYPE_LABELS`, `REQUIRED_FOR_PARTIAL`, `REQUIRED_FOR_FULL` |
 | `artifacts/api-server/src/routes/employerDocuments.ts` | All `/api/employer-documents/*` routes; `resolveEmployerContext()` allows pending onboarding employers |
 | `artifacts/talentlock/src/components/employer/EmployerVerificationSection.tsx` | Employer profile verification section — disclaimer, status pill, 5-doc checklist, upload flow |
-| `artifacts/talentlock/src/components/onboarding/EmployerDocumentOnboardingStep.tsx` | Onboarding step 4 (employers) — mandatory Representative ID upload before registration completes |
-| `artifacts/talentlock/src/components/onboarding/LocationStep.tsx` | Country/state/currency step in onboarding (freelancers and employers) |
-| `artifacts/talentlock/src/components/onboarding/CountryStateFields.tsx` | Shared Country + State selectors used by location step, detail forms, and profile editors |
+| `artifacts/talentlock/src/components/onboarding/EmployerDocumentOnboardingStep.tsx` | Identity upload on employer registration form (`embedded`); Aadhaar required before finish |
+| `artifacts/talentlock/src/components/onboarding/FreelancerDocumentOnboardingStep.tsx` | Identity upload on freelancer registration form (`embedded`); Aadhaar required before finish |
+| `artifacts/talentlock/src/components/onboarding/LocationStep.tsx` | Legacy standalone location step (unused by single-form onboarding) |
+| `artifacts/talentlock/src/components/onboarding/CountryStateFields.tsx` | Shared Country + State selectors used by registration form and profile editors |
 | `artifacts/api-server/src/lib/emailValidation.ts` | `isValidEmail()` — rejects missing/malformed emails on onboarding persistence and final user upsert |
 | `artifacts/talentlock/src/lib/proxiedStorageUrl.ts` | `proxiedStorageUrl()` / `openStorageDocument()` — same-origin storage proxy + safe `about:blank` new-tab open for admin previews |
-| `artifacts/talentlock/src/pages/Onboarding.tsx` | Multi-step onboarding; server-persisted steps; employer company profile save ensures pending user exists first |
+| `artifacts/talentlock/src/pages/Onboarding.tsx` | Account type → single registration form; Aadhaar gate before `PUT /users/me` |
 | `artifacts/talentlock/src/components/employer/VerifiedEmployerBadge.tsx` | Trust badge component — renders green/amber/nothing based on verificationLevel |
 | `artifacts/api-server/src/lib/conversationsUtils.ts` | `findOrCreateConversation()`, `sendHumanMessage()`, `shouldSuppressEmail()`, `markConversationRead()`, `getUnreadConversationCount()` |
 | `artifacts/api-server/src/routes/conversations.ts` | All `/api/conversations/*` and `/api/messages/unread-count` routes |
@@ -623,10 +624,11 @@ pnpm --filter @workspace/talentlock run dev
 - The React Query client is configured to NOT retry 4xx errors
 - `Landing.tsx` redirects to `/onboarding` when `useGetMe` returns an error
 - `Onboarding.tsx` treats a 404 from `GET /api/users/me` as "new user" (pending row created on first `PATCH /users/me/onboarding-step`)
-- Employer onboarding order: `role` → `location` → `employer_details` (company profile via `PUT /employers/me`) → `employer_documents` (Representative ID upload) → `PUT /users/me` with `role: employer`
-- Frontend must not regress onboarding step when `getMe` refetches with a stale `onboardingStep` (use step-order guard)
-- Freelancer Work category → Location UI transition is client-only; `PATCH onboardingStep=location` requires `countryCode` — call it only on Location Continue, not when leaving Work category
-- Resume import on freelancer profile step: parser `bio` is included in `POST /freelancers` (create body + upsert) so completeness bio factor is satisfied without a separate onboarding bio field
+- Employer onboarding: account type → single form (location + company + Aadhaar) → `PUT /users/me` with `role: employer`
+- Freelancer onboarding: account type → single form (work category + location + profile + Aadhaar) → `PUT /users/me` with `role: freelancer`
+- Frontend maps any legacy multi-step `onboardingStep` to the single form on resume
+- Document upload may `ensureProfile` (pending profile) before `/api/documents/*` or `/api/employer-documents/*`
+- Resume import fills freelancer form fields only — does not skip Aadhaar or finish registration
 - Admin auth is completely separate from Clerk — uses an HMAC-signed cookie (`tl_admin`, 8h TTL)
 - Admin POST/PATCH/DELETE routes are CSRF-protected via `csrf-csrf` double-submit pattern
 

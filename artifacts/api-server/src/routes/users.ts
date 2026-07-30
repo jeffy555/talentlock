@@ -118,9 +118,10 @@ router.patch("/users/me/onboarding-step", async (req, res) => {
       updatedAt: new Date(),
     };
 
-    if (parsed.data.onboardingStep === "location") {
-      const countryCode = (parsed.data as { countryCode?: string }).countryCode;
-      const stateCode = (parsed.data as { stateCode?: string | null }).stateCode ?? null;
+    const countryCode = (parsed.data as { countryCode?: string }).countryCode;
+    const stateCode = (parsed.data as { stateCode?: string | null }).stateCode ?? null;
+    const isLocationStep = parsed.data.onboardingStep === "location";
+    if (isLocationStep || countryCode) {
       if (!countryCode) {
         res.status(400).json({ error: "countryCode is required for location step" });
         return;
@@ -135,6 +136,15 @@ router.patch("/users/me/onboarding-step", async (req, res) => {
       payload.currencyCode = loc.currencyCode;
     }
 
+    const locationUpdate =
+      payload.countryCode !== undefined
+        ? {
+            countryCode: payload.countryCode as string,
+            stateCode: payload.stateCode as string | null,
+            currencyCode: payload.currencyCode as string,
+          }
+        : {};
+
     const [user] = await db
       .insert(usersTable)
       .values(payload as typeof usersTable.$inferInsert)
@@ -146,13 +156,7 @@ router.patch("/users/me/onboarding-step", async (req, res) => {
           avatarUrl: payload.avatarUrl as string | null,
           onboardingRole: payload.onboardingRole as string,
           onboardingStep: payload.onboardingStep as string,
-          ...(parsed.data.onboardingStep === "location"
-            ? {
-                countryCode: payload.countryCode as string,
-                stateCode: payload.stateCode as string | null,
-                currencyCode: payload.currencyCode as string,
-              }
-            : {}),
+          ...locationUpdate,
           updatedAt: payload.updatedAt as Date,
         },
       })

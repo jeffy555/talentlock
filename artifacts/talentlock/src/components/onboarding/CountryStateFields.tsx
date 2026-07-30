@@ -48,8 +48,10 @@ export function CountryStateFields({
         <Select
           value={countryCode || undefined}
           onValueChange={(code) => {
+            // Only notify country change — callers clear state in onCountryChange.
+            // Do NOT also call onStateChange(null): parents that rebuild location from
+            // (countryCode, state) would re-apply a stale countryCode.
             onCountryChange(code);
-            onStateChange(null);
           }}
           disabled={disabled || countries.length === 0}
         >

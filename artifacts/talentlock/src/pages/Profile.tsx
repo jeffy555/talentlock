@@ -635,7 +635,10 @@ export default function Profile() {
               countries={countriesData?.countries ?? []}
               countryCode={countryCode}
               stateCode={stateCode}
-              onCountryChange={setCountryCode}
+              onCountryChange={(code) => {
+                setCountryCode(code);
+                setStateCode(null);
+              }}
               onStateChange={setStateCode}
               disabled={patchLocation.isPending}
             />
@@ -789,7 +792,10 @@ export default function Profile() {
               countries={countriesData?.countries ?? []}
               countryCode={countryCode}
               stateCode={stateCode}
-              onCountryChange={setCountryCode}
+              onCountryChange={(code) => {
+                setCountryCode(code);
+                setStateCode(null);
+              }}
               onStateChange={setStateCode}
               disabled={patchLocation.isPending}
             />

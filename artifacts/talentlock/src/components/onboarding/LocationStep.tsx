@@ -2,7 +2,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { MapPin, Loader2 } from "lucide-react";
 import type { Country } from "@workspace/api-client-react";
-import { currencyName, currencySymbol } from "@/lib/currencyUtils";
 import { CountryStateFields, isLocationComplete } from "./CountryStateFields";
 
 export interface LocationStepProps {
@@ -28,7 +27,6 @@ export function LocationStep({
   onBack,
   isSubmitting,
 }: LocationStepProps) {
-  const selected = countries.find((c) => c.code === countryCode);
   const canContinue = isLocationComplete(countries, countryCode, stateCode);
 
   return (
@@ -40,11 +38,11 @@ export function LocationStep({
         </CardTitle>
         <CardDescription>
           {role === "freelancer"
-            ? "Your location determines the currency shown on your profile and bookings."
-            : "Your location sets your display currency for indicative rate conversions."}
+            ? "Select your country and state so employers know where you work from."
+            : "Select your country and state for your company profile."}
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-6">
+      <CardContent>
         <CountryStateFields
           countries={countries}
           countryCode={countryCode}
@@ -53,22 +51,6 @@ export function LocationStep({
           onStateChange={onStateChange}
           disabled={countries.length === 0 || isSubmitting}
         />
-
-        {selected && (
-          <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800">
-            <p className="font-semibold mb-1">
-              {role === "freelancer" ? "Your primary currency" : "Your display currency"}
-            </p>
-            <p className="text-base font-medium">
-              {currencySymbol(selected.currencyCode)} {currencyName(selected.currencyCode)} ({selected.currencyCode})
-            </p>
-            <p className="mt-2 text-blue-700/90">
-              {role === "freelancer"
-                ? "This is the currency your rate will be shown in across TalentLock."
-                : "Freelancer rates will show in their currency with an indicative conversion for your reference."}
-            </p>
-          </div>
-        )}
       </CardContent>
       <CardFooter className="flex justify-between">
         <Button type="button" variant="outline" onClick={onBack} disabled={isSubmitting}>

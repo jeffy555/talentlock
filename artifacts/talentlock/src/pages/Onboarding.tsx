@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useLocation } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -11,6 +11,7 @@ import {
   useListCountries,
   getGetMeQueryKey,
   getGetMyEmployerProfileQueryKey,
+  getGetDocumentsMeQueryKey,
 } from "@workspace/api-client-react";
 import { useUser } from "@clerk/react";
 import { Button } from "@/components/ui/button";
@@ -22,45 +23,36 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { Briefcase, Building, CheckCircle, GraduationCap, Laptop, Loader2 } from "lucide-react";
 import { FIELDS_OF_WORK, isFieldOfWork } from "@/lib/fields";
-import { Badge } from "@/components/ui/badge";
 import { ResumeImporter, type ParsedResume } from "@/components/ResumeImporter";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import TeachingDetailsSection, { emptyTeachingDetails, type TeachingDetailsValues } from "@/components/onboarding/TeachingDetailsSection";
-import { LocationStep } from "@/components/onboarding/LocationStep";
 import { EmployerDocumentOnboardingStep } from "@/components/onboarding/EmployerDocumentOnboardingStep";
 import { FreelancerDocumentOnboardingStep } from "@/components/onboarding/FreelancerDocumentOnboardingStep";
-import { CountryStateFields, formatLocationLabel, isLocationComplete } from "@/components/onboarding/CountryStateFields";
+import {
+  CountryStateFields,
+  formatLocationLabel,
+  isLocationComplete,
+} from "@/components/onboarding/CountryStateFields";
 import { cn } from "@/lib/utils";
 import { COMPANY_SIZE_OPTIONS } from "@/lib/employerDocuments";
-import type { EducationProfessionType, ProfessionCategory, PatchOnboardingStepBodyOnboardingStep } from "@workspace/api-client-react";
+import type {
+  EducationProfessionType,
+  ProfessionCategory,
+  PatchOnboardingStepBodyOnboardingStep,
+} from "@workspace/api-client-react";
 
-type OnboardingUiStep =
-  | "role"
-  | "profession_category"
-  | "location"
-  | "freelancer-details"
-  | "freelancer-documents"
-  | "employer-details"
-  | "employer-documents";
+/** UI: role picker, then one registration form (all fields + verification). */
+type OnboardingUiStep = "role" | "form";
 
-function toApiOnboardingStep(step: OnboardingUiStep): PatchOnboardingStepBodyOnboardingStep {
-  if (step === "freelancer-details") return "freelancer_details";
-  if (step === "freelancer-documents") return "freelancer_documents";
-  if (step === "employer-details") return "employer_details";
-  if (step === "employer-documents") return "employer_documents";
-  if (step === "location") return "location";
-  return step;
+function toApiOnboardingStep(step: OnboardingUiStep, role: "freelancer" | "employer"): PatchOnboardingStepBodyOnboardingStep {
+  if (step === "role") return "role";
+  return role === "freelancer" ? "freelancer_details" : "employer_details";
 }
 
-function toUiOnboardingStep(step: string | null | undefined): OnboardingUiStep | null {
-  if (step === "freelancer_details") return "freelancer-details";
-  if (step === "freelancer_documents") return "freelancer-documents";
-  if (step === "employer_details") return "employer-details";
-  if (step === "employer_documents") return "employer-documents";
-  if (step === "location") return "location";
-  if (step === "profession_category") return "profession_category";
-  if (step === "role") return "role";
-  return null;
+function mapServerStepToUi(step: string | null | undefined): OnboardingUiStep {
+  if (!step || step === "role") return "role";
+  // Any prior multi-step progress resumes on the single registration form.
+  return "form";
 }
 
 function getIntendedRole(): "freelancer" | "employer" | null {
@@ -74,20 +66,6 @@ function clearIntendedRole() {
 
 function hasValidPrimaryEmail(email: string | null | undefined): email is string {
   return !!email && email.length >= 5 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-}
-
-const ONBOARDING_STEP_ORDER: Record<OnboardingUiStep, number> = {
-  role: 0,
-  profession_category: 1,
-  location: 2,
-  "freelancer-details": 3,
-  "employer-details": 3,
-  "freelancer-documents": 4,
-  "employer-documents": 4,
-};
-
-function resolveOnboardingStep(current: OnboardingUiStep, resumed: OnboardingUiStep): OnboardingUiStep {
-  return ONBOARDING_STEP_ORDER[current] >= ONBOARDING_STEP_ORDER[resumed] ? current : resumed;
 }
 
 export default function Onboarding() {
@@ -106,21 +84,16 @@ export default function Onboarding() {
 
   const [step, setStep] = useState<OnboardingUiStep>("role");
   const [role, setRole] = useState<"freelancer" | "employer" | null>(null);
-  const [autoCreating, setAutoCreating] = useState(false);
   const [countryCode, setCountryCode] = useState("US");
   const [stateCode, setStateCode] = useState<string | null>(null);
-  const [locationSubmitting, setLocationSubmitting] = useState(false);
-  const [employerFinishSubmitting, setEmployerFinishSubmitting] = useState(false);
-  const [freelancerFinishSubmitting, setFreelancerFinishSubmitting] = useState(false);
-  const [employerProfileSubmitting, setEmployerProfileSubmitting] = useState(false);
-  const [freelancerProfileSubmitting, setFreelancerProfileSubmitting] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [docReady, setDocReady] = useState(false);
+  const [docBusy, setDocBusy] = useState(false);
 
-  // Profession category (freelancers only)
-  const [professionCategory, setProfessionCategory] = useState<ProfessionCategory | null>(null);
+  const [professionCategory, setProfessionCategory] = useState<ProfessionCategory | null>("technology");
   const [educationProfessionType, setEducationProfessionType] = useState<EducationProfessionType | null>(null);
   const [teachingDetails, setTeachingDetails] = useState<TeachingDetailsValues>(emptyTeachingDetails());
 
-  // Freelancer fields
   const [tagline, setTagline] = useState("");
   const [bio, setBio] = useState("");
   const [fieldOfWork, setFieldOfWork] = useState("");
@@ -129,64 +102,16 @@ export default function Onboarding() {
   const [paymentPreference, setPaymentPreference] = useState("hourly");
   const [hourlyRate, setHourlyRate] = useState("");
 
-  const handleResumeParsed = async (data: ParsedResume) => {
-    // Fill fields for display
-    if (data.tagline) setTagline(data.tagline);
-    if (data.bio) setBio(data.bio);
-    if (isFieldOfWork(data.fieldOfWork)) setFieldOfWork(data.fieldOfWork);
-    if (data.skills?.length) setSkills(data.skills.join(", "));
-    if (data.yearsExperience) setYearsExperience(String(data.yearsExperience));
-    if (data.paymentPreference) setPaymentPreference(data.paymentPreference);
-    if (data.hourlyRate) setHourlyRate(String(data.hourlyRate));
-
-    // Auto-create the profile immediately using the parsed data directly
-    if (!user || !hasValidPrimaryEmail(user.primaryEmailAddress?.emailAddress)) {
-      toast({ title: "Email required", description: "Add a valid primary email address to continue.", variant: "destructive" });
-      return;
-    }
-    if (!isLocationComplete(countries, countryCode, stateCode)) {
-      toast({ title: "Location required", description: "Select the required country and state before uploading a resume.", variant: "destructive" });
-      return;
-    }
-    setAutoCreating(true);
-    try {
-      await persistOnboardingStep("freelancer", "freelancer-details", { countryCode, stateCode });
-      await createFreelancerProfile.mutateAsync({
-        data: {
-          tagline: data.tagline || "",
-          bio: data.bio || null,
-          fieldOfWork: isFieldOfWork(data.fieldOfWork) ? data.fieldOfWork : FIELDS_OF_WORK[0],
-          skills: data.skills?.slice(0, 15) ?? [],
-          yearsExperience: data.yearsExperience ?? 0,
-          paymentPreference: data.paymentPreference || "hourly",
-          hourlyRate: data.hourlyRate ?? null,
-          subscriptionPlan: "basic",
-          resumeAnalysis: data.resumeAnalysis ?? null,
-        },
-      });
-      await persistOnboardingStep("freelancer", "freelancer-documents");
-      await queryClient.invalidateQueries({ queryKey: getGetMeQueryKey() });
-      setStep("freelancer-documents");
-      toast({
-        title: "Profile saved",
-        description: "Upload your Aadhaar card to finish registration.",
-      });
-    } catch {
-      toast({ title: "Could not auto-create profile", description: "Your fields are filled in — review them and click Next.", variant: "destructive" });
-    } finally {
-      setAutoCreating(false);
-    }
-  };
-
-  // Employer fields
   const [companyName, setCompanyName] = useState("");
   const [industry, setIndustry] = useState("");
   const [companySize, setCompanySize] = useState("");
   const [description, setDescription] = useState("");
 
+  const profileSavedRef = useRef(false);
+
   const { data: existingEmployerProfile, isError: employerProfileError } = useGetMyEmployerProfile({
     query: {
-      enabled: (step === "employer-details" || step === "employer-documents") && !!user,
+      enabled: step === "form" && role === "employer" && !!user,
       retry: false,
     } as any,
   });
@@ -203,40 +128,55 @@ export default function Onboarding() {
     setIndustry(existingEmployerProfile.industry ?? "");
     setCompanySize(existingEmployerProfile.companySize ?? "");
     setDescription(existingEmployerProfile.description ?? "");
+    profileSavedRef.current = true;
   }, [existingEmployerProfile]);
 
   useEffect(() => {
     const intended = getIntendedRole();
-    if (intended && !dbUser?.onboardingStep) {
-      setRole(intended);
-      setStep(intended === "freelancer" ? "profession_category" : "location");
-      clearIntendedRole();
-    }
-  }, [dbUser?.onboardingStep]);
+    if (!intended || dbUser?.onboardingStep || !user) return;
+    clearIntendedRole();
+    setRole(intended);
+    void (async () => {
+      try {
+        await patchOnboardingStep.mutateAsync({
+          data: {
+            onboardingRole: intended,
+            onboardingStep: "role",
+            email: user.primaryEmailAddress?.emailAddress || "",
+            name: user.fullName || "",
+            avatarUrl: user.imageUrl ?? null,
+          },
+        });
+      } catch {
+        // Still show the form; progress may only live on this device.
+      }
+      setStep("form");
+    })();
+  }, [dbUser?.onboardingStep, user, patchOnboardingStep]);
 
   useEffect(() => {
     if (!dbUser || dbUser.role !== "pending") return;
     if (dbUser.onboardingRole === "freelancer" || dbUser.onboardingRole === "employer") {
       setRole(dbUser.onboardingRole);
     }
-    const resumed = toUiOnboardingStep(dbUser.onboardingStep);
-    if (resumed && resumed !== "role") {
-      setStep((current) => resolveOnboardingStep(current, resumed));
+    const ui = mapServerStepToUi(dbUser.onboardingStep);
+    if (ui === "form" && dbUser.onboardingRole) {
+      setStep("form");
     }
     if (dbUser.countryCode) setCountryCode(dbUser.countryCode);
-    if (dbUser.stateCode) setStateCode(dbUser.stateCode);
+    if (dbUser.stateCode !== undefined) setStateCode(dbUser.stateCode);
   }, [dbUser]);
 
   const persistOnboardingStep = async (
     onboardingRole: "freelancer" | "employer",
-    nextStep: OnboardingUiStep,
+    uiStep: OnboardingUiStep,
     location?: { countryCode: string; stateCode: string | null },
   ) => {
     if (!user) return;
     await patchOnboardingStep.mutateAsync({
       data: {
         onboardingRole,
-        onboardingStep: toApiOnboardingStep(nextStep),
+        onboardingStep: toApiOnboardingStep(uiStep, onboardingRole),
         email: user.primaryEmailAddress?.emailAddress || "",
         name: user.fullName || "",
         avatarUrl: user.imageUrl ?? null,
@@ -247,12 +187,217 @@ export default function Onboarding() {
     });
   };
 
-  // Redirect already-onboarded users away from this page
   useEffect(() => {
     if (dbUser && dbUser.role && dbUser.role !== "pending") {
       setLocation("/dashboard");
     }
   }, [dbUser, setLocation]);
+
+  const buildTeachingPayload = () => {
+    if (professionCategory !== "education") return { professionCategory: "technology" as const };
+    return {
+      professionCategory: "education" as const,
+      educationProfessionType: educationProfessionType ?? undefined,
+      teachingSubjects: teachingDetails.teachingSubjects.length ? teachingDetails.teachingSubjects : undefined,
+      teachingLevels: teachingDetails.teachingLevels.length ? teachingDetails.teachingLevels : undefined,
+      yearsTeachingExperience: teachingDetails.yearsTeachingExperience ?? undefined,
+      highestDegree: teachingDetails.highestDegree ?? undefined,
+      degreeSubject: teachingDetails.degreeSubject || undefined,
+      degreeInstitution: teachingDetails.degreeInstitution || undefined,
+      teachingLicenceState: teachingDetails.teachingLicenceState || undefined,
+      teachingLicenceExpiry: teachingDetails.teachingLicenceExpiry
+        ? new Date(teachingDetails.teachingLicenceExpiry).toISOString()
+        : undefined,
+      researchPublications: teachingDetails.researchPublications || undefined,
+      preferredTeachingMode: teachingDetails.preferredTeachingMode ?? undefined,
+      location: formatLocationLabel(countries, countryCode, stateCode) || teachingDetails.location || undefined,
+    };
+  };
+
+  const ensureFreelancerProfile = useCallback(async () => {
+    if (!user || !hasValidPrimaryEmail(user.primaryEmailAddress?.emailAddress)) {
+      throw new Error("Add a valid primary email address first.");
+    }
+    if (!isLocationComplete(countries, countryCode, stateCode)) {
+      throw new Error("Select your country and state before uploading documents.");
+    }
+    if (!professionCategory) {
+      throw new Error("Select your work category before uploading documents.");
+    }
+    if (professionCategory === "education" && !educationProfessionType) {
+      throw new Error("Select what best describes you in Education.");
+    }
+    await persistOnboardingStep("freelancer", "form", { countryCode, stateCode });
+    await createFreelancerProfile.mutateAsync({
+      data: {
+        tagline: tagline || "Professional",
+        bio: bio.trim() || null,
+        fieldOfWork: fieldOfWork || FIELDS_OF_WORK[0],
+        skills: skills.split(",").map((s) => s.trim()).filter(Boolean).slice(0, 15),
+        yearsExperience: yearsExperience ? parseInt(yearsExperience, 10) : 0,
+        paymentPreference: paymentPreference || "hourly",
+        hourlyRate: hourlyRate ? parseInt(hourlyRate, 10) : null,
+        subscriptionPlan: "basic",
+        ...buildTeachingPayload(),
+      },
+    });
+    profileSavedRef.current = true;
+    await queryClient.invalidateQueries({ queryKey: getGetMeQueryKey() });
+    await queryClient.invalidateQueries({ queryKey: getGetDocumentsMeQueryKey() });
+  }, [
+    user, countries, countryCode, stateCode, professionCategory, educationProfessionType,
+    tagline, bio, fieldOfWork, skills, yearsExperience, paymentPreference, hourlyRate,
+    teachingDetails, createFreelancerProfile, queryClient, patchOnboardingStep,
+  ]);
+
+  const ensureEmployerProfile = useCallback(async () => {
+    if (!user || !hasValidPrimaryEmail(user.primaryEmailAddress?.emailAddress)) {
+      throw new Error("Add a valid primary email address first.");
+    }
+    if (!isLocationComplete(countries, countryCode, stateCode)) {
+      throw new Error("Select your country and state before uploading documents.");
+    }
+    if (!companyName.trim() || !industry.trim() || !description.trim()) {
+      throw new Error("Fill company name, industry, and description before uploading documents.");
+    }
+    await persistOnboardingStep("employer", "form", { countryCode, stateCode });
+    const saved = await upsertEmployerProfile.mutateAsync({
+      data: {
+        companyName: companyName.trim(),
+        industry: industry.trim(),
+        companySize: companySize || null,
+        description: description.trim(),
+        subscriptionPlan: "basic",
+      },
+    });
+    queryClient.setQueryData(getGetMyEmployerProfileQueryKey(), saved);
+    profileSavedRef.current = true;
+    await queryClient.invalidateQueries({ queryKey: getGetMeQueryKey() });
+  }, [
+    user, countries, countryCode, stateCode, companyName, industry, companySize, description,
+    upsertEmployerProfile, queryClient,
+  ]);
+
+  const handleResumeParsed = (data: ParsedResume) => {
+    if (data.tagline) setTagline(data.tagline);
+    if (data.bio) setBio(data.bio);
+    if (isFieldOfWork(data.fieldOfWork)) setFieldOfWork(data.fieldOfWork);
+    if (data.skills?.length) setSkills(data.skills.join(", "));
+    if (data.yearsExperience) setYearsExperience(String(data.yearsExperience));
+    if (data.paymentPreference) setPaymentPreference(data.paymentPreference);
+    if (data.hourlyRate) setHourlyRate(String(data.hourlyRate));
+    toast({
+      title: "Resume imported",
+      description: "Review the fields below, upload Aadhaar, then finish registration.",
+    });
+  };
+
+  const handleRoleSelection = async (selectedRole: "freelancer" | "employer") => {
+    if (!hasValidPrimaryEmail(user?.primaryEmailAddress?.emailAddress)) {
+      toast({ title: "Email required", description: "Add a valid primary email address to continue.", variant: "destructive" });
+      return;
+    }
+    setRole(selectedRole);
+    try {
+      await persistOnboardingStep(selectedRole, "role");
+      setStep("form");
+    } catch {
+      setStep("form");
+      toast({
+        title: "Could not save progress",
+        description: "Your selection was kept on this device. Try again if you switch devices.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleFreelancerComplete = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user || !hasValidPrimaryEmail(user.primaryEmailAddress?.emailAddress)) {
+      toast({ title: "Email required", description: "Add a valid primary email address.", variant: "destructive" });
+      return;
+    }
+    if (!professionCategory || (professionCategory === "education" && !educationProfessionType)) {
+      toast({ title: "Work category required", description: "Select your work category.", variant: "destructive" });
+      return;
+    }
+    if (!isLocationComplete(countries, countryCode, stateCode)) {
+      toast({ title: "Location required", description: "Select country and state.", variant: "destructive" });
+      return;
+    }
+    if (!tagline.trim() || !fieldOfWork || !skills.trim() || !yearsExperience || !hourlyRate) {
+      toast({ title: "Profile incomplete", description: "Fill in all required profile fields.", variant: "destructive" });
+      return;
+    }
+    if (!docReady) {
+      toast({ title: "Aadhaar required", description: "Upload your Aadhaar card before finishing.", variant: "destructive" });
+      return;
+    }
+    setSubmitting(true);
+    try {
+      await ensureFreelancerProfile();
+      await upsertMe.mutateAsync({
+        data: {
+          role: "freelancer",
+          email: user.primaryEmailAddress.emailAddress,
+          name: user.fullName || "",
+          avatarUrl: user.imageUrl,
+        },
+      });
+      toast({ title: "Welcome to TalentLock", description: "Your freelancer account is ready." });
+      setLocation("/dashboard");
+    } catch (err) {
+      toast({
+        title: "Could not finish registration",
+        description: err instanceof Error ? err.message : "Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleEmployerComplete = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user || !hasValidPrimaryEmail(user.primaryEmailAddress?.emailAddress)) {
+      toast({ title: "Email required", description: "Add a valid primary email address.", variant: "destructive" });
+      return;
+    }
+    if (!isLocationComplete(countries, countryCode, stateCode)) {
+      toast({ title: "Location required", description: "Select country and state.", variant: "destructive" });
+      return;
+    }
+    if (!companyName.trim() || !industry.trim() || !description.trim()) {
+      toast({ title: "Company profile incomplete", description: "Fill in all required company fields.", variant: "destructive" });
+      return;
+    }
+    if (!docReady) {
+      toast({ title: "Aadhaar required", description: "Upload your Aadhaar card before finishing.", variant: "destructive" });
+      return;
+    }
+    setSubmitting(true);
+    try {
+      await ensureEmployerProfile();
+      await upsertMe.mutateAsync({
+        data: {
+          role: "employer",
+          email: user.primaryEmailAddress.emailAddress,
+          name: user.fullName || "",
+          avatarUrl: user.imageUrl,
+        },
+      });
+      toast({ title: "Welcome to TalentLock", description: "Your employer account is ready." });
+      setLocation("/dashboard");
+    } catch (err) {
+      toast({
+        title: "Could not finish registration",
+        description: err instanceof Error ? err.message : "Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   if (isLoadingUser && !isMeError) {
     return (
@@ -280,233 +425,17 @@ export default function Onboarding() {
     );
   }
 
-  const handleRoleSelection = async (selectedRole: "freelancer" | "employer") => {
-    if (!hasValidPrimaryEmail(user?.primaryEmailAddress?.emailAddress)) {
-      toast({ title: "Email required", description: "Add a valid primary email address to continue.", variant: "destructive" });
-      return;
-    }
-    const nextStep: OnboardingUiStep =
-      selectedRole === "freelancer" ? "profession_category" : "location";
-    setRole(selectedRole);
-    try {
-      await persistOnboardingStep(selectedRole, nextStep);
-      setStep(nextStep);
-    } catch {
-      setStep(nextStep);
-      toast({
-        title: "Could not save progress",
-        description: "Your selection was kept on this device. Try again if you switch devices.",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const buildTeachingPayload = () => {
-    if (professionCategory !== "education") return { professionCategory: "technology" as const };
-    return {
-      professionCategory: "education" as const,
-      educationProfessionType: educationProfessionType ?? undefined,
-      teachingSubjects: teachingDetails.teachingSubjects.length ? teachingDetails.teachingSubjects : undefined,
-      teachingLevels: teachingDetails.teachingLevels.length ? teachingDetails.teachingLevels : undefined,
-      yearsTeachingExperience: teachingDetails.yearsTeachingExperience ?? undefined,
-      highestDegree: teachingDetails.highestDegree ?? undefined,
-      degreeSubject: teachingDetails.degreeSubject || undefined,
-      degreeInstitution: teachingDetails.degreeInstitution || undefined,
-      teachingLicenceState: teachingDetails.teachingLicenceState || undefined,
-      teachingLicenceExpiry: teachingDetails.teachingLicenceExpiry
-        ? new Date(teachingDetails.teachingLicenceExpiry).toISOString()
-        : undefined,
-      researchPublications: teachingDetails.researchPublications || undefined,
-      preferredTeachingMode: teachingDetails.preferredTeachingMode ?? undefined,
-      location: formatLocationLabel(countries, countryCode, stateCode) || teachingDetails.location || undefined,
-    };
-  };
-
-  const handleFreelancerSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!user || !hasValidPrimaryEmail(user.primaryEmailAddress?.emailAddress)) {
-      toast({ title: "Email required", description: "Add a valid primary email address to continue.", variant: "destructive" });
-      return;
-    }
-    if (!isLocationComplete(countries, countryCode, stateCode)) {
-      toast({ title: "Location required", description: "Select the required country and state.", variant: "destructive" });
-      return;
-    }
-    setFreelancerProfileSubmitting(true);
-    try {
-      await persistOnboardingStep("freelancer", "freelancer-details", { countryCode, stateCode });
-      await createFreelancerProfile.mutateAsync({
-        data: {
-          tagline,
-          bio: bio.trim() || null,
-          fieldOfWork,
-          skills: skills.split(",").map((s) => s.trim()).filter(Boolean),
-          yearsExperience: parseInt(yearsExperience, 10),
-          paymentPreference,
-          hourlyRate: hourlyRate ? parseInt(hourlyRate, 10) : null,
-          subscriptionPlan: "basic",
-          ...buildTeachingPayload(),
-        },
-      });
-      await persistOnboardingStep("freelancer", "freelancer-documents");
-      await queryClient.invalidateQueries({ queryKey: getGetMeQueryKey() });
-      setStep("freelancer-documents");
-      toast({
-        title: "Profile saved",
-        description: "Upload your Aadhaar card to finish registration.",
-      });
-    } catch {
-      toast({ title: "Error", description: "Could not create profile. Please try again.", variant: "destructive" });
-    } finally {
-      setFreelancerProfileSubmitting(false);
-    }
-  };
-
-  const handleFreelancerFinish = async () => {
-    if (!user || !hasValidPrimaryEmail(user.primaryEmailAddress?.emailAddress)) {
-      toast({ title: "Email required", description: "Add a valid primary email address to finish registration.", variant: "destructive" });
-      return;
-    }
-    setFreelancerFinishSubmitting(true);
-    try {
-      await upsertMe.mutateAsync({
-        data: {
-          role: "freelancer",
-          email: user.primaryEmailAddress.emailAddress,
-          name: user.fullName || "",
-          avatarUrl: user.imageUrl,
-        },
-      });
-      toast({ title: "Welcome to TalentLock", description: "Your freelancer account is ready." });
-      setLocation("/dashboard");
-    } catch {
-      toast({
-        title: "Error",
-        description: "Could not finish registration. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setFreelancerFinishSubmitting(false);
-    }
-  };
-
-  const handleEmployerSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!user || !hasValidPrimaryEmail(user.primaryEmailAddress?.emailAddress)) {
-      toast({ title: "Email required", description: "Add a valid primary email address to continue.", variant: "destructive" });
-      return;
-    }
-    if (!isLocationComplete(countries, countryCode, stateCode)) {
-      toast({ title: "Location required", description: "Select the required country and state.", variant: "destructive" });
-      return;
-    }
-    const employerRole = role ?? dbUser?.onboardingRole;
-    if (employerRole !== "employer") {
-      toast({
-        title: "Could not save company profile",
-        description: "Your account type was not detected. Go back and select Employer again.",
-        variant: "destructive",
-      });
-      return;
-    }
-    setEmployerProfileSubmitting(true);
-    try {
-      // Create/update the pending user row before employer profile (fixes first-attempt 400)
-      await persistOnboardingStep("employer", "employer-details", { countryCode, stateCode });
-      const savedProfile = await upsertEmployerProfile.mutateAsync({
-        data: {
-          companyName,
-          industry,
-          companySize: companySize || null,
-          description,
-          subscriptionPlan: "basic",
-        },
-      });
-      queryClient.setQueryData(getGetMyEmployerProfileQueryKey(), savedProfile);
-      await persistOnboardingStep("employer", "employer-documents");
-      await queryClient.invalidateQueries({ queryKey: getGetMeQueryKey() });
-      setStep("employer-documents");
-      toast({
-        title: "Company profile saved",
-        description: "Upload one verification document to finish registration.",
-      });
-    } catch {
-      toast({ title: "Error", description: "Could not save company profile. Please try again.", variant: "destructive" });
-    } finally {
-      setEmployerProfileSubmitting(false);
-    }
-  };
-
-  const handleEmployerFinish = async () => {
-    if (!user || !hasValidPrimaryEmail(user.primaryEmailAddress?.emailAddress)) {
-      toast({ title: "Email required", description: "Add a valid primary email address to finish registration.", variant: "destructive" });
-      return;
-    }
-    setEmployerFinishSubmitting(true);
-    try {
-      await upsertMe.mutateAsync({
-        data: {
-          role: "employer",
-          email: user.primaryEmailAddress.emailAddress,
-          name: user.fullName || "",
-          avatarUrl: user.imageUrl,
-        },
-      });
-      toast({ title: "Welcome to TalentLock", description: "Your employer account is ready." });
-      setLocation("/dashboard");
-    } catch {
-      toast({
-        title: "Error",
-        description: "Could not finish registration. Please try again.",
-        variant: "destructive",
-      });
-    } finally {
-      setEmployerFinishSubmitting(false);
-    }
-  };
-
-  const isEmployerPath = role === "employer" || step === "employer-details" || step === "employer-documents";
-  const stepConfig = isEmployerPath
-    ? [
-        { n: 1, label: "Account type", active: step === "role" },
-        { n: 2, label: "Location", active: step === "location" },
-        { n: 3, label: "Company profile", active: step === "employer-details" },
-        { n: 4, label: "Verification", active: step === "employer-documents" },
-      ]
-    : [
-        { n: 1, label: "Account type", active: step === "role" },
-        { n: 2, label: "Work category", active: step === "profession_category" },
-        { n: 3, label: "Location", active: step === "location" },
-        { n: 4, label: "Profile details", active: step === "freelancer-details" },
-        { n: 5, label: "Verification", active: step === "freelancer-documents" },
-      ];
-  const progressStep =
-    step === "role"
-      ? 1
-      : step === "profession_category"
-        ? 2
-        : step === "location"
-          ? isEmployerPath
-            ? 2
-            : 3
-          : step === "employer-documents" || step === "freelancer-documents"
-            ? isEmployerPath
-              ? 4
-              : 5
-          : step === "freelancer-details"
-            ? 4
-          : isEmployerPath
-            ? 3
-            : 4;
-
   return (
     <div className="max-w-2xl mx-auto py-8">
       <div className="mb-6 text-center">
         <h1 className="text-3xl font-bold tracking-tight text-foreground">Complete Your Registration</h1>
-        <p className="text-muted-foreground mt-2">Just a few steps to set up your TalentLock profile.</p>
+        <p className="text-muted-foreground mt-2">
+          {step === "role"
+            ? "Choose your account type to continue."
+            : "One form — fill in your details, upload Aadhaar, and finish."}
+        </p>
       </div>
 
-      {/* ── Account info banner ─────────────────────────────────────────── */}
       {user && (
         <div className="mb-6 rounded-lg border bg-card px-4 py-3 flex items-center gap-3">
           <div className="h-9 w-9 rounded-full overflow-hidden flex-shrink-0 border" style={{ borderColor: "rgba(201,168,76,0.4)" }}>
@@ -528,379 +457,297 @@ export default function Onboarding() {
         </div>
       )}
 
-      {/* ── Step indicator ──────────────────────────────────────────────── */}
-      <div className="mb-8 flex items-center gap-2">
-          {stepConfig.map(({ n, label }, i) => (
-            <div key={n} className="flex items-center gap-2 flex-1">
-              <div className="flex items-center gap-2">
-                <div
-                  className="h-7 w-7 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0"
-                  style={
-                    progressStep > n
-                      ? { backgroundColor: "#c9a84c", color: "#0d1f3c" }
-                      : progressStep === n
-                      ? { backgroundColor: "#0d1f3c", color: "#c9a84c", border: "2px solid #c9a84c" }
-                      : { backgroundColor: "transparent", color: "rgba(255,255,255,0.3)", border: "2px solid rgba(255,255,255,0.15)" }
-                  }
-                >
-                  {progressStep > n ? "✓" : n}
-                </div>
-                <span className={`text-xs font-medium hidden sm:block ${progressStep >= n ? "text-foreground" : "text-muted-foreground"}`}>
-                  {label}
-                </span>
-              </div>
-              {i < stepConfig.length - 1 && (
-                <div className="flex-1 h-px mx-2" style={{ backgroundColor: progressStep > n ? "#c9a84c" : "rgba(255,255,255,0.1)" }} />
-              )}
-            </div>
-          ))}
-        </div>
-
-      {/* ── Role selection ──────────────────────────────────────────────── */}
       {step === "role" && (
-        <>
-          <p className="text-center text-sm text-muted-foreground mb-6">Choose your account type to continue</p>
-          <div className="grid md:grid-cols-2 gap-6">
-            <Card className="cursor-pointer hover:border-primary transition-colors" onClick={() => handleRoleSelection("freelancer")}>
-              <CardHeader className="text-center pb-2">
-                <div className="mx-auto bg-primary/10 w-16 h-16 rounded-full flex items-center justify-center mb-4">
-                  <Briefcase className="w-8 h-8 text-primary" />
-                </div>
-                <CardTitle>I am a Freelancer</CardTitle>
-                <CardDescription>I want to find exclusive, verified engagements.</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ul className="text-sm text-muted-foreground space-y-1 mt-2">
-                  <li className="flex items-center gap-2"><CheckCircle className="h-4 w-4 text-primary shrink-0" /> Build a verified professional profile</li>
-                  <li className="flex items-center gap-2"><CheckCircle className="h-4 w-4 text-primary shrink-0" /> Get matched to exclusive roles via AI</li>
-                  <li className="flex items-center gap-2"><CheckCircle className="h-4 w-4 text-primary shrink-0" /> Sign binding agreements digitally</li>
-                </ul>
-              </CardContent>
-            </Card>
-            <Card className="cursor-pointer hover:border-primary transition-colors" onClick={() => handleRoleSelection("employer")}>
-              <CardHeader className="text-center pb-2">
-                <div className="mx-auto bg-primary/10 w-16 h-16 rounded-full flex items-center justify-center mb-4">
-                  <Building className="w-8 h-8 text-primary" />
-                </div>
-                <CardTitle>I am an Employer</CardTitle>
-                <CardDescription>I want to book high-end talent for my projects.</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ul className="text-sm text-muted-foreground space-y-1 mt-2">
-                  <li className="flex items-center gap-2"><CheckCircle className="h-4 w-4 text-primary shrink-0" /> AI-match talent to your requirements</li>
-                  <li className="flex items-center gap-2"><CheckCircle className="h-4 w-4 text-primary shrink-0" /> Guarantee exclusivity with bookings</li>
-                  <li className="flex items-center gap-2"><CheckCircle className="h-4 w-4 text-primary shrink-0" /> Auto-generate legal agreements</li>
-                </ul>
-              </CardContent>
-            </Card>
-          </div>
-        </>
+        <div className="grid md:grid-cols-2 gap-6">
+          <Card className="cursor-pointer hover:border-primary transition-colors" onClick={() => handleRoleSelection("freelancer")}>
+            <CardHeader className="text-center pb-2">
+              <div className="mx-auto bg-primary/10 w-16 h-16 rounded-full flex items-center justify-center mb-4">
+                <Briefcase className="w-8 h-8 text-primary" />
+              </div>
+              <CardTitle>I am a Freelancer</CardTitle>
+              <CardDescription>I want to find exclusive, verified engagements.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ul className="text-sm text-muted-foreground space-y-1 mt-2">
+                <li className="flex items-center gap-2"><CheckCircle className="h-4 w-4 text-primary shrink-0" /> Build a verified professional profile</li>
+                <li className="flex items-center gap-2"><CheckCircle className="h-4 w-4 text-primary shrink-0" /> Get matched to exclusive roles via AI</li>
+                <li className="flex items-center gap-2"><CheckCircle className="h-4 w-4 text-primary shrink-0" /> Sign binding agreements digitally</li>
+              </ul>
+            </CardContent>
+          </Card>
+          <Card className="cursor-pointer hover:border-primary transition-colors" onClick={() => handleRoleSelection("employer")}>
+            <CardHeader className="text-center pb-2">
+              <div className="mx-auto bg-primary/10 w-16 h-16 rounded-full flex items-center justify-center mb-4">
+                <Building className="w-8 h-8 text-primary" />
+              </div>
+              <CardTitle>I am an Employer</CardTitle>
+              <CardDescription>I want to book high-end talent for my projects.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ul className="text-sm text-muted-foreground space-y-1 mt-2">
+                <li className="flex items-center gap-2"><CheckCircle className="h-4 w-4 text-primary shrink-0" /> AI-match talent to your requirements</li>
+                <li className="flex items-center gap-2"><CheckCircle className="h-4 w-4 text-primary shrink-0" /> Guarantee exclusivity with bookings</li>
+                <li className="flex items-center gap-2"><CheckCircle className="h-4 w-4 text-primary shrink-0" /> Auto-generate legal agreements</li>
+              </ul>
+            </CardContent>
+          </Card>
+        </div>
       )}
 
-      {/* ── Profession category (freelancers only) ─────────────────────── */}
-      {step === "profession_category" && (
+      {step === "form" && role === "freelancer" && (
         <Card>
           <CardHeader>
-            <CardTitle>What kind of work do you do?</CardTitle>
-            <CardDescription>This helps us show you the right opportunities.</CardDescription>
+            <CardTitle className="flex items-center gap-2">
+              <Briefcase className="h-5 w-5 text-primary" />
+              Freelancer registration
+            </CardTitle>
+            <CardDescription>Complete everything on this page, then finish registration.</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="grid grid-cols-2 gap-4">
-              <button
-                type="button"
-                onClick={() => setProfessionCategory("technology")}
-                className={cn(
-                  "rounded-lg border-2 p-5 text-left transition-colors",
-                  professionCategory === "technology"
-                    ? "border-primary ring-2 ring-primary/20 bg-primary/5"
-                    : "border-slate-200 hover:border-slate-300",
+          <form onSubmit={handleFreelancerComplete}>
+            <CardContent className="space-y-8">
+              <section className="space-y-4">
+                <h3 className="text-sm font-semibold text-foreground">Work category</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <button
+                    type="button"
+                    onClick={() => setProfessionCategory("technology")}
+                    className={cn(
+                      "rounded-lg border-2 p-4 text-left transition-colors",
+                      professionCategory === "technology"
+                        ? "border-primary ring-2 ring-primary/20 bg-primary/5"
+                        : "border-border hover:border-muted-foreground/40",
+                    )}
+                  >
+                    <Laptop className="h-5 w-5 mb-2 text-muted-foreground" />
+                    <p className="font-semibold">Technology</p>
+                    <p className="text-xs text-muted-foreground mt-1">Software, design, data, DevOps</p>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setProfessionCategory("education")}
+                    className={cn(
+                      "rounded-lg border-2 p-4 text-left transition-colors",
+                      professionCategory === "education"
+                        ? "border-primary ring-2 ring-primary/20 bg-primary/5"
+                        : "border-border hover:border-muted-foreground/40",
+                    )}
+                  >
+                    <GraduationCap className="h-5 w-5 mb-2 text-muted-foreground" />
+                    <p className="font-semibold">Education</p>
+                    <p className="text-xs text-muted-foreground mt-1">Teaching, tutoring, research</p>
+                  </button>
+                </div>
+                {professionCategory === "education" && (
+                  <RadioGroup
+                    value={educationProfessionType ?? ""}
+                    onValueChange={(v) => setEducationProfessionType(v as EducationProfessionType)}
+                    className="space-y-2"
+                  >
+                    <div className="flex items-center gap-2">
+                      <RadioGroupItem value="school_teacher" id="school_teacher" />
+                      <Label htmlFor="school_teacher" className="font-normal cursor-pointer">School Teacher</Label>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <RadioGroupItem value="university_lecturer" id="university_lecturer" />
+                      <Label htmlFor="university_lecturer" className="font-normal cursor-pointer">University Lecturer / Professor</Label>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <RadioGroupItem value="tutor" id="tutor" />
+                      <Label htmlFor="tutor" className="font-normal cursor-pointer">Private Tutor</Label>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <RadioGroupItem value="researcher" id="researcher" />
+                      <Label htmlFor="researcher" className="font-normal cursor-pointer">Researcher</Label>
+                    </div>
+                  </RadioGroup>
                 )}
-              >
-                <Laptop className="h-6 w-6 mb-2 text-slate-600" />
-                <p className="font-semibold text-slate-800">Technology</p>
-                <p className="text-sm text-slate-500 mt-1">Software development, design, data, DevOps</p>
-              </button>
-              <button
-                type="button"
-                onClick={() => setProfessionCategory("education")}
-                className={cn(
-                  "rounded-lg border-2 p-5 text-left transition-colors",
-                  professionCategory === "education"
-                    ? "border-primary ring-2 ring-primary/20 bg-primary/5"
-                    : "border-slate-200 hover:border-slate-300",
-                )}
-              >
-                <GraduationCap className="h-6 w-6 mb-2 text-slate-600" />
-                <p className="font-semibold text-slate-800">Education</p>
-                <p className="text-sm text-slate-500 mt-1">Teaching, tutoring, lecturing, research</p>
-              </button>
-            </div>
+              </section>
 
-            {professionCategory === "education" && (
-              <div className="animate-in fade-in slide-in-from-top-2">
-                <p className="text-sm font-medium text-slate-700 mb-3">What best describes you?</p>
-                <RadioGroup
-                  value={educationProfessionType ?? ""}
-                  onValueChange={(v) => setEducationProfessionType(v as EducationProfessionType)}
-                  className="space-y-2"
-                >
-                  <div className="flex items-center gap-2">
-                    <RadioGroupItem value="school_teacher" id="school_teacher" />
-                    <Label htmlFor="school_teacher" className="font-normal cursor-pointer">School Teacher (K-12 / Secondary)</Label>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <RadioGroupItem value="university_lecturer" id="university_lecturer" />
-                    <Label htmlFor="university_lecturer" className="font-normal cursor-pointer">University Lecturer / Professor</Label>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <RadioGroupItem value="tutor" id="tutor" />
-                    <Label htmlFor="tutor" className="font-normal cursor-pointer">Private Tutor</Label>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <RadioGroupItem value="researcher" id="researcher" />
-                    <Label htmlFor="researcher" className="font-normal cursor-pointer">Researcher</Label>
-                  </div>
-                </RadioGroup>
-              </div>
-            )}
-          </CardContent>
-          <CardFooter className="flex justify-between">
-            <Button type="button" variant="outline" onClick={() => { setStep("role"); setRole(null); }}>Back</Button>
-            <Button
-              type="button"
-              disabled={!professionCategory || (professionCategory === "education" && !educationProfessionType)}
-              onClick={() => {
-                // Location step is persisted only when country/state are chosen (countryCode required).
-                // Do not PATCH onboardingStep=location here — it returns 400 without countryCode.
-                setStep("location");
-              }}
-            >
-              Continue →
-            </Button>
-          </CardFooter>
-        </Card>
-      )}
-
-      {step === "location" && role && (
-        <LocationStep
-          role={role}
-          countries={countries}
-          countryCode={countryCode}
-          stateCode={stateCode}
-          onCountryChange={(code) => {
-            setCountryCode(code);
-            setStateCode(null);
-          }}
-          onStateChange={setStateCode}
-          onBack={() => {
-            setStep(role === "freelancer" ? "profession_category" : "role");
-          }}
-          isSubmitting={locationSubmitting}
-          onContinue={async () => {
-            const nextStep: OnboardingUiStep =
-              role === "freelancer" ? "freelancer-details" : "employer-details";
-            setLocationSubmitting(true);
-            try {
-              await persistOnboardingStep(role, nextStep, {
-                countryCode,
-                stateCode,
-              });
-              setStep(nextStep);
-            } catch {
-              toast({
-                title: "Could not save location",
-                description: "Your selection is kept on this device. Try again if you switch devices.",
-                variant: "destructive",
-              });
-            } finally {
-              setLocationSubmitting(false);
-            }
-          }}
-        />
-      )}
-
-      {/* ── Freelancer details ──────────────────────────────────────────── */}
-      {step === "freelancer-details" && (
-        <Card className="relative">
-          {autoCreating && (
-            <div className="absolute inset-0 z-10 rounded-lg flex flex-col items-center justify-center gap-3 backdrop-blur-sm" style={{ backgroundColor: "rgba(13,31,60,0.85)" }}>
-              <Loader2 className="h-10 w-10 animate-spin text-primary" />
-              <p className="text-base font-semibold text-foreground">Creating your profile…</p>
-              <p className="text-sm text-muted-foreground">AI is building your profile from your resume</p>
-            </div>
-          )}
-          <CardHeader>
-            <div className="flex items-center gap-3 mb-1">
-              <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center">
-                <Briefcase className="h-5 w-5 text-primary" />
-              </div>
-              <div>
-                <CardTitle>Freelancer Profile</CardTitle>
-                <CardDescription>Upload your resume to auto-create your profile instantly.</CardDescription>
-              </div>
-            </div>
-          </CardHeader>
-          <form onSubmit={handleFreelancerSubmit}>
-            <CardContent className="space-y-4">
-              <div className="rounded-lg border border-dashed border-[#c9a84c]/40 bg-[#c9a84c]/5 p-4 space-y-2">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-semibold text-foreground">Auto-create Profile from Resume</span>
-                  <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ backgroundColor: "rgba(201,168,76,0.15)", color: "#c9a84c" }}>AI</span>
-                </div>
-                <p className="text-xs text-muted-foreground">Upload your resume and AI will instantly create your profile and move you to the next step. Or fill the fields below manually.</p>
-                <ResumeImporter onParsed={handleResumeParsed} />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="tagline">Professional Tagline</Label>
-                <Input id="tagline" placeholder="e.g. Senior Full-Stack Engineer" value={tagline} onChange={(e) => setTagline(e.target.value)} required />
-              </div>
-              <div className="grid md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="fieldOfWork">Primary Field</Label>
-                  <Select value={fieldOfWork} onValueChange={setFieldOfWork} required>
-                    <SelectTrigger id="fieldOfWork">
-                      <SelectValue placeholder="Select your primary field" />
-                    </SelectTrigger>
-                    <SelectContent className="max-h-72">
-                      {FIELDS_OF_WORK.map((f) => (
-                        <SelectItem key={f} value={f}>{f}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="yearsExperience">Years of Experience</Label>
-                  <Input id="yearsExperience" type="number" min="0" placeholder="e.g. 5" value={yearsExperience} onChange={(e) => setYearsExperience(e.target.value)} required />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="skills">Skills (comma separated)</Label>
-                <Input id="skills" placeholder="React, TypeScript, Node.js" value={skills} onChange={(e) => setSkills(e.target.value)} required />
-              </div>
-              <CountryStateFields
-                countries={countries}
-                countryCode={countryCode}
-                stateCode={stateCode}
-                onCountryChange={setCountryCode}
-                onStateChange={setStateCode}
-                disabled={countries.length === 0}
-              />
-              {professionCategory === "education" && (
-                <TeachingDetailsSection
-                  educationProfessionType={educationProfessionType}
-                  values={teachingDetails}
-                  onChange={setTeachingDetails}
+              <section className="space-y-4">
+                <h3 className="text-sm font-semibold text-foreground">Location</h3>
+                <CountryStateFields
+                  countries={countries}
+                  countryCode={countryCode}
+                  stateCode={stateCode}
+                  onCountryChange={(code) => {
+                    setCountryCode(code);
+                    setStateCode(null);
+                  }}
+                  onStateChange={setStateCode}
+                  disabled={countries.length === 0}
                 />
-              )}
-              <div className="grid md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="paymentPreference">Payment Preference</Label>
-                  <Select value={paymentPreference} onValueChange={setPaymentPreference}>
-                    <SelectTrigger><SelectValue placeholder="Select preference" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="hourly">Hourly Rate</SelectItem>
-                      <SelectItem value="daily">Daily Rate</SelectItem>
-                    </SelectContent>
-                  </Select>
+              </section>
+
+              <section className="space-y-4">
+                <h3 className="text-sm font-semibold text-foreground">Profile</h3>
+                <div className="rounded-lg border border-dashed border-[#c9a84c]/40 bg-[#c9a84c]/5 p-4 space-y-2">
+                  <p className="text-sm font-semibold">Import from resume (optional)</p>
+                  <p className="text-xs text-muted-foreground">AI fills the fields below — you still need Aadhaar to finish.</p>
+                  <ResumeImporter onParsed={handleResumeParsed} />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="rate">Rate (USD)</Label>
-                  <Input id="rate" type="number" min="0" placeholder="e.g. 150" value={hourlyRate} onChange={(e) => setHourlyRate(e.target.value)} required />
+                  <Label htmlFor="tagline">Professional Tagline</Label>
+                  <Input id="tagline" placeholder="e.g. Senior Full-Stack Engineer" value={tagline} onChange={(e) => setTagline(e.target.value)} required />
                 </div>
-              </div>
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="fieldOfWork">Primary Field</Label>
+                    <Select value={fieldOfWork} onValueChange={setFieldOfWork} required>
+                      <SelectTrigger id="fieldOfWork"><SelectValue placeholder="Select field" /></SelectTrigger>
+                      <SelectContent className="max-h-72">
+                        {FIELDS_OF_WORK.map((f) => (
+                          <SelectItem key={f} value={f}>{f}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="yearsExperience">Years of Experience</Label>
+                    <Input id="yearsExperience" type="number" min="0" value={yearsExperience} onChange={(e) => setYearsExperience(e.target.value)} required />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="skills">Skills (comma separated)</Label>
+                  <Input id="skills" value={skills} onChange={(e) => setSkills(e.target.value)} required />
+                </div>
+                {professionCategory === "education" && (
+                  <TeachingDetailsSection
+                    educationProfessionType={educationProfessionType}
+                    values={teachingDetails}
+                    onChange={setTeachingDetails}
+                  />
+                )}
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Payment Preference</Label>
+                    <Select value={paymentPreference} onValueChange={setPaymentPreference}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="hourly">Hourly Rate</SelectItem>
+                        <SelectItem value="daily">Daily Rate</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="rate">Rate</Label>
+                    <Input id="rate" type="number" min="0" value={hourlyRate} onChange={(e) => setHourlyRate(e.target.value)} required />
+                  </div>
+                </div>
+              </section>
+
+              <section>
+                <FreelancerDocumentOnboardingStep
+                  embedded
+                  ensureProfile={ensureFreelancerProfile}
+                  onReadyChange={setDocReady}
+                  onBusyChange={setDocBusy}
+                />
+              </section>
             </CardContent>
             <CardFooter className="flex justify-between">
-              <Button type="button" variant="outline" onClick={() => setStep("location")}>Back</Button>
-              <Button type="submit" disabled={freelancerProfileSubmitting || autoCreating}>
-                {freelancerProfileSubmitting ? "Saving..." : "Continue →"}
+              <Button type="button" variant="outline" onClick={() => { setStep("role"); setRole(null); setDocReady(false); }}>
+                Back
+              </Button>
+              <Button type="submit" disabled={submitting || docBusy}>
+                {submitting ? (
+                  <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Finishing…</>
+                ) : !docReady ? (
+                  "Upload Aadhaar to finish"
+                ) : (
+                  "Finish registration →"
+                )}
               </Button>
             </CardFooter>
           </form>
         </Card>
       )}
 
-      {step === "freelancer-documents" && (
-        <FreelancerDocumentOnboardingStep
-          onBack={() => setStep("freelancer-details")}
-          onContinue={handleFreelancerFinish}
-          isSubmitting={freelancerFinishSubmitting}
-        />
-      )}
-
-      {/* ── Employer details ────────────────────────────────────────────── */}
-      {step === "employer-details" && (
+      {step === "form" && role === "employer" && (
         <Card>
           <CardHeader>
-            <div className="flex items-center gap-3 mb-1">
-              <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center">
-                <Building className="h-5 w-5 text-primary" />
-              </div>
-              <div>
-                <CardTitle>Employer Profile</CardTitle>
-                <CardDescription>Tell us about your company and hiring needs.</CardDescription>
-              </div>
-            </div>
+            <CardTitle className="flex items-center gap-2">
+              <Building className="h-5 w-5 text-primary" />
+              Employer registration
+            </CardTitle>
+            <CardDescription>Complete everything on this page, then finish registration.</CardDescription>
           </CardHeader>
           {employerProfileLoadFailed ? (
             <CardContent>
               <p className="text-sm text-destructive">Could not load your saved company profile. Try again in a moment.</p>
             </CardContent>
           ) : (
-          <form onSubmit={handleEmployerSubmit}>
-            <CardContent className="space-y-4">
-              <div className="grid md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="companyName">Company Name</Label>
-                  <Input id="companyName" placeholder="Acme Inc." value={companyName} onChange={(e) => setCompanyName(e.target.value)} required />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="industry">Industry</Label>
-                  <Input id="industry" placeholder="Technology" value={industry} onChange={(e) => setIndustry(e.target.value)} required />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="companySize">Company Size</Label>
-                <Select value={companySize} onValueChange={setCompanySize}>
-                  <SelectTrigger><SelectValue placeholder="Select company size" /></SelectTrigger>
-                  <SelectContent>
-                    {COMPANY_SIZE_OPTIONS.map((option) => (
-                      <SelectItem key={option.value} value={option.value}>
-                        {option.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="description">Company Description</Label>
-                <Textarea id="description" placeholder="Briefly describe what your company does..." value={description} onChange={(e) => setDescription(e.target.value)} required />
-              </div>
-              <CountryStateFields
-                countries={countries}
-                countryCode={countryCode}
-                stateCode={stateCode}
-                onCountryChange={setCountryCode}
-                onStateChange={setStateCode}
-                disabled={countries.length === 0}
-              />
-            </CardContent>
-            <CardFooter className="flex justify-between">
-              <Button type="button" variant="outline" onClick={() => setStep("location")}>Back</Button>
-              <Button type="submit" disabled={employerProfileSubmitting}>
-                {employerProfileSubmitting ? "Saving..." : "Continue →"}
-              </Button>
-            </CardFooter>
-          </form>
+            <form onSubmit={handleEmployerComplete}>
+              <CardContent className="space-y-8">
+                <section className="space-y-4">
+                  <h3 className="text-sm font-semibold text-foreground">Location</h3>
+                  <CountryStateFields
+                    countries={countries}
+                    countryCode={countryCode}
+                    stateCode={stateCode}
+                    onCountryChange={(code) => {
+                      setCountryCode(code);
+                      setStateCode(null);
+                    }}
+                    onStateChange={setStateCode}
+                    disabled={countries.length === 0}
+                  />
+                </section>
+
+                <section className="space-y-4">
+                  <h3 className="text-sm font-semibold text-foreground">Company profile</h3>
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="companyName">Company Name</Label>
+                      <Input id="companyName" value={companyName} onChange={(e) => setCompanyName(e.target.value)} required />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="industry">Industry</Label>
+                      <Input id="industry" value={industry} onChange={(e) => setIndustry(e.target.value)} required />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="companySize">Company Size</Label>
+                    <Select value={companySize} onValueChange={setCompanySize}>
+                      <SelectTrigger><SelectValue placeholder="Select company size" /></SelectTrigger>
+                      <SelectContent>
+                        {COMPANY_SIZE_OPTIONS.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="description">Company Description</Label>
+                    <Textarea id="description" value={description} onChange={(e) => setDescription(e.target.value)} required />
+                  </div>
+                </section>
+
+                <section>
+                  <EmployerDocumentOnboardingStep
+                    embedded
+                    ensureProfile={ensureEmployerProfile}
+                    onReadyChange={setDocReady}
+                    onBusyChange={setDocBusy}
+                  />
+                </section>
+              </CardContent>
+              <CardFooter className="flex justify-between">
+                <Button type="button" variant="outline" onClick={() => { setStep("role"); setRole(null); setDocReady(false); }}>
+                  Back
+                </Button>
+                <Button type="submit" disabled={submitting || docBusy}>
+                  {submitting ? (
+                    <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Finishing…</>
+                  ) : !docReady ? (
+                    "Upload Aadhaar to finish"
+                  ) : (
+                    "Finish registration →"
+                  )}
+                </Button>
+              </CardFooter>
+            </form>
           )}
         </Card>
-      )}
-
-      {step === "employer-documents" && (
-        <EmployerDocumentOnboardingStep
-          onBack={() => setStep("employer-details")}
-          onContinue={handleEmployerFinish}
-          isSubmitting={employerFinishSubmitting}
-        />
       )}
     </div>
   );

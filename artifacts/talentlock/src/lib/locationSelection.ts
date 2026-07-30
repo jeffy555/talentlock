@@ -7,7 +7,7 @@ export function parseLocationSelection(
   location: string | null | undefined,
 ): { countryCode: string; stateCode: string | null } {
   if (!location?.trim()) {
-    return { countryCode: "US", stateCode: null };
+    return { countryCode: "", stateCode: null };
   }
 
   const trimmed = location.trim();
@@ -37,5 +37,5 @@ export function parseLocationSelection(
     return { countryCode: country.code, stateCode: state?.code ?? null };
   }
 
-  return { countryCode: "US", stateCode: null };
+  return { countryCode: "", stateCode: null };
 }

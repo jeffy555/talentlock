@@ -194,12 +194,9 @@ Talent Vault list/detail exclude users whose `users.role` is still `pending`.
 
 ## Step indicator (freelancer vs employer)
 
-| Path | Steps |
-|------|-------|
-| Freelancer | 1 Account type → 2 Work category → 3 Location → 4 Profile details → 5 Verification |
-| Employer | 1 Account type → 2 Location → 3 Company profile → 4 Verification |
+**Removed.** Onboarding is account type → single registration form (no 4/5-step indicator).
 
-Compute `progressStep` from current `step` + `onboardingRole`, not a hardcoded 2-step array.
+Legacy `onboardingStep` enum values remain in the API; the UI maps any post-role step to the single form.
 
 ---
 
@@ -228,6 +225,6 @@ Server `onboardingStep` remains `profession_category` until Location Continue su
 |-------|-------------|--------|
 | 1 | Database — `onboarding_role`, `onboarding_step` on `users` | ✅ |
 | 2 | Backend — PATCH route, OpenAPI (`freelancer_documents` + `employer_documents` steps), codegen, clear on PUT, pending-role document access, Vault hides pending freelancers | ✅ |
-| 3 | Frontend — resume onboarding, dashboard checklist, employer + freelancer mandatory doc gates, company/profile first-save fix | ✅ |
+| 3 | Frontend — single registration form (role → form), dashboard checklist, mandatory Aadhaar on same page, company/profile ensure-before-upload | ✅ |
 
 > Registration safeguard: onboarding is unavailable until Clerk exposes a valid primary email address. Both onboarding persistence and final user upsert reject invalid email values. Country/state selectors are shared by the location step and detail forms.

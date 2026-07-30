@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import {
+  useGetMe,
   useListCountries,
   useParseTalentSearchRules,
   type TalentSearchRules,
@@ -150,6 +151,7 @@ export function TalentSearchRuleBuilder({
 }: TalentSearchRuleBuilderProps) {
   const { toast } = useToast();
   const fileRef = useRef<HTMLInputElement>(null);
+  const { data: me } = useGetMe();
   const { data: countriesData } = useListCountries();
   const countries = countriesData?.countries ?? [];
   const [mode, setMode] = useState<"onboarding" | "form" | "parser">(
@@ -158,22 +160,42 @@ export function TalentSearchRuleBuilder({
   const [rules, setRules] = useState<TalentSearchRules>(initialRules ?? emptyTalentSearchRules());
   const [rawText, setRawText] = useState(initialRawText ?? "");
   const [parsePreview, setParsePreview] = useState<ParseTalentSearchRulesResult | null>(null);
-  const [countryCode, setCountryCode] = useState("US");
+  const [countryCode, setCountryCode] = useState("");
   const [stateCode, setStateCode] = useState<string | null>(null);
+  const seededLocationRef = useRef(false);
 
   const parseRules = useParseTalentSearchRules();
 
   useEffect(() => {
     if (countries.length === 0) return;
+
+    // Saved rules always win.
     if (rules.countryCode) {
       setCountryCode(rules.countryCode);
       setStateCode(rules.stateCode ?? null);
+      seededLocationRef.current = true;
       return;
     }
-    const parsed = parseLocationSelection(countries, rules.location);
-    setCountryCode(parsed.countryCode);
-    setStateCode(parsed.stateCode);
-  }, [countries, rules.countryCode, rules.stateCode, rules.location]);
+    if (rules.location?.trim()) {
+      const parsed = parseLocationSelection(countries, rules.location);
+      setCountryCode(parsed.countryCode);
+      setStateCode(parsed.stateCode);
+      seededLocationRef.current = true;
+      return;
+    }
+
+    // Seed once from employer account — do not re-apply after the user edits.
+    if (seededLocationRef.current) return;
+
+    if (me?.countryCode) {
+      setCountryCode(me.countryCode);
+      setStateCode(me.stateCode ?? null);
+    } else {
+      setCountryCode("");
+      setStateCode(null);
+    }
+    seededLocationRef.current = true;
+  }, [countries, rules.countryCode, rules.stateCode, rules.location, me?.countryCode, me?.stateCode]);
 
   const updateRules = (patch: Partial<TalentSearchRules>) => {
     setRules((prev) => ({ ...prev, ...patch }));
