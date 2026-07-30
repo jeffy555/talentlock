@@ -1,0 +1,806 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>TalentLock — Investor & Stakeholder Pitch</title>
+  <style>
+    @page {
+      size: A4;
+      margin: 0;
+    }
+
+    :root {
+      --navy: #0d1f3c;
+      --navy-mid: #16325c;
+      --gold: #c9a84c;
+      --gold-soft: #e8d5a3;
+      --ink: #1a2332;
+      --muted: #5a6577;
+      --paper: #f7f5f0;
+      --line: #d9d4c8;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      background: #fff;
+      color: var(--ink);
+      font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+      font-size: 11pt;
+      line-height: 1.45;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+
+    .page {
+      width: 210mm;
+      min-height: 297mm;
+      padding: 18mm 18mm 20mm;
+      page-break-after: always;
+      position: relative;
+      overflow: hidden;
+      background: #fff;
+    }
+
+    .page:last-child { page-break-after: auto; }
+
+    .cover {
+      padding: 0;
+      background:
+        radial-gradient(ellipse 90% 55% at 85% -10%, rgba(201,168,76,0.28), transparent 55%),
+        linear-gradient(165deg, #0a1730 0%, var(--navy) 48%, #122848 100%);
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .cover-top {
+      padding: 28mm 20mm 0;
+    }
+
+    .brand-mark {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 42mm;
+    }
+
+    .brand-mark .diamond {
+      width: 14px;
+      height: 14px;
+      background: var(--gold);
+      transform: rotate(45deg);
+    }
+
+    .brand-mark span {
+      letter-spacing: 0.28em;
+      font-size: 10pt;
+      font-weight: 600;
+      text-transform: uppercase;
+      color: var(--gold-soft);
+    }
+
+    .cover h1 {
+      font-size: 42pt;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      line-height: 1.05;
+      margin-bottom: 8mm;
+    }
+
+    .cover h1 em {
+      font-style: normal;
+      color: var(--gold);
+    }
+
+    .cover .tagline {
+      font-size: 15pt;
+      max-width: 145mm;
+      color: rgba(255,255,255,0.88);
+      font-weight: 400;
+      line-height: 1.4;
+    }
+
+    .cover-bottom {
+      padding: 0 20mm 22mm;
+      border-top: 1px solid rgba(201,168,76,0.35);
+      margin: 0 20mm;
+      padding-top: 8mm;
+      padding-left: 0;
+      padding-right: 0;
+      display: flex;
+      justify-content: space-between;
+      gap: 12mm;
+      color: rgba(255,255,255,0.72);
+      font-size: 9.5pt;
+    }
+
+    .cover-bottom strong {
+      display: block;
+      color: var(--gold-soft);
+      font-size: 8pt;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      margin-bottom: 2mm;
+      font-weight: 600;
+    }
+
+    h2 {
+      font-size: 18pt;
+      color: var(--navy);
+      margin-bottom: 4mm;
+      letter-spacing: -0.01em;
+    }
+
+    .eyebrow {
+      color: var(--gold);
+      font-size: 8.5pt;
+      font-weight: 700;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      margin-bottom: 2.5mm;
+    }
+
+    .lede {
+      font-size: 12pt;
+      color: var(--muted);
+      margin-bottom: 7mm;
+      max-width: 170mm;
+    }
+
+    .rule {
+      height: 2px;
+      width: 28mm;
+      background: var(--gold);
+      margin: 0 0 7mm;
+    }
+
+    .two-col {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 7mm;
+    }
+
+    .card {
+      border: 1px solid var(--line);
+      border-radius: 2mm;
+      padding: 5mm 5.5mm;
+      background: var(--paper);
+    }
+
+    .card h3 {
+      font-size: 11.5pt;
+      color: var(--navy);
+      margin-bottom: 2mm;
+    }
+
+    .card p, .card li {
+      font-size: 9.8pt;
+      color: var(--muted);
+    }
+
+    .card ul {
+      padding-left: 4.5mm;
+      margin-top: 2mm;
+    }
+
+    .card li { margin-bottom: 1.2mm; }
+
+    .problem-list {
+      list-style: none;
+      margin-top: 2mm;
+    }
+
+    .problem-list li {
+      position: relative;
+      padding-left: 5mm;
+      margin-bottom: 3mm;
+      font-size: 10.5pt;
+      color: var(--ink);
+    }
+
+    .problem-list li::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: 2.2mm;
+      width: 2.2mm;
+      height: 2.2mm;
+      background: var(--gold);
+      border-radius: 50%;
+    }
+
+    .flow {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 3mm;
+      margin: 6mm 0 8mm;
+    }
+
+    .flow-step {
+      border-top: 3px solid var(--gold);
+      padding-top: 3.5mm;
+      background: transparent;
+    }
+
+    .flow-step .num {
+      font-size: 8pt;
+      font-weight: 700;
+      color: var(--gold);
+      letter-spacing: 0.1em;
+      margin-bottom: 1.5mm;
+    }
+
+    .flow-step h4 {
+      font-size: 10pt;
+      color: var(--navy);
+      margin-bottom: 1.5mm;
+    }
+
+    .flow-step p {
+      font-size: 8.5pt;
+      color: var(--muted);
+      line-height: 1.35;
+    }
+
+    .pillars {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 4.5mm;
+      margin-top: 3mm;
+    }
+
+    .pillar {
+      border-left: 3px solid var(--gold);
+      padding: 2mm 0 2mm 4mm;
+    }
+
+    .pillar h3 {
+      font-size: 11pt;
+      color: var(--navy);
+      margin-bottom: 1mm;
+    }
+
+    .pillar p {
+      font-size: 9.2pt;
+      color: var(--muted);
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 3.5mm;
+      margin: 6mm 0 8mm;
+    }
+
+    .stat {
+      background: var(--navy);
+      color: #fff;
+      border-radius: 2mm;
+      padding: 4.5mm 4mm;
+      text-align: left;
+    }
+
+    .stat .value {
+      font-size: 16pt;
+      font-weight: 700;
+      color: var(--gold);
+      line-height: 1.1;
+      margin-bottom: 1.5mm;
+    }
+
+    .stat .label {
+      font-size: 8pt;
+      color: rgba(255,255,255,0.75);
+      line-height: 1.3;
+    }
+
+    table.plans {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 4mm;
+      font-size: 9.2pt;
+    }
+
+    table.plans th {
+      text-align: left;
+      background: var(--navy);
+      color: #fff;
+      padding: 3mm 3.5mm;
+      font-weight: 600;
+    }
+
+    table.plans th:first-child { border-radius: 2mm 0 0 0; }
+    table.plans th:last-child { border-radius: 0 2mm 0 0; }
+
+    table.plans td {
+      padding: 2.8mm 3.5mm;
+      border-bottom: 1px solid var(--line);
+      color: var(--ink);
+      vertical-align: top;
+    }
+
+    table.plans tr:nth-child(even) td { background: var(--paper); }
+
+    .feature-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 3.5mm;
+      margin-top: 4mm;
+    }
+
+    .feature-item {
+      border: 1px solid var(--line);
+      border-radius: 1.5mm;
+      padding: 3.5mm;
+    }
+
+    .feature-item h4 {
+      font-size: 9.5pt;
+      color: var(--navy);
+      margin-bottom: 1mm;
+    }
+
+    .feature-item p {
+      font-size: 8.3pt;
+      color: var(--muted);
+      line-height: 1.35;
+    }
+
+    .closing {
+      background:
+        linear-gradient(160deg, var(--navy) 0%, var(--navy-mid) 100%);
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding: 24mm 20mm;
+    }
+
+    .closing h2 {
+      color: #fff;
+      font-size: 26pt;
+      max-width: 150mm;
+      line-height: 1.2;
+      margin-bottom: 6mm;
+    }
+
+    .closing h2 span { color: var(--gold); }
+
+    .closing .summary {
+      font-size: 12pt;
+      color: rgba(255,255,255,0.85);
+      max-width: 155mm;
+      margin-bottom: 12mm;
+      line-height: 1.5;
+    }
+
+    .closing .cta-box {
+      border: 1px solid rgba(201,168,76,0.45);
+      border-radius: 2mm;
+      padding: 6mm 7mm;
+      max-width: 140mm;
+      background: rgba(255,255,255,0.04);
+    }
+
+    .closing .cta-box strong {
+      display: block;
+      color: var(--gold);
+      font-size: 9pt;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      margin-bottom: 2mm;
+    }
+
+    .closing .cta-box p {
+      font-size: 11pt;
+      color: rgba(255,255,255,0.9);
+    }
+
+    .footer-note {
+      position: absolute;
+      left: 18mm;
+      right: 18mm;
+      bottom: 10mm;
+      display: flex;
+      justify-content: space-between;
+      font-size: 8pt;
+      color: var(--muted);
+      border-top: 1px solid var(--line);
+      padding-top: 2.5mm;
+    }
+
+    .closing .footer-note {
+      color: rgba(255,255,255,0.45);
+      border-top-color: rgba(255,255,255,0.15);
+    }
+
+    .audience-split {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 5mm;
+      margin-top: 5mm;
+    }
+
+    .audience {
+      border-radius: 2mm;
+      padding: 5.5mm;
+      min-height: 52mm;
+    }
+
+    .audience.employer {
+      background: var(--navy);
+      color: #fff;
+    }
+
+    .audience.freelancer {
+      background: var(--paper);
+      border: 1px solid var(--line);
+    }
+
+    .audience h3 {
+      font-size: 12pt;
+      margin-bottom: 3mm;
+    }
+
+    .audience.employer h3 { color: var(--gold); }
+    .audience.freelancer h3 { color: var(--navy); }
+
+    .audience ul {
+      padding-left: 4.5mm;
+    }
+
+    .audience li {
+      font-size: 9.5pt;
+      margin-bottom: 1.8mm;
+    }
+
+    .audience.employer li { color: rgba(255,255,255,0.82); }
+    .audience.freelancer li { color: var(--muted); }
+  </style>
+</head>
+<body>
+
+  <!-- PAGE 1: Cover -->
+  <section class="page cover">
+    <div class="cover-top">
+      <div class="brand-mark">
+        <div class="diamond"></div>
+        <span>TalentLock</span>
+      </div>
+      <h1>Secure talent.<br /><em>Unlock</em> outcomes.</h1>
+      <p class="tagline">
+        The exclusive freelance hiring platform that combines AI matching,
+        identity verification, locked bookings, and digitally signed agreements
+        in one end-to-end workflow.
+      </p>
+    </div>
+    <div class="cover-bottom">
+      <div>
+        <strong>Document</strong>
+        Stakeholder Pitch Deck
+      </div>
+      <div>
+        <strong>Product</strong>
+        TalentLock Platform
+      </div>
+      <div>
+        <strong>Source</strong>
+        project.md · spec/spec.md
+      </div>
+      <div>
+        <strong>Status</strong>
+        Production-ready feature set
+      </div>
+    </div>
+  </section>
+
+  <!-- PAGE 2: Problem + Solution -->
+  <section class="page">
+    <div class="eyebrow">The opportunity</div>
+    <h2>Freelance hiring is still broken</h2>
+    <div class="rule"></div>
+    <p class="lede">
+      Employers and freelancers still stitch together marketplaces, email threads,
+      PDFs, calendars, and trust signals that do not talk to each other.
+      TalentLock replaces that fragmented stack with one protected hiring loop.
+    </p>
+
+    <div class="two-col">
+      <div class="card">
+        <h3>What employers struggle with</h3>
+        <ul class="problem-list">
+          <li>Hours spent browsing mismatched profiles</li>
+          <li>No exclusivity once a freelancer is found</li>
+          <li>Handshake deals and weak contract coverage</li>
+          <li>Unclear identity and credential trust</li>
+          <li>Spend and hiring outcomes scattered across tools</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>What freelancers struggle with</h3>
+        <ul class="problem-list">
+          <li>Race-to-the-bottom marketplaces</li>
+          <li>Ghosted proposals and unpaid discovery time</li>
+          <li>No durable proof of exclusivity or quality</li>
+          <li>Manual rate negotiation and weak deal flow</li>
+          <li>Little visibility into earnings intelligence</li>
+        </ul>
+      </div>
+    </div>
+
+    <div style="height: 8mm;"></div>
+    <div class="eyebrow">The answer</div>
+    <h2>One platform. Full hiring lifecycle.</h2>
+    <div class="rule"></div>
+
+    <div class="flow">
+      <div class="flow-step">
+        <div class="num">01</div>
+        <h4>Discover</h4>
+        <p>AI Match, Talent Vault, TalentSearch, and discovery meetings surface the right people fast.</p>
+      </div>
+      <div class="flow-step">
+        <div class="num">02</div>
+        <h4>Verify</h4>
+        <p>Aadhaar / ID, employer business docs, and credential expiry tracking build real trust.</p>
+      </div>
+      <div class="flow-step">
+        <div class="num">03</div>
+        <h4>Lock</h4>
+        <p>Exclusive bookings mark talent unavailable — no double-booking, no mid-project poaching.</p>
+      </div>
+      <div class="flow-step">
+        <div class="num">04</div>
+        <h4>Contract</h4>
+        <p>AI-generated or uploaded agreements, health scores, redlines, e-sign, and PDF locker.</p>
+      </div>
+      <div class="flow-step">
+        <div class="num">05</div>
+        <h4>Deliver</h4>
+        <p>Milestones, messaging, reviews, analytics, and post-engagement AI debriefs close the loop.</p>
+      </div>
+    </div>
+
+    <div class="card" style="background:#fff; border-color: var(--gold);">
+      <h3 style="color:var(--navy);">Why TalentLock wins</h3>
+      <p style="color:var(--ink); font-size:10.5pt;">
+        It is not another job board. It is infrastructure for professional freelance engagement —
+        matching, exclusivity, verification, legal protection, and operational intelligence
+        designed as one product, not five disconnected tools.
+      </p>
+    </div>
+
+    <div class="footer-note">
+      <span>TalentLock Pitch</span>
+      <span>2</span>
+    </div>
+  </section>
+
+  <!-- PAGE 3: Product pillars + audiences -->
+  <section class="page">
+    <div class="eyebrow">Product pillars</div>
+    <h2>Built around trust and exclusivity</h2>
+    <div class="rule"></div>
+
+    <div class="pillars">
+      <div class="pillar">
+        <h3>AI Talent Matching</h3>
+        <p>Employers describe the need; GPT-powered matching recommends freelancers with explanations for skills, rate, and availability.</p>
+      </div>
+      <div class="pillar">
+        <h3>Exclusive Bookings</h3>
+        <p>Confirmed bookings lock talent availability and show a Lock badge — exclusivity is the core market differentiator.</p>
+      </div>
+      <div class="pillar">
+        <h3>Verified Identity</h3>
+        <p>Freelancer Aadhaar/ID verification and employer business document verification create mutual trust before work starts.</p>
+      </div>
+      <div class="pillar">
+        <h3>AI Legal Agreements</h3>
+        <p>Generate or upload contracts, score health, summarise in plain English, redline, e-sign, and download certified PDFs.</p>
+      </div>
+      <div class="pillar">
+        <h3>Cruise Mode &amp; TalentSearch</h3>
+        <p>Rules-based AI outreach: freelancers auto-express interest in jobs; employers auto-reach matching talent via DMs.</p>
+      </div>
+      <div class="pillar">
+        <h3>Discovery → Brief → Book</h3>
+        <p>Schedule discovery meetings with calendar guests, then receive AI meeting briefs before confirmed calls.</p>
+      </div>
+      <div class="pillar">
+        <h3>Multi-Currency Hiring</h3>
+        <p>Country-derived currency, dual display in Talent Vault, and frozen booking FX for clean cross-border agreements.</p>
+      </div>
+      <div class="pillar">
+        <h3>Enterprise Teams</h3>
+        <p>Shared shortlists, invites, team analytics, and unlimited enterprise capacity for high-volume hiring orgs.</p>
+      </div>
+    </div>
+
+    <div style="height: 7mm;"></div>
+    <div class="eyebrow">Who it serves</div>
+    <h2>Two sides. One locked marketplace.</h2>
+    <div class="rule"></div>
+
+    <div class="audience-split">
+      <div class="audience employer">
+        <h3>Employers</h3>
+        <ul>
+          <li>Talent Vault + AI Match + TalentSearch</li>
+          <li>Watchlists, discovery calls, rate suggestions</li>
+          <li>Exclusive bookings and milestone tracking</li>
+          <li>Spend &amp; hiring analytics dashboards</li>
+          <li>Verified Employer badge and team accounts</li>
+        </ul>
+      </div>
+      <div class="audience freelancer">
+        <h3>Freelancers</h3>
+        <ul>
+          <li>Technology and teaching professional profiles</li>
+          <li>Public shareable profiles and portfolios</li>
+          <li>Cruise Mode auto-outreach on Pro</li>
+          <li>Proposal generator and earnings intelligence</li>
+          <li>Credential expiry alerts and verified badges</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="footer-note">
+      <span>TalentLock Pitch</span>
+      <span>3</span>
+    </div>
+  </section>
+
+  <!-- PAGE 4: Platform maturity + pricing -->
+  <section class="page">
+    <div class="eyebrow">Platform maturity</div>
+    <h2>Spec-complete and ready to pitch</h2>
+    <div class="rule"></div>
+    <p class="lede">
+      Per <em>spec/spec.md</em>, TalentLock’s major product modules are marked complete —
+      from matching and verification through messaging, analytics, agreements, and security hardening.
+    </p>
+
+    <div class="stats">
+      <div class="stat">
+        <div class="value">40+</div>
+        <div class="label">Documented product capabilities in project.md</div>
+      </div>
+      <div class="stat">
+        <div class="value">30+</div>
+        <div class="label">Completed feature specs under spec/</div>
+      </div>
+      <div class="stat">
+        <div class="value">5</div>
+        <div class="label">Subscription plans across employer &amp; freelancer roles</div>
+      </div>
+      <div class="stat">
+        <div class="value">1</div>
+        <div class="label">End-to-end workflow from discovery to signed work</div>
+      </div>
+    </div>
+
+    <div class="feature-grid">
+      <div class="feature-item">
+        <h4>Matching &amp; discovery</h4>
+        <p>AI Match, smarter explanations, Talent Vault filters, watchlists, availability calendar, discovery meetings + AI briefs.</p>
+      </div>
+      <div class="feature-item">
+        <h4>Trust &amp; compliance</h4>
+        <p>Document verification, employer verification, credential expiry, auth hardening, GDPR deletion, audit logs.</p>
+      </div>
+      <div class="feature-item">
+        <h4>Commercial engine</h4>
+        <p>Bookings, negotiation, milestones, reviews, multi-currency, team shortlists, subscription gates.</p>
+      </div>
+      <div class="feature-item">
+        <h4>Agreements</h4>
+        <p>AI generation, uploads, templates, redlining, health score, summaries, e-sign, certified PDF download.</p>
+      </div>
+      <div class="feature-item">
+        <h4>Automation</h4>
+        <p>Cruise Mode, TalentSearch DM delivery, job description assistant, rate suggestions, proposal generator.</p>
+      </div>
+      <div class="feature-item">
+        <h4>Intelligence</h4>
+        <p>Earnings intelligence, spend analytics, hiring funnel analytics, post-engagement AI debrief, token usage.</p>
+      </div>
+    </div>
+
+    <div style="height: 7mm;"></div>
+    <div class="eyebrow">Business model</div>
+    <h2>Recurring plans that scale with usage</h2>
+    <div class="rule"></div>
+
+    <table class="plans">
+      <thead>
+        <tr>
+          <th>Plan</th>
+          <th>Audience</th>
+          <th>List pricing*</th>
+          <th>What unlocks</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>Freelancer Free</strong></td>
+          <td>Talent</td>
+          <td>$0</td>
+          <td>Core profile, limited active bookings &amp; interests</td>
+        </tr>
+        <tr>
+          <td><strong>Freelancer Pro</strong></td>
+          <td>Talent</td>
+          <td>$19 / mo</td>
+          <td>Higher booking capacity + Cruise Mode automation</td>
+        </tr>
+        <tr>
+          <td><strong>Employer Starter</strong></td>
+          <td>Hiring teams</td>
+          <td>$49 / mo</td>
+          <td>Vault access, bookings, job posts, starter AI tokens</td>
+        </tr>
+        <tr>
+          <td><strong>Employer Growth</strong></td>
+          <td>Scaling teams</td>
+          <td>$199 / mo</td>
+          <td>Higher quotas, advanced AI features &amp; analytics depth</td>
+        </tr>
+        <tr>
+          <td><strong>Enterprise</strong></td>
+          <td>High-volume orgs</td>
+          <td>Custom</td>
+          <td>Unlimited capacity, team accounts, shared shortlists</td>
+        </tr>
+      </tbody>
+    </table>
+    <p style="margin-top:3mm; font-size:8pt; color:var(--muted);">
+      *List prices from project.md plan catalogue. Temporary promotional gating may open premium features during demo periods.
+    </p>
+
+    <div class="footer-note">
+      <span>TalentLock Pitch</span>
+      <span>4</span>
+    </div>
+  </section>
+
+  <!-- PAGE 5: Close -->
+  <section class="page closing">
+    <div class="eyebrow" style="color:var(--gold);">The ask / the close</div>
+    <h2>Own the infrastructure layer of <span>professional freelance hiring</span>.</h2>
+    <p class="summary">
+      TalentLock compresses sourcing, verification, exclusivity, contracting, messaging,
+      and performance insight into a single product surface. The market still buys these
+      capabilities as disconnected tools. We sell the lock.
+    </p>
+
+    <div class="cta-box">
+      <strong>Next conversation</strong>
+      <p>
+        Live product walkthrough · employer &amp; freelancer journeys ·
+        go-to-market for technology and teaching talent verticals ·
+        partnership or investment discussion.
+      </p>
+    </div>
+
+    <div style="height: 18mm;"></div>
+    <div style="display:flex; align-items:center; gap:10px;">
+      <div style="width:12px;height:12px;background:var(--gold);transform:rotate(45deg);"></div>
+      <div style="letter-spacing:0.28em; text-transform:uppercase; font-size:10pt; color:var(--gold-soft); font-weight:600;">
+        TalentLock
+      </div>
+    </div>
+    <p style="margin-top:3mm; color:rgba(255,255,255,0.65); font-size:10pt;">
+      Securing talent. Unlocking potential.
+    </p>
+
+    <div class="footer-note">
+      <span>Confidential — for stakeholder use</span>
+      <span>5</span>
+    </div>
+  </section>
+
+</body>
+</html>
