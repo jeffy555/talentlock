@@ -2575,6 +2575,16 @@ export const ListMeetingsResponse = zod.object({
       meetingLink: zod.string().nullish(),
       freelancerName: zod.string().nullish(),
       employerName: zod.string().nullish(),
+      freelancerEmail: zod
+        .string()
+        .email()
+        .nullish()
+        .describe("Freelancer contact email for calendar guests \/ invites"),
+      employerEmail: zod
+        .string()
+        .email()
+        .nullish()
+        .describe("Employer contact email for calendar guests \/ invites"),
       employerVerificationLevel: zod
         .enum(["unverified", "partially_verified", "fully_verified"])
         .optional(),
@@ -2653,6 +2663,16 @@ export const GetMeetingResponse = zod.object({
   meetingLink: zod.string().nullish(),
   freelancerName: zod.string().nullish(),
   employerName: zod.string().nullish(),
+  freelancerEmail: zod
+    .string()
+    .email()
+    .nullish()
+    .describe("Freelancer contact email for calendar guests \/ invites"),
+  employerEmail: zod
+    .string()
+    .email()
+    .nullish()
+    .describe("Employer contact email for calendar guests \/ invites"),
   employerVerificationLevel: zod
     .enum(["unverified", "partially_verified", "fully_verified"])
     .optional(),
@@ -2722,6 +2742,16 @@ export const UpdateMeetingResponse = zod.object({
   meetingLink: zod.string().nullish(),
   freelancerName: zod.string().nullish(),
   employerName: zod.string().nullish(),
+  freelancerEmail: zod
+    .string()
+    .email()
+    .nullish()
+    .describe("Freelancer contact email for calendar guests \/ invites"),
+  employerEmail: zod
+    .string()
+    .email()
+    .nullish()
+    .describe("Employer contact email for calendar guests \/ invites"),
   employerVerificationLevel: zod
     .enum(["unverified", "partially_verified", "fully_verified"])
     .optional(),

@@ -1195,6 +1195,16 @@ export interface Meeting {
   freelancerName?: string | null;
   /** @nullable */
   employerName?: string | null;
+  /**
+   * Freelancer contact email for calendar guests / invites
+   * @nullable
+   */
+  freelancerEmail?: string | null;
+  /**
+   * Employer contact email for calendar guests / invites
+   * @nullable
+   */
+  employerEmail?: string | null;
   employerVerificationLevel?: MeetingEmployerVerificationLevel;
   briefContent?: null | MeetingBrief;
   /** @nullable */

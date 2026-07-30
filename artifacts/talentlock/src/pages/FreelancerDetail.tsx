@@ -99,6 +99,8 @@ export default function FreelancerDetail() {
   const [meetingAgenda, setMeetingAgenda] = useState("");
   const [meetingLink, setMeetingLink] = useState("");
   const [confirmedMeetingId, setConfirmedMeetingId] = useState<number | null>(null);
+  const [confirmedMeetingGuests, setConfirmedMeetingGuests] = useState<string[]>([]);
+  const [confirmedMeetingLink, setConfirmedMeetingLink] = useState<string | null>(null);
 
   const handleToggleSave = async () => {
     try {
@@ -189,6 +191,12 @@ export default function FreelancerDetail() {
       });
       await queryClient.invalidateQueries({ queryKey: ["/api/meetings"] });
       setConfirmedMeetingId(meeting.id);
+      setConfirmedMeetingGuests(
+        [meeting.freelancerEmail, meeting.employerEmail].filter(
+          (email): email is string => typeof email === "string" && email.length > 0,
+        ),
+      );
+      setConfirmedMeetingLink(meeting.meetingLink ?? (meetingLink || null));
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Failed to schedule meeting.";
       toast({ title: "Failed to schedule meeting", description: msg, variant: "destructive" });
@@ -589,7 +597,17 @@ export default function FreelancerDetail() {
                 <Dialog open={meetingOpen} onOpenChange={(open) => {
                   if (!open && confirmedMeetingId) setLocation(`/meetings/${confirmedMeetingId}`);
                   setMeetingOpen(open);
-                  if (!open) { setConfirmedMeetingId(null); setMeetingTitle(""); setMeetingDate(""); setMeetingTime("09:00"); setMeetingDuration("30"); setMeetingAgenda(""); setMeetingLink(""); }
+                  if (!open) {
+                    setConfirmedMeetingId(null);
+                    setConfirmedMeetingGuests([]);
+                    setConfirmedMeetingLink(null);
+                    setMeetingTitle("");
+                    setMeetingDate("");
+                    setMeetingTime("09:00");
+                    setMeetingDuration("30");
+                    setMeetingAgenda("");
+                    setMeetingLink("");
+                  }
                 }}>
                   <DialogTrigger asChild>
                     <Button variant="outline" className="w-full h-10 shadow-sm border-border hover:bg-secondary hover:text-foreground transition-colors font-medium">Schedule Meeting</Button>
@@ -608,7 +626,14 @@ export default function FreelancerDetail() {
                             <div className="flex justify-between items-center border-b border-border/50 pb-2"><span className="text-muted-foreground font-medium">Date</span><span className="font-bold text-foreground">{format(new Date(meetingDate), "MMM d, yyyy")} at {meetingTime}</span></div>
                             <div className="flex justify-between items-center"><span className="text-muted-foreground font-medium">Duration</span><span className="font-bold text-foreground">{meetingDuration} min</span></div>
                           </div>
-                          <a href={buildGoogleCalendarUrl({ title: meetingTitle || `Discovery Call: ${freelancer.name}`, startDate: new Date(`${meetingDate}T${meetingTime}:00`).toISOString(), endDate: new Date(new Date(`${meetingDate}T${meetingTime}:00`).getTime() + parseInt(meetingDuration) * 60000).toISOString(), details: `TalentLock Discovery Meeting with ${freelancer.name}${meetingAgenda ? `\n\nAgenda:\n${meetingAgenda}` : ""}${meetingLink ? `\n\nJoin: ${meetingLink}` : ""}` })} target="_blank" rel="noreferrer" className="block">
+                          <a href={buildGoogleCalendarUrl({
+                            title: meetingTitle || `Discovery Call: ${freelancer.name}`,
+                            startDate: new Date(`${meetingDate}T${meetingTime}:00`).toISOString(),
+                            endDate: new Date(new Date(`${meetingDate}T${meetingTime}:00`).getTime() + parseInt(meetingDuration) * 60000).toISOString(),
+                            details: `TalentLock Discovery Meeting with ${freelancer.name}${meetingAgenda ? `\n\nAgenda:\n${meetingAgenda}` : ""}${confirmedMeetingLink ? `\n\nJoin: ${confirmedMeetingLink}` : ""}`,
+                            location: confirmedMeetingLink ?? undefined,
+                            guests: confirmedMeetingGuests,
+                          })} target="_blank" rel="noreferrer" className="block">
                             <Button variant="outline" className="w-full h-11 gap-2 border-border hover:bg-secondary transition-colors" style={{ color: "#4285F4" }}>
                               <svg viewBox="0 0 24 24" className="h-5 w-5" fill="currentColor"><path d="M19.5 3h-3V1.5h-1.5V3h-6V1.5H7.5V3h-3C3.675 3 3 3.675 3 4.5v15C3 20.325 3.675 21 4.5 21h15c.825 0 1.5-.675 1.5-1.5v-15C21 3.675 20.325 3 19.5 3zm0 16.5h-15V9h15v10.5zM7.5 12H6v-1.5h1.5V12zm3 0H9v-1.5h1.5V12zm3 0H12v-1.5h1.5V12zm3 0H15v-1.5h1.5V12zM7.5 15H6v-1.5h1.5V15zm3 0H9v-1.5h1.5V15zm3 0H12v-1.5h1.5V15zm3 0H15v-1.5h1.5V15zM7.5 18H6v-1.5h1.5V18zm3 0H9v-1.5h1.5V18zm3 0H12v-1.5h1.5V18zm3 0H15v-1.5h1.5V18z"/></svg>
                               Add to Google Calendar

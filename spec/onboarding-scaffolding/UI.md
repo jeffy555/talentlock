@@ -20,6 +20,8 @@ Frontend-only surfaces: `/onboarding` step indicator + resume, `/dashboard` prof
 | 4 | Profile details | `step === "freelancer-details"` |
 | 5 | Verification | `step === "freelancer-documents"` |
 
+**Profile details — Contact email (required):** first field on the freelancer profile form. Seeded from Clerk / `users.email`. Persisted via onboarding-step and finish (`upsertMe`). Used for discovery meeting invites and Google Calendar guests.
+
 ### Employer path (4 steps)
 
 | Step | Label | Active when |
@@ -28,6 +30,8 @@ Frontend-only surfaces: `/onboarding` step indicator + resume, `/dashboard` prof
 | 2 | Location | `step === "location"` |
 | 3 | Company profile | `step === "employer-details"` |
 | 4 | Verification | `step === "employer-documents"` |
+
+**Company profile — Contact email (required):** first field on the employer profile form. Same persistence and calendar-guest purpose as freelancer.
 
 Visual: existing gold/navy circular indicators — five circles on freelancer path; four on employer path.
 
