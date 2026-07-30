@@ -22,7 +22,7 @@ import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, CheckCircle2, Clock, FileText, PenLine, Shield, Lock, Fingerprint, Download, Upload, Loader2 } from "lucide-react";
 import { Link } from "wouter";
 import { format } from "date-fns";
-import { useState, useRef } from "react";
+import { useCallback, useRef, useState } from "react";
 import { AgreementDownloadError, downloadAgreementPdf } from "@/lib/downloadUtils";
 
 function LegalDocument({ content }: { content: string }) {
@@ -142,7 +142,10 @@ export default function AgreementDetail() {
   const { data: tokenUsage } = useGetTokenUsageMe({
     query: { enabled: me?.role === "employer" } as any,
   });
-  const { data: agreement, isLoading, refetch } = useGetAgreement(parseInt(id!), { query: { enabled: !!id } as any });
+  const agreementId = id ? parseInt(id, 10) : NaN;
+  const { data: agreement, isLoading, refetch } = useGetAgreement(agreementId, {
+    query: { enabled: Number.isFinite(agreementId) } as any,
+  });
   const signAgreement = useSignAgreement();
   const [signDialogOpen, setSignDialogOpen] = useState(false);
   const [sigMode, setSigMode] = useState<"stored" | "upload" | "text">("stored");
@@ -150,10 +153,53 @@ export default function AgreementDetail() {
   const [uploadedSigPreview, setUploadedSigPreview] = useState<string | null>(null);
   const [typedName, setTypedName] = useState("");
   const [uploadingSig, setUploadingSig] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
   const sigFileRef = useRef<HTMLInputElement>(null);
+  const redlineTriggerRef = useRef<(() => void) | null>(null);
 
-  const storedSigPath = (me as any)?.signatureImageUrl as string | null | undefined;
+  const handleRunRedlining = useCallback(() => {
+    document.getElementById("contract-redlining")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    // Allow scroll to settle, then start the redline request if available.
+    window.setTimeout(() => {
+      redlineTriggerRef.current?.();
+    }, 250);
+  }, []);
+
+  const registerRedlineTrigger = useCallback((trigger: (() => void) | null) => {
+    redlineTriggerRef.current = trigger;
+  }, []);
+
+  const storedSigPath = (me as { signatureImageUrl?: string | null } | undefined)?.signatureImageUrl ?? null;
   const storedSigUrl = storedSigPath ? `${BASE}api/storage${storedSigPath}` : null;
+  const isEmployer = me?.role === "employer";
+  const isFreelancer = me?.role === "freelancer";
+  const userPlan = subscription?.plan?.id ?? "employer_starter";
+
+  if (isLoading || !Number.isFinite(agreementId)) {
+    return (
+      <div className="max-w-4xl mx-auto space-y-8 animate-fade-in">
+        <div className="h-8 w-32 bg-muted rounded animate-pulse"></div>
+        <div className="h-16 w-3/4 bg-muted rounded animate-pulse"></div>
+        <div className="h-32 w-full bg-muted rounded animate-pulse"></div>
+        <div className="h-96 w-full bg-muted rounded animate-pulse"></div>
+      </div>
+    );
+  }
+
+  if (!agreement) {
+    return (
+      <div className="flex flex-col items-center justify-center py-24 text-center animate-fade-in">
+        <div className="h-16 w-16 bg-muted/50 rounded-2xl flex items-center justify-center mb-6 border border-dashed border-border">
+          <FileText className="h-8 w-8 text-muted-foreground" />
+        </div>
+        <h2 className="text-2xl font-serif font-bold mb-2 text-foreground">Agreement Not Found</h2>
+        <p className="text-muted-foreground mb-8 max-w-sm font-light">The contract you are looking for does not exist or you lack permission to view it.</p>
+        <Button asChild className="font-semibold shadow-sm">
+          <Link href="/agreements">Back to Agreements</Link>
+        </Button>
+      </div>
+    );
+  }
 
   const ag = agreement as typeof agreement & {
     employerSignatureName?: string | null;
@@ -169,7 +215,6 @@ export default function AgreementDetail() {
   };
 
   const isUploadedAgreement = ag.source === "employer_upload";
-  const userPlan = subscription?.plan?.id ?? "employer_starter";
   const employerCanSignUploaded = !isUploadedAgreement || ag.uploadStage === "finalized";
 
   const handleSigUpload = async (file: File) => {
@@ -194,14 +239,10 @@ export default function AgreementDetail() {
     }
   };
 
-  const isEmployer = me?.role === "employer";
-  const isFreelancer = me?.role === "freelancer";
-  const [isDownloading, setIsDownloading] = useState(false);
-
   const handleDownload = async () => {
     setIsDownloading(true);
     try {
-      await downloadAgreementPdf(id!, getToken);
+      await downloadAgreementPdf(String(agreementId), getToken);
     } catch (err) {
       const message =
         err instanceof AgreementDownloadError
@@ -213,15 +254,14 @@ export default function AgreementDetail() {
     }
   };
 
-  const employerSigned = !!ag?.employerSignedAt;
-  const freelancerSigned = !!ag?.freelancerSignedAt;
+  const employerSigned = !!ag.employerSignedAt;
+  const freelancerSigned = !!ag.freelancerSignedAt;
   const fullyExecuted = employerSigned && freelancerSigned;
 
-  // Determine if the current user can sign
   const myTurn = isEmployer
     ? !employerSigned && employerCanSignUploaded
     : isFreelancer
-    ? employerSigned && !freelancerSigned   // freelancer can only sign after employer
+    ? employerSigned && !freelancerSigned
     : false;
 
   const canSign = (sigMode === "stored" && !!storedSigPath) ||
@@ -243,7 +283,7 @@ export default function AgreementDetail() {
     }
     try {
       await signAgreement.mutateAsync({
-        id: parseInt(id!),
+        id: agreementId,
         data: { role: me.role as "freelancer" | "employer", signatureName: finalSigName, signatureImageUrl: finalSigImageUrl } as any,
       });
       toast({
@@ -266,32 +306,6 @@ export default function AgreementDetail() {
       });
     }
   };
-
-  if (isLoading && !agreement) {
-    return (
-      <div className="max-w-4xl mx-auto space-y-8 animate-fade-in">
-        <div className="h-8 w-32 bg-muted rounded animate-pulse"></div>
-        <div className="h-16 w-3/4 bg-muted rounded animate-pulse"></div>
-        <div className="h-32 w-full bg-muted rounded animate-pulse"></div>
-        <div className="h-96 w-full bg-muted rounded animate-pulse"></div>
-      </div>
-    );
-  }
-  
-  if (!ag) {
-    return (
-      <div className="flex flex-col items-center justify-center py-24 text-center animate-fade-in">
-        <div className="h-16 w-16 bg-muted/50 rounded-2xl flex items-center justify-center mb-6 border border-dashed border-border">
-          <FileText className="h-8 w-8 text-muted-foreground" />
-        </div>
-        <h2 className="text-2xl font-serif font-bold mb-2 text-foreground">Agreement Not Found</h2>
-        <p className="text-muted-foreground mb-8 max-w-sm font-light">The contract you are looking for does not exist or you lack permission to view it.</p>
-        <Button asChild className="font-semibold shadow-sm">
-          <Link href="/agreements">Back to Agreements</Link>
-        </Button>
-      </div>
-    );
-  }
 
   return (
     <div className="max-w-4xl mx-auto space-y-8 animate-fade-in">
@@ -601,6 +615,7 @@ export default function AgreementDetail() {
               userPlan={subscription?.plan?.id ?? "employer_starter"}
               tokensUsed={tokenUsage?.tokensUsed ?? 0}
               monthlyTokenLimit={tokenUsage?.monthlyTokenLimit ?? null}
+              onRegisterTrigger={registerRedlineTrigger}
             />
           )}
 
@@ -611,9 +626,7 @@ export default function AgreementDetail() {
               userPlan={subscription?.plan?.id ?? "employer_starter"}
               initialScore={ag.healthScore}
               initialDetail={ag.healthScoreDetail as { dimensions?: HealthScoreDimensions; summary?: string } | null}
-              onRunRedlining={() => {
-                document.getElementById("contract-redlining")?.scrollIntoView({ behavior: "smooth", block: "start" });
-              }}
+              onRunRedlining={handleRunRedlining}
             />
           )}
 

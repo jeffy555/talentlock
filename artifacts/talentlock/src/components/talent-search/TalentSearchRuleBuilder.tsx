@@ -1,5 +1,6 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
+  useListCountries,
   useParseTalentSearchRules,
   type TalentSearchRules,
   type ParseTalentSearchRulesResult,
@@ -15,6 +16,12 @@ import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Plus, Search, Sparkles, Upload, X } from "lucide-react";
 import { emptyTalentSearchRules } from "@/lib/talentSearchDisplayUtils";
+import {
+  CountryStateFields,
+  formatLocationLabel,
+  isLocationComplete,
+} from "@/components/onboarding/CountryStateFields";
+import { parseLocationSelection } from "@/lib/locationSelection";
 
 interface TalentSearchRuleBuilderProps {
   initialRules?: TalentSearchRules | null;
@@ -98,7 +105,9 @@ function ParsedPreview({
     rules.minRate != null || rules.maxRate != null
       ? `Rate range: ${rules.minRate ?? "—"} – ${rules.maxRate ?? "—"} ${rules.rateType}`
       : null,
-    rules.locationRequired && rules.location && `Location: ${rules.location}`,
+    rules.locationRequired &&
+      (rules.location || rules.countryCode) &&
+      `Location: ${rules.location ?? [rules.stateCode, rules.countryCode].filter(Boolean).join(", ")}`,
     rules.requireDbs && "Requires verified DBS",
     rules.requireVerifiedCredentials && "Requires verified credentials",
     rules.excludedKeywords.length > 0 && `Excluded keywords: ${rules.excludedKeywords.join(", ")}`,
@@ -141,22 +150,83 @@ export function TalentSearchRuleBuilder({
 }: TalentSearchRuleBuilderProps) {
   const { toast } = useToast();
   const fileRef = useRef<HTMLInputElement>(null);
+  const { data: countriesData } = useListCountries();
+  const countries = countriesData?.countries ?? [];
   const [mode, setMode] = useState<"onboarding" | "form" | "parser">(
     initialRules ? "form" : "onboarding",
   );
   const [rules, setRules] = useState<TalentSearchRules>(initialRules ?? emptyTalentSearchRules());
   const [rawText, setRawText] = useState(initialRawText ?? "");
   const [parsePreview, setParsePreview] = useState<ParseTalentSearchRulesResult | null>(null);
+  const [countryCode, setCountryCode] = useState("US");
+  const [stateCode, setStateCode] = useState<string | null>(null);
 
   const parseRules = useParseTalentSearchRules();
+
+  useEffect(() => {
+    if (countries.length === 0) return;
+    if (rules.countryCode) {
+      setCountryCode(rules.countryCode);
+      setStateCode(rules.stateCode ?? null);
+      return;
+    }
+    const parsed = parseLocationSelection(countries, rules.location);
+    setCountryCode(parsed.countryCode);
+    setStateCode(parsed.stateCode);
+  }, [countries, rules.countryCode, rules.stateCode, rules.location]);
 
   const updateRules = (patch: Partial<TalentSearchRules>) => {
     setRules((prev) => ({ ...prev, ...patch }));
   };
 
+  const applyLocationSelection = (nextCountry: string, nextState: string | null) => {
+    setCountryCode(nextCountry);
+    setStateCode(nextState);
+    const label = formatLocationLabel(countries, nextCountry, nextState);
+    updateRules({
+      locationRequired: true,
+      countryCode: nextCountry,
+      stateCode: nextState,
+      location: label || null,
+    });
+  };
+
   const handleSave = async () => {
+    let location: string | null = null;
+    let nextCountryCode: string | null = null;
+    let nextStateCode: string | null = null;
+    if (rules.locationRequired) {
+      if (!isLocationComplete(countries, countryCode, stateCode)) {
+        toast({
+          title: "Location required",
+          description: "Select a country and state/province for location matching.",
+          variant: "destructive",
+        });
+        return;
+      }
+      location = formatLocationLabel(countries, countryCode, stateCode) || null;
+      if (!location) {
+        toast({
+          title: "Location required",
+          description: "Select a valid country and state.",
+          variant: "destructive",
+        });
+        return;
+      }
+      nextCountryCode = countryCode;
+      nextStateCode = stateCode;
+    }
+
+    const nextRules = {
+      ...rules,
+      location,
+      countryCode: nextCountryCode,
+      stateCode: nextStateCode,
+    };
+    setRules(nextRules);
+
     try {
-      await onSave(rules, rawText || null);
+      await onSave(nextRules, rawText || null);
       toast({
         title: "Rules saved",
         description: "Click Turn On above to start evaluating freelancers.",
@@ -351,6 +421,61 @@ export function TalentSearchRuleBuilder({
           </div>
         )}
 
+        <div className="space-y-4 rounded-lg border border-teal-200 bg-teal-50/30 p-4">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <Label className="text-base">Location</Label>
+              <p className="text-xs text-muted-foreground mt-1">
+                Choose country and state so TalentSearch can match and DM freelancers in that area.
+              </p>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <Label htmlFor="location-required" className="text-xs font-normal text-muted-foreground">
+                Required for matching
+              </Label>
+              <Switch
+                id="location-required"
+                checked={rules.locationRequired}
+                onCheckedChange={(locationRequired) =>
+                  updateRules({
+                    locationRequired,
+                    location: locationRequired
+                      ? formatLocationLabel(countries, countryCode, stateCode) || null
+                      : null,
+                    countryCode: locationRequired ? countryCode : null,
+                    stateCode: locationRequired ? stateCode : null,
+                  })
+                }
+              />
+            </div>
+          </div>
+
+          <CountryStateFields
+            countries={countries}
+            countryCode={countryCode}
+            stateCode={stateCode}
+            onCountryChange={(code) => applyLocationSelection(code, null)}
+            onStateChange={(code) => applyLocationSelection(countryCode, code)}
+            disabled={countries.length === 0}
+          />
+          {countries.length === 0 && (
+            <p className="text-xs text-amber-700">Loading countries… If this stays empty, refresh the page.</p>
+          )}
+
+          <div className="space-y-2 max-w-xs">
+            <Label>Radius (km, optional)</Label>
+            <Input
+              type="number"
+              min={0}
+              value={rules.locationRadiusKm ?? ""}
+              onChange={(e) =>
+                updateRules({ locationRadiusKm: e.target.value ? Number(e.target.value) : null })
+              }
+              placeholder="50"
+            />
+          </div>
+        </div>
+
         <TagListEditor
           label="Required skills"
           description="AI will only consider freelancers whose profile mentions at least one of these"
@@ -407,43 +532,6 @@ export function TalentSearchRuleBuilder({
               </div>
             ))}
           </RadioGroup>
-        </div>
-
-        <div className="space-y-3 rounded-lg border p-3">
-          <div className="flex items-center justify-between">
-            <div>
-              <Label>Location required</Label>
-              <p className="text-xs text-muted-foreground">Only match freelancers in a specific location</p>
-            </div>
-            <Switch
-              checked={rules.locationRequired}
-              onCheckedChange={(locationRequired) => updateRules({ locationRequired })}
-            />
-          </div>
-          {rules.locationRequired && (
-            <div className="grid sm:grid-cols-2 gap-4 pt-1">
-              <div className="space-y-2">
-                <Label>Location</Label>
-                <Input
-                  value={rules.location ?? ""}
-                  onChange={(e) => updateRules({ location: e.target.value || null })}
-                  placeholder="e.g. London"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Radius (km)</Label>
-                <Input
-                  type="number"
-                  min={0}
-                  value={rules.locationRadiusKm ?? ""}
-                  onChange={(e) =>
-                    updateRules({ locationRadiusKm: e.target.value ? Number(e.target.value) : null })
-                  }
-                  placeholder="50"
-                />
-              </div>
-            </div>
-          )}
         </div>
 
         <div className="grid sm:grid-cols-2 gap-4">

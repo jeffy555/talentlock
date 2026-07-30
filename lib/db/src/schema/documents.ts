@@ -12,7 +12,7 @@ export const documentsTable = pgTable(
       .notNull()
       .references(() => freelancerProfilesTable.id),
     documentType: text("document_type").notNull(),
-    // government_id | professional_credential
+    // aadhaar | government_id | professional_credential
     fileUrl: text("file_url").notNull(),
     status: text("status").notNull().default("pending"),
     // pending | verified | rejected | needs_review | expired

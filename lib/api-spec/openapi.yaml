@@ -2938,7 +2938,7 @@ paths:
           required: true
           schema:
             type: string
-            enum: [government_id, professional_credential]
+            enum: [aadhaar, government_id, professional_credential]
       requestBody:
         required: true
         content:
@@ -4315,7 +4315,7 @@ components:
           description: "freelancer | employer — in-progress onboarding role while role is pending"
         onboardingStep:
           type: ["string", "null"]
-          description: "role | profession_category | location | freelancer_details | employer_details | employer_documents"
+          description: "role | profession_category | location | freelancer_details | freelancer_documents | employer_details | employer_documents"
         countryCode:
           type: string
           description: ISO 3166-1 alpha-2 country code
@@ -4453,7 +4453,7 @@ components:
           enum: [freelancer, employer]
         onboardingStep:
           type: string
-          enum: [role, profession_category, location, freelancer_details, employer_details, employer_documents]
+          enum: [role, profession_category, location, freelancer_details, freelancer_documents, employer_details, employer_documents]
         countryCode:
           type: string
           minLength: 2
@@ -7047,7 +7047,7 @@ components:
       properties:
         documentType:
           type: string
-          enum: [government_id, professional_credential]
+          enum: [aadhaar, government_id, professional_credential]
         mimeType:
           type: string
           description: "image/jpeg, image/png, image/webp, or application/pdf"
@@ -7074,7 +7074,7 @@ components:
       properties:
         documentType:
           type: string
-          enum: [government_id, professional_credential]
+          enum: [aadhaar, government_id, professional_credential]
         storagePath:
           type: string
         expiryDate:
@@ -7198,6 +7198,7 @@ components:
     EmployerDocumentType:
       type: string
       enum:
+        - aadhaar
         - company_registration
         - tax_vat_certificate
         - business_licence
@@ -8709,6 +8710,13 @@ components:
           type: boolean
         location:
           type: ["string", "null"]
+          description: Human-readable location label (e.g. "California, United States")
+        countryCode:
+          type: ["string", "null"]
+          description: ISO country code used for hard location matching
+        stateCode:
+          type: ["string", "null"]
+          description: State/province code used for hard location matching when set
         locationRadiusKm:
           type: ["number", "null"]
         excludedKeywords:

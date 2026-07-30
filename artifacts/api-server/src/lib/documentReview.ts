@@ -27,6 +27,8 @@ export const DOCUMENT_REVIEW_SYSTEM_PROMPT = `You are reviewing a document image
 - Free from obvious signs of tampering or digital manipulation
 - Matching the submitted document type
 
+Aadhaar / Aadhar cards (UIDAI, India) ARE valid government photo ID. When the submitted type is "aadhaar" or "government_id", treat a clear Aadhaar card (or e-Aadhaar) as a match — do NOT reject it for being an Aadhaar card.
+
 Return ONLY a JSON object — no preamble, no markdown:
 {
   "verdict": "verified" | "rejected" | "needs_review",
@@ -35,7 +37,19 @@ Return ONLY a JSON object — no preamble, no markdown:
 }
 
 If you cannot determine authenticity with reasonable confidence, return "needs_review".
-Do NOT attempt to extract personal data (name, DOB, ID numbers) from the document.`;
+Do NOT attempt to extract personal data (name, DOB, ID numbers) from the document.
+Never tell the user that Aadhaar is the wrong document type for aadhaar or government_id uploads.`;
+
+function buildDocumentReviewUserPrompt(documentType: DocumentType): string {
+  const labels: Record<DocumentType, string> = {
+    aadhaar: "Aadhaar Card (required Indian government photo ID)",
+    government_id: "Government ID (Aadhaar, passport, driving licence, or national ID)",
+    professional_credential: "Professional Credential (degree, licence, or certification)",
+  };
+  return `Submitted document type: ${documentType} — ${labels[documentType]}
+
+Assess the attached image against that declared type. Aadhaar is explicitly accepted for "aadhaar" and "government_id".`;
+}
 
 type DbClient = Pick<typeof db, "select" | "update" | "insert">;
 
@@ -83,18 +97,24 @@ export async function updateVerificationLevel(
   dbOrTx: DbClient,
   freelancerId: number,
 ): Promise<void> {
-  const [verifiedCountRow] = await dbOrTx
-    .select({ count: count() })
+  const docs = await dbOrTx
+    .select({ documentType: documentsTable.documentType, status: documentsTable.status })
     .from(documentsTable)
-    .where(and(eq(documentsTable.freelancerId, freelancerId), eq(documentsTable.status, "verified")));
+    .where(eq(documentsTable.freelancerId, freelancerId));
 
-  const verifiedCount = verifiedCountRow?.count ?? 0;
+  const verified = new Set(
+    docs.filter((doc) => doc.status === "verified").map((doc) => doc.documentType),
+  );
+  // Aadhaar is mandatory for any verified badge; government_id still counts as ID proof for legacy uploads.
+  const hasIdProof = verified.has("aadhaar") || verified.has("government_id");
+  const hasCredential = verified.has("professional_credential");
+
   const level =
-    verifiedCount === 0
+    !hasIdProof
       ? "unverified"
-      : verifiedCount === 1
-        ? "partially_verified"
-        : "fully_verified";
+      : hasIdProof && hasCredential
+        ? "fully_verified"
+        : "partially_verified";
 
   await dbOrTx
     .update(freelancerProfilesTable)
@@ -155,6 +175,7 @@ export async function triggerDocumentReview(
           role: "user",
           content: [
             { type: "text", text: DOCUMENT_REVIEW_SYSTEM_PROMPT },
+            { type: "text", text: buildDocumentReviewUserPrompt(documentType) },
             { type: "image_url", image_url: { url: visionImageUrl, detail: "high" } },
           ],
         },

@@ -452,7 +452,7 @@ export default function BookingDetail() {
         </div>
       )}
 
-      {isEmployer && !hasAgreement && !isCancelled && !isNegotiating && (
+      {isEmployer && !hasAgreement && !isCancelled && !isNegotiating && !!booking.rate && (
         <div className="rounded-xl border border-gold/30 bg-gold/5 p-6">
           <div className="flex items-start gap-4 mb-4">
             <div className="h-10 w-10 bg-gold/20 rounded-full flex items-center justify-center flex-shrink-0">
@@ -461,7 +461,7 @@ export default function BookingDetail() {
             <div>
               <h3 className="font-bold text-primary mb-1">Create Legal Agreement</h3>
               <p className="text-sm text-muted-foreground leading-relaxed max-w-2xl">
-                Rate agreed. Generate a new agreement with AI or upload your own document.
+                Choose how to create the legal agreement for this engagement — generate with AI or upload your own document. Dates and compensation from this booking can be applied before signing.
               </p>
             </div>
           </div>

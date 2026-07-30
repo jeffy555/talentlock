@@ -350,4 +350,31 @@
   .combo-nav-active {
     @apply bg-gold/10 text-gold;
   }
+
+  /*
+   * Legacy Replit elevate utilities — keep as no-op-safe hover overlays so any
+   * remaining className="hover-elevate" usage still shows interactive feedback.
+   */
+  .hover-elevate {
+    position: relative;
+  }
+  .hover-elevate::after,
+  .active-elevate-2::after {
+    content: "";
+    pointer-events: none;
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    opacity: 0;
+    transition: opacity 150ms ease;
+    background: var(--elevate-1);
+  }
+  .hover-elevate:hover::after,
+  .hover-elevate:focus-visible::after {
+    opacity: 1;
+  }
+  .active-elevate-2:active::after {
+    opacity: 1;
+    background: var(--elevate-2);
+  }
 }

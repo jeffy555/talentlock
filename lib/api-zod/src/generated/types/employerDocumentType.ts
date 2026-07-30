@@ -10,6 +10,7 @@ export type EmployerDocumentType =
   (typeof EmployerDocumentType)[keyof typeof EmployerDocumentType];
 
 export const EmployerDocumentType = {
+  aadhaar: "aadhaar",
   company_registration: "company_registration",
   tax_vat_certificate: "tax_vat_certificate",
   business_licence: "business_licence",

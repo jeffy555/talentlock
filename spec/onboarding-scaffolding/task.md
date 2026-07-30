@@ -12,7 +12,7 @@ Three phases: Database → Backend (OpenAPI + route) → Frontend.
 
 ```ts
 onboardingRole: text("onboarding_role"), // freelancer | employer | null
-onboardingStep: text("onboarding_step"), // role | profession_category | location | freelancer_details | employer_details | employer_documents | null
+onboardingStep: text("onboarding_step"), // role | profession_category | location | freelancer_details | freelancer_documents | employer_details | employer_documents | null
 ```
 
 Both nullable. No default.
@@ -44,7 +44,7 @@ onboardingRole:
   description: "freelancer | employer — in-progress onboarding role"
 onboardingStep:
   type: ["string", "null"]
-  description: "role | profession_category | location | freelancer_details | employer_details | employer_documents"
+  description: "role | profession_category | location | freelancer_details | freelancer_documents | employer_details | employer_documents"
 ```
 
 Add path `/users/me/onboarding-step`:
@@ -78,6 +78,16 @@ Verify `indexFiles: false` and `lib/api-zod/src/index.ts` exports.
 
 When `role` is `freelancer` or `employer`, set `onboardingRole: null`, `onboardingStep: null`.
 
+### Task 2.6 — Pending freelancer document access + Vault filter
+
+**File:** `artifacts/api-server/src/routes/documents.ts`
+
+Extend `resolveFreelancerContext()` to allow `role: pending` + `onboardingRole: freelancer` (profile required), matching employer documents onboarding access.
+
+**File:** `artifacts/api-server/src/routes/freelancers.ts`
+
+- `GET /freelancers` — only include profiles whose linked `users.role = freelancer`
+- `GET /freelancers/:id` — 404 when linked user is not `freelancer`
 ---
 
 ## Phase 3 — Frontend
@@ -118,22 +128,37 @@ Props: `score: number`, `profile`, `avatarUrl: string | null`.
   2. `PUT /employers/me`
   3. `PATCH` → `employer_documents`
   4. Advance to document upload step (do **not** set `role: employer` yet)
+- On freelancer profile submit (manual or resume auto-create):
+  1. `PATCH` → `freelancer_details` (ensure pending user + location)
+  2. `POST /freelancers`
+  3. `PATCH` → `freelancer_documents`
+  4. Advance to document upload step (do **not** set `role: freelancer` yet)
 - `useEffect` when `dbUser?.role === "pending"`: restore `role` + `step` from server without regressing local step
-- Fix step indicator for 4-step freelancer / 4-step employer paths (includes location from multi-currency spec)
+- Fix step indicator for 5-step freelancer / 4-step employer paths (includes location from multi-currency spec)
 - Pre-fill employer form from `GET /employers/me` when profile already saved
 - Remove or demote `localStorage` intended role when server state exists
-- **Resume import:** `handleResumeParsed` sets `bio` from parser output; include `bio` in both auto-create (`POST /freelancers` after parse) and manual freelancer submit so completeness bio factor is satisfied without a separate onboarding bio field
+- **Resume import:** `handleResumeParsed` sets `bio` from parser output; include `bio` in both auto-create (`POST /freelancers` after parse) and manual freelancer submit so completeness bio factor is satisfied without a separate onboarding bio field. Resume must advance to **Verification**, not `/dashboard`.
 
 ### Task 3.5 — Employer mandatory document onboarding step
 
 **File:** `artifacts/talentlock/src/components/onboarding/EmployerDocumentOnboardingStep.tsx` (create)
 
-- Single required upload: `representative_id`
+- Single required upload: `representative_id` / Aadhaar (per employee-verification Module 10)
 - Reuse employer document upload hooks (`POST upload-url`, `POST confirm`, `GET me`)
-- "Finish registration" disabled until one document row exists (any status except not uploaded)
+- "Finish registration" disabled until required document row exists
 - On finish: `PUT /api/users/me` with `role: employer` → redirect `/dashboard`
 
 See `spec/employee-verification/` Module 10 and `UI.md` onboarding section.
+
+### Task 3.6 — Freelancer mandatory document onboarding step
+
+**File:** `artifacts/talentlock/src/components/onboarding/FreelancerDocumentOnboardingStep.tsx` (create)
+
+- Required upload: `aadhaar`
+- Optional on same step: `government_id`, `professional_credential`
+- Reuse freelancer document hooks (`POST /documents/upload-url`, `POST /documents/confirm`, `GET /documents/me`)
+- "Finish registration →" disabled until Aadhaar row exists
+- On finish: `PUT /api/users/me` with `role: freelancer` → redirect `/dashboard`
 
 ---
 
@@ -145,8 +170,12 @@ See `spec/employee-verification/` Module 10 and `UI.md` onboarding section.
 - [ ] Completing onboarding clears onboarding columns
 - [ ] `/onboarding` resumes from saved step after refresh
 - [ ] Employer path: company profile saves on first submit (pending user created before `PUT /employers/me`)
-- [ ] Employer path: cannot finish registration without uploading Representative ID
+- [ ] Employer path: cannot finish registration without uploading required ID
 - [ ] Employer path: `PUT /users/me` with `role: employer` only runs after document upload
+- [ ] Freelancer path: cannot finish registration without uploading Aadhaar
+- [ ] Freelancer path: `PUT /users/me` with `role: freelancer` only runs after Aadhaar upload
+- [ ] Freelancer resume auto-create advances to Verification (does not skip to dashboard)
+- [ ] Pending freelancers are hidden from Talent Vault list/detail
 - [ ] Freelancer dashboard shows checklist when score < 80% with point labels and profile links
 - [ ] Checklist hidden when score >= 80%
 - [ ] Employers never see checklist

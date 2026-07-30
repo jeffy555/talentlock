@@ -33,6 +33,7 @@ export const employerDocumentsTable = pgTable(
 );
 
 export type EmployerDocumentType =
+  | "aadhaar"
   | "company_registration"
   | "tax_vat_certificate"
   | "business_licence"

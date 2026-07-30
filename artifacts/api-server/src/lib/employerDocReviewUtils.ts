@@ -22,6 +22,7 @@ import { resolveVisionImageUrl } from "./visionImageUrl";
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY_TALENTLOCK });
 
 export const DOCUMENT_TYPE_LABELS: Record<EmployerDocumentType, string> = {
+  aadhaar: "Aadhaar Card",
   company_registration: "Company Registration Certificate",
   tax_vat_certificate: "Tax / VAT Certificate",
   business_licence: "Business Licence",
@@ -29,9 +30,10 @@ export const DOCUMENT_TYPE_LABELS: Record<EmployerDocumentType, string> = {
   proof_of_business_address: "Proof of Business Address",
 };
 
-export const REQUIRED_FOR_PARTIAL: EmployerDocumentType[] = ["representative_id"];
+/** Aadhaar is required for partial verification (platform trust). */
+export const REQUIRED_FOR_PARTIAL: EmployerDocumentType[] = ["aadhaar"];
 export const REQUIRED_FOR_FULL: EmployerDocumentType[] = [
-  "representative_id",
+  "aadhaar",
   "company_registration",
   "tax_vat_certificate",
 ];
@@ -42,12 +44,13 @@ export function calculateVerificationLevel(
   const verified = new Set(
     docs.filter((doc) => doc.status === "verified").map((doc) => doc.documentType),
   );
-  const hasRepId = verified.has("representative_id");
+  // Accept legacy representative_id as ID proof while Aadhaar is the required type going forward.
+  const hasIdProof = verified.has("aadhaar") || verified.has("representative_id");
   const hasCompanyRegistration = verified.has("company_registration");
   const hasTaxCertificate = verified.has("tax_vat_certificate");
 
-  if (!hasRepId) return { level: "unverified", isVerified: false };
-  if (hasRepId && hasCompanyRegistration && hasTaxCertificate) {
+  if (!hasIdProof) return { level: "unverified", isVerified: false };
+  if (hasIdProof && hasCompanyRegistration && hasTaxCertificate) {
     return { level: "fully_verified", isVerified: true };
   }
   return { level: "partially_verified", isVerified: false };
@@ -70,20 +73,31 @@ export function buildEmployerDocReviewPrompt(
   documentType: EmployerDocumentType,
   companyName: string | null | undefined,
 ): string {
+  const idProofNote =
+    documentType === "aadhaar" || documentType === "representative_id"
+      ? `
+ID-proof acceptance (CRITICAL):
+- Indian Aadhaar cards (UIDAI) ARE valid government-issued photo ID for "${DOCUMENT_TYPE_LABELS[documentType]}".
+- Accept Aadhaar / Aadhar (front or back, card or e-Aadhaar screenshot) as a documentTypeMatch=true.
+- Also accept passport, driving licence, voter ID, PAN with photo, and national ID cards.
+- Do NOT reject solely because the document is an Aadhaar card.`
+      : "";
+
   return `You are reviewing a business identity document uploaded to a professional hiring platform.
 This is NOT a legal identity verification — it is a platform trust check only.
 
-Declared document type: ${documentType}
+Declared document type: ${documentType} (${DOCUMENT_TYPE_LABELS[documentType]})
 Employer company name on profile: ${companyName ?? "not specified"}
+${idProofNote}
 
 Review the image and assess all of the following:
-1. Does this document match the declared type "${DOCUMENT_TYPE_LABELS[documentType]}"?
-2. Is a company name visible, and does it match "${companyName ?? "not specified"}"?
+1. Does this document match the declared type "${DOCUMENT_TYPE_LABELS[documentType]}"? (Aadhaar counts as a match for Aadhaar Card and Representative ID.)
+2. Is a company name visible, and does it match "${companyName ?? "not specified"}"? (For personal ID types like Aadhaar/representative_id, companyNameMatch may be null.)
 3. Is a registration, licence, or reference number visible?
 4. Is the document legible and not obscured?
-5. Does the document appear to have an expiry date? If so, has it expired?
+5. Does the document appear to have an expiry date? If so, has it expired? (Aadhaar typically has no expiry — hasExpiry=false, isExpired=null.)
 6. Are there any signs of obvious digital tampering, editing artefacts, or inconsistencies?
-7. For representative_id type: does the document appear to be a government-issued photo ID?
+7. For aadhaar / representative_id: does the document appear to be a government-issued photo ID?
 
 Return ONLY a JSON object — no preamble, no markdown:
 {
@@ -101,11 +115,12 @@ Return ONLY a JSON object — no preamble, no markdown:
 }
 
 Status rules:
-- "verified": document matches type, company name consistent (if visible), legible, not expired, no tampering
+- "verified": document matches type, company name consistent when applicable, legible, not expired, no tampering
 - "needs_review": document is ambiguous, partially legible, or company name unclear — human review needed
-- "rejected": clear type mismatch, obvious tampering, expired document, completely illegible
+- "rejected": clear type mismatch (NOT Aadhaar-as-ID), obvious tampering, expired document, completely illegible
 
-IMPORTANT: This assessment is for platform trust purposes only. Never state or imply legal verification.`;
+IMPORTANT: This assessment is for platform trust purposes only. Never state or imply legal verification.
+Never tell the employer that Aadhaar is the wrong document type for Aadhaar Card or Representative ID.`;
 }
 
 export function validateEmployerDocReviewResponse(value: unknown): value is EmployerDocReviewResult {

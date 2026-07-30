@@ -36,7 +36,7 @@ export interface User {
    */
   onboardingRole?: string | null;
   /**
-   * role | profession_category | location | freelancer_details | employer_details | employer_documents
+   * role | profession_category | location | freelancer_details | freelancer_documents | employer_details | employer_documents
    * @nullable
    */
   onboardingStep?: string | null;
@@ -134,6 +134,7 @@ export const PatchOnboardingStepBodyOnboardingStep = {
   profession_category: "profession_category",
   location: "location",
   freelancer_details: "freelancer_details",
+  freelancer_documents: "freelancer_documents",
   employer_details: "employer_details",
   employer_documents: "employer_documents",
 } as const;
@@ -1797,6 +1798,7 @@ export type DocumentsUploadUrlBodyDocumentType =
   (typeof DocumentsUploadUrlBodyDocumentType)[keyof typeof DocumentsUploadUrlBodyDocumentType];
 
 export const DocumentsUploadUrlBodyDocumentType = {
+  aadhaar: "aadhaar",
   government_id: "government_id",
   professional_credential: "professional_credential",
 } as const;
@@ -1817,6 +1819,7 @@ export type DocumentsConfirmBodyDocumentType =
   (typeof DocumentsConfirmBodyDocumentType)[keyof typeof DocumentsConfirmBodyDocumentType];
 
 export const DocumentsConfirmBodyDocumentType = {
+  aadhaar: "aadhaar",
   government_id: "government_id",
   professional_credential: "professional_credential",
 } as const;
@@ -1898,6 +1901,7 @@ export type EmployerDocumentType =
   (typeof EmployerDocumentType)[keyof typeof EmployerDocumentType];
 
 export const EmployerDocumentType = {
+  aadhaar: "aadhaar",
   company_registration: "company_registration",
   tax_vat_certificate: "tax_vat_certificate",
   business_licence: "business_licence",
@@ -2778,8 +2782,21 @@ export interface TalentSearchRules {
   /** @nullable */
   availableFrom?: string | null;
   locationRequired: boolean;
-  /** @nullable */
+  /**
+   * Human-readable location label (e.g. "California, United States")
+   * @nullable
+   */
   location?: string | null;
+  /**
+   * ISO country code used for hard location matching
+   * @nullable
+   */
+  countryCode?: string | null;
+  /**
+   * State/province code used for hard location matching when set
+   * @nullable
+   */
+  stateCode?: string | null;
   /** @nullable */
   locationRadiusKm?: number | null;
   excludedKeywords: string[];

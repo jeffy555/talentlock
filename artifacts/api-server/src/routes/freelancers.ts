@@ -139,6 +139,21 @@ router.get("/freelancers", async (req, res) => {
 
     conditions.push(gte(freelancerProfilesTable.completenessScore, 60));
 
+    // Hide profiles until registration is finished (role finalized after mandatory docs)
+    conditions.push(
+      exists(
+        db
+          .select({ one: usersTable.id })
+          .from(usersTable)
+          .where(
+            and(
+              eq(usersTable.id, freelancerProfilesTable.userId),
+              eq(usersTable.role, "freelancer"),
+            ),
+          ),
+      ),
+    );
+
     // Credential Expiry Tracking (Q3 scope): only school_teacher education
     // professionals with an expired REQUIRED teaching licence are excluded
     // from Talent Vault. Generic professional_credential expiry never
@@ -416,7 +431,15 @@ router.get("/freelancers/:id", async (req, res) => {
   try {
     const [profile] = await db.select().from(freelancerProfilesTable).where(eq(freelancerProfilesTable.id, id)).limit(1);
     if (!profile) { res.status(404).json({ error: "Freelancer not found" }); return; }
-    const [user] = await db.select({ email: usersTable.email }).from(usersTable).where(eq(usersTable.id, profile.userId)).limit(1);
+    const [user] = await db
+      .select({ email: usersTable.email, role: usersTable.role })
+      .from(usersTable)
+      .where(eq(usersTable.id, profile.userId))
+      .limit(1);
+    if (!user || user.role !== "freelancer") {
+      res.status(404).json({ error: "Freelancer not found" });
+      return;
+    }
     const verifiedDocumentCount = await countVerifiedDocuments(profile.id);
 
     res.json({

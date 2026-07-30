@@ -59,6 +59,19 @@ const allowedOrigins = (process.env.ALLOWED_ORIGINS ?? process.env.APP_URL ?? ""
   .map((o) => o.trim())
   .filter(Boolean);
 const isProduction = process.env.NODE_ENV === "production";
+
+/** In local dev, also accept common localhost / 127.0.0.1 swaps for APP_URL. */
+function isDevLocalOrigin(origin: string): boolean {
+  if (isProduction) return false;
+  try {
+    const url = new URL(origin);
+    if (url.protocol !== "http:" && url.protocol !== "https:") return false;
+    return url.hostname === "localhost" || url.hostname === "127.0.0.1";
+  } catch {
+    return false;
+  }
+}
+
 app.use(
   cors({
     credentials: true,
@@ -67,6 +80,7 @@ app.use(
       if (!origin) return callback(null, true);
       if (allowedOrigins.includes(origin)) return callback(null, true);
       if (!isProduction && allowedOrigins.length === 0) return callback(null, true);
+      if (isDevLocalOrigin(origin)) return callback(null, true);
       return callback(null, false);
     },
   }),

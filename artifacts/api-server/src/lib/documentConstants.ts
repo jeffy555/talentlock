@@ -1,4 +1,11 @@
+import {
+  buildAzureDocumentKey,
+  isValidAzureDocumentKey,
+  usesAzureObjectStorage,
+} from "./azureObjectStorage";
+
 export const DOCUMENT_TYPES = [
+  "aadhaar",
   "government_id",
   "professional_credential",
 ] as const;
@@ -54,7 +61,17 @@ export function buildDocumentStoragePath(
   userId: number,
   documentType: DocumentType,
   filename: string,
+  displayName?: string | null,
 ): string {
+  if (usesAzureObjectStorage()) {
+    return buildAzureDocumentKey({
+      container: "freelancer",
+      userId,
+      displayName,
+      documentType,
+      filename,
+    });
+  }
   return `documents/${userId}/${documentType}/${filename}`;
 }
 
@@ -63,6 +80,14 @@ export function isValidDocumentStoragePath(
   userId: number,
   documentType: DocumentType,
 ): boolean {
+  if (usesAzureObjectStorage() || storagePath.startsWith("freelancer/")) {
+    return isValidAzureDocumentKey({
+      storagePath,
+      container: "freelancer",
+      userId,
+      documentType,
+    });
+  }
   const prefix = `documents/${userId}/${documentType}/`;
   if (!storagePath.startsWith(prefix)) return false;
   const filename = storagePath.slice(prefix.length);

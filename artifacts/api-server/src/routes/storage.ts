@@ -15,7 +15,6 @@ import {
   readLocalObject,
   usesLocalObjectStorage,
   verifyLocalSignedUrl,
-  writeLocalObject,
 } from "../lib/localObjectStorage";
 
 const router: IRouter = Router();
@@ -40,10 +39,14 @@ router.put(
         res.status(400).json({ error: "Empty upload body" });
         return;
       }
-      await writeLocalObject(key, body);
+      const contentType =
+        typeof req.headers["content-type"] === "string"
+          ? req.headers["content-type"]
+          : guessContentType(key);
+      await objectStorageService.writePrivateObjectBuffer(key, body, contentType);
       res.status(200).end();
     } catch (error) {
-      req.log.error({ err: error, key }, "Local object upload failed");
+      req.log.error({ err: error, key }, "Object upload failed");
       res.status(500).json({ error: "Upload failed" });
     }
   },
@@ -60,12 +63,16 @@ router.get("/storage/local-read", async (req: Request, res: Response) => {
   }
 
   try {
-    const buffer = await readLocalObject(key);
+    const buffer = await objectStorageService.readPrivateObjectBuffer(key);
+    if (!buffer) {
+      res.status(404).json({ error: "Object not found" });
+      return;
+    }
     res.setHeader("Content-Type", guessContentType(key));
     res.setHeader("Cache-Control", "private, max-age=900");
     res.send(buffer);
   } catch (error) {
-    req.log.error({ err: error, key }, "Local object read failed");
+    req.log.error({ err: error, key }, "Object read failed");
     res.status(404).json({ error: "Object not found" });
   }
 });

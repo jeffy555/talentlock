@@ -9,6 +9,7 @@ import {
   jobRequirementsTable,
   talentSearchActivityTable,
   talentSearchConfigsTable,
+  usersTable,
   type CruiseModeRules,
   type FreelancerProfile,
   type MatchReasons,
@@ -100,6 +101,18 @@ async function recentEmployerJobTitles(
   return rows.map((r) => r.title);
 }
 
+async function loadFreelancerStateCode(
+  dbClient: DbClient,
+  userId: number,
+): Promise<string | null> {
+  const [user] = await dbClient
+    .select({ stateCode: usersTable.stateCode })
+    .from(usersTable)
+    .where(eq(usersTable.id, userId))
+    .limit(1);
+  return user?.stateCode ?? null;
+}
+
 export async function evaluateTalentSearchForUpdatedProfile(
   dbClient: DbClient,
   freelancerId: number,
@@ -113,7 +126,8 @@ export async function evaluateTalentSearchForUpdatedProfile(
   if (!freelancerRow || freelancerRow.completenessScore < 60) return;
 
   const verified = await hasAnyVerifiedDocument(dbClient, freelancerId);
-  const freelancer = normaliseFreelancer(freelancerRow, verified);
+  const stateCode = await loadFreelancerStateCode(dbClient, freelancerRow.userId);
+  const freelancer = normaliseFreelancer(freelancerRow, verified, stateCode);
 
   const configs = await dbClient
     .select()
@@ -173,7 +187,8 @@ export async function backfillTalentSearchForEmployer(
   await Promise.allSettled(
     freelancerRows.map(async (freelancerRow) => {
       const verified = await hasAnyVerifiedDocument(dbClient, freelancerRow.id);
-      const freelancer = normaliseFreelancer(freelancerRow, verified);
+      const stateCode = await loadFreelancerStateCode(dbClient, freelancerRow.userId);
+      const freelancer = normaliseFreelancer(freelancerRow, verified, stateCode);
       const prefilterReason = talentSearchPreFilterReason(config.rules, freelancer);
       if (prefilterReason) {
         await logTalentSearchActivity(dbClient, config, freelancer.id, {

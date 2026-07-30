@@ -84,7 +84,7 @@ export default function AgreementsList() {
           <Shield className="h-7 w-7 text-primary" /> Legal Agreements
         </h1>
         <p className="text-muted-foreground mt-2 font-light max-w-xl">
-          Your binding engagement contracts, AI-drafted and digitally signed via TalentLock.
+          Binding engagement contracts — AI-drafted or employer-uploaded — reviewed and digitally signed on TalentLock.
         </p>
       </div>
 
@@ -96,7 +96,7 @@ export default function AgreementsList() {
             </EmptyMedia>
             <EmptyTitle className="font-serif">No agreements yet</EmptyTitle>
             <EmptyDescription>
-              Agreements are created from bookings once rates are agreed.
+              Agreements are created from bookings once rates are agreed — generate with AI or upload your own document, then request signatures.
             </EmptyDescription>
           </EmptyHeader>
         </Empty>

@@ -15,11 +15,17 @@ import {
 import { logAudit } from "../lib/auditLogger";
 import { recalculateEmployerVerificationLevel, reviewEmployerDocument } from "../lib/employerDocReviewUtils";
 import { ObjectStorageService } from "../lib/objectStorage";
+import {
+  buildAzureDocumentKey,
+  isValidAzureDocumentKey,
+  usesAzureObjectStorage,
+} from "../lib/azureObjectStorage";
 
 const router = Router();
 const objectStorageService = new ObjectStorageService();
 
 const DOCUMENT_TYPES: EmployerDocumentType[] = [
+  "aadhaar",
   "company_registration",
   "tax_vat_certificate",
   "business_licence",
@@ -62,9 +68,22 @@ function safeFilename(filename: string): string {
   return filename.replace(/[^a-zA-Z0-9._-]/g, "_").slice(-120);
 }
 
-function isOwnedStoragePath(fileUrl: string, employerId: number, documentType: EmployerDocumentType): boolean {
-  return fileUrl.startsWith(`uploads/${employerId}/employer-docs/${documentType}/`) &&
-    !fileUrl.includes("..");
+function isOwnedStoragePath(
+  fileUrl: string,
+  userId: number,
+  employerId: number,
+  documentType: EmployerDocumentType,
+): boolean {
+  if (fileUrl.includes("..")) return false;
+  if (usesAzureObjectStorage() || fileUrl.startsWith("employer/")) {
+    return isValidAzureDocumentKey({
+      storagePath: fileUrl,
+      container: "employer",
+      userId,
+      documentType,
+    });
+  }
+  return fileUrl.startsWith(`uploads/${employerId}/employer-docs/${documentType}/`);
 }
 
 router.post("/employer-documents/upload-url", async (req, res) => {
@@ -94,7 +113,17 @@ router.post("/employer-documents/upload-url", async (req, res) => {
     const extension = parsed.data.mimeType === "image/png"
       ? ".png"
       : parsed.data.mimeType === "image/webp" ? ".webp" : ".jpg";
-    const fileUrl = `uploads/${ctx.profile.id}/employer-docs/${parsed.data.documentType}/${Date.now()}-${randomUUID()}-${safeFilename(parsed.data.filename)}${extension}`;
+    const filename = `${Date.now()}-${randomUUID()}-${safeFilename(parsed.data.filename)}${extension}`;
+    const folderLabel = ctx.profile.companyName || ctx.user.name;
+    const fileUrl = usesAzureObjectStorage()
+      ? buildAzureDocumentKey({
+          container: "employer",
+          userId: ctx.user.id,
+          displayName: folderLabel,
+          documentType: parsed.data.documentType,
+          filename,
+        })
+      : `uploads/${ctx.profile.id}/employer-docs/${parsed.data.documentType}/${filename}`;
     const uploadUrl = await objectStorageService.getSignedUploadUrlForKey(fileUrl);
     logAudit(db, {
       userId: ctx.user.id,
@@ -119,7 +148,7 @@ router.post("/employer-documents/confirm", async (req, res) => {
     const ctx = await resolveEmployerContext(clerkId);
     if (!ctx) { res.status(404).json({ error: "User not found" }); return; }
     if (ctx.forbidden || !ctx.profile) { res.status(403).json({ error: "Employer profile required" }); return; }
-    if (!isOwnedStoragePath(parsed.data.fileUrl, ctx.profile.id, parsed.data.documentType)) {
+    if (!isOwnedStoragePath(parsed.data.fileUrl, ctx.user.id, ctx.profile.id, parsed.data.documentType)) {
       res.status(400).json({ error: "Invalid storage path" });
       return;
     }

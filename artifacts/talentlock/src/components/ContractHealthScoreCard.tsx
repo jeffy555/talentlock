@@ -254,13 +254,12 @@ export default function ContractHealthScoreCard({
               clauses before signing.
             </p>
             <Button
-              variant="outline"
               size="sm"
-              className="mt-2 border-amber-400 text-amber-800 hover:bg-amber-100"
+              className="mt-2 bg-amber-700 text-white hover:bg-amber-800"
               onClick={onRunRedlining}
             >
               Run Redlining
-              <Sparkles className="h-3.5 w-3.5 ml-1" />
+              <Sparkles className="h-3.5 w-3.5" />
             </Button>
           </div>
         )}
@@ -277,8 +276,8 @@ export default function ContractHealthScoreCard({
     <div className="rounded-lg border border-slate-200 bg-white p-5">
       <h3 className="text-base font-semibold text-slate-800 mb-1">Contract Health Score</h3>
       <p className="text-sm text-slate-500 mb-4">{description}</p>
-      <Button variant="outline" size="sm" onClick={() => fetchScore(false)}>
-        <Sparkles className="h-4 w-4 mr-1 text-indigo-500" />
+      <Button size="sm" onClick={() => fetchScore(false)}>
+        <Sparkles className="h-4 w-4" />
         Score this contract
       </Button>
     </div>

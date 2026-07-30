@@ -23,6 +23,7 @@ const baseProfile = {
   bio: "Experienced teacher",
   dbsCheckStatus: "verified",
   location: "London",
+  countryCode: "GB",
   completenessScore: 90,
   isAvailable: true,
 } as FreelancerProfile;
@@ -33,22 +34,43 @@ describe("talentSearchPreFilter", () => {
     rules.professionCategory = "education";
     rules.maxRate = 100;
     rules.minRate = 50;
-    const fl = normaliseFreelancer(baseProfile, true);
+    const fl = normaliseFreelancer(baseProfile, true, null);
     expect(talentSearchPreFilter(rules, fl)).toBe(true);
   });
 
   it("rejects profession category mismatch", () => {
     const rules = defaultTalentSearchRules();
     rules.professionCategory = "technology";
-    const fl = normaliseFreelancer(baseProfile, true);
+    const fl = normaliseFreelancer(baseProfile, true, null);
     expect(talentSearchPreFilter(rules, fl)).toBe(false);
   });
 
   it("rejects when freelancer rate exceeds maxRate", () => {
     const rules = defaultTalentSearchRules();
     rules.maxRate = 50;
-    const fl = normaliseFreelancer(baseProfile, true);
+    const fl = normaliseFreelancer(baseProfile, true, null);
     expect(talentSearchPreFilter(rules, fl)).toBe(false);
+  });
+
+  it("rejects location country mismatch when locationRequired", () => {
+    const rules = defaultTalentSearchRules();
+    rules.locationRequired = true;
+    rules.countryCode = "US";
+    rules.stateCode = "CA";
+    rules.location = "California, United States";
+    const fl = normaliseFreelancer(baseProfile, true, "ENG");
+    expect(talentSearchPreFilter(rules, fl)).toBe(false);
+  });
+
+  it("passes location country and state match when locationRequired", () => {
+    const rules = defaultTalentSearchRules();
+    rules.locationRequired = true;
+    rules.countryCode = "US";
+    rules.stateCode = "CA";
+    rules.location = "California, United States";
+    const usProfile = { ...baseProfile, countryCode: "US", location: "California" } as FreelancerProfile;
+    const fl = normaliseFreelancer(usProfile, true, "CA");
+    expect(talentSearchPreFilter(rules, fl)).toBe(true);
   });
 });
 

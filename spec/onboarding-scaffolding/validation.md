@@ -59,6 +59,17 @@ curl -s -X PATCH /api/users/me/onboarding-step \
 
 Expected: 200, `onboardingStep: "employer_documents"`.
 
+### V2.5b — `freelancer_documents` step accepted
+
+```bash
+curl -s -X PATCH /api/users/me/onboarding-step \
+  -H "Authorization: Bearer <freelancer_pending_token>" \
+  -H "Content-Type: application/json" \
+  -d '{"onboardingRole":"freelancer","onboardingStep":"freelancer_documents","email":"fl@example.com","name":"FL User"}'
+```
+
+Expected: 200, `onboardingStep: "freelancer_documents"`.
+
 ### V2.6 — Employer profile requires pending user
 
 Attempt `PUT /api/employers/me` with no `users` row → 400 `User profile not found`.
@@ -132,6 +143,18 @@ Expected: button disabled.
 
 Expected: redirect to `/dashboard`; `GET /users/me` shows `role: employer`, onboarding fields null.
 
+### V3.8b — Freelancer mandatory document gate
+
+1. Complete freelancer profile (manual or resume), land on Verification.
+
+Expected: Finish disabled until Aadhaar uploaded; `GET /users/me` still `role: pending`.
+
+2. Upload Aadhaar, click Finish registration.
+
+Expected: redirect to `/dashboard`; `GET /users/me` shows `role: freelancer`, onboarding fields null.
+
+3. Resume auto-create must **not** skip Verification / redirect to dashboard before Aadhaar.
+
 ### V3.9 — Profile links
 
 Click checklist row → navigates to `/profile#bio` (or correct anchor).
@@ -149,9 +172,9 @@ Click checklist row → navigates to `/profile#bio` (or correct anchor).
 ## Regression
 
 - [ ] Existing onboarding completion flow still works (freelancer + employer with document step)
-- [ ] Resume importer auto-create still redirects to dashboard
+- [ ] Resume importer auto-create advances to Verification (not dashboard) until Aadhaar uploaded
 - [ ] `CompletenessBanner` on `/profile` unchanged
-- [ ] Talent Vault 60% gate unchanged
+- [ ] Talent Vault 60% gate unchanged; pending freelancers remain hidden
 
 ---
 

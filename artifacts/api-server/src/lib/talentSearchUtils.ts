@@ -17,6 +17,8 @@ export interface NormalisedFreelancer {
   dbsCheckStatus: string | null;
   hasAnyVerifiedDocument: boolean;
   location: string | null;
+  countryCode: string | null;
+  stateCode: string | null;
   completenessScore: number;
 }
 
@@ -42,7 +44,9 @@ function rateFromProfile(profile: FreelancerProfile): number {
 export function normaliseFreelancer(
   profile: FreelancerProfile,
   hasAnyVerifiedDocument: boolean,
+  stateCode: string | null = null,
 ): NormalisedFreelancer {
+  const locationParts = [profile.location, profile.countryCode].filter(Boolean);
   return {
     id: profile.id,
     professionCategory: profile.professionCategory,
@@ -55,7 +59,9 @@ export function normaliseFreelancer(
     bio: profile.bio,
     dbsCheckStatus: profile.dbsCheckStatus,
     hasAnyVerifiedDocument,
-    location: profile.location,
+    location: locationParts.length > 0 ? locationParts.join(" · ") : null,
+    countryCode: profile.countryCode ?? null,
+    stateCode,
     completenessScore: profile.completenessScore,
   };
 }
@@ -111,6 +117,31 @@ export function talentSearchPreFilterReason(
     return "Verified credentials required";
   }
 
+  if (rules.locationRequired) {
+    const requiredCountry = rules.countryCode?.trim().toUpperCase() || null;
+    if (requiredCountry) {
+      const freelancerCountry = freelancer.countryCode?.trim().toUpperCase() || null;
+      if (!freelancerCountry || freelancerCountry !== requiredCountry) {
+        return `Location country does not match (requires ${requiredCountry})`;
+      }
+    }
+    const requiredState = rules.stateCode?.trim().toUpperCase() || null;
+    if (requiredState) {
+      const freelancerState = freelancer.stateCode?.trim().toUpperCase() || null;
+      if (!freelancerState || freelancerState !== requiredState) {
+        return `Location state does not match (requires ${requiredState})`;
+      }
+    }
+    // Fallback for legacy rules that only stored a free-text location label.
+    if (!requiredCountry && rules.location?.trim()) {
+      const needle = rules.location.trim().toLowerCase();
+      const haystack = `${freelancer.location ?? ""} ${freelancer.countryCode ?? ""} ${freelancer.stateCode ?? ""}`.toLowerCase();
+      if (!haystack.includes(needle) && !needle.split(/[,\s]+/).some((part) => part.length > 2 && haystack.includes(part))) {
+        return `Location does not match (requires ${rules.location})`;
+      }
+    }
+  }
+
   return null;
 }
 
@@ -134,8 +165,15 @@ export function buildTalentSearchEvaluationPrompt(
       ? employer.recentJobTitles.join(", ")
       : "general hiring";
   const locationLine = rules.locationRequired
-    ? `${rules.location ?? "specified location"}${rules.locationRadiusKm ? ` (within ${rules.locationRadiusKm}km)` : ""}`
-    : "remote OK";
+    ? [
+        rules.location ?? null,
+        rules.countryCode ? `country=${rules.countryCode}` : null,
+        rules.stateCode ? `state=${rules.stateCode}` : null,
+        rules.locationRadiusKm ? `within ${rules.locationRadiusKm}km` : null,
+      ]
+        .filter(Boolean)
+        .join(" · ") || "specified location"
+    : "remote OK / any location";
 
   return `You are an AI assistant for a talent marketplace, evaluating a freelancer/professional's fit on behalf of an employer and, when they match, composing an outreach message on the employer's behalf.
 
@@ -163,7 +201,7 @@ Skills: ${freelancer.skills.join(", ")}
 Teaching subjects: ${freelancer.teachingSubjects?.join(", ") ?? "N/A"}
 Teaching levels: ${freelancer.teachingLevels?.join(", ") ?? "N/A"}
 Rate: ${freelancer.rate} ${rules.rateType}
-Location: ${freelancer.location ?? "not specified"}
+Location: ${freelancer.location ?? "not specified"} (country=${freelancer.countryCode ?? "n/a"}, state=${freelancer.stateCode ?? "n/a"})
 DBS status: ${freelancer.dbsCheckStatus ?? "not provided"}
 Has verified credential: ${freelancer.hasAnyVerifiedDocument ? "Yes" : "No"}
 Bio summary: ${freelancer.bio?.slice(0, 300) ?? ""}
@@ -224,6 +262,8 @@ export function defaultTalentSearchRules(): TalentSearchRules {
     availableFrom: null,
     locationRequired: false,
     location: null,
+    countryCode: null,
+    stateCode: null,
     locationRadiusKm: null,
     excludedKeywords: [],
     requireVerifiedCredentials: false,
@@ -251,6 +291,10 @@ export function normaliseParsedTalentSearchRules(
     preferredSkills: raw.preferredSkills ?? defaults.preferredSkills,
     rateType: raw.rateType ?? defaults.rateType,
     locationRequired: raw.locationRequired ?? defaults.locationRequired,
+    location: raw.location ?? defaults.location,
+    countryCode: raw.countryCode ?? defaults.countryCode,
+    stateCode: raw.stateCode ?? defaults.stateCode,
+    locationRadiusKm: raw.locationRadiusKm ?? defaults.locationRadiusKm,
     excludedKeywords: raw.excludedKeywords ?? defaults.excludedKeywords,
     requireVerifiedCredentials:
       raw.requireVerifiedCredentials ?? defaults.requireVerifiedCredentials,
@@ -279,6 +323,8 @@ Return ONLY a JSON object with this shape — no preamble, no markdown:
     "availableFrom": string | null,
     "locationRequired": boolean,
     "location": string | null,
+    "countryCode": string | null,
+    "stateCode": string | null,
     "locationRadiusKm": number | null,
     "excludedKeywords": string[],
     "requireVerifiedCredentials": boolean,
@@ -294,5 +340,6 @@ Return ONLY a JSON object with this shape — no preamble, no markdown:
   "warnings": string[]
 }
 
-Defaults when not specified: professionCategory null, rateType "hourly", matchThreshold 70, messageTone "professional", locationRequired false, requireDbs false, requireVerifiedCredentials false, dryRun false, dailyDigest false, empty arrays, null rates/dates/location.
+Defaults when not specified: professionCategory null, rateType "hourly", matchThreshold 70, messageTone "professional", locationRequired false, requireDbs false, requireVerifiedCredentials false, dryRun false, dailyDigest false, empty arrays, null rates/dates/location/countryCode/stateCode.
+When a city/region/country is mentioned, set locationRequired true, fill location with a human label, and set countryCode (ISO-2) / stateCode when identifiable.
 Add a warning for each ambiguous or missing preference the user did not specify.`;

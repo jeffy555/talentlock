@@ -43,6 +43,7 @@ type Meeting = typeof meetingsTable.$inferSelect;
 // current document types (government_id, professional_credential) and the
 // education-vertical types so the brief stays accurate as the taxonomy grows.
 const DOCUMENT_LABELS: Record<string, string> = {
+  aadhaar: "Aadhaar Verified",
   government_id: "Identity Verified",
   professional_credential: "Professional Credential",
   identity: "Identity Verified",

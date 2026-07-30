@@ -3,6 +3,8 @@ import {
   usePatchAgreementsIdAmendments,
   usePostAgreementsIdEnrich,
   usePostAgreementsIdFinalize,
+  useGetBooking,
+  useGetJobRequirement,
   type Agreement,
   type HealthScoreDimensions,
 } from "@workspace/api-client-react";
@@ -11,9 +13,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { CheckCircle2, Loader2, PenLine, Sparkles } from "lucide-react";
+import { CheckCircle2, Loader2, PenLine, Sparkles, Calendar, DollarSign } from "lucide-react";
 import EmployerAgreementSummaryPanel from "./EmployerAgreementSummaryPanel";
 import ContractHealthScoreCard from "@/components/ContractHealthScoreCard";
+import { formatRate, paymentTypeToRateType } from "@/lib/rateFormatUtils";
+import { format } from "date-fns";
 
 const STEPS = [
   { id: "summary", label: "Review Summary" },
@@ -33,7 +37,6 @@ function stepIndex(stage: string | null | undefined, employerSigned: boolean): n
 
 export interface EmployerAgreementWorkflowProps {
   agreement: Agreement & {
-    source?: string;
     uploadStage?: string | null;
     amendments?: Array<{ id: string; text: string; addedAt: string }>;
     employerSummary?: Record<string, unknown> | null;
@@ -57,6 +60,14 @@ export default function EmployerAgreementWorkflow({
   const enrichMutation = usePostAgreementsIdEnrich();
   const finalizeMutation = usePostAgreementsIdFinalize();
 
+  const { data: booking } = useGetBooking(agreement.bookingId, {
+    query: { enabled: !!agreement.bookingId } as never,
+  });
+  const jobReqId = booking?.jobRequirementId != null ? Number(booking.jobRequirementId) : NaN;
+  const { data: jobRequirement } = useGetJobRequirement(jobReqId, {
+    query: { enabled: Number.isFinite(jobReqId) } as never,
+  });
+
   const [draftAmendments, setDraftAmendments] = useState<string[]>(
     () => (agreement.amendments ?? []).map((a) => a.text),
   );
@@ -64,6 +75,20 @@ export default function EmployerAgreementWorkflow({
 
   const currentStep = stepIndex(agreement.uploadStage, !!agreement.employerSignedAt);
   const employerSigned = !!agreement.employerSignedAt;
+
+  const bookingRateType = paymentTypeToRateType(
+    booking?.paymentType ?? "hourly",
+    jobRequirement?.rateType,
+  );
+  const bookingParticulars = booking
+    ? {
+        start: format(new Date(booking.startDate), "MMM d, yyyy"),
+        end: format(new Date(booking.endDate), "MMM d, yyyy"),
+        rate: booking.rate != null
+          ? formatRate(Number(booking.rate), bookingRateType, booking.currencyCode ?? "USD")
+          : "Not set",
+      }
+    : null;
 
   const handleSaveAmendments = async () => {
     try {
@@ -96,7 +121,10 @@ export default function EmployerAgreementWorkflow({
   const handleEnrich = async () => {
     try {
       await enrichMutation.mutateAsync({ id: agreement.id });
-      toast({ title: "Agreement updated", description: "Dates and compensation have been added." });
+      toast({
+        title: "Agreement updated",
+        description: "Booking dates and compensation have been written into the document.",
+      });
       onRefetch();
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error ?? "Enrichment failed";
@@ -123,7 +151,7 @@ export default function EmployerAgreementWorkflow({
           Uploaded Agreement Workflow
         </CardTitle>
         <CardDescription>
-          Review your document, add any points, apply booking details, then sign.
+          Review your document, add any points, apply booking dates and rate, then sign and request the freelancer&apos;s signature.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
@@ -199,20 +227,42 @@ export default function EmployerAgreementWorkflow({
 
         {agreement.uploadStage === "summary_ready" && !employerSigned && (
           <div className="rounded-xl border border-border p-4 bg-card space-y-3">
+            <p className="text-sm font-medium text-foreground">Apply engagement particulars</p>
             <p className="text-sm text-muted-foreground">
-              AI will merge your amendments and add the agreed engagement dates and freelancer compensation from this booking.
+              AI will merge your amendments and write the agreed engagement dates and compensation from this booking into the agreement (aligned with the job discussion).
             </p>
-            <Button onClick={handleEnrich} disabled={enrichMutation.isPending}>
+            {bookingParticulars && (
+              <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 space-y-2 text-sm">
+                <div className="flex items-center gap-2 text-foreground">
+                  <Calendar className="h-4 w-4 text-primary shrink-0" />
+                  <span>
+                    <span className="font-medium">Dates:</span> {bookingParticulars.start} → {bookingParticulars.end}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 text-foreground">
+                  <DollarSign className="h-4 w-4 text-primary shrink-0" />
+                  <span>
+                    <span className="font-medium">Rate:</span> {bookingParticulars.rate}
+                  </span>
+                </div>
+              </div>
+            )}
+            <Button onClick={handleEnrich} disabled={enrichMutation.isPending || !booking?.rate}>
               {enrichMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
               Apply dates &amp; compensation
             </Button>
+            {!booking?.rate && (
+              <p className="text-xs text-destructive">
+                This booking has no agreed rate yet. Complete rate negotiation before enriching.
+              </p>
+            )}
           </div>
         )}
 
         {agreement.uploadStage === "enriched" && !employerSigned && (
           <div className="rounded-xl border border-border p-4 bg-card space-y-3">
             <p className="text-sm text-muted-foreground">
-              Run a thorough AI contract review before signing.
+              Review the updated document below, then run a thorough AI contract review before signing. Signing sends the agreement to the freelancer for countersignature.
             </p>
             <Button onClick={handleFinalize} disabled={finalizeMutation.isPending}>
               {finalizeMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
@@ -236,7 +286,7 @@ export default function EmployerAgreementWorkflow({
             <div>
               <p className="font-semibold text-foreground">Ready for your signature</p>
               <p className="text-sm text-muted-foreground mt-1">
-                Your agreement has been reviewed. Sign to send it to the freelancer.
+                Your agreement has been reviewed. Sign to send it to the freelancer for their signature.
               </p>
             </div>
             <Button size="lg" onClick={onOpenSign} className="animate-pulse [animation-duration:3s]">

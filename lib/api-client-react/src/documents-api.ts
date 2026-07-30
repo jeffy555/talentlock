@@ -7,7 +7,7 @@ import type {
 import { customFetch } from "./custom-fetch";
 
 export type VerificationLevel = "unverified" | "partially_verified" | "fully_verified";
-export type DocumentType = "government_id" | "professional_credential";
+export type DocumentType = "aadhaar" | "government_id" | "professional_credential";
 
 export interface DocumentMeItem {
   documentType: string;

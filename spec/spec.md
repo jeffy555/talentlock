@@ -508,7 +508,7 @@ The `.cursor/rules/talentlock.mdc` file at the repo root enforces these rules au
 | Post-Engagement AI Debrief | `spec/post-engagement-ai-debrief/` | ✅ Complete |
 | Multi-Currency & Location | `spec/multi-currency-location/` | ✅ Complete |
 | Employer Uploaded Agreement | `spec/employer-uploaded-agreement/` | ✅ Complete |
-| Onboarding Scaffolding | `spec/onboarding-scaffolding/` | ✅ Complete · freelancer work category→location is UI-only until country selected; resume import persists `bio` on profile create |
+| Onboarding Scaffolding | `spec/onboarding-scaffolding/` | ✅ Complete · freelancer mandatory Aadhaar gate (`freelancer_documents`); employer doc gate; work category→location UI-only until country selected |
 | **Automated API Testing (Regression)** | `spec/api-testing/` | 🔄 In progress — Phase 0 harness on `cursor/regression-tests-9a23` |
 | UI/UX Improvements | `spec/ui-ux-improvements/` | 🟡 Ready to Execute |
 

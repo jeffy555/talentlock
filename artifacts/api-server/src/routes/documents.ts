@@ -45,7 +45,14 @@ const TEN_MINUTES_MS = 10 * 60 * 1000;
 async function resolveFreelancerContext(clerkId: string) {
   const [user] = await db.select().from(usersTable).where(eq(usersTable.clerkId, clerkId)).limit(1);
   if (!user) return null;
-  if (user.role !== "freelancer") return { user, profile: null, forbidden: true as const };
+
+  const isFreelancer = user.role === "freelancer";
+  const isPendingFreelancerOnboarding =
+    user.role === "pending" && user.onboardingRole === "freelancer";
+
+  if (!isFreelancer && !isPendingFreelancerOnboarding) {
+    return { user, profile: null, forbidden: true as const };
+  }
 
   const [profile] = await db
     .select()
@@ -124,7 +131,12 @@ router.post("/documents/upload-url", async (req, res) => {
 
     const ext = MIME_TO_EXT[normalizedMimeType as (typeof ALLOWED_MIME_TYPES)[number]];
     const filename = `${randomUUID()}${ext}`;
-    const storagePath = buildDocumentStoragePath(ctx.user.id, documentType, filename);
+    const storagePath = buildDocumentStoragePath(
+      ctx.user.id,
+      documentType,
+      filename,
+      ctx.user.name,
+    );
     const uploadUrl = await objectStorageService.getSignedUploadUrlForKey(storagePath);
 
     res.json({ uploadUrl, storagePath });

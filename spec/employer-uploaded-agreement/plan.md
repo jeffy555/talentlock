@@ -78,3 +78,5 @@ When `source === employer_upload` && employer viewer:
 ## Phase 4 — Docs
 
 Update `project.md` feature list and `spec/spec.md` index.
+
+> **Runtime note (2026-07-26):** `AgreementDetail` must guard `agreement` before reading `source` / `uploadStage` — accessing those while the query is loading crashed the Agreements page. Upload/enrich also require an agreed booking rate before proceeding.

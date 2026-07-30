@@ -24,8 +24,21 @@ export interface TalentSearchRules {
   /** @nullable */
   availableFrom?: string | null;
   locationRequired: boolean;
-  /** @nullable */
+  /**
+   * Human-readable location label (e.g. "California, United States")
+   * @nullable
+   */
   location?: string | null;
+  /**
+   * ISO country code used for hard location matching
+   * @nullable
+   */
+  countryCode?: string | null;
+  /**
+   * State/province code used for hard location matching when set
+   * @nullable
+   */
+  stateCode?: string | null;
   /** @nullable */
   locationRadiusKm?: number | null;
   excludedKeywords: string[];

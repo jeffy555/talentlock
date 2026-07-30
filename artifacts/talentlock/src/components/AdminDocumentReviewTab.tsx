@@ -46,6 +46,7 @@ type DocumentReviewResponse = {
 };
 
 const DOC_TYPE_LABELS: Record<string, string> = {
+  aadhaar: "Aadhaar Card",
   government_id: "Government ID",
   professional_credential: "Professional Credential",
   portfolio_proof: "Portfolio Proof",

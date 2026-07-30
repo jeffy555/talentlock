@@ -28,6 +28,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import TeachingDetailsSection, { emptyTeachingDetails, type TeachingDetailsValues } from "@/components/onboarding/TeachingDetailsSection";
 import { LocationStep } from "@/components/onboarding/LocationStep";
 import { EmployerDocumentOnboardingStep } from "@/components/onboarding/EmployerDocumentOnboardingStep";
+import { FreelancerDocumentOnboardingStep } from "@/components/onboarding/FreelancerDocumentOnboardingStep";
 import { CountryStateFields, formatLocationLabel, isLocationComplete } from "@/components/onboarding/CountryStateFields";
 import { cn } from "@/lib/utils";
 import { COMPANY_SIZE_OPTIONS } from "@/lib/employerDocuments";
@@ -38,11 +39,13 @@ type OnboardingUiStep =
   | "profession_category"
   | "location"
   | "freelancer-details"
+  | "freelancer-documents"
   | "employer-details"
   | "employer-documents";
 
 function toApiOnboardingStep(step: OnboardingUiStep): PatchOnboardingStepBodyOnboardingStep {
   if (step === "freelancer-details") return "freelancer_details";
+  if (step === "freelancer-documents") return "freelancer_documents";
   if (step === "employer-details") return "employer_details";
   if (step === "employer-documents") return "employer_documents";
   if (step === "location") return "location";
@@ -51,6 +54,7 @@ function toApiOnboardingStep(step: OnboardingUiStep): PatchOnboardingStepBodyOnb
 
 function toUiOnboardingStep(step: string | null | undefined): OnboardingUiStep | null {
   if (step === "freelancer_details") return "freelancer-details";
+  if (step === "freelancer_documents") return "freelancer-documents";
   if (step === "employer_details") return "employer-details";
   if (step === "employer_documents") return "employer-documents";
   if (step === "location") return "location";
@@ -78,6 +82,7 @@ const ONBOARDING_STEP_ORDER: Record<OnboardingUiStep, number> = {
   location: 2,
   "freelancer-details": 3,
   "employer-details": 3,
+  "freelancer-documents": 4,
   "employer-documents": 4,
 };
 
@@ -106,7 +111,9 @@ export default function Onboarding() {
   const [stateCode, setStateCode] = useState<string | null>(null);
   const [locationSubmitting, setLocationSubmitting] = useState(false);
   const [employerFinishSubmitting, setEmployerFinishSubmitting] = useState(false);
+  const [freelancerFinishSubmitting, setFreelancerFinishSubmitting] = useState(false);
   const [employerProfileSubmitting, setEmployerProfileSubmitting] = useState(false);
+  const [freelancerProfileSubmitting, setFreelancerProfileSubmitting] = useState(false);
 
   // Profession category (freelancers only)
   const [professionCategory, setProfessionCategory] = useState<ProfessionCategory | null>(null);
@@ -137,16 +144,13 @@ export default function Onboarding() {
       toast({ title: "Email required", description: "Add a valid primary email address to continue.", variant: "destructive" });
       return;
     }
+    if (!isLocationComplete(countries, countryCode, stateCode)) {
+      toast({ title: "Location required", description: "Select the required country and state before uploading a resume.", variant: "destructive" });
+      return;
+    }
     setAutoCreating(true);
     try {
-      await upsertMe.mutateAsync({
-        data: {
-          role: "freelancer",
-          email: user.primaryEmailAddress.emailAddress,
-          name: user.fullName || "",
-          avatarUrl: user.imageUrl,
-        },
-      });
+      await persistOnboardingStep("freelancer", "freelancer-details", { countryCode, stateCode });
       await createFreelancerProfile.mutateAsync({
         data: {
           tagline: data.tagline || "",
@@ -160,8 +164,13 @@ export default function Onboarding() {
           resumeAnalysis: data.resumeAnalysis ?? null,
         },
       });
-      toast({ title: "Profile created!", description: "Your profile was built from your resume. Verify your identity anytime from Profile." });
-      setLocation("/dashboard");
+      await persistOnboardingStep("freelancer", "freelancer-documents");
+      await queryClient.invalidateQueries({ queryKey: getGetMeQueryKey() });
+      setStep("freelancer-documents");
+      toast({
+        title: "Profile saved",
+        description: "Upload your Aadhaar card to finish registration.",
+      });
     } catch {
       toast({ title: "Could not auto-create profile", description: "Your fields are filled in — review them and click Next.", variant: "destructive" });
     } finally {
@@ -323,16 +332,9 @@ export default function Onboarding() {
       toast({ title: "Location required", description: "Select the required country and state.", variant: "destructive" });
       return;
     }
+    setFreelancerProfileSubmitting(true);
     try {
       await persistOnboardingStep("freelancer", "freelancer-details", { countryCode, stateCode });
-      await upsertMe.mutateAsync({
-        data: {
-          role: "freelancer",
-          email: user.primaryEmailAddress.emailAddress,
-          name: user.fullName || "",
-          avatarUrl: user.imageUrl,
-        },
-      });
       await createFreelancerProfile.mutateAsync({
         data: {
           tagline,
@@ -346,13 +348,45 @@ export default function Onboarding() {
           ...buildTeachingPayload(),
         },
       });
+      await persistOnboardingStep("freelancer", "freelancer-documents");
+      await queryClient.invalidateQueries({ queryKey: getGetMeQueryKey() });
+      setStep("freelancer-documents");
       toast({
-        title: "Profile created",
-        description: "Welcome to TalentLock. Verify your identity anytime from Profile.",
+        title: "Profile saved",
+        description: "Upload your Aadhaar card to finish registration.",
       });
-      setLocation("/dashboard");
     } catch {
       toast({ title: "Error", description: "Could not create profile. Please try again.", variant: "destructive" });
+    } finally {
+      setFreelancerProfileSubmitting(false);
+    }
+  };
+
+  const handleFreelancerFinish = async () => {
+    if (!user || !hasValidPrimaryEmail(user.primaryEmailAddress?.emailAddress)) {
+      toast({ title: "Email required", description: "Add a valid primary email address to finish registration.", variant: "destructive" });
+      return;
+    }
+    setFreelancerFinishSubmitting(true);
+    try {
+      await upsertMe.mutateAsync({
+        data: {
+          role: "freelancer",
+          email: user.primaryEmailAddress.emailAddress,
+          name: user.fullName || "",
+          avatarUrl: user.imageUrl,
+        },
+      });
+      toast({ title: "Welcome to TalentLock", description: "Your freelancer account is ready." });
+      setLocation("/dashboard");
+    } catch {
+      toast({
+        title: "Error",
+        description: "Could not finish registration. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setFreelancerFinishSubmitting(false);
     }
   };
 
@@ -444,6 +478,7 @@ export default function Onboarding() {
         { n: 2, label: "Work category", active: step === "profession_category" },
         { n: 3, label: "Location", active: step === "location" },
         { n: 4, label: "Profile details", active: step === "freelancer-details" },
+        { n: 5, label: "Verification", active: step === "freelancer-documents" },
       ];
   const progressStep =
     step === "role"
@@ -454,7 +489,11 @@ export default function Onboarding() {
           ? isEmployerPath
             ? 2
             : 3
-          : step === "employer-documents"
+          : step === "employer-documents" || step === "freelancer-documents"
+            ? isEmployerPath
+              ? 4
+              : 5
+          : step === "freelancer-details"
             ? 4
           : isEmployerPath
             ? 3
@@ -772,12 +811,20 @@ export default function Onboarding() {
             </CardContent>
             <CardFooter className="flex justify-between">
               <Button type="button" variant="outline" onClick={() => setStep("location")}>Back</Button>
-              <Button type="submit" disabled={upsertMe.isPending || createFreelancerProfile.isPending}>
-                {createFreelancerProfile.isPending ? "Saving..." : "Create Profile →"}
+              <Button type="submit" disabled={freelancerProfileSubmitting || autoCreating}>
+                {freelancerProfileSubmitting ? "Saving..." : "Continue →"}
               </Button>
             </CardFooter>
           </form>
         </Card>
+      )}
+
+      {step === "freelancer-documents" && (
+        <FreelancerDocumentOnboardingStep
+          onBack={() => setStep("freelancer-details")}
+          onContinue={handleFreelancerFinish}
+          isSubmitting={freelancerFinishSubmitting}
+        />
       )}
 
       {/* ── Employer details ────────────────────────────────────────────── */}

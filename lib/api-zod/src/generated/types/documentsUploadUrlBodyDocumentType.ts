@@ -10,6 +10,7 @@ export type DocumentsUploadUrlBodyDocumentType =
   (typeof DocumentsUploadUrlBodyDocumentType)[keyof typeof DocumentsUploadUrlBodyDocumentType];
 
 export const DocumentsUploadUrlBodyDocumentType = {
+  aadhaar: "aadhaar",
   government_id: "government_id",
   professional_credential: "professional_credential",
 } as const;

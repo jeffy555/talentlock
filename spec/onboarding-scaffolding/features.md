@@ -22,7 +22,7 @@ New nullable columns on `users`:
 | Column | Type | Values |
 |--------|------|--------|
 | `onboardingRole` | text, nullable | `freelancer` \| `employer` |
-| `onboardingStep` | text, nullable | `role` \| `profession_category` \| `location` \| `freelancer_details` \| `employer_details` \| `employer_documents` |
+| `onboardingStep` | text, nullable | `role` \| `profession_category` \| `location` \| `freelancer_details` \| `freelancer_documents` \| `employer_details` \| `employer_documents` |
 
 New endpoint:
 
@@ -49,14 +49,15 @@ Behaviour:
 | `profession_category` | Profession category (freelancer) |
 | `location` | Country / state / currency (freelancer and employer) |
 | `freelancer_details` | Freelancer profile form |
+| `freelancer_documents` | Freelancer mandatory Aadhaar upload |
 | `employer_details` | Employer company profile form |
-| `employer_documents` | Employer mandatory Representative ID upload |
+| `employer_documents` | Employer mandatory Representative ID / Aadhaar upload |
 
 Step indicator reflects actual paths:
 
 | Path | Steps |
 |------|-------|
-| Freelancer | 1 Account type → 2 Work category → 3 Location → 4 Profile details |
+| Freelancer | 1 Account type → 2 Work category → 3 Location → 4 Profile details → 5 Verification (Aadhaar) |
 | Employer | 1 Account type → 2 Location → 3 Company profile → 4 Verification (1 document) |
 
 `PATCH /api/users/me/onboarding-step` is awaited on each step transition where server persistence is required. Step advances only after PATCH succeeds where ordering matters.
@@ -68,7 +69,8 @@ Step indicator reflects actual paths:
 | Role → Work category | Yes | `profession_category` | Creates pending user row |
 | Work category → Location (UI only) | **No** | — | Client advances UI; server stays at `profession_category` until country is chosen |
 | Location → Profile details | Yes | `location` | Must include `countryCode` (+ `stateCode` when required) |
-| Profile submit | — | cleared via `PUT /users/me` | — |
+| Profile save (manual or resume) | Yes | `freelancer_details` then `freelancer_documents` | Creates/updates profile while `role: pending`; does **not** call `PUT /users/me` yet |
+| Finish after Aadhaar | — | cleared via `PUT /users/me` | — |
 
 **Employer PATCH rules:** role → `location` (with country) → `employer_details` → `employer_documents` → `PUT /users/me`.
 
@@ -85,6 +87,20 @@ Employer onboarding does **not** call `PUT /api/users/me` with `role: employer` 
 **First-attempt company profile save:** frontend must call `PATCH /onboarding-step` with `employer_details` immediately before `PUT /employers/me` so the pending user row exists (avoids 400 `User profile not found`).
 
 Form pre-fills from `GET /api/employers/me` when returning to the company profile step after a partial save.
+
+### Module 2c — Freelancer Registration Completion Order (Mandatory Document Gate)
+
+Freelancer onboarding does **not** call `PUT /api/users/me` with `role: freelancer` until after profile create **and** mandatory Aadhaar upload:
+
+1. `PATCH /onboarding-step` through `profession_category`, `location`, and `freelancer_details` (pending user).
+2. `POST /api/freelancers` — profile create/upsert while `role: pending` (manual form or resume auto-create).
+3. `PATCH /onboarding-step` → `freelancer_documents`.
+4. Upload Aadhaar via `/api/documents/*` (allowed while `role: pending`, `onboardingRole: freelancer`, and freelancer profile exists).
+5. `PUT /api/users/me` with `role: freelancer` — clears onboarding columns and unlocks dashboard.
+
+**Talent Vault:** `GET /api/freelancers` and `GET /api/freelancers/:id` only surface users whose `users.role` is `freelancer` (pending onboarding profiles stay hidden).
+
+Optional credential types (`government_id`, `professional_credential`) may be uploaded on the same step or later from `/profile`.
 
 ### Module 3 — Dashboard Profile Strength Checklist
 
@@ -107,10 +123,11 @@ Freelancer dashboard shows a card when `completenessScore < 80`:
 
 ## Non-Goals
 
+- Allowing freelancers to finish registration without Aadhaar — **blocked** by Module 2c (additional docs remain optional on `/profile`)
 - Employer dashboard completeness checklist (employers have no completeness score) — **Note:** employer onboarding now includes a mandatory document upload step (see Module 2b); full 5-document verification remains optional on `/profile`
 - New completeness scoring weights or fields — reuse existing `completenessUtils.ts` formula
 - Profile Strength Nudges on `/profile` (separate roadmap Feature 2) — this feature only adds the **dashboard** nudge
 - Email reminders or push notifications for incomplete profiles
 - Forcing users through onboarding steps they already completed (resume is best-effort, user can always go Back)
 - Admin console changes
-- Changing Talent Vault 60% visibility gate (unchanged)
+- Changing Talent Vault 60% visibility gate (unchanged; additionally pending-role profiles are excluded until registration finishes)

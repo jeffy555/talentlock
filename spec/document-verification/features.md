@@ -60,6 +60,12 @@ On the freelancer's `/profile` page, a dedicated "Verification" section shows:
 - An upload/re-upload button per document type
 - Overall verification level: `unverified` (0 verified docs) / `partially_verified` (1 verified) / `fully_verified` (2+ verified)
 
+### 4b. Onboarding Mandatory Document Gate
+
+New freelancer registration (`/onboarding`) requires an **Aadhaar** upload before the account is activated (`role: freelancer`). Profile details may be saved while `role: pending`, but `PUT /users/me` with `role: freelancer` runs only after the document step. Full verification UI and optional credentials remain available later on `/profile`.
+
+See `spec/onboarding-scaffolding/` Module 2c (`freelancer_documents` step) and `FreelancerDocumentOnboardingStep.tsx`.
+
 ---
 
 ### 5. Admin Review Queue

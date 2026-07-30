@@ -10,6 +10,7 @@ export type DocumentsConfirmBodyDocumentType =
   (typeof DocumentsConfirmBodyDocumentType)[keyof typeof DocumentsConfirmBodyDocumentType];
 
 export const DocumentsConfirmBodyDocumentType = {
+  aadhaar: "aadhaar",
   government_id: "government_id",
   professional_credential: "professional_credential",
 } as const;

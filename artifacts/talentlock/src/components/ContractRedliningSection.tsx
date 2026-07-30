@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Link } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -48,6 +48,8 @@ interface ContractRedliningSectionProps {
   userPlan: string;
   tokensUsed: number;
   monthlyTokenLimit: number | null;
+  /** Parent can call this to start redlining (e.g. health-score "Run Redlining"). */
+  onRegisterTrigger?: (trigger: (() => void) | null) => void;
 }
 
 export default function ContractRedliningSection({
@@ -56,11 +58,13 @@ export default function ContractRedliningSection({
   userPlan,
   tokensUsed,
   monthlyTokenLimit,
+  onRegisterTrigger,
 }: ContractRedliningSectionProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const redlineMutation = usePostAgreementsIdRedline();
   const acceptMutation = usePatchAgreementsIdAcceptRedline();
+  const { mutate: requestRedline, isPending: isRedlining } = redlineMutation;
 
   const [suggestions, setSuggestions] = useState<RedlineSuggestion[]>([]);
   const [dismissed, setDismissed] = useState<Set<number>>(new Set());
@@ -89,24 +93,14 @@ export default function ContractRedliningSection({
 
   const employerSigned = !!agreement.employerSignedAt;
   const freelancerSigned = !!agreement.freelancerSignedAt;
-  if (employerSigned || freelancerSigned) return null;
 
-  const isStarter = !hasEmployerGrowthFeatures(userPlan);
-  if (isStarter) {
-    return (
-      <div id="contract-redlining" className="rounded-md border border-dashed border-slate-300 bg-slate-50 p-4">
-        <p className="text-sm font-semibold text-slate-500">🔒 AI Contract Review — Growth plan feature</p>
-        <p className="text-sm text-slate-500 mt-1">Review contracts with AI before signing.</p>
-        <Link href="/pricing" className="text-sm font-medium text-slate-700 underline mt-2 inline-block">
-          Upgrade to Growth →
-        </Link>
-      </div>
-    );
-  }
+  const handleRequestRedline = useCallback(() => {
+    if (employerSigned || freelancerSigned) return;
+    if (!hasEmployerGrowthFeatures(userPlan)) return;
+    if (isRedlining) return;
 
-  const handleRequestRedline = () => {
     setParseError(false);
-    redlineMutation.mutate(
+    requestRedline(
       { id: agreementId },
       {
         onSuccess: (result) => {
@@ -123,7 +117,49 @@ export default function ContractRedliningSection({
         },
       },
     );
-  };
+  }, [
+    agreementId,
+    employerSigned,
+    freelancerSigned,
+    isRedlining,
+    requestRedline,
+    userPlan,
+  ]);
+
+  useEffect(() => {
+    if (!onRegisterTrigger) return;
+    const canTrigger =
+      !employerSigned &&
+      !freelancerSigned &&
+      hasEmployerGrowthFeatures(userPlan) &&
+      !hasLoaded &&
+      !isRedlining;
+    onRegisterTrigger(canTrigger ? handleRequestRedline : null);
+    return () => onRegisterTrigger(null);
+  }, [
+    employerSigned,
+    freelancerSigned,
+    handleRequestRedline,
+    hasLoaded,
+    isRedlining,
+    onRegisterTrigger,
+    userPlan,
+  ]);
+
+  if (employerSigned || freelancerSigned) return null;
+
+  const isStarter = !hasEmployerGrowthFeatures(userPlan);
+  if (isStarter) {
+    return (
+      <div id="contract-redlining" className="rounded-md border border-dashed border-slate-300 bg-slate-50 p-4">
+        <p className="text-sm font-semibold text-slate-700">🔒 AI Contract Review — Growth plan feature</p>
+        <p className="text-sm text-slate-500 mt-1">Review contracts with AI before signing.</p>
+        <Button asChild size="sm" className="mt-3">
+          <Link href="/pricing">Upgrade to Growth →</Link>
+        </Button>
+      </div>
+    );
+  }
 
   const handleAccept = (index: number, suggestion: RedlineSuggestion) => {
     const newContent = applySuggestion(contentBaseline, suggestion);
@@ -178,23 +214,23 @@ export default function ContractRedliningSection({
     );
   };
 
-  if (parseError && !redlineMutation.isPending) {
+  if (parseError && !isRedlining) {
     return (
       <div id="contract-redlining" className="rounded-md border border-slate-200 bg-slate-50 p-4 flex items-center justify-between gap-2">
         <p className="text-sm text-muted-foreground">Could not parse AI review response.</p>
-        <Button variant="ghost" size="sm" onClick={handleRequestRedline}>
+        <Button size="sm" onClick={handleRequestRedline}>
           Try Again
         </Button>
       </div>
     );
   }
 
-  if (!hasLoaded && !redlineMutation.isPending) {
+  if (!hasLoaded && !isRedlining) {
     return (
-      <div id="contract-redlining" className="rounded-md border border-slate-200 bg-slate-50 p-4">
-        <p className="text-sm font-semibold text-slate-700">🔍 AI Contract Review</p>
+      <div id="contract-redlining" className="rounded-md border border-slate-200 bg-white p-4 shadow-sm">
+        <p className="text-sm font-semibold text-slate-800">🔍 AI Contract Review</p>
         <p className="text-sm text-slate-500 mt-1">Get AI suggestions before signing.</p>
-        <div className="flex items-center justify-between mt-3 flex-wrap gap-2">
+        <div className="flex items-center justify-between mt-3 flex-wrap gap-3">
           <span className="text-sm text-muted-foreground">
             ~{estimated.toLocaleString()} tokens will be used
             {nearQuota && tokensLeft != null && (
@@ -203,20 +239,20 @@ export default function ContractRedliningSection({
               </span>
             )}
           </span>
-          <Button variant="outline" size="sm" onClick={handleRequestRedline}>
-            <Sparkles className="h-4 w-4 mr-1" />
-            Request Redlining ✦
+          <Button size="sm" onClick={handleRequestRedline} className="shrink-0">
+            <Sparkles className="h-4 w-4" />
+            Request Redlining
           </Button>
         </div>
       </div>
     );
   }
 
-  if (redlineMutation.isPending) {
+  if (isRedlining) {
     return (
-      <div id="contract-redlining" className="rounded-md border border-slate-200 bg-slate-50 p-4">
-        <Button variant="outline" size="sm" disabled>
-          <Loader2 className="h-4 w-4 animate-spin mr-1" />
+      <div id="contract-redlining" className="rounded-md border border-slate-200 bg-white p-4 shadow-sm">
+        <Button size="sm" disabled>
+          <Loader2 className="h-4 w-4 animate-spin" />
           Analysing contract...
         </Button>
       </div>

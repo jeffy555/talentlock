@@ -10,7 +10,7 @@ Frontend-only surfaces: `/onboarding` step indicator + resume, `/dashboard` prof
 
 **File:** `artifacts/talentlock/src/pages/Onboarding.tsx`
 
-### Freelancer path (4 steps)
+### Freelancer path (5 steps)
 
 | Step | Label | Active when |
 |------|-------|-------------|
@@ -18,6 +18,7 @@ Frontend-only surfaces: `/onboarding` step indicator + resume, `/dashboard` prof
 | 2 | Work category | `step === "profession_category"` |
 | 3 | Location | `step === "location"` |
 | 4 | Profile details | `step === "freelancer-details"` |
+| 5 | Verification | `step === "freelancer-documents"` |
 
 ### Employer path (4 steps)
 
@@ -28,7 +29,7 @@ Frontend-only surfaces: `/onboarding` step indicator + resume, `/dashboard` prof
 | 3 | Company profile | `step === "employer-details"` |
 | 4 | Verification | `step === "employer-documents"` |
 
-Visual: existing gold/navy circular indicators — four circles on employer path; freelancer path uses four after profession category.
+Visual: existing gold/navy circular indicators — five circles on freelancer path; four on employer path.
 
 ### Work category Continue (freelancers)
 
@@ -46,9 +47,24 @@ Full UI spec: `spec/employee-verification/UI.md` — Onboarding Integration sect
 
 Summary:
 - Card title: **Verify your business**
-- One required row: Representative ID
+- One required row: Representative ID / Aadhaar
 - Primary CTA **Finish registration →** disabled until upload confirmed
 - Back returns to company profile step (form pre-filled from `GET /employers/me`)
+
+---
+
+## Surface 1c — Freelancer Document Onboarding Step
+
+**File:** `artifacts/talentlock/src/components/onboarding/FreelancerDocumentOnboardingStep.tsx`
+
+Summary:
+- Card title: **Identity Verification**
+- Required row: **Aadhaar Card** (`aadhaar`)
+- Optional rows: Other Government ID, Professional Credential
+- Banner: Aadhaar is required to finish registration
+- Primary CTA **Finish registration →** disabled until Aadhaar uploaded
+- Back returns to freelancer profile details
+- After finish: dashboard (role finalized)
 
 ---
 

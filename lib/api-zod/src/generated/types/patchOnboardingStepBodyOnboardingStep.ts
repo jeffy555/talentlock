@@ -14,6 +14,7 @@ export const PatchOnboardingStepBodyOnboardingStep = {
   profession_category: "profession_category",
   location: "location",
   freelancer_details: "freelancer_details",
+  freelancer_documents: "freelancer_documents",
   employer_details: "employer_details",
   employer_documents: "employer_documents",
 } as const;

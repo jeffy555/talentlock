@@ -26,11 +26,18 @@ const DOCUMENT_TYPES: {
   type: DocumentType;
   label: string;
   hint: string;
+  required?: boolean;
 }[] = [
   {
+    type: "aadhaar",
+    label: "Aadhaar Card",
+    hint: "UIDAI Aadhaar card or e-Aadhaar (required)",
+    required: true,
+  },
+  {
     type: "government_id",
-    label: "Government ID",
-    hint: "Passport, driving licence, or national ID",
+    label: "Other Government ID",
+    hint: "Passport, driving licence, or national ID (optional if Aadhaar is uploaded)",
   },
   {
     type: "professional_credential",
@@ -195,7 +202,7 @@ export default function VerificationSection() {
       <CardHeader>
         <CardTitle className="text-lg font-semibold">Identity Verification</CardTitle>
         <CardDescription>
-          Submit documents to earn a Verified badge on your profile and build trust with employers.
+          Aadhaar is required for a Verified badge. You can also add other government ID and professional credentials.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -210,7 +217,7 @@ export default function VerificationSection() {
 
         {isLoading ? (
           <div className="space-y-3">
-            {[1, 2].map((i) => (
+            {[1, 2, 3].map((i) => (
               <Skeleton key={i} className="h-16 w-full rounded-md" />
             ))}
           </div>

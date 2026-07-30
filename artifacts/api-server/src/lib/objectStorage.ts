@@ -15,8 +15,18 @@ import {
   readLocalObject,
   relativeKeyFromLocalUploadUrl,
   usesLocalObjectStorage,
+  usesProxiedObjectStorage,
   writeLocalObject,
 } from "./localObjectStorage";
+import {
+  azureObjectExists,
+  createAzureSasUrl,
+  deleteAzureObject,
+  isAzureStorageKey,
+  readAzureObject,
+  usesAzureObjectStorage,
+  writeAzureObject,
+} from "./azureObjectStorage";
 
 const REPLIT_SIDECAR_ENDPOINT = "http://127.0.0.1:1106";
 
@@ -56,20 +66,20 @@ export class ObjectStorageService {
         pathsStr
           .split(",")
           .map((path) => path.trim())
-          .filter((path) => path.length > 0)
-      )
+          .filter((path) => path.length > 0),
+      ),
     );
     if (paths.length === 0) {
       throw new Error(
         "PUBLIC_OBJECT_SEARCH_PATHS not set. Create a bucket in 'Object Storage' " +
-          "tool and set PUBLIC_OBJECT_SEARCH_PATHS env var (comma-separated paths)."
+          "tool and set PUBLIC_OBJECT_SEARCH_PATHS env var (comma-separated paths).",
       );
     }
     return paths;
   }
 
   getPrivateObjectDir(): string {
-    if (usesLocalObjectStorage()) {
+    if (usesProxiedObjectStorage()) {
       return "/local-bucket/private";
     }
     const dir = process.env.PRIVATE_OBJECT_DIR || "";
@@ -123,19 +133,18 @@ export class ObjectStorageService {
     if (!privateObjectDir) {
       throw new Error(
         "PRIVATE_OBJECT_DIR not set. Create a bucket in 'Object Storage' " +
-          "tool and set PRIVATE_OBJECT_DIR env var."
+          "tool and set PRIVATE_OBJECT_DIR env var.",
       );
     }
 
     const objectId = randomUUID();
     const relativeKey = `uploads/${objectId}`;
 
-    if (usesLocalObjectStorage()) {
+    if (usesProxiedObjectStorage()) {
       return createLocalSignedUrl(relativeKey, "PUT", 900);
     }
 
     const fullPath = `${privateObjectDir}/${relativeKey}`;
-
     const { bucketName, objectName } = parseObjectPath(fullPath);
 
     return signObjectURL({
@@ -147,7 +156,9 @@ export class ObjectStorageService {
   }
 
   async getSignedUploadUrlForKey(relativeKey: string, ttlSec = 900): Promise<string> {
-    if (usesLocalObjectStorage()) {
+    // Browser PUTs go through the API proxy (local disk or Azure write).
+    // Direct Azure SAS uploads would require Storage Account CORS.
+    if (usesProxiedObjectStorage()) {
       return createLocalSignedUrl(relativeKey, "PUT", ttlSec);
     }
     const { bucketName, objectName } = this.resolveRelativeObjectKey(relativeKey);
@@ -160,7 +171,14 @@ export class ObjectStorageService {
   }
 
   async getSignedReadUrlForKey(relativeKey: string, ttlSec: number): Promise<string> {
+    if (usesAzureObjectStorage() && isAzureStorageKey(relativeKey)) {
+      return createAzureSasUrl(relativeKey, "GET", ttlSec);
+    }
     if (usesLocalObjectStorage()) {
+      return createLocalSignedUrl(relativeKey, "GET", ttlSec);
+    }
+    // Azure enabled but legacy local key still on disk
+    if (usesAzureObjectStorage() && !isAzureStorageKey(relativeKey)) {
       return createLocalSignedUrl(relativeKey, "GET", ttlSec);
     }
     const { bucketName, objectName } = this.resolveRelativeObjectKey(relativeKey);
@@ -235,7 +253,7 @@ export class ObjectStorageService {
 
   async trySetObjectEntityAclPolicy(
     rawPath: string,
-    aclPolicy: ObjectAclPolicy
+    aclPolicy: ObjectAclPolicy,
   ): Promise<string> {
     const normalizedPath = this.normalizeObjectEntityPath(rawPath);
     if (!normalizedPath.startsWith("/")) {
@@ -264,7 +282,10 @@ export class ObjectStorageService {
   }
 
   async privateObjectExists(relativeKey: string): Promise<boolean> {
-    if (usesLocalObjectStorage()) {
+    if (usesAzureObjectStorage() && isAzureStorageKey(relativeKey)) {
+      return azureObjectExists(relativeKey);
+    }
+    if (usesLocalObjectStorage() || (usesAzureObjectStorage() && !isAzureStorageKey(relativeKey))) {
       return localObjectExists(relativeKey);
     }
     const { bucketName, objectName } = this.resolveRelativeObjectKey(relativeKey);
@@ -273,7 +294,14 @@ export class ObjectStorageService {
   }
 
   async readPrivateObjectBuffer(relativeKey: string): Promise<Buffer | null> {
-    if (usesLocalObjectStorage()) {
+    if (usesAzureObjectStorage() && isAzureStorageKey(relativeKey)) {
+      try {
+        return await readAzureObject(relativeKey);
+      } catch {
+        return null;
+      }
+    }
+    if (usesLocalObjectStorage() || (usesAzureObjectStorage() && !isAzureStorageKey(relativeKey))) {
       try {
         return await readLocalObject(relativeKey);
       } catch {
@@ -293,8 +321,16 @@ export class ObjectStorageService {
     data: Buffer,
     contentType: string,
   ): Promise<void> {
-    if (usesLocalObjectStorage()) {
+    if (usesAzureObjectStorage() && isAzureStorageKey(relativeKey)) {
+      await writeAzureObject(relativeKey, data, contentType);
+      return;
+    }
+    if (usesLocalObjectStorage() || (usesAzureObjectStorage() && !isAzureStorageKey(relativeKey))) {
       await writeLocalObject(relativeKey, data);
+      return;
+    }
+    if (usesAzureObjectStorage()) {
+      await writeAzureObject(relativeKey, data, contentType);
       return;
     }
     const { bucketName, objectName } = this.resolveRelativeObjectKey(relativeKey);
@@ -305,7 +341,11 @@ export class ObjectStorageService {
   }
 
   async deletePrivateObject(relativeKey: string): Promise<void> {
-    if (usesLocalObjectStorage()) {
+    if (usesAzureObjectStorage() && isAzureStorageKey(relativeKey)) {
+      await deleteAzureObject(relativeKey);
+      return;
+    }
+    if (usesLocalObjectStorage() || (usesAzureObjectStorage() && !isAzureStorageKey(relativeKey))) {
       await deleteLocalObject(relativeKey);
       return;
     }
@@ -361,15 +401,15 @@ async function signObjectURL({
       },
       body: JSON.stringify(request),
       signal: AbortSignal.timeout(30_000),
-    }
+    },
   );
   if (!response.ok) {
     throw new Error(
       `Failed to sign object URL, errorcode: ${response.status}, ` +
-        `make sure you're running on Replit`
+        `make sure you're running on Replit`,
     );
   }
 
-  const body = await response.json() as { signed_url: string };
+  const body = (await response.json()) as { signed_url: string };
   return body.signed_url;
 }

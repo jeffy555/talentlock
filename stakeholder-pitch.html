@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TalentLock - Securing Talent, Unlocking Potential</title>
+    <!-- Import Modern Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Outfit:wght@400;500;700;800&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --primary-color: #4a90e2;
+            --primary-gradient: linear-gradient(135deg, #2b5876 0%, #4e4376 100%);
+            --accent-color: #f5a623;
+            --text-main: #2d3748;
+            --text-light: #64748b;
+            --bg-page: #f8fafc;
+            --white: #ffffff;
+            --border-radius: 16px;
+            --box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            color: var(--text-main);
+            background-color: var(--bg-page);
+            line-height: 1.7;
+        }
+
+        h1, h2, h3, h4, .flow-label {
+            font-family: 'Outfit', sans-serif;
+        }
+
+        /* Header Section */
+        header {
+            background: var(--primary-gradient);
+            color: var(--white);
+            text-align: center;
+            padding: 6rem 2rem 7rem 2rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        header::after {
+            content: '';
+            position: absolute;
+            bottom: -50px;
+            left: 0;
+            width: 100%;
+            height: 100px;
+            background: var(--bg-page);
+            transform: skewY(-2deg);
+        }
+
+        header h1 {
+            font-size: 4rem;
+            font-weight: 800;
+            margin-bottom: 1rem;
+            letter-spacing: -1px;
+            text-shadow: 0 4px 10px rgba(0,0,0,0.2);
+        }
+
+        header p {
+            font-size: 1.5rem;
+            font-weight: 400;
+            opacity: 0.9;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        /* Main Container */
+        .container {
+            max-width: 1200px;
+            margin: -2rem auto 3rem auto;
+            padding: 0 2rem;
+            position: relative;
+            z-index: 10;
+        }
+
+        /* Sections */
+        section {
+            background: var(--white);
+            border-radius: var(--border-radius);
+            padding: 4rem;
+            margin-bottom: 2.5rem;
+            box-shadow: var(--box-shadow);
+        }
+
+        .section-header {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+
+        h2 {
+            color: #1e293b;
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+        }
+
+        .section-subtitle {
+            color: var(--primary-color);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-size: 0.9rem;
+            display: block;
+            margin-bottom: 0.5rem;
+        }
+
+        p {
+            color: var(--text-light);
+            font-size: 1.1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        /* Feature Grid */
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+        }
+
+        .feature-card {
+            background: #f8fbff;
+            border: 1px solid #e2e8f0;
+            border-radius: var(--border-radius);
+            padding: 2rem;
+            transition: var(--transition);
+        }
+
+        .feature-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 12px 25px rgba(74, 144, 226, 0.15);
+            border-color: var(--primary-color);
+        }
+
+        .feature-icon {
+            font-size: 2.5rem;
+            margin-bottom: 1.5rem;
+            display: inline-block;
+            background: var(--white);
+            width: 60px;
+            height: 60px;
+            line-height: 60px;
+            text-align: center;
+            border-radius: 12px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+        }
+
+        .feature-card h3 {
+            color: #0f172a;
+            font-size: 1.3rem;
+            margin-bottom: 1rem;
+        }
+
+        .feature-card p {
+            font-size: 1rem;
+            margin-bottom: 0;
+        }
+
+        /* Flow Diagram Section */
+        .flow-container {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin: 3rem 0;
+            gap: 1rem;
+            position: relative;
+        }
+
+        /* Connecting line behind boxes */
+        .flow-container::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 5%;
+            right: 5%;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary-color), var(--accent-color));
+            z-index: 0;
+            opacity: 0.2;
+            transform: translateY(-50%);
+        }
+
+        .flow-box {
+            flex: 1;
+            background: var(--white);
+            border: 2px solid var(--primary-color);
+            border-radius: var(--border-radius);
+            padding: 2rem 1rem;
+            text-align: center;
+            box-shadow: 0 8px 20px rgba(74, 144, 226, 0.12);
+            transition: var(--transition);
+            position: relative;
+            z-index: 1;
+        }
+
+        .flow-box:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 15px 30px rgba(74, 144, 226, 0.25);
+        }
+
+        .flow-box .flow-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            display: block;
+        }
+
+        .flow-label {
+            font-weight: 700;
+            color: #1e293b;
+            font-size: 1.2rem;
+        }
+
+        .flow-connector {
+            font-size: 2rem;
+            color: var(--accent-color);
+            flex-shrink: 0;
+            z-index: 1;
+            background: var(--white);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(245, 166, 35, 0.4); }
+            70% { transform: scale(1.1); box-shadow: 0 0 0 15px rgba(245, 166, 35, 0); }
+            100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(245, 166, 35, 0); }
+        }
+
+        /* Flow Explanations */
+        .flow-explanations {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1.5rem;
+            margin-top: 3rem;
+            border-top: 1px solid #e2e8f0;
+            padding-top: 3rem;
+        }
+
+        .flow-step h4 {
+            color: var(--primary-color);
+            font-size: 1.1rem;
+            margin-bottom: 0.8rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .flow-step h4 span {
+            background: var(--primary-color);
+            color: white;
+            width: 24px;
+            height: 24px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            font-size: 0.8rem;
+        }
+
+        .flow-step p {
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+
+        /* Lists */
+        ul.styled-list {
+            list-style-type: none;
+        }
+
+        ul.styled-list li {
+            position: relative;
+            padding-left: 2.5rem;
+            margin-bottom: 1rem;
+            font-size: 1.1rem;
+            color: var(--text-light);
+        }
+
+        ul.styled-list li::before {
+            content: '✓';
+            position: absolute;
+            left: 0;
+            top: 2px;
+            background: #e0f2fe;
+            color: var(--primary-color);
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.9rem;
+            font-weight: bold;
+        }
+
+        /* Grid for Pros & Future Impact */
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 4rem;
+        }
+
+        /* Footer Section */
+        footer {
+            background: #0f172a;
+            color: var(--white);
+            text-align: center;
+            padding: 3rem 2rem;
+            margin-top: 4rem;
+        }
+
+        footer p {
+            color: #94a3b8;
+            margin: 0;
+            font-size: 1rem;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 1024px) {
+            .flow-explanations {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (max-width: 768px) {
+            section {
+                padding: 2.5rem 1.5rem;
+            }
+            .flow-container {
+                flex-direction: column;
+            }
+            .flow-container::before {
+                display: none;
+            }
+            .flow-connector {
+                transform: rotate(90deg);
+                margin: 0.5rem 0;
+            }
+            @keyframes pulse {
+                0% { transform: scale(1) rotate(90deg); box-shadow: 0 0 0 0 rgba(245, 166, 35, 0.4); }
+                70% { transform: scale(1.1) rotate(90deg); box-shadow: 0 0 0 15px rgba(245, 166, 35, 0); }
+                100% { transform: scale(1) rotate(90deg); box-shadow: 0 0 0 0 rgba(245, 166, 35, 0); }
+            }
+            .flow-explanations {
+                grid-template-columns: 1fr;
+            }
+            .grid-2 {
+                grid-template-columns: 1fr;
+                gap: 2rem;
+            }
+            header h1 {
+                font-size: 3rem;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Header Section -->
+    <header>
+        <h1>TalentLock</h1>
+        <p>Securing Talent, Unlocking Potential</p>
+    </header>
+
+    <div class="container">
+        
+        <!-- High-Level Features & Value Section -->
+        <section>
+            <div class="section-header">
+                <span class="section-subtitle">Core Capabilities</span>
+                <h2>High-Level Features & Value</h2>
+                <p>Designed to eliminate friction, reduce risk, and accelerate your hiring pipeline.</p>
+            </div>
+            
+            <div class="feature-grid">
+                <div class="feature-card">
+                    <span class="feature-icon">🛡️</span>
+                    <h3>Secure Talent Verification</h3>
+                    <p><strong>Value:</strong> Eliminates fraud and ensures compliance by automatically validating identity and professional credentials before candidates enter the talent pool.</p>
+                </div>
+                <div class="feature-card">
+                    <span class="feature-icon">🧠</span>
+                    <h3>AI-Powered Matching</h3>
+                    <p><strong>Value:</strong> Drastically reduces time-to-hire. Our engine analyzes complex job requirements and instantly surfaces the highest-quality, best-fit candidates.</p>
+                </div>
+                <div class="feature-card">
+                    <span class="feature-icon">📊</span>
+                    <h3>Real-Time Analytics</h3>
+                    <p><strong>Value:</strong> Empowers leadership with actionable insights into hiring velocity, budget utilization, and contract health for data-driven decision-making.</p>
+                </div>
+                <div class="feature-card">
+                    <span class="feature-icon">🤝</span>
+                    <h3>Stakeholder Access</h3>
+                    <p><strong>Value:</strong> Breaks down organizational silos. HR, procurement, and department heads can collaborate, review, and approve hires in one unified workspace.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Application Flow Diagram & Explanation Section -->
+        <section>
+            <div class="section-header">
+                <span class="section-subtitle">How It Works</span>
+                <h2>The TalentLock Flow</h2>
+                <p>Lightning-fast flow ensures seamless execution of business logic from sourcing to signing.</p>
+            </div>
+
+            <!-- Visual Flow -->
+            <div class="flow-container">
+                <div class="flow-box">
+                    <span class="flow-icon">🛡️</span>
+                    <div class="flow-label">Talent Verification</div>
+                </div>
+                <div class="flow-connector">⚡</div>
+                <div class="flow-box">
+                    <span class="flow-icon">🧠</span>
+                    <div class="flow-label">AI Matching</div>
+                </div>
+                <div class="flow-connector">⚡</div>
+                <div class="flow-box">
+                    <span class="flow-icon">📊</span>
+                    <div class="flow-label">Analytics Dashboard</div>
+                </div>
+                <div class="flow-connector">⚡</div>
+                <div class="flow-box">
+                    <span class="flow-icon">🤝</span>
+                    <div class="flow-label">Stakeholder Access</div>
+                </div>
+            </div>
+
+            <!-- Flow Explanations -->
+            <div class="flow-explanations">
+                <div class="flow-step">
+                    <h4><span>1</span> Verification</h4>
+                    <p>Freelancers upload their credentials. TalentLock automatically cross-references identity and professional documents, establishing a foundation of absolute trust before any engagement begins.</p>
+                </div>
+                <div class="flow-step">
+                    <h4><span>2</span> Intelligent Matching</h4>
+                    <p>Employers post job requirements. The AI engine instantly scans the verified talent pool, scoring and ranking candidates based on skills, availability, and rate to find the perfect fit.</p>
+                </div>
+                <div class="flow-step">
+                    <h4><span>3</span> Insights & Tracking</h4>
+                    <p>Hiring managers review AI-curated shortlists. The dashboard provides real-time visibility into engagement metrics, contract health scores, and candidate pipeline status.</p>
+                </div>
+                <div class="flow-step">
+                    <h4><span>4</span> Collaboration</h4>
+                    <p>Final selections are shared with relevant stakeholders. Contracts are generated, redlined, and signed securely within the platform, moving from match to hire in record time.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Business Logic & Market Value Section -->
+        <section>
+            <div class="grid-2">
+                <div>
+                    <span class="section-subtitle">The Engine</span>
+                    <h2>Business Logic</h2>
+                    <p>
+                        TalentLock transforms the hiring landscape by seamlessly integrating secure candidate verification with an advanced AI-powered matching engine. 
+                    </p>
+                    <p>
+                        By automating the validation of credentials and intelligently pairing candidates to specific job requirements, we eliminate manual bottlenecks. This end-to-end workflow provides stakeholders with a secure, frictionless environment to make confident hiring decisions.
+                    </p>
+                </div>
+                <div>
+                    <span class="section-subtitle">Industry Context</span>
+                    <h2>Market Value</h2>
+                    <p>
+                        As the global talent acquisition market experiences unprecedented growth, organizations require scalable, secure solutions to maintain a competitive edge. 
+                    </p>
+                    <p>
+                        TalentLock bridges the gap between rigorous compliance and rapid deployment. Our platform is future-proof, scaling effortlessly from fast-growing startups to global enterprises in today's dynamic employment landscape.
+                    </p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Pros & Future Impact Section -->
+        <section>
+            <div class="grid-2">
+                <div>
+                    <span class="section-subtitle">Advantages</span>
+                    <h2>Key Benefits</h2>
+                    <ul class="styled-list">
+                        <li><strong>Risk Mitigation:</strong> Reduced fraud and enhanced compliance through automated checks.</li>
+                        <li><strong>Velocity:</strong> Faster recruitment and engagement cycles via AI matching.</li>
+                        <li><strong>Transparency:</strong> Enhanced stakeholder confidence and pipeline visibility.</li>
+                        <li><strong>Growth-Ready:</strong> Unmatched scalability for growing enterprise demands.</li>
+                    </ul>
+                </div>
+                <div>
+                    <span class="section-subtitle">Roadmap</span>
+                    <h2>Future Impact</h2>
+                    <ul class="styled-list">
+                        <li><strong>Predictive Analytics:</strong> Forecasting hiring needs and talent availability.</li>
+                        <li><strong>Deep Integration:</strong> Automated syncing with global compliance databases.</li>
+                        <li><strong>Market Leadership:</strong> Setting the standard in secure, AI-driven talent acquisition.</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <!-- Footer Section -->
+    <footer>
+        <p>&copy; 2026 TalentLock | Designed for Stakeholder Clarity</p>
+    </footer>
+
+</body>
+</html>

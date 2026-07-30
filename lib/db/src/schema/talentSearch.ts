@@ -31,6 +31,10 @@ export interface TalentSearchRules {
   availableFrom: string | null;
   locationRequired: boolean;
   location: string | null;
+  /** ISO country code for hard matching against freelancer profiles. */
+  countryCode: string | null;
+  /** State/province code for hard matching when the country requires/has states. */
+  stateCode: string | null;
   locationRadiusKm: number | null;
   excludedKeywords: string[];
   requireVerifiedCredentials: boolean;

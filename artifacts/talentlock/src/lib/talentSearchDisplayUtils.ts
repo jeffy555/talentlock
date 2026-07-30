@@ -14,6 +14,8 @@ export function emptyTalentSearchRules(): TalentSearchRules {
     availableFrom: null,
     locationRequired: false,
     location: null,
+    countryCode: null,
+    stateCode: null,
     locationRadiusKm: null,
     excludedKeywords: [],
     requireVerifiedCredentials: false,

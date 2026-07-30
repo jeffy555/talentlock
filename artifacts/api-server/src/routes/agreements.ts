@@ -695,6 +695,10 @@ router.post("/agreements/upload-url", async (req, res) => {
       res.status(400).json({ error: "Rate negotiation must be completed before uploading an agreement.", code: "NEGOTIATION_PENDING" });
       return;
     }
+    if (booking.rate == null) {
+      res.status(400).json({ error: "An agreed rate is required before uploading an agreement.", code: "RATE_REQUIRED" });
+      return;
+    }
 
     const ext = AGREEMENT_MIME_TO_EXT[mimeType] ?? "";
     const storageFilename = `${randomUUID()}${ext}`;
@@ -739,6 +743,10 @@ router.post("/agreements/upload-confirm", async (req, res) => {
     if (booking.employerId !== employer.id) { res.status(403).json({ error: "Forbidden" }); return; }
     if (booking.negotiationStatus === "negotiating") {
       res.status(400).json({ error: "Rate negotiation must be completed before uploading an agreement.", code: "NEGOTIATION_PENDING" });
+      return;
+    }
+    if (booking.rate == null) {
+      res.status(400).json({ error: "An agreed rate is required before uploading an agreement.", code: "RATE_REQUIRED" });
       return;
     }
 
@@ -929,6 +937,13 @@ router.post("/agreements/:id/enrich", async (req, res) => {
 
     const [booking] = await db.select().from(bookingsTable).where(eq(bookingsTable.id, agreement.bookingId)).limit(1);
     if (!booking) { res.status(404).json({ error: "Booking not found" }); return; }
+    if (booking.rate == null) {
+      res.status(400).json({
+        error: "Booking has no agreed rate. Complete negotiation before applying dates and compensation.",
+        code: "RATE_REQUIRED",
+      });
+      return;
+    }
 
     const [freelancer] = await db.select().from(freelancerProfilesTable)
       .where(eq(freelancerProfilesTable.id, booking.freelancerId)).limit(1);

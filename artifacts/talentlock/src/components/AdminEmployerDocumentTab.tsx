@@ -21,6 +21,7 @@ async function fetchEmployerDocumentViewUrl(documentId: number): Promise<string>
   return proxiedStorageUrl(body.signedUrl);
 }
 const labels: Record<string, string> = {
+  aadhaar: "Aadhaar Card",
   company_registration: "Company Registration Certificate",
   tax_vat_certificate: "Tax / VAT Certificate",
   business_licence: "Business Licence",

@@ -16,9 +16,21 @@ function signingSecret(): string {
   return ephemeralSecret;
 }
 
-/** Use on-disk storage when Replit/GCS object storage is not configured. */
+/** Use on-disk storage when Azure and Replit/GCS object storage are not configured. */
 export function usesLocalObjectStorage(): boolean {
+  if (process.env.AZURE_STORAGE_CONNECTION_STRING?.trim()) return false;
   return !process.env.PRIVATE_OBJECT_DIR?.trim();
+}
+
+/**
+ * Browser uploads/reads go through `/api/storage/local-*` signed URLs when
+ * using local disk OR Azure (Azure blob writes happen server-side — no CORS).
+ */
+export function usesProxiedObjectStorage(): boolean {
+  return (
+    Boolean(process.env.AZURE_STORAGE_CONNECTION_STRING?.trim()) ||
+    !process.env.PRIVATE_OBJECT_DIR?.trim()
+  );
 }
 
 function localStorageRoot(): string {
@@ -60,6 +72,11 @@ export function verifyLocalSignedUrl(
 export function getLocalApiBase(): string {
   const configured = process.env.API_PUBLIC_URL?.replace(/\/$/, "");
   if (configured) return configured;
+  // Prefer the UI origin so absolute fallbacks still go through the Vite /
+  // reverse-proxy `/api` path instead of the raw API port (broken under WSL
+  // when the browser cannot reach :8080 directly).
+  const appUrl = process.env.APP_URL?.replace(/\/$/, "");
+  if (appUrl) return appUrl;
   const port = process.env.PORT || "8080";
   return `http://localhost:${port}`;
 }
@@ -77,7 +94,15 @@ export function createLocalSignedUrl(
     sig,
   });
   const route = method === "PUT" ? "local-upload" : "local-read";
-  return `${getLocalApiBase()}/api/storage/${route}?${params.toString()}`;
+  const path = `/api/storage/${route}?${params.toString()}`;
+
+  // Absolute only when explicitly configured for external consumers.
+  const absoluteBase = process.env.API_PUBLIC_URL?.replace(/\/$/, "");
+  if (absoluteBase) return `${absoluteBase}${path}`;
+
+  // Relative same-origin URL — browser uploads stay on the UI host and are
+  // proxied to the API (no cross-port CORS / WSL localhost issues).
+  return path;
 }
 
 export function relativeKeyFromLocalUploadUrl(rawPath: string): string | null {

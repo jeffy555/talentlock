@@ -9271,13 +9271,13 @@ export const usePostDocumentsConfirm = <
  * @summary Set or clear the expiry date on an existing document without re-uploading
  */
 export const getPatchDocumentExpiryUrl = (
-  documentType: "government_id" | "professional_credential",
+  documentType: "aadhaar" | "government_id" | "professional_credential",
 ) => {
   return `/api/documents/${documentType}/expiry`;
 };
 
 export const patchDocumentExpiry = async (
-  documentType: "government_id" | "professional_credential",
+  documentType: "aadhaar" | "government_id" | "professional_credential",
   patchDocumentExpiryBody: PatchDocumentExpiryBody,
   options?: RequestInit,
 ): Promise<PatchDocumentExpiryResponse> => {
@@ -9300,7 +9300,7 @@ export const getPatchDocumentExpiryMutationOptions = <
     Awaited<ReturnType<typeof patchDocumentExpiry>>,
     TError,
     {
-      documentType: "government_id" | "professional_credential";
+      documentType: "aadhaar" | "government_id" | "professional_credential";
       data: BodyType<PatchDocumentExpiryBody>;
     },
     TContext
@@ -9310,7 +9310,7 @@ export const getPatchDocumentExpiryMutationOptions = <
   Awaited<ReturnType<typeof patchDocumentExpiry>>,
   TError,
   {
-    documentType: "government_id" | "professional_credential";
+    documentType: "aadhaar" | "government_id" | "professional_credential";
     data: BodyType<PatchDocumentExpiryBody>;
   },
   TContext
@@ -9327,7 +9327,7 @@ export const getPatchDocumentExpiryMutationOptions = <
   const mutationFn: MutationFunction<
     Awaited<ReturnType<typeof patchDocumentExpiry>>,
     {
-      documentType: "government_id" | "professional_credential";
+      documentType: "aadhaar" | "government_id" | "professional_credential";
       data: BodyType<PatchDocumentExpiryBody>;
     }
   > = (props) => {
@@ -9356,7 +9356,7 @@ export const usePatchDocumentExpiry = <
     Awaited<ReturnType<typeof patchDocumentExpiry>>,
     TError,
     {
-      documentType: "government_id" | "professional_credential";
+      documentType: "aadhaar" | "government_id" | "professional_credential";
       data: BodyType<PatchDocumentExpiryBody>;
     },
     TContext
@@ -9366,7 +9366,7 @@ export const usePatchDocumentExpiry = <
   Awaited<ReturnType<typeof patchDocumentExpiry>>,
   TError,
   {
-    documentType: "government_id" | "professional_credential";
+    documentType: "aadhaar" | "government_id" | "professional_credential";
     data: BodyType<PatchDocumentExpiryBody>;
   },
   TContext

@@ -37,6 +37,7 @@ export const ONBOARDING_STEPS = [
   "profession_category",
   "location",
   "freelancer_details",
+  "freelancer_documents",
   "employer_details",
   "employer_documents",
 ] as const;
@@ -171,11 +172,31 @@ Do **not** call `PUT /api/users/me` with `role: employer` until document upload 
 
 ---
 
+## Freelancer mandatory document gate (Q8)
+
+**Decision:** Mirror Module 2b / employer flow. Freelancer registration does **not** finalize `role: freelancer` until Aadhaar is uploaded.
+
+```ts
+await persistOnboardingStep("freelancer", "freelancer_details", { countryCode, stateCode });
+await createFreelancerProfile.mutateAsync({ ... });
+await persistOnboardingStep("freelancer", "freelancer_documents");
+setStep("freelancer-documents");
+// PUT /users/me role:freelancer only after Aadhaar upload on FreelancerDocumentOnboardingStep
+```
+
+`POST /api/documents/*` must allow `role: pending` + `onboardingRole: freelancer` when a freelancer profile exists (same pattern as employer documents).
+
+Resume auto-create uses the **same** gate — never skip to `/dashboard` without verification.
+
+Talent Vault list/detail exclude users whose `users.role` is still `pending`.
+
+---
+
 ## Step indicator (freelancer vs employer)
 
 | Path | Steps |
 |------|-------|
-| Freelancer | 1 Account type → 2 Work category → 3 Location → 4 Profile details |
+| Freelancer | 1 Account type → 2 Work category → 3 Location → 4 Profile details → 5 Verification |
 | Employer | 1 Account type → 2 Location → 3 Company profile → 4 Verification |
 
 Compute `progressStep` from current `step` + `onboardingRole`, not a hardcoded 2-step array.
@@ -206,7 +227,7 @@ Server `onboardingStep` remains `profession_category` until Location Continue su
 | Phase | Description | Status |
 |-------|-------------|--------|
 | 1 | Database — `onboarding_role`, `onboarding_step` on `users` | ✅ |
-| 2 | Backend — PATCH route, OpenAPI (`employer_documents` step), codegen, clear on PUT | ✅ |
-| 3 | Frontend — resume onboarding, dashboard checklist, employer 4-step flow + mandatory doc gate, company profile first-save fix | ✅ |
+| 2 | Backend — PATCH route, OpenAPI (`freelancer_documents` + `employer_documents` steps), codegen, clear on PUT, pending-role document access, Vault hides pending freelancers | ✅ |
+| 3 | Frontend — resume onboarding, dashboard checklist, employer + freelancer mandatory doc gates, company/profile first-save fix | ✅ |
 
 > Registration safeguard: onboarding is unavailable until Clerk exposes a valid primary email address. Both onboarding persistence and final user upsert reject invalid email values. Country/state selectors are shared by the location step and detail forms.

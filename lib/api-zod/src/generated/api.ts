@@ -47,7 +47,7 @@ export const GetMeResponse = zod.object({
     .string()
     .nullish()
     .describe(
-      "role | profession_category | location | freelancer_details | employer_details | employer_documents",
+      "role | profession_category | location | freelancer_details | freelancer_documents | employer_details | employer_documents",
     ),
   countryCode: zod
     .string()
@@ -106,7 +106,7 @@ export const UpsertMeResponse = zod.object({
     .string()
     .nullish()
     .describe(
-      "role | profession_category | location | freelancer_details | employer_details | employer_documents",
+      "role | profession_category | location | freelancer_details | freelancer_documents | employer_details | employer_documents",
     ),
   countryCode: zod
     .string()
@@ -138,6 +138,7 @@ export const PatchOnboardingStepBody = zod.object({
     "profession_category",
     "location",
     "freelancer_details",
+    "freelancer_documents",
     "employer_details",
     "employer_documents",
   ]),
@@ -185,7 +186,7 @@ export const PatchOnboardingStepResponse = zod.object({
     .string()
     .nullish()
     .describe(
-      "role | profession_category | location | freelancer_details | employer_details | employer_documents",
+      "role | profession_category | location | freelancer_details | freelancer_documents | employer_details | employer_documents",
     ),
   countryCode: zod
     .string()
@@ -245,7 +246,7 @@ export const PatchMyLocationResponse = zod.object({
     .string()
     .nullish()
     .describe(
-      "role | profession_category | location | freelancer_details | employer_details | employer_documents",
+      "role | profession_category | location | freelancer_details | freelancer_documents | employer_details | employer_documents",
     ),
   countryCode: zod
     .string()
@@ -3834,7 +3835,11 @@ export const GetPublicFreelancerProfileResponse = zod.object({
  * @summary Request a presigned upload URL for a verification document
  */
 export const PostDocumentsUploadUrlBody = zod.object({
-  documentType: zod.enum(["government_id", "professional_credential"]),
+  documentType: zod.enum([
+    "aadhaar",
+    "government_id",
+    "professional_credential",
+  ]),
   mimeType: zod
     .string()
     .describe("image\/jpeg, image\/png, image\/webp, or application\/pdf"),
@@ -3850,7 +3855,11 @@ export const PostDocumentsUploadUrlResponse = zod.object({
  * @summary Confirm document upload and queue AI review
  */
 export const PostDocumentsConfirmBody = zod.object({
-  documentType: zod.enum(["government_id", "professional_credential"]),
+  documentType: zod.enum([
+    "aadhaar",
+    "government_id",
+    "professional_credential",
+  ]),
   storagePath: zod.string(),
   expiryDate: zod.coerce
     .date()
@@ -3862,7 +3871,11 @@ export const PostDocumentsConfirmBody = zod.object({
  * @summary Set or clear the expiry date on an existing document without re-uploading
  */
 export const PatchDocumentExpiryParams = zod.object({
-  documentType: zod.enum(["government_id", "professional_credential"]),
+  documentType: zod.enum([
+    "aadhaar",
+    "government_id",
+    "professional_credential",
+  ]),
 });
 
 export const PatchDocumentExpiryBody = zod.object({
@@ -3909,6 +3922,7 @@ export const GetDocumentsMeResponse = zod.object({
  */
 export const PostEmployerDocumentsUploadUrlBody = zod.object({
   documentType: zod.enum([
+    "aadhaar",
     "company_registration",
     "tax_vat_certificate",
     "business_licence",
@@ -3929,6 +3943,7 @@ export const PostEmployerDocumentsUploadUrlResponse = zod.object({
  */
 export const PostEmployerDocumentsConfirmBody = zod.object({
   documentType: zod.enum([
+    "aadhaar",
     "company_registration",
     "tax_vat_certificate",
     "business_licence",
@@ -3951,6 +3966,7 @@ export const GetEmployerDocumentsMeResponse = zod.object({
   documents: zod.array(
     zod.object({
       documentType: zod.enum([
+        "aadhaar",
         "company_registration",
         "tax_vat_certificate",
         "business_licence",
@@ -3969,6 +3985,7 @@ export const GetEmployerDocumentsMeResponse = zod.object({
  */
 export const GetEmployerDocumentsMeDocumentTypeViewUrlParams = zod.object({
   documentType: zod.enum([
+    "aadhaar",
     "company_registration",
     "tax_vat_certificate",
     "business_licence",
@@ -4020,6 +4037,7 @@ export const GetAdminEmployerDocumentsResponse = zod.object({
       employerName: zod.string().nullish(),
       companyName: zod.string(),
       documentType: zod.enum([
+        "aadhaar",
         "company_registration",
         "tax_vat_certificate",
         "business_licence",
@@ -4948,7 +4966,22 @@ export const GetTalentSearchResponse = zod.union([
       rateType: zod.enum(["hourly", "per_day", "per_session", "per_course"]),
       availableFrom: zod.string().nullish(),
       locationRequired: zod.boolean(),
-      location: zod.string().nullish(),
+      location: zod
+        .string()
+        .nullish()
+        .describe(
+          'Human-readable location label (e.g. \"California, United States\")',
+        ),
+      countryCode: zod
+        .string()
+        .nullish()
+        .describe("ISO country code used for hard location matching"),
+      stateCode: zod
+        .string()
+        .nullish()
+        .describe(
+          "State\/province code used for hard location matching when set",
+        ),
       locationRadiusKm: zod.number().nullish(),
       excludedKeywords: zod.array(zod.string()),
       requireVerifiedCredentials: zod.boolean(),
@@ -5009,7 +5042,22 @@ export const UpsertTalentSearchBody = zod.object({
     rateType: zod.enum(["hourly", "per_day", "per_session", "per_course"]),
     availableFrom: zod.string().nullish(),
     locationRequired: zod.boolean(),
-    location: zod.string().nullish(),
+    location: zod
+      .string()
+      .nullish()
+      .describe(
+        'Human-readable location label (e.g. \"California, United States\")',
+      ),
+    countryCode: zod
+      .string()
+      .nullish()
+      .describe("ISO country code used for hard location matching"),
+    stateCode: zod
+      .string()
+      .nullish()
+      .describe(
+        "State\/province code used for hard location matching when set",
+      ),
     locationRadiusKm: zod.number().nullish(),
     excludedKeywords: zod.array(zod.string()),
     requireVerifiedCredentials: zod.boolean(),
@@ -5060,7 +5108,22 @@ export const UpsertTalentSearchResponse = zod.object({
     rateType: zod.enum(["hourly", "per_day", "per_session", "per_course"]),
     availableFrom: zod.string().nullish(),
     locationRequired: zod.boolean(),
-    location: zod.string().nullish(),
+    location: zod
+      .string()
+      .nullish()
+      .describe(
+        'Human-readable location label (e.g. \"California, United States\")',
+      ),
+    countryCode: zod
+      .string()
+      .nullish()
+      .describe("ISO country code used for hard location matching"),
+    stateCode: zod
+      .string()
+      .nullish()
+      .describe(
+        "State\/province code used for hard location matching when set",
+      ),
     locationRadiusKm: zod.number().nullish(),
     excludedKeywords: zod.array(zod.string()),
     requireVerifiedCredentials: zod.boolean(),
@@ -5123,7 +5186,22 @@ export const ActivateTalentSearchResponse = zod.object({
     rateType: zod.enum(["hourly", "per_day", "per_session", "per_course"]),
     availableFrom: zod.string().nullish(),
     locationRequired: zod.boolean(),
-    location: zod.string().nullish(),
+    location: zod
+      .string()
+      .nullish()
+      .describe(
+        'Human-readable location label (e.g. \"California, United States\")',
+      ),
+    countryCode: zod
+      .string()
+      .nullish()
+      .describe("ISO country code used for hard location matching"),
+    stateCode: zod
+      .string()
+      .nullish()
+      .describe(
+        "State\/province code used for hard location matching when set",
+      ),
     locationRadiusKm: zod.number().nullish(),
     excludedKeywords: zod.array(zod.string()),
     requireVerifiedCredentials: zod.boolean(),
@@ -5186,7 +5264,22 @@ export const DryRunTalentSearchResponse = zod.object({
     rateType: zod.enum(["hourly", "per_day", "per_session", "per_course"]),
     availableFrom: zod.string().nullish(),
     locationRequired: zod.boolean(),
-    location: zod.string().nullish(),
+    location: zod
+      .string()
+      .nullish()
+      .describe(
+        'Human-readable location label (e.g. \"California, United States\")',
+      ),
+    countryCode: zod
+      .string()
+      .nullish()
+      .describe("ISO country code used for hard location matching"),
+    stateCode: zod
+      .string()
+      .nullish()
+      .describe(
+        "State\/province code used for hard location matching when set",
+      ),
     locationRadiusKm: zod.number().nullish(),
     excludedKeywords: zod.array(zod.string()),
     requireVerifiedCredentials: zod.boolean(),
@@ -5249,7 +5342,22 @@ export const DeactivateTalentSearchResponse = zod.object({
     rateType: zod.enum(["hourly", "per_day", "per_session", "per_course"]),
     availableFrom: zod.string().nullish(),
     locationRequired: zod.boolean(),
-    location: zod.string().nullish(),
+    location: zod
+      .string()
+      .nullish()
+      .describe(
+        'Human-readable location label (e.g. \"California, United States\")',
+      ),
+    countryCode: zod
+      .string()
+      .nullish()
+      .describe("ISO country code used for hard location matching"),
+    stateCode: zod
+      .string()
+      .nullish()
+      .describe(
+        "State\/province code used for hard location matching when set",
+      ),
     locationRadiusKm: zod.number().nullish(),
     excludedKeywords: zod.array(zod.string()),
     requireVerifiedCredentials: zod.boolean(),
@@ -5314,7 +5422,22 @@ export const ParseTalentSearchRulesResponse = zod.object({
     rateType: zod.enum(["hourly", "per_day", "per_session", "per_course"]),
     availableFrom: zod.string().nullish(),
     locationRequired: zod.boolean(),
-    location: zod.string().nullish(),
+    location: zod
+      .string()
+      .nullish()
+      .describe(
+        'Human-readable location label (e.g. \"California, United States\")',
+      ),
+    countryCode: zod
+      .string()
+      .nullish()
+      .describe("ISO country code used for hard location matching"),
+    stateCode: zod
+      .string()
+      .nullish()
+      .describe(
+        "State\/province code used for hard location matching when set",
+      ),
     locationRadiusKm: zod.number().nullish(),
     excludedKeywords: zod.array(zod.string()),
     requireVerifiedCredentials: zod.boolean(),

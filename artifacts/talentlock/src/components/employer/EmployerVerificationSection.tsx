@@ -69,12 +69,18 @@ export function EmployerVerificationSection() {
         body: file,
         headers: { "Content-Type": file.type },
       });
-      if (!uploadResponse.ok) throw new Error("GCS upload failed");
+      if (!uploadResponse.ok) {
+        throw new Error(`Storage upload failed (${uploadResponse.status})`);
+      }
       await confirm.mutateAsync({ data: { documentType, fileUrl } });
       await documentsQuery.refetch();
       toast({ title: "Document uploaded", description: "We will review it shortly." });
-    } catch {
-      toast({ title: "Upload failed", description: "Please try again.", variant: "destructive" });
+    } catch (err) {
+      const message =
+        err instanceof Error && err.message === "Unsupported file type"
+          ? "Please upload a JPEG, PNG, or WebP image."
+          : "Please try again.";
+      toast({ title: "Upload failed", description: message, variant: "destructive" });
     } finally {
       setUploadingType(null);
     }
@@ -101,7 +107,7 @@ export function EmployerVerificationSection() {
                 ? "Your required business documents are verified."
                 : level === "partially_verified"
                   ? "Upload your company registration and tax certificate to become Fully Verified."
-                  : "Start with your Representative ID to become Partially Verified."}
+                  : "Start with your Aadhaar card to become Partially Verified."}
             </p>
           </div>
           <span className={cn(

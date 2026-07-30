@@ -9,10 +9,16 @@ export type EmployerDocumentDefinition = {
 
 export const EMPLOYER_DOCUMENT_DEFINITIONS: EmployerDocumentDefinition[] = [
   {
-    type: "representative_id",
-    label: "Representative ID",
-    description: "Government-issued photo ID of company director or authorised representative",
+    type: "aadhaar",
+    label: "Aadhaar Card",
+    description: "UIDAI Aadhaar card of the company director or authorised representative (required)",
     required: true,
+  },
+  {
+    type: "representative_id",
+    label: "Other Government ID",
+    description: "Passport, driving licence, or other government photo ID (optional if Aadhaar is uploaded)",
+    required: false,
   },
   {
     type: "company_registration",
