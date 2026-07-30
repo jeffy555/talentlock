@@ -46,6 +46,7 @@ Notifications are written server-side when these events occur. Each event create
 | `review_replied` | Freelancer replies to a review | Employer |
 | `document_verified` | AI or admin verifies a document | Freelancer |
 | `document_rejected` | AI or admin rejects a document | Freelancer |
+| `contact_update_required` | Existing user missing required contact phone (on `GET /users/me`) | Same user (freelancer or employer) |
 
 ---
 

@@ -11,7 +11,7 @@ import {
   getBooking,
 } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Activity, Briefcase, Calendar, CheckCircle2, Clock, FileText, User, TrendingUp, Star } from "lucide-react";
+import { Activity, Briefcase, Calendar, CheckCircle2, Clock, FileText, User, TrendingUp, Star, AlertTriangle } from "lucide-react";
 import { format } from "date-fns";
 import { Link } from "wouter";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
@@ -22,6 +22,8 @@ import { SpendAnalyticsPanel } from "@/components/spend/SpendAnalyticsPanel";
 import { HiringAnalyticsPanel } from "@/components/hiring/HiringAnalyticsPanel";
 import { ProfileStrengthChecklist } from "@/components/onboarding/ProfileStrengthChecklist";
 import { WatchlistSummaryCard } from "@/components/watchlist/WatchlistSummaryCard";
+import { isValidContactEmail, isValidContactPhone } from "@/lib/contactValidation";
+import { Button } from "@/components/ui/button";
 
 function StatCardSkeleton() {
   return (
@@ -127,6 +129,22 @@ export default function Dashboard() {
   return (
     <div className="space-y-8 animate-fade-in">
       {isEmployer && <TokenUsageBanner />}
+
+      {user && (user.role === "freelancer" || user.role === "employer") &&
+        (!isValidContactEmail(user.email) || !isValidContactPhone(user.phone)) && (
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          <AlertTriangle className="h-5 w-5 shrink-0 text-amber-600" />
+          <div className="flex-1 min-w-0">
+            <p className="font-semibold">Update your contact details</p>
+            <p className="text-amber-800 mt-0.5">
+              Email and phone with country calling code are required for discovery meeting invites.
+            </p>
+          </div>
+          <Button asChild size="sm" className="shrink-0">
+            <Link href="/profile#account">Update now</Link>
+          </Button>
+        </div>
+      )}
 
       <div>
         <h1 className="text-3xl font-serif font-bold tracking-tight text-foreground">Dashboard</h1>

@@ -13,6 +13,8 @@ export interface Country {
   currencyCode: string;
   currencySymbol: string;
   currencyName: string;
+  /** ITU-T E.164 country calling code digits (without +) */
+  dialCode: string;
   stateRequired: boolean;
   states: CountryState[];
 }

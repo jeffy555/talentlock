@@ -33,6 +33,8 @@ import {
   formatLocationLabel,
   isLocationComplete,
 } from "@/components/onboarding/CountryStateFields";
+import { PhoneWithCountryFields } from "@/components/onboarding/PhoneWithCountryFields";
+import { isValidContactEmail, isValidContactPhone } from "@/lib/contactValidation";
 import { cn } from "@/lib/utils";
 import { COMPANY_SIZE_OPTIONS } from "@/lib/employerDocuments";
 import type {
@@ -62,10 +64,6 @@ function getIntendedRole(): "freelancer" | "employer" | null {
 }
 function clearIntendedRole() {
   localStorage.removeItem("talentlock_intended_role");
-}
-
-function hasValidPrimaryEmail(email: string | null | undefined): email is string {
-  return !!email && email.length >= 5 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
 export default function Onboarding() {
@@ -106,8 +104,12 @@ export default function Onboarding() {
   const [industry, setIndustry] = useState("");
   const [companySize, setCompanySize] = useState("");
   const [description, setDescription] = useState("");
+  const [contactEmail, setContactEmail] = useState("");
+  const [contactPhone, setContactPhone] = useState("");
 
   const profileSavedRef = useRef(false);
+  const emailSeededRef = useRef(false);
+  const phoneSeededRef = useRef(false);
 
   const { data: existingEmployerProfile, isError: employerProfileError } = useGetMyEmployerProfile({
     query: {
@@ -132,17 +134,38 @@ export default function Onboarding() {
   }, [existingEmployerProfile]);
 
   useEffect(() => {
+    if (emailSeededRef.current) return;
+    const fromDb = dbUser?.email && !dbUser.email.includes("@deleted.") ? dbUser.email : "";
+    const fromClerk = user?.primaryEmailAddress?.emailAddress ?? "";
+    const seed = fromDb || fromClerk;
+    if (!seed) return;
+    setContactEmail(seed);
+    emailSeededRef.current = true;
+  }, [dbUser?.email, user?.primaryEmailAddress?.emailAddress]);
+
+  useEffect(() => {
+    if (phoneSeededRef.current) return;
+    const fromDb = (dbUser as { phone?: string | null } | undefined)?.phone;
+    if (!fromDb) return;
+    setContactPhone(fromDb);
+    phoneSeededRef.current = true;
+  }, [(dbUser as { phone?: string | null } | undefined)?.phone]);
+
+  useEffect(() => {
     const intended = getIntendedRole();
     if (!intended || dbUser?.onboardingStep || !user) return;
     clearIntendedRole();
     setRole(intended);
     void (async () => {
       try {
+        const email = contactEmail || user.primaryEmailAddress?.emailAddress || "";
+        if (!isValidContactEmail(email)) return;
         await patchOnboardingStep.mutateAsync({
           data: {
             onboardingRole: intended,
             onboardingStep: "role",
-            email: user.primaryEmailAddress?.emailAddress || "",
+            email,
+            ...(isValidContactPhone(contactPhone) ? { phone: contactPhone.trim() } : {}),
             name: user.fullName || "",
             avatarUrl: user.imageUrl ?? null,
           },
@@ -152,7 +175,7 @@ export default function Onboarding() {
       }
       setStep("form");
     })();
-  }, [dbUser?.onboardingStep, user, patchOnboardingStep]);
+  }, [dbUser?.onboardingStep, user, patchOnboardingStep, contactEmail, contactPhone]);
 
   useEffect(() => {
     if (!dbUser || dbUser.role !== "pending") return;
@@ -173,11 +196,16 @@ export default function Onboarding() {
     location?: { countryCode: string; stateCode: string | null },
   ) => {
     if (!user) return;
+    const email = contactEmail.trim() || user.primaryEmailAddress?.emailAddress || "";
+    if (!isValidContactEmail(email)) {
+      throw new Error("A valid contact email is required.");
+    }
     await patchOnboardingStep.mutateAsync({
       data: {
         onboardingRole,
         onboardingStep: toApiOnboardingStep(uiStep, onboardingRole),
-        email: user.primaryEmailAddress?.emailAddress || "",
+        email,
+        ...(isValidContactPhone(contactPhone) ? { phone: contactPhone.trim() } : {}),
         name: user.fullName || "",
         avatarUrl: user.imageUrl ?? null,
         ...(location
@@ -215,8 +243,11 @@ export default function Onboarding() {
   };
 
   const ensureFreelancerProfile = useCallback(async () => {
-    if (!user || !hasValidPrimaryEmail(user.primaryEmailAddress?.emailAddress)) {
-      throw new Error("Add a valid primary email address first.");
+    if (!user || !isValidContactEmail(contactEmail)) {
+      throw new Error("Enter a valid contact email first.");
+    }
+    if (!isValidContactPhone(contactPhone)) {
+      throw new Error("Enter a valid phone number first (8–15 digits, optional + country code).");
     }
     if (!isLocationComplete(countries, countryCode, stateCode)) {
       throw new Error("Select your country and state before uploading documents.");
@@ -245,14 +276,17 @@ export default function Onboarding() {
     await queryClient.invalidateQueries({ queryKey: getGetMeQueryKey() });
     await queryClient.invalidateQueries({ queryKey: getGetDocumentsMeQueryKey() });
   }, [
-    user, countries, countryCode, stateCode, professionCategory, educationProfessionType,
+    user, contactEmail, contactPhone, countries, countryCode, stateCode, professionCategory, educationProfessionType,
     tagline, bio, fieldOfWork, skills, yearsExperience, paymentPreference, hourlyRate,
     teachingDetails, createFreelancerProfile, queryClient, patchOnboardingStep,
   ]);
 
   const ensureEmployerProfile = useCallback(async () => {
-    if (!user || !hasValidPrimaryEmail(user.primaryEmailAddress?.emailAddress)) {
-      throw new Error("Add a valid primary email address first.");
+    if (!user || !isValidContactEmail(contactEmail)) {
+      throw new Error("Enter a valid contact email first.");
+    }
+    if (!isValidContactPhone(contactPhone)) {
+      throw new Error("Enter a valid phone number first (8–15 digits, optional + country code).");
     }
     if (!isLocationComplete(countries, countryCode, stateCode)) {
       throw new Error("Select your country and state before uploading documents.");
@@ -274,7 +308,7 @@ export default function Onboarding() {
     profileSavedRef.current = true;
     await queryClient.invalidateQueries({ queryKey: getGetMeQueryKey() });
   }, [
-    user, countries, countryCode, stateCode, companyName, industry, companySize, description,
+    user, contactEmail, contactPhone, countries, countryCode, stateCode, companyName, industry, companySize, description,
     upsertEmployerProfile, queryClient,
   ]);
 
@@ -293,9 +327,12 @@ export default function Onboarding() {
   };
 
   const handleRoleSelection = async (selectedRole: "freelancer" | "employer") => {
-    if (!hasValidPrimaryEmail(user?.primaryEmailAddress?.emailAddress)) {
-      toast({ title: "Email required", description: "Add a valid primary email address to continue.", variant: "destructive" });
+    if (!isValidContactEmail(contactEmail) && !isValidContactEmail(user?.primaryEmailAddress?.emailAddress)) {
+      toast({ title: "Email required", description: "Add a valid contact email to continue.", variant: "destructive" });
       return;
+    }
+    if (!contactEmail && user?.primaryEmailAddress?.emailAddress) {
+      setContactEmail(user.primaryEmailAddress.emailAddress);
     }
     setRole(selectedRole);
     try {
@@ -313,8 +350,16 @@ export default function Onboarding() {
 
   const handleFreelancerComplete = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user || !hasValidPrimaryEmail(user.primaryEmailAddress?.emailAddress)) {
-      toast({ title: "Email required", description: "Add a valid primary email address.", variant: "destructive" });
+    if (!user || !isValidContactEmail(contactEmail)) {
+      toast({ title: "Email required", description: "Enter a valid contact email.", variant: "destructive" });
+      return;
+    }
+    if (!isValidContactPhone(contactPhone)) {
+      toast({
+        title: "Phone required",
+        description: "Select a country calling code and enter a valid phone number.",
+        variant: "destructive",
+      });
       return;
     }
     if (!professionCategory || (professionCategory === "education" && !educationProfessionType)) {
@@ -339,7 +384,8 @@ export default function Onboarding() {
       await upsertMe.mutateAsync({
         data: {
           role: "freelancer",
-          email: user.primaryEmailAddress.emailAddress,
+          email: contactEmail.trim(),
+          phone: contactPhone.trim(),
           name: user.fullName || "",
           avatarUrl: user.imageUrl,
         },
@@ -359,8 +405,16 @@ export default function Onboarding() {
 
   const handleEmployerComplete = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user || !hasValidPrimaryEmail(user.primaryEmailAddress?.emailAddress)) {
-      toast({ title: "Email required", description: "Add a valid primary email address.", variant: "destructive" });
+    if (!user || !isValidContactEmail(contactEmail)) {
+      toast({ title: "Email required", description: "Enter a valid contact email.", variant: "destructive" });
+      return;
+    }
+    if (!isValidContactPhone(contactPhone)) {
+      toast({
+        title: "Phone required",
+        description: "Select a country calling code and enter a valid phone number.",
+        variant: "destructive",
+      });
       return;
     }
     if (!isLocationComplete(countries, countryCode, stateCode)) {
@@ -381,7 +435,8 @@ export default function Onboarding() {
       await upsertMe.mutateAsync({
         data: {
           role: "employer",
-          email: user.primaryEmailAddress.emailAddress,
+          email: contactEmail.trim(),
+          phone: contactPhone.trim(),
           name: user.fullName || "",
           avatarUrl: user.imageUrl,
         },
@@ -414,13 +469,24 @@ export default function Onboarding() {
     return null;
   }
 
-  if (!hasValidPrimaryEmail(user?.primaryEmailAddress?.emailAddress)) {
+  if (!isValidContactEmail(user?.primaryEmailAddress?.emailAddress) && !isValidContactEmail(contactEmail) && step === "role") {
     return (
-      <div className="mx-auto max-w-md py-16 text-center">
+      <div className="mx-auto max-w-md py-16 text-center space-y-4">
         <h1 className="text-2xl font-bold">Email address required</h1>
-        <p className="mt-3 text-muted-foreground">
-          Add a valid primary email address to your account before completing registration.
+        <p className="text-muted-foreground">
+          Add a valid primary email to your Clerk account, or enter one below to continue registration.
         </p>
+        <div className="text-left space-y-2">
+          <Label htmlFor="bootstrap-email">Contact email</Label>
+          <Input
+            id="bootstrap-email"
+            type="email"
+            required
+            value={contactEmail}
+            onChange={(e) => setContactEmail(e.target.value)}
+            placeholder="you@company.com"
+          />
+        </div>
       </div>
     );
   }
@@ -505,6 +571,33 @@ export default function Onboarding() {
           </CardHeader>
           <form onSubmit={handleFreelancerComplete}>
             <CardContent className="space-y-8">
+              <section className="space-y-4">
+                <h3 className="text-sm font-semibold text-foreground">Contact details</h3>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="freelancer-email">Email <span className="text-destructive">*</span></Label>
+                    <Input
+                      id="freelancer-email"
+                      type="email"
+                      required
+                      value={contactEmail}
+                      onChange={(e) => setContactEmail(e.target.value)}
+                      placeholder="you@example.com"
+                    />
+                  </div>
+                  <PhoneWithCountryFields
+                    id="freelancer-phone"
+                    countries={countries}
+                    value={contactPhone}
+                    onChange={setContactPhone}
+                    defaultCountryCode={countryCode || "IN"}
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Email and phone (with country calling code) are required for meeting invites and calendar guests.
+                </p>
+              </section>
+
               <section className="space-y-4">
                 <h3 className="text-sm font-semibold text-foreground">Work category</h3>
                 <div className="grid grid-cols-2 gap-4">
@@ -678,6 +771,33 @@ export default function Onboarding() {
           ) : (
             <form onSubmit={handleEmployerComplete}>
               <CardContent className="space-y-8">
+                <section className="space-y-4">
+                  <h3 className="text-sm font-semibold text-foreground">Contact details</h3>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="employer-email">Email <span className="text-destructive">*</span></Label>
+                      <Input
+                        id="employer-email"
+                        type="email"
+                        required
+                        value={contactEmail}
+                        onChange={(e) => setContactEmail(e.target.value)}
+                        placeholder="you@company.com"
+                      />
+                    </div>
+                    <PhoneWithCountryFields
+                      id="employer-phone"
+                      countries={countries}
+                      value={contactPhone}
+                      onChange={setContactPhone}
+                      defaultCountryCode={countryCode || "IN"}
+                    />
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Email and phone (with country calling code) are required for meeting invites and calendar guests.
+                  </p>
+                </section>
+
                 <section className="space-y-4">
                   <h3 className="text-sm font-semibold text-foreground">Location</h3>
                   <CountryStateFields

@@ -1,16 +1,48 @@
 import { Router } from "express";
 import { getAuth } from "@clerk/express";
 import { db } from "@workspace/db";
-import { usersTable } from "@workspace/db";
-import { eq } from "drizzle-orm";
-import { UpsertMeBody, PatchNotificationPreferencesBody, PatchOnboardingStepBody } from "@workspace/api-zod";
+import { usersTable, notificationsTable } from "@workspace/db";
+import { and, eq } from "drizzle-orm";
+import { UpsertMeBody, PatchNotificationPreferencesBody, PatchOnboardingStepBody, PatchMyContactBody } from "@workspace/api-zod";
 import { sanitiseText } from "../lib/sanitise";
 import { validateLocationInput } from "../lib/countryData";
 import { syncFreelancerLocationFromUser } from "../lib/locationSync";
 import { isValidEmail } from "../lib/emailValidation";
+import { isValidPhone, normalizePhone } from "../lib/phoneValidation";
+import { createNotification, NotificationType } from "../lib/createNotification";
 import { z } from "zod/v4";
 
 const router = Router();
+
+async function ensureContactUpdateNotification(user: typeof usersTable.$inferSelect, log: { warn: Function }) {
+  if (user.role !== "freelancer" && user.role !== "employer") return;
+  if (isValidPhone(user.phone)) return;
+
+  try {
+    const [existing] = await db
+      .select({ id: notificationsTable.id })
+      .from(notificationsTable)
+      .where(
+        and(
+          eq(notificationsTable.userId, user.id),
+          eq(notificationsTable.type, NotificationType.CONTACT_UPDATE_REQUIRED),
+          eq(notificationsTable.read, false),
+        ),
+      )
+      .limit(1);
+    if (existing) return;
+
+    await createNotification(db, {
+      userId: user.id,
+      type: NotificationType.CONTACT_UPDATE_REQUIRED,
+      entityType: "user_contact",
+      entityId: user.id,
+      message: "Add your contact email and phone with country code on Profile — required for meeting invites.",
+    });
+  } catch (err) {
+    log.warn({ err, userId: user.id }, "contact update notification failed");
+  }
+}
 
 router.get("/users/me", async (req, res) => {
   const { userId: clerkId } = getAuth(req);
@@ -24,6 +56,8 @@ router.get("/users/me", async (req, res) => {
       res.status(404).json({ error: "User not found" });
       return;
     }
+    // Fire-and-forget: prompt existing users missing phone to update contact details.
+    void ensureContactUpdateNotification(user, req.log);
     res.json(user);
   } catch (err) {
     req.log.error({ err }, "Failed to get user");
@@ -46,9 +80,15 @@ router.put("/users/me", async (req, res) => {
     res.status(400).json({ error: "A valid email address is required." });
     return;
   }
+  if (!isValidPhone(parsed.data.phone)) {
+    res.status(400).json({ error: "A valid phone number is required (8–15 digits, optional + country code)." });
+    return;
+  }
   try {
     const data = {
       ...parsed.data,
+      email: parsed.data.email.trim(),
+      phone: normalizePhone(parsed.data.phone),
       name: sanitiseText(parsed.data.name),
     };
     const [existing] = await db.select().from(usersTable).where(eq(usersTable.clerkId, clerkId)).limit(1);
@@ -101,6 +141,11 @@ router.patch("/users/me/onboarding-step", async (req, res) => {
     res.status(400).json({ error: "A valid email address is required." });
     return;
   }
+  const phoneRaw = (parsed.data as { phone?: string | null }).phone;
+  if (phoneRaw != null && phoneRaw !== "" && !isValidPhone(phoneRaw)) {
+    res.status(400).json({ error: "A valid phone number is required (8–15 digits, optional + country code)." });
+    return;
+  }
   try {
     const [existing] = await db.select().from(usersTable).where(eq(usersTable.clerkId, clerkId)).limit(1);
     if (existing && existing.role !== "pending") {
@@ -110,13 +155,16 @@ router.patch("/users/me/onboarding-step", async (req, res) => {
     const payload: Record<string, unknown> = {
       clerkId,
       role: "pending" as const,
-      email: parsed.data.email,
+      email: parsed.data.email.trim(),
       name: sanitiseText(parsed.data.name),
       avatarUrl: parsed.data.avatarUrl ?? null,
       onboardingRole: parsed.data.onboardingRole,
       onboardingStep: parsed.data.onboardingStep,
       updatedAt: new Date(),
     };
+    if (phoneRaw != null && phoneRaw !== "") {
+      payload.phone = normalizePhone(phoneRaw);
+    }
 
     const countryCode = (parsed.data as { countryCode?: string }).countryCode;
     const stateCode = (parsed.data as { stateCode?: string | null }).stateCode ?? null;
@@ -145,6 +193,9 @@ router.patch("/users/me/onboarding-step", async (req, res) => {
           }
         : {};
 
+    const phoneUpdate =
+      payload.phone !== undefined ? { phone: payload.phone as string } : {};
+
     const [user] = await db
       .insert(usersTable)
       .values(payload as typeof usersTable.$inferInsert)
@@ -156,6 +207,7 @@ router.patch("/users/me/onboarding-step", async (req, res) => {
           avatarUrl: payload.avatarUrl as string | null,
           onboardingRole: payload.onboardingRole as string,
           onboardingStep: payload.onboardingStep as string,
+          ...phoneUpdate,
           ...locationUpdate,
           updatedAt: payload.updatedAt as Date,
         },
@@ -168,6 +220,61 @@ router.patch("/users/me/onboarding-step", async (req, res) => {
     res.json(user);
   } catch (err) {
     req.log.error({ err }, "Failed to save onboarding step");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.patch("/users/me/contact", async (req, res) => {
+  const { userId: clerkId } = getAuth(req);
+  if (!clerkId) {
+    res.status(401).json({ error: "Unauthorized" });
+    return;
+  }
+  const parsed = PatchMyContactBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+  if (!isValidEmail(parsed.data.email)) {
+    res.status(400).json({ error: "A valid email address is required." });
+    return;
+  }
+  if (!isValidPhone(parsed.data.phone)) {
+    res.status(400).json({ error: "A valid phone number with country code is required (e.g. +919876543210)." });
+    return;
+  }
+  try {
+    const [updated] = await db
+      .update(usersTable)
+      .set({
+        email: parsed.data.email.trim(),
+        phone: normalizePhone(parsed.data.phone),
+        updatedAt: new Date(),
+      })
+      .where(eq(usersTable.clerkId, clerkId))
+      .returning();
+    if (!updated) {
+      res.status(404).json({ error: "User not found" });
+      return;
+    }
+    // Clear pending contact-update prompts once the user has saved valid details.
+    try {
+      await db
+        .update(notificationsTable)
+        .set({ read: true })
+        .where(
+          and(
+            eq(notificationsTable.userId, updated.id),
+            eq(notificationsTable.type, NotificationType.CONTACT_UPDATE_REQUIRED),
+            eq(notificationsTable.read, false),
+          ),
+        );
+    } catch (err) {
+      req.log.warn({ err }, "failed to clear contact notifications");
+    }
+    res.json(updated);
+  } catch (err) {
+    req.log.error({ err }, "Failed to update contact details");
     res.status(500).json({ error: "Internal server error" });
   }
 });

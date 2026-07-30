@@ -67,10 +67,10 @@ export function CompletenessBanner({ score, profile, hasAvatar }: CompletenessBa
               <li key={field} className="flex items-center justify-between text-sm text-amber-800 py-1">
                 <span className="flex items-center gap-1">
                   <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
-                  {meta.label}
+                  {meta?.label ?? field}
                 </span>
-                <a href={`#${meta.anchor}`} className="text-xs text-amber-700 underline">
-                  → {meta.section}
+                <a href={`#${meta?.anchor ?? ""}`} className="text-xs text-amber-700 underline">
+                  → {meta?.section ?? "Profile"}
                 </a>
               </li>
             );

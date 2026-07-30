@@ -7,6 +7,7 @@ export const usersTable = pgTable("users", {
   clerkId: text("clerk_id").notNull().unique(),
   role: text("role").notNull(), // freelancer | employer
   email: text("email").notNull(),
+  phone: text("phone"),
   name: text("name").notNull(),
   avatarUrl: text("avatar_url"),
   signatureImageUrl: text("signature_image_url"),

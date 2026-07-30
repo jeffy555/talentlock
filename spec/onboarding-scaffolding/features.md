@@ -46,13 +46,27 @@ Behaviour:
 
 | Path | Form sections |
 |------|----------------|
-| Freelancer | Work category → Location → Profile (optional resume import) → Identity (Aadhaar required) |
-| Employer | Location → Company profile → Identity (Aadhaar required) |
+| Freelancer | Contact (email + phone w/ country dial) → Work category → Location → Profile (optional resume import) → Identity (Aadhaar required) |
+| Employer | Contact (email + phone w/ country dial) → Location → Company profile → Identity (Aadhaar required) |
 
 - No step indicator / no Continue between sections.
 - One primary CTA: **Finish registration →** (disabled until Aadhaar is uploaded).
 - Document upload may call `ensureProfile` first so a pending profile exists (required by `/api/documents/*` and `/api/employer-documents/*`).
-- `PUT /users/me` with final role runs only after profile save + Aadhaar present.
+- `PUT /users/me` with final role + email + phone (E.164) runs only after profile save + Aadhaar present.
+- Phone is collected via `PhoneWithCountryFields` (country calling code + national number) and stored as E.164 on `users.phone`.
+
+### Module 2d — Existing-user parity for onboarding contact fields
+
+Rule: **any new mandatory onboarding contact field must also ship for existing users.**
+
+| Surface | Behaviour |
+|---------|-----------|
+| `PATCH /api/users/me/contact` | Update email + phone for completed accounts |
+| `/profile#account` | Same email + phone-with-dial UI as onboarding |
+| `/dashboard` | Amber banner when phone missing → Update now |
+| `GET /api/users/me` | Creates unread `contact_update_required` notification (deduped) when role is freelancer/employer and phone invalid/missing |
+| Notification click | Routes to `/profile#account` (`entityType: user_contact`) |
+| After contact save | Marks `contact_update_required` notifications read |
 
 ### Module 2b / 2c — Completion order (unchanged rules, single page)
 

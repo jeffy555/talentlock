@@ -134,6 +134,37 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorEnvelope"
 
+  /users/me/contact:
+    patch:
+      operationId: patchMyContact
+      tags: [users]
+      summary: Update contact email and phone for the current user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PatchContactBody"
+      responses:
+        "200":
+          description: Updated user contact details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "400":
+          description: Invalid contact details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
   /users/me/location:
     patch:
       operationId: patchMyLocation
@@ -4300,6 +4331,11 @@ components:
           type: string
           format: email
           minLength: 5
+        phone:
+          type: ["string", "null"]
+          description: Contact phone in international format (8–15 digits)
+          minLength: 8
+          maxLength: 24
         name:
           type: string
         avatarUrl:
@@ -4377,6 +4413,9 @@ components:
           type: string
         currencyName:
           type: string
+        dialCode:
+          type: string
+          description: ITU-T E.164 country calling code digits (without +)
         stateRequired:
           type: boolean
         states:
@@ -4389,6 +4428,7 @@ components:
         - currencyCode
         - currencySymbol
         - currencyName
+        - dialCode
         - stateRequired
         - states
 
@@ -4434,6 +4474,11 @@ components:
           type: string
           format: email
           minLength: 5
+        phone:
+          type: string
+          description: Contact phone in international format (8–15 digits)
+          minLength: 8
+          maxLength: 24
         name:
           type: string
         avatarUrl:
@@ -4443,7 +4488,24 @@ components:
       required:
         - role
         - email
+        - phone
         - name
+
+    PatchContactBody:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          minLength: 5
+        phone:
+          type: string
+          description: Contact phone in international format (8–15 digits)
+          minLength: 8
+          maxLength: 24
+      required:
+        - email
+        - phone
 
     PatchOnboardingStepBody:
       type: object
@@ -4466,6 +4528,11 @@ components:
           type: string
           format: email
           minLength: 5
+        phone:
+          type: ["string", "null"]
+          description: Contact phone — required before finishing registration
+          minLength: 8
+          maxLength: 24
         name:
           type: string
         avatarUrl:
@@ -5959,6 +6026,14 @@ components:
           type: ["string", "null"]
         employerName:
           type: ["string", "null"]
+        freelancerEmail:
+          type: ["string", "null"]
+          format: email
+          description: Freelancer account email for calendar guests and invites
+        employerEmail:
+          type: ["string", "null"]
+          format: email
+          description: Employer account email for calendar guests and invites
         employerVerificationLevel:
           type: string
           enum: [unverified, partially_verified, fully_verified]

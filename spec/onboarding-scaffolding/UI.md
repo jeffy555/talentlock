@@ -24,10 +24,11 @@ One card per role after account type is chosen.
 
 Sections (top to bottom):
 
-1. Work category (Technology / Education + education subtype)
-2. Location (`CountryStateFields` once)
-3. Profile (resume import optional, tagline, field, skills, rate, teaching details if education)
-4. Identity verification (embedded `FreelancerDocumentOnboardingStep` — Aadhaar required)
+1. Contact details (required email + phone with **country calling code** selector — E.164 storage; used for meeting invites / calendar guests)
+2. Work category (Technology / Education + education subtype)
+3. Location (`CountryStateFields` once)
+4. Profile (resume import optional, tagline, field, skills, rate, teaching details if education)
+5. Identity verification (embedded `FreelancerDocumentOnboardingStep` — Aadhaar required)
 
 Footer: Back (to account type) | **Finish registration →** (disabled until Aadhaar uploaded)
 
@@ -35,11 +36,28 @@ Footer: Back (to account type) | **Finish registration →** (disabled until Aad
 
 Sections:
 
-1. Location
-2. Company profile
-3. Identity verification (embedded `EmployerDocumentOnboardingStep` — Aadhaar required; optional other ID)
+1. Contact details (required email + phone with **country calling code** selector — E.164 storage; used for meeting invites / calendar guests)
+2. Location
+3. Company profile
+4. Identity verification (embedded `EmployerDocumentOnboardingStep` — Aadhaar required; optional other ID)
 
 Footer: Back | **Finish registration →** (disabled until Aadhaar uploaded)
+
+### Contact phone control
+
+**File:** `artifacts/talentlock/src/components/onboarding/PhoneWithCountryFields.tsx`
+
+- Country dial-code select (from `/api/countries` `dialCode`) + national number input
+- Emits full E.164 string (`+{dial}{national}`) to parent state
+- Same control on `/profile#account` for **existing users**
+
+### Existing users (parity with onboarding)
+
+Whenever onboarding gains a required contact field, existing `freelancer` / `employer` accounts get:
+
+1. Editable fields on `/profile` Account card
+2. Amber banner on `/dashboard` → Update now → `/profile#account`
+3. In-app notification `contact_update_required` (entityType `user_contact` → `/profile#account`), created on `GET /api/users/me` when phone is missing (unread deduped)
 
 ### Document components
 

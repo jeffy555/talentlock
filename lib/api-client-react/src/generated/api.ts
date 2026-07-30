@@ -138,6 +138,7 @@ import type {
   ParseTalentSearchRulesBody,
   ParseTalentSearchRulesResult,
   PatchAgreementsIdAmendmentsBody,
+  PatchContactBody,
   PatchDocumentExpiryBody,
   PatchDocumentExpiryResponse,
   PatchLocationBody,
@@ -519,6 +520,92 @@ export const usePatchOnboardingStep = <
   TContext
 > => {
   return useMutation(getPatchOnboardingStepMutationOptions(options));
+};
+
+/**
+ * @summary Update contact email and phone for the current user
+ */
+export const getPatchMyContactUrl = () => {
+  return `/api/users/me/contact`;
+};
+
+export const patchMyContact = async (
+  patchContactBody: PatchContactBody,
+  options?: RequestInit,
+): Promise<User> => {
+  return customFetch<User>(getPatchMyContactUrl(), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(patchContactBody),
+  });
+};
+
+export const getPatchMyContactMutationOptions = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof patchMyContact>>,
+    TError,
+    { data: BodyType<PatchContactBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof patchMyContact>>,
+  TError,
+  { data: BodyType<PatchContactBody> },
+  TContext
+> => {
+  const mutationKey = ["patchMyContact"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof patchMyContact>>,
+    { data: BodyType<PatchContactBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return patchMyContact(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type PatchMyContactMutationResult = NonNullable<
+  Awaited<ReturnType<typeof patchMyContact>>
+>;
+export type PatchMyContactMutationBody = BodyType<PatchContactBody>;
+export type PatchMyContactMutationError = ErrorType<ErrorEnvelope>;
+
+/**
+ * @summary Update contact email and phone for the current user
+ */
+export const usePatchMyContact = <
+  TError = ErrorType<ErrorEnvelope>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof patchMyContact>>,
+    TError,
+    { data: BodyType<PatchContactBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof patchMyContact>>,
+  TError,
+  { data: BodyType<PatchContactBody> },
+  TContext
+> => {
+  return useMutation(getPatchMyContactMutationOptions(options));
 };
 
 /**

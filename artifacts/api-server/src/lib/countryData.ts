@@ -9,6 +9,7 @@ export interface CountryOption {
   currencyCode: string;
   currencyName: string;
   currencySymbol: string;
+  dialCode: string;
   stateRequired: boolean;
   states: CountryState[];
 }
@@ -38,6 +39,20 @@ export const COUNTRY_CURRENCY_MAP: Record<string, string> = {
   SG: "SGD",
   NG: "NGN",
   ZA: "ZAR",
+};
+
+/** ITU-T E.164 country calling codes for Phase 1 countries. */
+export const COUNTRY_DIAL_CODE_MAP: Record<string, string> = {
+  US: "1",
+  CA: "1",
+  GB: "44",
+  IN: "91",
+  DE: "49",
+  AU: "61",
+  AE: "971",
+  SG: "65",
+  NG: "234",
+  ZA: "27",
 };
 
 const RAW_COUNTRIES: Array<{
@@ -169,6 +184,7 @@ function buildCountryOption(raw: (typeof RAW_COUNTRIES)[number]): CountryOption 
     currencyCode,
     currencyName: meta.name,
     currencySymbol: meta.symbol,
+    dialCode: COUNTRY_DIAL_CODE_MAP[raw.code] ?? "1",
     stateRequired: raw.stateRequired,
     states: raw.states,
   };

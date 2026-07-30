@@ -31,9 +31,27 @@ describe.skipIf(!integrationEnvReady())("users API", () => {
   it("PUT /api/users/me updates display name", async () => {
     const client = await createApiClient(empToken);
     const original = await client.get("/api/users/me");
-    const name = (original.body as { name?: string }).name ?? "Demo Employer";
-    const res = await client.put("/api/users/me", { name: `${name}` });
+    const body = original.body as { name?: string; email?: string; phone?: string | null; role?: string };
+    const name = body.name ?? "Demo Employer";
+    const res = await client.put("/api/users/me", {
+      role: body.role ?? "employer",
+      email: body.email ?? "employer@demo.talentlock.io",
+      phone: body.phone || "+15551234567",
+      name: `${name}`,
+    });
     expect(res.status).toBe(200);
+  });
+
+  it("PATCH /api/users/me/contact updates email and phone", async () => {
+    const client = await createApiClient(empToken);
+    const original = await client.get("/api/users/me");
+    const body = original.body as { email?: string; phone?: string | null };
+    const res = await client.patch("/api/users/me/contact", {
+      email: body.email ?? "employer@demo.talentlock.io",
+      phone: "+15559876543",
+    });
+    expect(res.status).toBe(200);
+    expect((res.body as { phone?: string }).phone).toBe("+15559876543");
   });
 
   it("PATCH /api/users/me/notification-preferences toggles email flag", async () => {

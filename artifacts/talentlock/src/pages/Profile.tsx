@@ -4,8 +4,8 @@ import {
   useGetMyEmployerProfile, useUpsertMyEmployerProfile,
   useListMyPortfolio, useCreatePortfolioItem, useUpdatePortfolioItem, useDeletePortfolioItem,
   useGetMyFreelancerProfile, usePatchNotificationPreferences, useGetDocumentsMe,
-  useListCountries, usePatchMyLocation,
-  getGetMyEmployerProfileQueryKey,
+  useListCountries, usePatchMyLocation, usePatchMyContact,
+  getGetMyEmployerProfileQueryKey, getGetMeQueryKey,
 } from "@workspace/api-client-react";
 import { CompletenessBanner } from "@/components/CompletenessBanner";
 import CredentialExpiryBanner from "@/components/CredentialExpiryBanner";
@@ -20,7 +20,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Building, User, Upload, X, Loader2, ExternalLink, Plus, Pencil, Trash2, Globe, Calendar, Image, PenLine, CheckCircle2 } from "lucide-react";
+import { Building, User, Upload, X, Loader2, ExternalLink, Plus, Pencil, Trash2, Globe, Calendar, Image, PenLine, CheckCircle2, AlertTriangle } from "lucide-react";
 import { ResumeImporter, type ParsedResume } from "@/components/ResumeImporter";
 import VerificationSection from "@/components/VerificationSection";
 import { AvailabilityManager } from "@/components/availability/AvailabilityManager";
@@ -33,7 +33,9 @@ import { useQueryClient } from "@tanstack/react-query";
 import TeachingDetailsSection, { emptyTeachingDetails, type TeachingDetailsValues } from "@/components/onboarding/TeachingDetailsSection";
 import EmployerVerificationSection from "@/components/employer/EmployerVerificationSection";
 import { CountryStateFields, formatLocationLabel, isLocationComplete } from "@/components/onboarding/CountryStateFields";
+import { PhoneWithCountryFields } from "@/components/onboarding/PhoneWithCountryFields";
 import { COMPANY_SIZE_OPTIONS } from "@/lib/employerDocuments";
+import { isValidContactEmail, isValidContactPhone } from "@/lib/contactValidation";
 
 const BASE = import.meta.env.BASE_URL ?? "/";
 
@@ -331,7 +333,26 @@ export default function Profile() {
   const isFreelancer = dbUser?.role === "freelancer";
   const isEmployer = dbUser?.role === "employer";
 
-  const { data: freelancerProfile, refetch: refetchFreelancer } = useGetMyFreelancerProfile({ query: { enabled: isFreelancer } as any });
+  const {
+    data: freelancerProfile,
+    refetch: refetchFreelancer,
+    isLoading: freelancerProfileLoading,
+    isError: freelancerProfileError,
+    error: freelancerProfileFetchError,
+  } = useGetMyFreelancerProfile({
+    query: {
+      enabled: isFreelancer,
+      retry: false,
+    } as any,
+  });
+  const freelancerProfileMissing =
+    freelancerProfileError &&
+    typeof freelancerProfileFetchError === "object" &&
+    freelancerProfileFetchError !== null &&
+    "status" in freelancerProfileFetchError &&
+    (freelancerProfileFetchError as { status: number }).status === 404;
+  const showFreelancerProfile = isFreelancer;
+
   const { data: employerProfile, refetch: refetchEmployer, isLoading: employerProfileLoading, isError: employerProfileError, error: employerProfileFetchError } = useGetMyEmployerProfile({
     query: {
       enabled: isEmployer,
@@ -344,13 +365,19 @@ export default function Profile() {
     employerProfileFetchError !== null &&
     "status" in employerProfileFetchError &&
     (employerProfileFetchError as { status: number }).status === 404;
-  const showEmployerCompanyProfile = isEmployer && (employerProfile || employerProfileMissing || employerProfileLoading);
+  // Always show the employer block for employers (loading / missing / error / data).
+  const showEmployerCompanyProfile = isEmployer;
   const { data: documentsMe } = useGetDocumentsMe({ query: { enabled: isFreelancer } as any });
 
   const updateFreelancer = useUpdateMyFreelancerProfile();
   const upsertEmployer = useUpsertMyEmployerProfile();
   const patchNotificationPrefs = usePatchNotificationPreferences();
   const patchLocation = usePatchMyLocation();
+  const patchContact = usePatchMyContact();
+
+  const [contactEmail, setContactEmail] = useState("");
+  const [contactPhone, setContactPhone] = useState("");
+  const [savingContact, setSavingContact] = useState(false);
 
   const [emailNotificationsEnabled, setEmailNotificationsEnabled] = useState(
     () => (dbUser as { emailNotificationsEnabled?: boolean } | undefined)?.emailNotificationsEnabled ?? true,
@@ -483,7 +510,43 @@ export default function Profile() {
     if (!dbUser) return;
     setCountryCode(dbUser.countryCode ?? "US");
     setStateCode(dbUser.stateCode ?? null);
-  }, [dbUser?.countryCode, dbUser?.stateCode]);
+    setContactEmail(dbUser.email ?? "");
+    setContactPhone((dbUser as { phone?: string | null }).phone ?? "");
+  }, [dbUser?.countryCode, dbUser?.stateCode, dbUser?.email, (dbUser as { phone?: string | null } | undefined)?.phone]);
+
+  const contactComplete =
+    isValidContactEmail(contactEmail) && isValidContactPhone(contactPhone);
+  const needsContactDetails =
+    !!dbUser && (dbUser.role === "freelancer" || dbUser.role === "employer") &&
+    (!isValidContactEmail(dbUser.email) || !isValidContactPhone((dbUser as { phone?: string | null }).phone));
+
+  const handleSaveContact = async () => {
+    if (!isValidContactEmail(contactEmail)) {
+      toast({ title: "Invalid email", description: "Enter a valid contact email.", variant: "destructive" });
+      return;
+    }
+    if (!isValidContactPhone(contactPhone)) {
+      toast({
+        title: "Invalid phone",
+        description: "Enter a valid phone number (8–15 digits, optional + country code).",
+        variant: "destructive",
+      });
+      return;
+    }
+    setSavingContact(true);
+    try {
+      await patchContact.mutateAsync({
+        data: { email: contactEmail.trim(), phone: contactPhone.trim() },
+      });
+      await queryClient.invalidateQueries({ queryKey: getGetMeQueryKey() });
+      toast({ title: "Contact details saved" });
+      refetchUser();
+    } catch {
+      toast({ title: "Could not save contact details", variant: "destructive" });
+    } finally {
+      setSavingContact(false);
+    }
+  };
 
   useEffect(() => {
     if (!employerProfile) return;
@@ -497,6 +560,8 @@ export default function Profile() {
   useEffect(() => {
     if (!freelancerProfile) return;
     const fp2 = freelancerProfile as typeof freelancerProfile & {
+      availableFrom?: string | null;
+      availabilityNote?: string | null;
       teachingSubjects?: string[] | null;
       teachingLevels?: string[] | null;
       yearsTeachingExperience?: number | null;
@@ -509,6 +574,14 @@ export default function Profile() {
       preferredTeachingMode?: string | null;
       location?: string | null;
     };
+    setBio(freelancerProfile.bio ?? "");
+    setTagline(freelancerProfile.tagline ?? "");
+    setPortfolioUrl(freelancerProfile.portfolioUrl ?? "");
+    setHourlyRate(String(freelancerProfile.hourlyRate ?? ""));
+    setSkills(freelancerProfile.skills?.join(", ") ?? "");
+    setIsAvailable(freelancerProfile.isAvailable ?? true);
+    setAvailableFrom(fp2.availableFrom ? fp2.availableFrom.substring(0, 10) : "");
+    setAvailabilityNote(fp2.availabilityNote ?? "");
     setTeachingDetails({
       teachingSubjects: fp2.teachingSubjects ?? [],
       teachingLevels: fp2.teachingLevels ?? [],
@@ -522,7 +595,7 @@ export default function Profile() {
       preferredTeachingMode: (fp2.preferredTeachingMode as TeachingDetailsValues["preferredTeachingMode"]) ?? null,
       location: fp2.location ?? "",
     });
-  }, [freelancerProfile?.id]);
+  }, [freelancerProfile]);
 
   const completenessScore = freelancerProfile?.completenessScore ?? 0;
   const hasAvatar = !!(dbUser?.avatarUrl || clerkUser?.imageUrl);
@@ -555,6 +628,18 @@ export default function Profile() {
         />
       )}
 
+      {needsContactDetails && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 flex gap-3">
+          <AlertTriangle className="h-5 w-5 shrink-0 text-amber-600 mt-0.5" />
+          <div>
+            <p className="font-semibold">Contact email and phone are required</p>
+            <p className="mt-1 text-amber-800">
+              Add a valid email and phone below so discovery meeting invites can include calendar guests.
+            </p>
+          </div>
+        </div>
+      )}
+
       <Card id="account">
         <CardHeader>
           <CardTitle className="flex items-center gap-2"><User className="h-5 w-5" />Account</CardTitle>
@@ -576,6 +661,38 @@ export default function Profile() {
               </div>
             </div>
           </div>
+
+          <div className="grid gap-4 sm:grid-cols-2 pt-2">
+            <div className="space-y-2">
+              <Label htmlFor="profile-email">Contact email <span className="text-destructive">*</span></Label>
+              <Input
+                id="profile-email"
+                type="email"
+                required
+                value={contactEmail}
+                onChange={(e) => setContactEmail(e.target.value)}
+                placeholder="you@example.com"
+              />
+            </div>
+            <PhoneWithCountryFields
+              id="profile-phone"
+              countries={countriesData?.countries ?? []}
+              value={contactPhone}
+              onChange={setContactPhone}
+              defaultCountryCode={countryCode || "IN"}
+              disabled={savingContact || patchContact.isPending}
+            />
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Required for meeting invites and Google Calendar guests. Choose country calling code, then enter your number.
+          </p>
+          <Button
+            type="button"
+            onClick={() => void handleSaveContact()}
+            disabled={savingContact || patchContact.isPending || !contactComplete}
+          >
+            {savingContact || patchContact.isPending ? "Saving…" : "Save contact details"}
+          </Button>
         </CardContent>
       </Card>
 
@@ -601,7 +718,30 @@ export default function Profile() {
         </CardContent>
       </Card>
 
-      {isFreelancer && freelancerProfile && (
+      {showFreelancerProfile && (
+        <>
+        {freelancerProfileLoading ? (
+          <Card>
+            <CardContent className="py-8">
+              <p className="text-sm text-muted-foreground">Loading your freelancer profile…</p>
+            </CardContent>
+          </Card>
+        ) : freelancerProfileError && !freelancerProfileMissing ? (
+          <Card>
+            <CardContent className="py-8 space-y-3">
+              <p className="text-sm text-destructive">Could not load your freelancer profile. Check that the API is running, then refresh.</p>
+              <Button type="button" variant="outline" size="sm" onClick={() => void refetchFreelancer()}>
+                Retry
+              </Button>
+            </CardContent>
+          </Card>
+        ) : freelancerProfileMissing ? (
+          <Card>
+            <CardContent className="py-8">
+              <p className="text-sm text-muted-foreground">No freelancer profile found. Finish registration from Onboarding if needed.</p>
+            </CardContent>
+          </Card>
+        ) : freelancerProfile ? (
         <>
         <Card>
           <CardHeader>
@@ -740,6 +880,8 @@ export default function Profile() {
         </Card>
         <PortfolioSection />
         </>
+        ) : null}
+        </>
       )}
 
       {showEmployerCompanyProfile && (
@@ -754,7 +896,12 @@ export default function Profile() {
             {employerProfileLoading ? (
               <p className="text-sm text-muted-foreground">Loading company profile…</p>
             ) : employerProfileError && !employerProfileMissing ? (
-              <p className="text-sm text-destructive">Could not load your company profile. Refresh the page and try again.</p>
+              <div className="space-y-3">
+                <p className="text-sm text-destructive">Could not load your company profile. Check that the API is running, then refresh.</p>
+                <Button type="button" variant="outline" size="sm" onClick={() => void refetchEmployer()}>
+                  Retry
+                </Button>
+              </div>
             ) : (
             <>
             <div className="space-y-2">
@@ -768,7 +915,7 @@ export default function Profile() {
               </div>
               <div className="space-y-2">
                 <Label>Company Size</Label>
-                <Select value={companySize} onValueChange={setCompanySize}>
+                <Select value={companySize || undefined} onValueChange={setCompanySize}>
                   <SelectTrigger><SelectValue placeholder="Select size" /></SelectTrigger>
                   <SelectContent>
                     {COMPANY_SIZE_OPTIONS.map((option) => (

@@ -6,9 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface UpsertUserBody {
-  /** freelancer or employer */
-  role: string;
+export interface PatchContactBody {
   /** @minLength 5 */
   email: string;
   /**
@@ -17,9 +15,4 @@ export interface UpsertUserBody {
    * @maxLength 24
    */
   phone: string;
-  name: string;
-  /** @nullable */
-  avatarUrl?: string | null;
-  /** @nullable */
-  signatureImageUrl?: string | null;
 }

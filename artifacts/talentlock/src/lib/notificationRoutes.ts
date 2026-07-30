@@ -22,6 +22,8 @@ export function getNotificationRoute(entityType: string, entityId: string): stri
       return `/messages/${entityId}`;
     case "freelancer_profile":
       return `/freelancers/${entityId}`;
+    case "user_contact":
+      return "/profile#account";
     default:
       return "/dashboard";
   }

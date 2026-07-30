@@ -40,13 +40,17 @@ export function CountryStateFields({
   disabled = false,
 }: CountryStateFieldsProps) {
   const selected = countries.find((country) => country.code === countryCode);
+  // Radix Select throws if value is set before matching items exist.
+  const countryValue = countries.some((c) => c.code === countryCode) ? countryCode : undefined;
+  const stateValue =
+    stateCode && selected?.states.some((s) => s.code === stateCode) ? stateCode : undefined;
 
   return (
     <div className="grid gap-4 sm:grid-cols-2">
       <div className="space-y-2">
         <Label>Country</Label>
         <Select
-          value={countryCode || undefined}
+          value={countryValue}
           onValueChange={(code) => {
             // Only notify country change — callers clear state in onCountryChange.
             // Do NOT also call onStateChange(null): parents that rebuild location from
@@ -55,7 +59,7 @@ export function CountryStateFields({
           }}
           disabled={disabled || countries.length === 0}
         >
-          <SelectTrigger><SelectValue placeholder="Select country" /></SelectTrigger>
+          <SelectTrigger><SelectValue placeholder={countries.length === 0 ? "Loading countries…" : "Select country"} /></SelectTrigger>
           <SelectContent>
             {countries.map((country) => (
               <SelectItem key={country.code} value={country.code}>{country.name}</SelectItem>
@@ -66,7 +70,7 @@ export function CountryStateFields({
       {selected?.states.length ? (
         <div className="space-y-2">
           <Label>{selected.stateRequired ? "State / Province" : "State / Province (optional)"}</Label>
-          <Select value={stateCode ?? undefined} onValueChange={onStateChange} disabled={disabled}>
+          <Select value={stateValue} onValueChange={onStateChange} disabled={disabled}>
             <SelectTrigger>
               <SelectValue placeholder={selected.stateRequired ? "Select state" : "Optional"} />
             </SelectTrigger>

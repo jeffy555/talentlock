@@ -20,6 +20,9 @@ export const HealthCheckResponse = zod.object({
  */
 export const getMeResponseEmailMin = 5;
 
+export const getMeResponsePhoneMin = 8;
+export const getMeResponsePhoneMax = 24;
+
 export const getMeResponseCountryCodeDefault = `US`;
 export const getMeResponseCurrencyCodeDefault = `USD`;
 
@@ -28,6 +31,12 @@ export const GetMeResponse = zod.object({
   clerkId: zod.string(),
   role: zod.string().describe("freelancer or employer"),
   email: zod.string().email().min(getMeResponseEmailMin),
+  phone: zod
+    .string()
+    .min(getMeResponsePhoneMin)
+    .max(getMeResponsePhoneMax)
+    .nullish()
+    .describe("Contact phone in international format (8–15 digits)"),
   name: zod.string(),
   avatarUrl: zod.string().nullish(),
   signatureImageUrl: zod
@@ -69,15 +78,26 @@ export const GetMeResponse = zod.object({
  */
 export const upsertMeBodyEmailMin = 5;
 
+export const upsertMeBodyPhoneMin = 8;
+export const upsertMeBodyPhoneMax = 24;
+
 export const UpsertMeBody = zod.object({
   role: zod.string().describe("freelancer or employer"),
   email: zod.string().email().min(upsertMeBodyEmailMin),
+  phone: zod
+    .string()
+    .min(upsertMeBodyPhoneMin)
+    .max(upsertMeBodyPhoneMax)
+    .describe("Contact phone in international format (8–15 digits)"),
   name: zod.string(),
   avatarUrl: zod.string().nullish(),
   signatureImageUrl: zod.string().nullish(),
 });
 
 export const upsertMeResponseEmailMin = 5;
+
+export const upsertMeResponsePhoneMin = 8;
+export const upsertMeResponsePhoneMax = 24;
 
 export const upsertMeResponseCountryCodeDefault = `US`;
 export const upsertMeResponseCurrencyCodeDefault = `USD`;
@@ -87,6 +107,12 @@ export const UpsertMeResponse = zod.object({
   clerkId: zod.string(),
   role: zod.string().describe("freelancer or employer"),
   email: zod.string().email().min(upsertMeResponseEmailMin),
+  phone: zod
+    .string()
+    .min(upsertMeResponsePhoneMin)
+    .max(upsertMeResponsePhoneMax)
+    .nullish()
+    .describe("Contact phone in international format (8–15 digits)"),
   name: zod.string(),
   avatarUrl: zod.string().nullish(),
   signatureImageUrl: zod
@@ -131,6 +157,9 @@ export const patchOnboardingStepBodyCountryCodeMax = 2;
 
 export const patchOnboardingStepBodyEmailMin = 5;
 
+export const patchOnboardingStepBodyPhoneMin = 8;
+export const patchOnboardingStepBodyPhoneMax = 24;
+
 export const PatchOnboardingStepBody = zod.object({
   onboardingRole: zod.enum(["freelancer", "employer"]),
   onboardingStep: zod.enum([
@@ -153,11 +182,20 @@ export const PatchOnboardingStepBody = zod.object({
     .nullish()
     .describe("State\/province code when required by country"),
   email: zod.string().email().min(patchOnboardingStepBodyEmailMin),
+  phone: zod
+    .string()
+    .min(patchOnboardingStepBodyPhoneMin)
+    .max(patchOnboardingStepBodyPhoneMax)
+    .nullish()
+    .describe("Contact phone — required before finishing registration"),
   name: zod.string(),
   avatarUrl: zod.string().nullish(),
 });
 
 export const patchOnboardingStepResponseEmailMin = 5;
+
+export const patchOnboardingStepResponsePhoneMin = 8;
+export const patchOnboardingStepResponsePhoneMax = 24;
 
 export const patchOnboardingStepResponseCountryCodeDefault = `US`;
 export const patchOnboardingStepResponseCurrencyCodeDefault = `USD`;
@@ -167,6 +205,12 @@ export const PatchOnboardingStepResponse = zod.object({
   clerkId: zod.string(),
   role: zod.string().describe("freelancer or employer"),
   email: zod.string().email().min(patchOnboardingStepResponseEmailMin),
+  phone: zod
+    .string()
+    .min(patchOnboardingStepResponsePhoneMin)
+    .max(patchOnboardingStepResponsePhoneMax)
+    .nullish()
+    .describe("Contact phone in international format (8–15 digits)"),
   name: zod.string(),
   avatarUrl: zod.string().nullish(),
   signatureImageUrl: zod
@@ -204,6 +248,78 @@ export const PatchOnboardingStepResponse = zod.object({
 });
 
 /**
+ * @summary Update contact email and phone for the current user
+ */
+export const patchMyContactBodyEmailMin = 5;
+
+export const patchMyContactBodyPhoneMin = 8;
+export const patchMyContactBodyPhoneMax = 24;
+
+export const PatchMyContactBody = zod.object({
+  email: zod.string().email().min(patchMyContactBodyEmailMin),
+  phone: zod
+    .string()
+    .min(patchMyContactBodyPhoneMin)
+    .max(patchMyContactBodyPhoneMax)
+    .describe("Contact phone in international format (8–15 digits)"),
+});
+
+export const patchMyContactResponseEmailMin = 5;
+
+export const patchMyContactResponsePhoneMin = 8;
+export const patchMyContactResponsePhoneMax = 24;
+
+export const patchMyContactResponseCountryCodeDefault = `US`;
+export const patchMyContactResponseCurrencyCodeDefault = `USD`;
+
+export const PatchMyContactResponse = zod.object({
+  id: zod.number(),
+  clerkId: zod.string(),
+  role: zod.string().describe("freelancer or employer"),
+  email: zod.string().email().min(patchMyContactResponseEmailMin),
+  phone: zod
+    .string()
+    .min(patchMyContactResponsePhoneMin)
+    .max(patchMyContactResponsePhoneMax)
+    .nullish()
+    .describe("Contact phone in international format (8–15 digits)"),
+  name: zod.string(),
+  avatarUrl: zod.string().nullish(),
+  signatureImageUrl: zod
+    .string()
+    .nullish()
+    .describe("Stored signature image path (object storage)"),
+  emailNotificationsEnabled: zod
+    .boolean()
+    .describe("Whether the user receives email alerts for platform activity"),
+  onboardingRole: zod
+    .string()
+    .nullish()
+    .describe(
+      "freelancer | employer — in-progress onboarding role while role is pending",
+    ),
+  onboardingStep: zod
+    .string()
+    .nullish()
+    .describe(
+      "role | profession_category | location | freelancer_details | freelancer_documents | employer_details | employer_documents",
+    ),
+  countryCode: zod
+    .string()
+    .default(patchMyContactResponseCountryCodeDefault)
+    .describe("ISO 3166-1 alpha-2 country code"),
+  stateCode: zod
+    .string()
+    .nullish()
+    .describe("State\/province code when applicable"),
+  currencyCode: zod
+    .string()
+    .default(patchMyContactResponseCurrencyCodeDefault)
+    .describe("ISO 4217 currency derived from country"),
+  createdAt: zod.coerce.date(),
+});
+
+/**
  * @summary Update country, state, and derived currency after onboarding
  */
 export const patchMyLocationBodyCountryCodeMin = 2;
@@ -219,6 +335,9 @@ export const PatchMyLocationBody = zod.object({
 
 export const patchMyLocationResponseEmailMin = 5;
 
+export const patchMyLocationResponsePhoneMin = 8;
+export const patchMyLocationResponsePhoneMax = 24;
+
 export const patchMyLocationResponseCountryCodeDefault = `US`;
 export const patchMyLocationResponseCurrencyCodeDefault = `USD`;
 
@@ -227,6 +346,12 @@ export const PatchMyLocationResponse = zod.object({
   clerkId: zod.string(),
   role: zod.string().describe("freelancer or employer"),
   email: zod.string().email().min(patchMyLocationResponseEmailMin),
+  phone: zod
+    .string()
+    .min(patchMyLocationResponsePhoneMin)
+    .max(patchMyLocationResponsePhoneMax)
+    .nullish()
+    .describe("Contact phone in international format (8–15 digits)"),
   name: zod.string(),
   avatarUrl: zod.string().nullish(),
   signatureImageUrl: zod
@@ -274,6 +399,9 @@ export const ListCountriesResponse = zod.object({
       currencyCode: zod.string(),
       currencySymbol: zod.string(),
       currencyName: zod.string(),
+      dialCode: zod
+        .string()
+        .describe("ITU-T E.164 country calling code digits (without +)"),
       stateRequired: zod.boolean(),
       states: zod.array(
         zod.object({
@@ -2575,6 +2703,16 @@ export const ListMeetingsResponse = zod.object({
       meetingLink: zod.string().nullish(),
       freelancerName: zod.string().nullish(),
       employerName: zod.string().nullish(),
+      freelancerEmail: zod
+        .string()
+        .email()
+        .nullish()
+        .describe("Freelancer account email for calendar guests and invites"),
+      employerEmail: zod
+        .string()
+        .email()
+        .nullish()
+        .describe("Employer account email for calendar guests and invites"),
       employerVerificationLevel: zod
         .enum(["unverified", "partially_verified", "fully_verified"])
         .optional(),
@@ -2653,6 +2791,16 @@ export const GetMeetingResponse = zod.object({
   meetingLink: zod.string().nullish(),
   freelancerName: zod.string().nullish(),
   employerName: zod.string().nullish(),
+  freelancerEmail: zod
+    .string()
+    .email()
+    .nullish()
+    .describe("Freelancer account email for calendar guests and invites"),
+  employerEmail: zod
+    .string()
+    .email()
+    .nullish()
+    .describe("Employer account email for calendar guests and invites"),
   employerVerificationLevel: zod
     .enum(["unverified", "partially_verified", "fully_verified"])
     .optional(),
@@ -2722,6 +2870,16 @@ export const UpdateMeetingResponse = zod.object({
   meetingLink: zod.string().nullish(),
   freelancerName: zod.string().nullish(),
   employerName: zod.string().nullish(),
+  freelancerEmail: zod
+    .string()
+    .email()
+    .nullish()
+    .describe("Freelancer account email for calendar guests and invites"),
+  employerEmail: zod
+    .string()
+    .email()
+    .nullish()
+    .describe("Employer account email for calendar guests and invites"),
   employerVerificationLevel: zod
     .enum(["unverified", "partially_verified", "fully_verified"])
     .optional(),

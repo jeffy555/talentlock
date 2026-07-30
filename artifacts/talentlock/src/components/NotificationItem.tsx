@@ -10,6 +10,7 @@ import {
   Search,
   Heart,
   ClipboardList,
+  UserRound,
 } from "lucide-react";
 import { getNotificationRoute } from "@/lib/notificationRoutes";
 import { formatRelativeTime } from "@/lib/formatRelativeTime";
@@ -38,6 +39,9 @@ function EntityIcon({
 }) {
   if (notificationType === "booking_debrief_ready") {
     return <ClipboardList className="h-4 w-4 text-violet-500" />;
+  }
+  if (notificationType === "contact_update_required" || entityType === "user_contact") {
+    return <UserRound className="h-4 w-4 text-amber-600" />;
   }
 
   switch (entityType) {

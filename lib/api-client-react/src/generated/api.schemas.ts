@@ -20,6 +20,13 @@ export interface User {
   role: string;
   /** @minLength 5 */
   email: string;
+  /**
+   * Contact phone in international format (8–15 digits)
+   * @minLength 8
+   * @maxLength 24
+   * @nullable
+   */
+  phone?: string | null;
   name: string;
   /** @nullable */
   avatarUrl?: string | null;
@@ -73,6 +80,8 @@ export interface Country {
   currencyCode: string;
   currencySymbol: string;
   currencyName: string;
+  /** ITU-T E.164 country calling code digits (without +) */
+  dialCode: string;
   stateRequired: boolean;
   states: CountryState[];
 }
@@ -111,11 +120,28 @@ export interface UpsertUserBody {
   role: string;
   /** @minLength 5 */
   email: string;
+  /**
+   * Contact phone in international format (8–15 digits)
+   * @minLength 8
+   * @maxLength 24
+   */
+  phone: string;
   name: string;
   /** @nullable */
   avatarUrl?: string | null;
   /** @nullable */
   signatureImageUrl?: string | null;
+}
+
+export interface PatchContactBody {
+  /** @minLength 5 */
+  email: string;
+  /**
+   * Contact phone in international format (8–15 digits)
+   * @minLength 8
+   * @maxLength 24
+   */
+  phone: string;
 }
 
 export type PatchOnboardingStepBodyOnboardingRole =
@@ -155,6 +181,13 @@ export interface PatchOnboardingStepBody {
   stateCode?: string | null;
   /** @minLength 5 */
   email: string;
+  /**
+   * Contact phone — required before finishing registration
+   * @minLength 8
+   * @maxLength 24
+   * @nullable
+   */
+  phone?: string | null;
   name: string;
   /** @nullable */
   avatarUrl?: string | null;
@@ -1195,6 +1228,16 @@ export interface Meeting {
   freelancerName?: string | null;
   /** @nullable */
   employerName?: string | null;
+  /**
+   * Freelancer account email for calendar guests and invites
+   * @nullable
+   */
+  freelancerEmail?: string | null;
+  /**
+   * Employer account email for calendar guests and invites
+   * @nullable
+   */
+  employerEmail?: string | null;
   employerVerificationLevel?: MeetingEmployerVerificationLevel;
   briefContent?: null | MeetingBrief;
   /** @nullable */

@@ -24,6 +24,13 @@ export interface PatchOnboardingStepBody {
   stateCode?: string | null;
   /** @minLength 5 */
   email: string;
+  /**
+   * Contact phone — required before finishing registration
+   * @minLength 8
+   * @maxLength 24
+   * @nullable
+   */
+  phone?: string | null;
   name: string;
   /** @nullable */
   avatarUrl?: string | null;

@@ -24,7 +24,7 @@ The Vite dev server has a proxy rule that forwards `/api` calls to `localhost:80
 
 | Table | Purpose |
 |-------|---------|
-| `users` | Core accounts (linked to Clerk IDs). Has `signatureImageUrl`, `emailNotificationsEnabled`, `countryCode`, `stateCode`, `currencyCode`, `onboardingRole`, `onboardingStep` columns. |
+| `users` | Core accounts (linked to Clerk IDs). Has `signatureImageUrl`, `emailNotificationsEnabled`, `phone` (E.164 contact phone with country dial, nullable until set — required for new onboarding and prompted for existing users), `countryCode`, `stateCode`, `currencyCode`, `onboardingRole`, `onboardingStep` columns. |
 | `freelancer_profiles` | Freelancer professional info, skills, rate, availability. Has `averageRating`, `reviewCount`, `nextAvailableDate`, `completenessScore`, `countryCode`, `currencyCode`, `talentSearchNotificationsToday`, `talentSearchNotificationsResetAt`, `teachingLicenceAlertStage`, and education-profile columns. |
 | `employer_profiles` | Employer company info. Has `verificationLevel`, `isVerified` (recalculated from `employer_documents`). |
 | `job_requirements` | Job postings by employers. Has `professionCategory`, `rateType`. |
@@ -154,14 +154,15 @@ Post-codegen mandatory checks:
 ## API Routes (all prefixed `/api`)
 
 ```
-GET  /api/users/me                                Current user profile
-PATCH /api/users/me/onboarding-step                 Save in-progress onboarding role/step (upserts pending user; accepts `location` + country fields)
-PUT  /api/users/me                                Update user profile (sets `role: employer|freelancer` and clears onboarding fields on completion)
+GET  /api/users/me                                Current user profile (ensures contact_update_required notification if phone missing)
+PATCH /api/users/me/onboarding-step                 Save in-progress onboarding role/step (upserts pending user; accepts `location` + country fields; optional `phone`)
+PUT  /api/users/me                                Update user profile (sets `role: employer|freelancer`, requires `email` + E.164 `phone`, clears onboarding fields on completion)
 PUT  /api/users/me/signature                      Save/clear signature image URL
+PATCH /api/users/me/contact                       Update contact email + phone for existing users
 PATCH /api/users/me/notification-preferences      Toggle email notification opt-in/out
 PATCH /api/users/me/location                      Update country/state and derived currency (onboarding or profile)
 
-GET  /api/countries                               Country list with default currency codes (public)
+GET  /api/countries                               Country list with currencies + `dialCode` (public)
 GET  /api/exchange-rates                          Cached FX rates for dual-currency display (public)
 
 GET  /api/freelancers                             List freelancers (filters + ?q=keyword + ?availableFrom=YYYY-MM-DD; completeness ≥ 60%)
