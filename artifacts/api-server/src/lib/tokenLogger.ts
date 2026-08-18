@@ -20,7 +20,8 @@ export type TokenFeature =
   | "talent_search_evaluation"
   | "meeting_brief"
   | "booking_debrief"
-  | "employer_doc_review";
+  | "employer_doc_review"
+  | "interview_handoff_summary";
 
 export const TOKEN_FEATURES: TokenFeature[] = [
   "ai_match",
@@ -42,6 +43,7 @@ export const TOKEN_FEATURES: TokenFeature[] = [
   "meeting_brief",
   "booking_debrief",
   "employer_doc_review",
+  "interview_handoff_summary",
 ];
 
 const VALID_TOKEN_FEATURES = TOKEN_FEATURES;

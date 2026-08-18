@@ -33,6 +33,7 @@ import RateSuggestionWidget from "@/components/RateSuggestionWidget";
 import { AvailabilitySection } from "@/components/availability/AvailabilitySection";
 import { resolveFreelancerDetailJobId } from "@/lib/aiMatchJobContext";
 import { useChatBox } from "@/components/messages/ChatBoxProvider";
+import { HiringNotesCard } from "@/components/employer/HiringNotesCard";
 
 /** Convert an ISO date/datetime to a `YYYY-MM-DD` value for `<input type="date">` without timezone drift. */
 function toDateInputValue(iso?: string | null): string {
@@ -339,6 +340,8 @@ export default function FreelancerDetail() {
               <p className="text-muted-foreground leading-relaxed whitespace-pre-wrap">{freelancer.bio}</p>
             </section>
           )}
+
+          {isEmployer && <HiringNotesCard freelancerId={freelancerId} />}
 
           <AvailabilitySection freelancerId={freelancerId} />
 

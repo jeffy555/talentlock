@@ -1,6 +1,7 @@
-import { useState } from "react";
 import { useListMeetings, useGetMe } from "@workspace/api-client-react";
 import { PaginationControls } from "@/components/PaginationControls";
+import { EngagementListToolbar } from "@/components/lists/EngagementListToolbar";
+import { useEngagementListQueryState } from "@/hooks/useEngagementListQueryState";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -16,6 +17,8 @@ import {
   EmptyContent,
 } from "@/components/ui/empty";
 
+const PAGE_SIZE = 10;
+
 const statusColors: Record<string, string> = {
   pending:   "bg-yellow-50 text-yellow-700 border-yellow-200",
   confirmed: "bg-green-50 text-green-700 border-green-200",
@@ -23,41 +26,34 @@ const statusColors: Record<string, string> = {
   cancelled: "bg-red-50 text-red-700 border-red-200",
 };
 
+const MEETING_STATUS_OPTIONS = [
+  { value: "all", label: "All" },
+  { value: "pending", label: "Pending" },
+  { value: "confirmed", label: "Confirmed" },
+  { value: "completed", label: "Completed" },
+  { value: "cancelled", label: "Cancelled" },
+];
+
 export default function MeetingsList() {
-  const [page, setPage] = useState(1);
+  const {
+    search, status, page, apiStatus, apiQ,
+    onSearchChange, onStatusChange, onPageChange, onClear,
+  } = useEngagementListQueryState();
   const { data: me } = useGetMe();
-  const { data, isLoading } = useListMeetings({ page, pageSize: 20 });
+  const hasFilters = search.trim().length > 0 || (status !== "" && status !== "all");
+  const { data, isLoading } = useListMeetings({
+    page,
+    pageSize: PAGE_SIZE,
+    status: apiStatus as any,
+    q: apiQ,
+  });
   const meetings = data?.data ?? [];
   const totalPages = data?.totalPages ?? 1;
-
-  const onPageChange = (newPage: number) => {
-    setPage(newPage);
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  };
-
+  const total = data?.total ?? 0;
   const isEmployer = me?.role === "employer";
 
-  if (isLoading) {
-    return (
-      <div className="max-w-3xl mx-auto space-y-8 animate-fade-in">
-        <div className="space-y-2">
-          <div className="h-8 w-64 bg-muted rounded animate-pulse" />
-          <div className="h-5 w-96 bg-muted rounded animate-pulse" />
-        </div>
-        <div className="space-y-3">
-          {[1, 2, 3].map((i) => (
-            <Card key={i} className="animate-pulse shadow-sm border-border bg-card">
-              <CardHeader className="pb-2"><div className="h-6 w-1/3 bg-muted rounded" /></CardHeader>
-              <CardContent><div className="h-12 w-full bg-muted rounded" /></CardContent>
-            </Card>
-          ))}
-        </div>
-      </div>
-    );
-  }
-
   const sorted = [...meetings].sort(
-    (a, b) => new Date(b.scheduledAt).getTime() - new Date(a.scheduledAt).getTime()
+    (a, b) => new Date(b.scheduledAt).getTime() - new Date(a.scheduledAt).getTime(),
   );
 
   return (
@@ -80,18 +76,46 @@ export default function MeetingsList() {
         )}
       </div>
 
-      {sorted.length === 0 ? (
+      <EngagementListToolbar
+        search={search}
+        onSearchChange={onSearchChange}
+        searchPlaceholder="Search by title, agenda, or name…"
+        status={status}
+        statusOptions={MEETING_STATUS_OPTIONS}
+        onStatusChange={onStatusChange}
+        onClear={onClear}
+        resultSummary={isLoading ? undefined : `${total} matching`}
+      />
+
+      {isLoading ? (
+        <div className="space-y-3">
+          {[1, 2, 3].map((i) => (
+            <Card key={i} className="animate-pulse shadow-sm border-border bg-card">
+              <CardHeader className="pb-2"><div className="h-6 w-1/3 bg-muted rounded" /></CardHeader>
+              <CardContent><div className="h-12 w-full bg-muted rounded" /></CardContent>
+            </Card>
+          ))}
+        </div>
+      ) : sorted.length === 0 ? (
         <Empty className="border border-dashed border-border bg-card py-16">
           <EmptyHeader>
             <EmptyMedia variant="icon">
               <Calendar className="text-muted-foreground" />
             </EmptyMedia>
-            <EmptyTitle className="font-serif">No meetings scheduled</EmptyTitle>
+            <EmptyTitle className="font-serif">
+              {hasFilters ? "No meetings match your search or filters" : "No meetings scheduled"}
+            </EmptyTitle>
             <EmptyDescription>
-              Discovery meetings with talent will show up here.
+              {hasFilters
+                ? "Try a different keyword or clear filters."
+                : "Discovery meetings with talent will show up here."}
             </EmptyDescription>
           </EmptyHeader>
-          {isEmployer && (
+          {hasFilters ? (
+            <EmptyContent>
+              <Button variant="outline" onClick={onClear}>Clear filters</Button>
+            </EmptyContent>
+          ) : isEmployer ? (
             <EmptyContent>
               <Button asChild className="font-semibold shadow-sm gap-2 h-11 px-8">
                 <Link href="/freelancers">
@@ -99,7 +123,7 @@ export default function MeetingsList() {
                 </Link>
               </Button>
             </EmptyContent>
-          )}
+          ) : null}
         </Empty>
       ) : (
         <div className="space-y-3">
@@ -172,6 +196,8 @@ export default function MeetingsList() {
         totalPages={totalPages}
         onPageChange={onPageChange}
         disabled={isLoading}
+        total={total}
+        pageSize={PAGE_SIZE}
       />
     </div>
   );

@@ -279,7 +279,7 @@ async function main() {
   if (jobId) {
     const jOk = await api("PATCH", `/job-requirements/${jobId}`, {
       token: empToken,
-      body: { title: pubList.data?.[0]?.title ?? "Test Job" },
+      body: { title: pubList.data?.data?.[0]?.title ?? pubList.data?.[0]?.title ?? "Test Job" },
     });
     jOk.status === 200 ? pass("V2.5 PATCH job owner 200") : fail("V2.5 PATCH job owner 200", String(jOk.status));
   }

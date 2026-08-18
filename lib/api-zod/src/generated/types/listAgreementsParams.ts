@@ -5,12 +5,17 @@
  * TalentLock API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { ListAgreementsStatus } from "./listAgreementsStatus";
 
 export type ListAgreementsParams = {
   /**
-   * Filter by status (draft, redlined, partially_signed, fully_signed)
+   * Filter by agreement status
    */
-  status?: string;
+  status?: ListAgreementsStatus;
+  /**
+   * Keyword search across counterparty name and upload filename
+   */
+  q?: string;
   page?: number;
   pageSize?: number;
 };

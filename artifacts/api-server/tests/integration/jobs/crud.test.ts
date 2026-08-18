@@ -20,14 +20,20 @@ describe.skipIf(!integrationEnvReady())("job requirements", () => {
   it("GET /api/job-requirements is public", async () => {
     const res = await (await createApiClient(null)).get("/api/job-requirements");
     expect(res.status).toBe(200);
-    expect(Array.isArray(res.body)).toBe(true);
+    expect(res.body).toMatchObject({
+      data: expect.any(Array),
+      total: expect.any(Number),
+      page: expect.any(Number),
+      pageSize: expect.any(Number),
+      totalPages: expect.any(Number),
+    });
   });
 
   it("PATCH /api/job-requirements/:id succeeds for owner", async () => {
     const fixtures = await loadDemoFixtures();
     if (!fixtures.jobId) return;
     const list = await (await createApiClient(null)).get("/api/job-requirements");
-    const job = (list.body as { id: number; title?: string }[]).find((j) => j.id === fixtures.jobId);
+    const job = (list.body as { data: { id: number; title?: string }[] }).data.find((j) => j.id === fixtures.jobId);
     const client = await createApiClient(empToken);
     const res = await client.patch(`/api/job-requirements/${fixtures.jobId}`, {
       title: job?.title ?? "Test Job",

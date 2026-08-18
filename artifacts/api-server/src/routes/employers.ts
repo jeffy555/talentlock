@@ -1,10 +1,11 @@
 import { Router } from "express";
 import { getAuth } from "@clerk/express";
 import { db } from "@workspace/db";
-import { employerProfilesTable, usersTable } from "@workspace/db";
-import { eq } from "drizzle-orm";
+import { employerProfilesTable, usersTable, employerCandidateNotesTable } from "@workspace/db";
+import { and, eq } from "drizzle-orm";
 import { UpsertMyEmployerProfileBody } from "@workspace/api-zod";
 import { sanitiseText } from "../lib/sanitise";
+import { resolveUserByClerkId } from "../lib/accessControl";
 
 const router = Router();
 
@@ -17,6 +18,45 @@ router.get("/employers/me", async (req, res) => {
     res.json(profile);
   } catch (err) {
     req.log.error({ err }, "Failed to get employer profile");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.get("/employers/me/candidate-notes/:freelancerId", async (req, res) => {
+  const freelancerId = parseInt(req.params.freelancerId);
+  if (isNaN(freelancerId)) { res.status(400).json({ error: "Invalid freelancer ID" }); return; }
+  const { userId: clerkId } = getAuth(req);
+  if (!clerkId) { res.status(401).json({ error: "Unauthorized" }); return; }
+  try {
+    const user = await resolveUserByClerkId(clerkId);
+    if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
+    if (user.role !== "employer") {
+      res.status(403).json({ error: "Employer only" });
+      return;
+    }
+    const [note] = await db
+      .select()
+      .from(employerCandidateNotesTable)
+      .where(and(
+        eq(employerCandidateNotesTable.employerUserId, user.id),
+        eq(employerCandidateNotesTable.freelancerId, freelancerId),
+      ))
+      .limit(1);
+    if (!note) {
+      res.status(404).json({ error: "No hiring notes for this freelancer" });
+      return;
+    }
+    res.json({
+      freelancerId: note.freelancerId,
+      disposition: note.disposition,
+      feedbackText: note.feedbackText,
+      feedbackSummary: note.feedbackSummary,
+      latestMeetingId: note.latestMeetingId,
+      updatedAt: note.updatedAt,
+      createdAt: note.createdAt,
+    });
+  } catch (err) {
+    req.log.error({ err }, "Failed to get employer candidate notes");
     res.status(500).json({ error: "Internal server error" });
   }
 });

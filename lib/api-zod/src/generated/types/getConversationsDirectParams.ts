@@ -16,4 +16,13 @@ export type GetConversationsDirectParams = {
    * @maximum 100
    */
   pageSize?: number;
+  /**
+   * Keyword search on counterparty display name
+   * @maxLength 100
+   */
+  q?: string;
+  /**
+   * When true, only conversations with unread messages from the other party
+   */
+  unread?: boolean;
 };

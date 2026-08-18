@@ -125,6 +125,8 @@ A "Messages" tab is added to the booking detail page alongside existing tabs (mi
 **Entry Point 3 — Meeting Detail Page (`/meetings/:id`)**
 A "Messages" section appears below the meeting details. Shows the conversation scoped to this meeting via the compact inline thread.
 
+**Discovery Meeting Outcome (`spec/discovery-meeting-outcome/`)** — interview feedback is **not** delivered via messaging. Notes are internal (employer / next-round panel only). Do not use `sendHumanMessage` to push interview feedback to the candidate.
+
 **Entry Point 4 — Floating Chat Launcher**
 Authenticated users see a circular chat bubble fixed bottom-right (above page chrome). Badge shows unread conversation count. Clicking expands the chat box panel (list + thread). Closing collapses to the bubble. Users can browse Jobs, Vault, Bookings, etc. with the chat box open.
 

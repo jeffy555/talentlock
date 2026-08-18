@@ -1174,6 +1174,34 @@ export const MeetingEmployerVerificationLevel = {
   fully_verified: "fully_verified",
 } as const;
 
+/**
+ * Deprecated — use disposition
+ * @deprecated
+ * @nullable
+ */
+export type MeetingInterviewResult =
+  | (typeof MeetingInterviewResult)[keyof typeof MeetingInterviewResult]
+  | null;
+
+export const MeetingInterviewResult = {
+  selected: "selected",
+  not_selected: "not_selected",
+} as const;
+
+/**
+ * Hiring decision after meeting completion (employer/panel only — stripped for freelancers)
+ * @nullable
+ */
+export type MeetingDisposition =
+  | (typeof MeetingDisposition)[keyof typeof MeetingDisposition]
+  | null;
+
+export const MeetingDisposition = {
+  next_round: "next_round",
+  proceed_to_booking: "proceed_to_booking",
+  rejected: "rejected",
+} as const;
+
 export type MeetingBriefCandidateSnapshot = {
   name: string;
   field: string;
@@ -1242,6 +1270,87 @@ export interface Meeting {
   briefContent?: null | MeetingBrief;
   /** @nullable */
   briefGeneratedAt?: string | null;
+  /**
+   * Deprecated — use disposition
+   * @deprecated
+   * @nullable
+   */
+  interviewResult?: MeetingInterviewResult;
+  /**
+   * Hiring decision after meeting completion (employer/panel only — stripped for freelancers)
+   * @nullable
+   */
+  disposition?: MeetingDisposition;
+  /**
+   * Internal interview notes — never returned to freelancers
+   * @nullable
+   */
+  feedbackText?: string | null;
+  /**
+   * AI-1 handoff summary for next interviewer (next_round)
+   * @nullable
+   */
+  feedbackSummary?: string | null;
+  /** @nullable */
+  feedbackSubmittedAt?: string | null;
+  /**
+   * Deprecated — candidate DM path removed
+   * @deprecated
+   * @nullable
+   */
+  feedbackMessageId?: number | null;
+  /** @nullable */
+  nextRoundPanelEmail?: string | null;
+  /** @nullable */
+  nextRoundPanelName?: string | null;
+  /** @nullable */
+  nextRoundTeamMemberId?: number | null;
+  /** True when interview outcome has been submitted (employer); always false for freelancers */
+  hasInterviewFeedback: boolean;
+  createdAt: string;
+}
+
+export type PostMeetingFeedbackBodyDisposition =
+  (typeof PostMeetingFeedbackBodyDisposition)[keyof typeof PostMeetingFeedbackBodyDisposition];
+
+export const PostMeetingFeedbackBodyDisposition = {
+  next_round: "next_round",
+  proceed_to_booking: "proceed_to_booking",
+  rejected: "rejected",
+} as const;
+
+export interface PostMeetingFeedbackBody {
+  disposition: PostMeetingFeedbackBodyDisposition;
+  /**
+   * @minLength 20
+   * @maxLength 2000
+   */
+  feedbackText: string;
+  /** Required for next_round when employer has an active team with members */
+  nextRoundTeamMemberId?: number;
+  /** Required for next_round when no team member is selected */
+  nextRoundPanelEmail?: string;
+  /** @maxLength 200 */
+  nextRoundPanelName?: string;
+}
+
+export type EmployerCandidateNotesDisposition =
+  (typeof EmployerCandidateNotesDisposition)[keyof typeof EmployerCandidateNotesDisposition];
+
+export const EmployerCandidateNotesDisposition = {
+  proceed_to_booking: "proceed_to_booking",
+  rejected: "rejected",
+} as const;
+
+export interface EmployerCandidateNotes {
+  freelancerId: number;
+  disposition: EmployerCandidateNotesDisposition;
+  feedbackText: string;
+  /** @nullable */
+  feedbackSummary?: string | null;
+  /** @nullable */
+  latestMeetingId?: number | null;
+  updatedAt: string;
   createdAt: string;
 }
 
@@ -2204,6 +2313,7 @@ export interface TokenUsageBreakdown {
   cruise_mode_evaluation: number;
   talent_search_parse: number;
   talent_search_evaluation: number;
+  interview_handoff_summary: number;
 }
 
 export interface TokenUsageSummary {
@@ -2284,6 +2394,14 @@ export interface FreelancerReviewsResult {
 
 export interface PaginatedBookingsResult {
   data: Booking[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+}
+
+export interface PaginatedJobRequirementsResult {
+  data: JobRequirement[];
   total: number;
   page: number;
   pageSize: number;
@@ -3011,8 +3129,31 @@ export type ListJobRequirementsParams = {
   /**
    * Filter by status (open, filled, closed)
    */
-  status?: string;
+  status?: ListJobRequirementsStatus;
+  /**
+   * Keyword search (title, description)
+   * @maxLength 100
+   */
+  q?: string;
+  /**
+   * @minimum 1
+   */
+  page?: number;
+  /**
+   * @minimum 1
+   * @maximum 100
+   */
+  pageSize?: number;
 };
+
+export type ListJobRequirementsStatus =
+  (typeof ListJobRequirementsStatus)[keyof typeof ListJobRequirementsStatus];
+
+export const ListJobRequirementsStatus = {
+  open: "open",
+  filled: "filled",
+  closed: "closed",
+} as const;
 
 export type ListNotificationsParams = {
   /**
@@ -3041,16 +3182,31 @@ export const ListPlansAudience = {
 
 export type ListBookingsParams = {
   /**
-   * Filter by status (active, completed, cancelled)
+   * Filter by booking status
    */
-  status?: string;
+  status?: ListBookingsStatus;
   /**
    * Filter by role (freelancer, employer)
    */
   role?: string;
+  /**
+   * Keyword search across counterparty name, message, and notes
+   */
+  q?: string;
   page?: number;
   pageSize?: number;
 };
+
+export type ListBookingsStatus =
+  (typeof ListBookingsStatus)[keyof typeof ListBookingsStatus];
+
+export const ListBookingsStatus = {
+  pending: "pending",
+  negotiating: "negotiating",
+  active: "active",
+  completed: "completed",
+  cancelled: "cancelled",
+} as const;
 
 export type PostBookingDebrief202 = {
   message: string;
@@ -3058,12 +3214,26 @@ export type PostBookingDebrief202 = {
 
 export type ListAgreementsParams = {
   /**
-   * Filter by status (draft, redlined, partially_signed, fully_signed)
+   * Filter by agreement status
    */
-  status?: string;
+  status?: ListAgreementsStatus;
+  /**
+   * Keyword search across counterparty name and upload filename
+   */
+  q?: string;
   page?: number;
   pageSize?: number;
 };
+
+export type ListAgreementsStatus =
+  (typeof ListAgreementsStatus)[keyof typeof ListAgreementsStatus];
+
+export const ListAgreementsStatus = {
+  draft: "draft",
+  redlined: "redlined",
+  partially_signed: "partially_signed",
+  fully_signed: "fully_signed",
+} as const;
 
 export type PostAgreementsIdHealthScoreParams = {
   /**
@@ -3080,9 +3250,27 @@ export type PostAgreementsIdSummariseParams = {
 };
 
 export type ListMeetingsParams = {
+  /**
+   * Filter by meeting status
+   */
+  status?: ListMeetingsStatus;
+  /**
+   * Keyword search across title, agenda, and counterparty name
+   */
+  q?: string;
   page?: number;
   pageSize?: number;
 };
+
+export type ListMeetingsStatus =
+  (typeof ListMeetingsStatus)[keyof typeof ListMeetingsStatus];
+
+export const ListMeetingsStatus = {
+  pending: "pending",
+  confirmed: "confirmed",
+  completed: "completed",
+  cancelled: "cancelled",
+} as const;
 
 export type GenerateMeetingBrief202 = {
   message: string;
@@ -3098,6 +3286,15 @@ export type GetConversationsDirectParams = {
    * @maximum 100
    */
   pageSize?: number;
+  /**
+   * Keyword search on counterparty display name
+   * @maxLength 100
+   */
+  q?: string;
+  /**
+   * When true, only conversations with unread messages from the other party
+   */
+  unread?: boolean;
 };
 
 export type GetConversationsIdMessagesParams = {
@@ -3184,7 +3381,28 @@ export type ListCruiseModeActivityParams = {
    * @maximum 100
    */
   pageSize?: number;
+  /**
+   * Keyword search on job title
+   * @maxLength 100
+   */
+  q?: string;
+  /**
+   * Filter by activity decision
+   */
+  decision?: ListCruiseModeActivityDecision;
 };
+
+export type ListCruiseModeActivityDecision =
+  (typeof ListCruiseModeActivityDecision)[keyof typeof ListCruiseModeActivityDecision];
+
+export const ListCruiseModeActivityDecision = {
+  sent: "sent",
+  dry_run_would_send: "dry_run_would_send",
+  skipped: "skipped",
+  prefilter_rejected: "prefilter_rejected",
+  duplicate_skipped: "duplicate_skipped",
+  dm_failed: "dm_failed",
+} as const;
 
 export type ListTalentSearchActivityParams = {
   /**
@@ -3196,4 +3414,25 @@ export type ListTalentSearchActivityParams = {
    * @maximum 100
    */
   pageSize?: number;
+  /**
+   * Keyword search on freelancer name
+   * @maxLength 100
+   */
+  q?: string;
+  /**
+   * Filter by activity decision
+   */
+  decision?: ListTalentSearchActivityDecision;
 };
+
+export type ListTalentSearchActivityDecision =
+  (typeof ListTalentSearchActivityDecision)[keyof typeof ListTalentSearchActivityDecision];
+
+export const ListTalentSearchActivityDecision = {
+  sent: "sent",
+  dry_run_would_send: "dry_run_would_send",
+  skipped: "skipped",
+  prefilter_rejected: "prefilter_rejected",
+  duplicate_skipped: "duplicate_skipped",
+  dm_failed: "dm_failed",
+} as const;

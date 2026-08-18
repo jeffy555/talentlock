@@ -327,11 +327,13 @@ export default function AiMatch() {
     query: { enabled: me?.role === "employer" } as any,
   });
   const { data: employerJobs } = useListJobRequirements(
-    myEmployerProfile ? { employerId: myEmployerProfile.id, status: "open" } : undefined,
+    myEmployerProfile
+      ? { employerId: myEmployerProfile.id, status: "open", page: 1, pageSize: 100 }
+      : undefined,
     { query: { enabled: me?.role === "employer" && !!myEmployerProfile?.id } as any },
   );
-  const latestOpenJobId = employerJobs?.length
-    ? [...employerJobs].sort(
+  const latestOpenJobId = employerJobs?.data?.length
+    ? [...employerJobs.data].sort(
         (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
       )[0]?.id
     : undefined;

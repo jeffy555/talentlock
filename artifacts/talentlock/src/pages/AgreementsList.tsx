@@ -2,6 +2,8 @@ import { useState } from "react";
 import { useAuth } from "@clerk/react";
 import { useListAgreements, useGetMe } from "@workspace/api-client-react";
 import { PaginationControls } from "@/components/PaginationControls";
+import { EngagementListToolbar } from "@/components/lists/EngagementListToolbar";
+import { useEngagementListQueryState } from "@/hooks/useEngagementListQueryState";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -16,32 +18,47 @@ import {
   EmptyMedia,
   EmptyTitle,
   EmptyDescription,
+  EmptyContent,
 } from "@/components/ui/empty";
 
-const statusColors: Record<string, { bg: string, text: string, border: string }> = {
+const PAGE_SIZE = 10;
+
+const AGREEMENT_STATUS_OPTIONS = [
+  { value: "all", label: "All" },
+  { value: "draft", label: "Draft" },
+  { value: "redlined", label: "Redlined" },
+  { value: "partially_signed", label: "Partially signed" },
+  { value: "fully_signed", label: "Fully signed" },
+];
+
+const statusColors: Record<string, { bg: string; text: string; border: string }> = {
   draft: { bg: "bg-yellow-50", text: "text-yellow-700", border: "border-yellow-200" },
   redlined: { bg: "bg-primary/5", text: "text-primary", border: "border-primary/20" },
   partially_signed: { bg: "bg-amber-50", text: "text-amber-700", border: "border-amber-200" },
   fully_signed: { bg: "bg-green-50", text: "text-green-700", border: "border-green-200" },
-  // legacy values (pre-backfill)
   pending_signatures: { bg: "bg-yellow-50", text: "text-yellow-700", border: "border-yellow-200" },
   signed: { bg: "bg-green-50", text: "text-green-700", border: "border-green-200" },
 };
 
 export default function AgreementsList() {
-  const [page, setPage] = useState(1);
+  const {
+    search, status, page, apiStatus, apiQ,
+    onSearchChange, onStatusChange, onPageChange, onClear,
+  } = useEngagementListQueryState();
   const [downloadingId, setDownloadingId] = useState<number | null>(null);
   const { toast } = useToast();
   const { getToken } = useAuth();
   const { data: me } = useGetMe();
-  const { data, isLoading } = useListAgreements({ page, pageSize: 20 });
+  const hasFilters = search.trim().length > 0 || (status !== "" && status !== "all");
+  const { data, isLoading } = useListAgreements({
+    page,
+    pageSize: PAGE_SIZE,
+    status: apiStatus as any,
+    q: apiQ,
+  });
   const agreements = data?.data ?? [];
   const totalPages = data?.totalPages ?? 1;
-
-  const onPageChange = (newPage: number) => {
-    setPage(newPage);
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  };
+  const total = data?.total ?? 0;
 
   const handleListDownload = async (agreementId: number) => {
     setDownloadingId(agreementId);
@@ -58,25 +75,6 @@ export default function AgreementsList() {
     }
   };
 
-  if (isLoading) {
-    return (
-      <div className="space-y-8 animate-fade-in">
-        <div className="space-y-2">
-          <div className="h-8 w-64 bg-muted rounded animate-pulse"></div>
-          <div className="h-5 w-96 bg-muted rounded animate-pulse"></div>
-        </div>
-        <div className="grid md:grid-cols-2 gap-6">
-          {[1, 2, 3, 4].map((i) => (
-            <Card key={i} className="animate-pulse shadow-sm border-border bg-card h-[200px]">
-              <CardHeader className="pb-2"><div className="h-6 w-1/2 bg-muted rounded"></div></CardHeader>
-              <CardContent><div className="h-24 w-full bg-muted rounded"></div></CardContent>
-            </Card>
-          ))}
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="max-w-5xl mx-auto space-y-8 animate-fade-in">
       <div className="border-b border-border/50 pb-6">
@@ -88,17 +86,46 @@ export default function AgreementsList() {
         </p>
       </div>
 
-      {agreements.length === 0 ? (
+      <EngagementListToolbar
+        search={search}
+        onSearchChange={onSearchChange}
+        searchPlaceholder="Search by title or name…"
+        status={status}
+        statusOptions={AGREEMENT_STATUS_OPTIONS}
+        onStatusChange={onStatusChange}
+        onClear={onClear}
+        resultSummary={isLoading ? undefined : `${total} matching`}
+      />
+
+      {isLoading ? (
+        <div className="grid md:grid-cols-2 gap-6">
+          {[1, 2, 3, 4].map((i) => (
+            <Card key={i} className="animate-pulse shadow-sm border-border bg-card h-[200px]">
+              <CardHeader className="pb-2"><div className="h-6 w-1/2 bg-muted rounded" /></CardHeader>
+              <CardContent><div className="h-24 w-full bg-muted rounded" /></CardContent>
+            </Card>
+          ))}
+        </div>
+      ) : agreements.length === 0 ? (
         <Empty className="border border-dashed border-border bg-card py-16">
           <EmptyHeader>
             <EmptyMedia variant="icon">
               <FileText className="text-muted-foreground" />
             </EmptyMedia>
-            <EmptyTitle className="font-serif">No agreements yet</EmptyTitle>
+            <EmptyTitle className="font-serif">
+              {hasFilters ? "No agreements match your search or filters" : "No agreements yet"}
+            </EmptyTitle>
             <EmptyDescription>
-              Agreements are created from bookings once rates are agreed — generate with AI or upload your own document, then request signatures.
+              {hasFilters
+                ? "Try a different keyword or clear filters."
+                : "Agreements are created from bookings once rates are agreed — generate with AI or upload your own document, then request signatures."}
             </EmptyDescription>
           </EmptyHeader>
+          {hasFilters && (
+            <EmptyContent>
+              <Button variant="outline" onClick={onClear}>Clear filters</Button>
+            </EmptyContent>
+          )}
         </Empty>
       ) : (
         <div className="grid md:grid-cols-2 gap-6">
@@ -114,13 +141,13 @@ export default function AgreementsList() {
             const colors = statusColors[agreement.status ?? "draft"] || { bg: "bg-secondary", text: "text-muted-foreground", border: "border-border" };
 
             return (
-              <Card 
-                key={agreement.id} 
-                className={`group flex flex-col hover:shadow-lg transition-all duration-300 border-border bg-card relative overflow-hidden animate-fade-in ${needsMySignature ? 'ring-1 ring-gold/50 shadow-md shadow-gold/5' : ''}`}
+              <Card
+                key={agreement.id}
+                className={`group flex flex-col hover:shadow-lg transition-all duration-300 border-border bg-card relative overflow-hidden animate-fade-in ${needsMySignature ? "ring-1 ring-gold/50 shadow-md shadow-gold/5" : ""}`}
                 style={{ animationDelay: `${index * 50}ms`, animationFillMode: "both" }}
               >
-                <div className={`absolute top-0 left-0 w-full h-1.5 ${needsMySignature ? 'bg-gold' : isFullySigned ? 'bg-green-500' : 'bg-primary'} opacity-80`}></div>
-                
+                <div className={`absolute top-0 left-0 w-full h-1.5 ${needsMySignature ? "bg-gold" : isFullySigned ? "bg-green-500" : "bg-primary"} opacity-80`} />
+
                 <CardHeader className="pb-4">
                   <div className="flex items-start justify-between mb-3">
                     <div className="flex items-center gap-2 flex-wrap">
@@ -167,10 +194,9 @@ export default function AgreementsList() {
                     Contract #{agreement.id} · Booking #{agreement.bookingId}
                   </CardDescription>
                 </CardHeader>
-                
+
                 <CardContent className="flex-1 flex flex-col space-y-5">
                   <div className="grid grid-cols-2 gap-3 p-4 rounded-xl bg-secondary/20 border border-border/50 text-sm">
-                    {/* Freelancer Status */}
                     <div className="flex flex-col gap-1.5">
                       <div className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Freelancer</div>
                       <div className="flex items-center gap-2 font-medium">
@@ -181,7 +207,6 @@ export default function AgreementsList() {
                         )}
                       </div>
                     </div>
-                    {/* Employer Status */}
                     <div className="flex flex-col gap-1.5 border-l border-border/50 pl-3">
                       <div className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Employer</div>
                       <div className="flex items-center gap-2 font-medium">
@@ -194,8 +219,8 @@ export default function AgreementsList() {
                     </div>
                   </div>
 
-                  <Button 
-                    className={`w-full mt-auto font-semibold shadow-sm justify-between group/btn ${needsMySignature ? 'bg-primary hover:bg-primary/90 text-primary-foreground' : 'bg-secondary text-secondary-foreground hover:bg-primary hover:text-primary-foreground shadow-none'}`} 
+                  <Button
+                    className={`w-full mt-auto font-semibold shadow-sm justify-between group/btn ${needsMySignature ? "bg-primary hover:bg-primary/90 text-primary-foreground" : "bg-secondary text-secondary-foreground hover:bg-primary hover:text-primary-foreground shadow-none"}`}
                     asChild
                   >
                     <Link href={`/agreements/${agreement.id}`}>
@@ -215,6 +240,8 @@ export default function AgreementsList() {
         totalPages={totalPages}
         onPageChange={onPageChange}
         disabled={isLoading}
+        total={total}
+        pageSize={PAGE_SIZE}
       />
     </div>
   );

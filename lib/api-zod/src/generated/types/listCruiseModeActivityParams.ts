@@ -5,6 +5,7 @@
  * TalentLock API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { ListCruiseModeActivityDecision } from "./listCruiseModeActivityDecision";
 
 export type ListCruiseModeActivityParams = {
   /**
@@ -16,4 +17,13 @@ export type ListCruiseModeActivityParams = {
    * @maximum 100
    */
   pageSize?: number;
+  /**
+   * Keyword search on job title
+   * @maxLength 100
+   */
+  q?: string;
+  /**
+   * Filter by activity decision
+   */
+  decision?: ListCruiseModeActivityDecision;
 };

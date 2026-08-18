@@ -14,7 +14,7 @@ import {
   employerCompanyForProfile,
 } from "../lib/createNotification";
 import { resolveEmployerDisplayName, toPublicReview } from "../lib/reviewUtils";
-import { eq, or, and, inArray, sql, SQL, count } from "drizzle-orm";
+import { eq, or, and, inArray, sql, SQL, count, ilike, exists } from "drizzle-orm";
 import {
   CreateBookingBody, UpdateBookingBody, ListBookingsQueryParams,
 } from "@workspace/api-zod";
@@ -25,6 +25,7 @@ import {
 } from "../lib/availabilityUtils";
 import { z } from "zod/v4";
 import { sanitiseText } from "../lib/sanitise";
+import { sanitiseIlikeQuery } from "../lib/searchUtils";
 import { sendNotificationEmailAsync } from "../lib/emailService";
 import { parsePagination, paginatedResponse } from "../lib/paginationUtils";
 import { resolveUserByClerkId, canAccessBooking, profileIdsForUser } from "../lib/accessControl";
@@ -72,7 +73,35 @@ router.get("/bookings", async (req, res) => {
     } else if (employer) {
       conditions.push(eq(bookingsTable.employerId, employer.id));
     }
-    if (params.status) conditions.push(eq(bookingsTable.status, params.status));
+    if (params.status === "negotiating") {
+      conditions.push(eq(bookingsTable.negotiationStatus, "negotiating"));
+    } else if (params.status) {
+      conditions.push(eq(bookingsTable.status, params.status));
+    }
+
+    const searchPattern = params.q ? sanitiseIlikeQuery(params.q) : null;
+    if (searchPattern) {
+      conditions.push(or(
+        ilike(bookingsTable.message, searchPattern),
+        ilike(bookingsTable.notes, searchPattern),
+        exists(
+          db.select({ id: freelancerProfilesTable.id })
+            .from(freelancerProfilesTable)
+            .where(and(
+              eq(freelancerProfilesTable.id, bookingsTable.freelancerId),
+              ilike(freelancerProfilesTable.name, searchPattern),
+            )),
+        ),
+        exists(
+          db.select({ id: employerProfilesTable.id })
+            .from(employerProfilesTable)
+            .where(and(
+              eq(employerProfilesTable.id, bookingsTable.employerId),
+              ilike(employerProfilesTable.companyName, searchPattern),
+            )),
+        ),
+      )!);
+    }
 
     const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
     const { page, pageSize, offset } = parsePagination(params);

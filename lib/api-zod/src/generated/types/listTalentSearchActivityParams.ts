@@ -5,6 +5,7 @@
  * TalentLock API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { ListTalentSearchActivityDecision } from "./listTalentSearchActivityDecision";
 
 export type ListTalentSearchActivityParams = {
   /**
@@ -16,4 +17,13 @@ export type ListTalentSearchActivityParams = {
    * @maximum 100
    */
   pageSize?: number;
+  /**
+   * Keyword search on freelancer name
+   * @maxLength 100
+   */
+  q?: string;
+  /**
+   * Filter by activity decision
+   */
+  decision?: ListTalentSearchActivityDecision;
 };

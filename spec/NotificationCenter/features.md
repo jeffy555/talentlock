@@ -40,6 +40,8 @@ Notifications are written server-side when these events occur. Each event create
 | `agreement_fully_signed` | Both parties sign | Both parties |
 | `meeting_requested` | Employer requests a discovery meeting | Freelancer |
 | `meeting_status_changed` | Meeting accepted, declined, or rescheduled | The other party |
+| `meeting_next_round_panel` | Employer advances discovery meeting to next round and hands off internal notes (`spec/discovery-meeting-outcome/`) | Next-round panel user (when email matches a TalentLock account); otherwise email-only |
+
 | `milestone_completed` | Freelancer marks milestone complete | Employer |
 | `milestone_approved` | Employer approves milestone | Freelancer |
 | `review_received` | Employer submits a review | Freelancer |

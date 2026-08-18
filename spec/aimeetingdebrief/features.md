@@ -228,3 +228,4 @@ Both nullable — meetings confirmed before this feature is deployed have `null`
 - Brief-based booking suggestion — the brief informs the employer but never triggers a booking automatically
 - Brief for cancelled or completed meetings — only active confirmed meetings receive briefs
 - Integration with external calendar or video call tools — brief is TalentLock-internal only
+- **Post-completion hiring decision (internal feedback, next-round panel handoff, or proceed to booking)** — owned by `spec/discovery-meeting-outcome/` (this feature ends at confirmed + brief). Feedback is never sent to the candidate.

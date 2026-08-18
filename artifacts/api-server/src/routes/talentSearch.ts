@@ -2,7 +2,7 @@ import { Router } from "express";
 import { randomUUID } from "crypto";
 import { getAuth } from "@clerk/express";
 import OpenAI from "openai";
-import { and, count, desc, eq, gte, isNull, sql } from "drizzle-orm";
+import { and, count, desc, eq, gte, ilike, isNull, sql, type SQL } from "drizzle-orm";
 import { db } from "@workspace/db";
 import {
   employerProfilesTable,
@@ -20,6 +20,7 @@ import {
 import { logTokenUsage } from "../lib/tokenLogger";
 import { parsePagination, paginatedResponse } from "../lib/paginationUtils";
 import { sanitiseText } from "../lib/sanitise";
+import { sanitiseIlikeQuery } from "../lib/searchUtils";
 import { getNextMidnightUTC, parseHoursValue } from "../lib/cruiseModeUtils";
 import { backfillTalentSearchForEmployer } from "../lib/talentSearchEvaluator";
 import {
@@ -132,7 +133,15 @@ router.get("/talent-search/activity", async (req, res) => {
     if (!ctx) { res.status(403).json({ error: "Employer profile required" }); return; }
 
     const { page, pageSize, offset } = parsePagination(parsed.data);
-    const whereClause = eq(talentSearchActivityTable.employerId, ctx.profile.id);
+    const conditions: SQL[] = [eq(talentSearchActivityTable.employerId, ctx.profile.id)];
+    if (parsed.data.decision) {
+      conditions.push(eq(talentSearchActivityTable.decision, parsed.data.decision));
+    }
+    const searchPattern = parsed.data.q ? sanitiseIlikeQuery(parsed.data.q) : null;
+    if (searchPattern) {
+      conditions.push(ilike(freelancerProfilesTable.name, searchPattern));
+    }
+    const whereClause = and(...conditions)!;
 
     const [rows, countResult] = await Promise.all([
       db
@@ -149,7 +158,14 @@ router.get("/talent-search/activity", async (req, res) => {
         .orderBy(desc(talentSearchActivityTable.createdAt))
         .limit(pageSize)
         .offset(offset),
-      db.select({ count: count() }).from(talentSearchActivityTable).where(whereClause),
+      db
+        .select({ count: count() })
+        .from(talentSearchActivityTable)
+        .innerJoin(
+          freelancerProfilesTable,
+          eq(talentSearchActivityTable.freelancerId, freelancerProfilesTable.id),
+        )
+        .where(whereClause),
     ]);
 
     const total = countResult[0]?.count ?? 0;

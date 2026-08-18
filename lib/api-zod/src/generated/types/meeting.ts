@@ -6,7 +6,9 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { MeetingBrief } from "./meetingBrief";
+import type { MeetingDisposition } from "./meetingDisposition";
 import type { MeetingEmployerVerificationLevel } from "./meetingEmployerVerificationLevel";
+import type { MeetingInterviewResult } from "./meetingInterviewResult";
 
 export interface Meeting {
   id: number;
@@ -39,5 +41,42 @@ export interface Meeting {
   briefContent?: null | MeetingBrief;
   /** @nullable */
   briefGeneratedAt?: Date | null;
+  /**
+   * Deprecated — use disposition
+   * @deprecated
+   * @nullable
+   */
+  interviewResult?: MeetingInterviewResult;
+  /**
+   * Hiring decision after meeting completion (employer/panel only — stripped for freelancers)
+   * @nullable
+   */
+  disposition?: MeetingDisposition;
+  /**
+   * Internal interview notes — never returned to freelancers
+   * @nullable
+   */
+  feedbackText?: string | null;
+  /**
+   * AI-1 handoff summary for next interviewer (next_round)
+   * @nullable
+   */
+  feedbackSummary?: string | null;
+  /** @nullable */
+  feedbackSubmittedAt?: Date | null;
+  /**
+   * Deprecated — candidate DM path removed
+   * @deprecated
+   * @nullable
+   */
+  feedbackMessageId?: number | null;
+  /** @nullable */
+  nextRoundPanelEmail?: string | null;
+  /** @nullable */
+  nextRoundPanelName?: string | null;
+  /** @nullable */
+  nextRoundTeamMemberId?: number | null;
+  /** True when interview outcome has been submitted (employer); always false for freelancers */
+  hasInterviewFeedback: boolean;
   createdAt: Date;
 }

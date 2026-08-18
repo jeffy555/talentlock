@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 export function FloatingChatBox() {
   const { isOpen, selectedId, openInbox, selectConversation, close } = useChatBox();
   const { data: unreadMessages } = useGetMessagesUnreadCount({
-    query: { refetchInterval: 30_000 } as any,
+    query: { refetchInterval: 60_000 } as any,
   });
   const unreadCount = Number(unreadMessages?.count ?? 0);
 

@@ -1,6 +1,7 @@
 import { pgTable, text, serial, timestamp, integer, jsonb } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
+import { teamMembersTable } from "./teams";
 
 /**
  * Cached AI pre-meeting brief for the employer. Generated fire-and-forget when a
@@ -46,6 +47,22 @@ export const meetingsTable = pgTable("meetings", {
   meetingLink: text("meeting_link"),
   briefContent: jsonb("brief_content").$type<MeetingBrief>(),
   briefGeneratedAt: timestamp("brief_generated_at", { withTimezone: true }),
+  /**
+   * Discovery interview outcome — set only via POST /meetings/:id/feedback after completed.
+   * Spec lock 2026-08-01: next_round | proceed_to_booking | rejected
+   */
+  disposition: text("disposition"), // next_round | proceed_to_booking | rejected | null
+  feedbackText: text("feedback_text"),
+  /** AI-1 handoff summary for next interviewer — set on next_round. */
+  feedbackSummary: text("feedback_summary"),
+  feedbackSubmittedAt: timestamp("feedback_submitted_at", { withTimezone: true }),
+  nextRoundPanelEmail: text("next_round_panel_email"),
+  nextRoundPanelName: text("next_round_panel_name"),
+  nextRoundTeamMemberId: integer("next_round_team_member_id").references(() => teamMembersTable.id),
+  /** @deprecated Prefer disposition. Kept nullable during migration. */
+  interviewResult: text("interview_result"), // selected | not_selected | null
+  /** @deprecated Candidate DM path removed — stop writing. */
+  feedbackMessageId: integer("feedback_message_id"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });

@@ -1,6 +1,6 @@
 import { Router, type Request } from "express";
 import { getAuth } from "@clerk/express";
-import { and, asc, count, desc, eq, isNull, or, SQL } from "drizzle-orm";
+import { and, asc, count, desc, eq, exists, ilike, inArray, isNull, ne, or, sql, SQL } from "drizzle-orm";
 import {
   conversations,
   employerProfilesTable,
@@ -12,7 +12,9 @@ import {
   usersTable,
   db,
 } from "@workspace/db";
+import { GetConversationsDirectQueryParams } from "@workspace/api-zod";
 import { parsePagination, paginatedResponse } from "../lib/paginationUtils";
+import { sanitiseIlikeQuery } from "../lib/searchUtils";
 import {
   findOrCreateConversation,
   getUnreadConversationCount,
@@ -64,42 +66,56 @@ router.post("/conversations/direct", async (req, res) => {
     return;
   }
 
-  let employerId: number | null = profiles.employerId;
-  let freelancerId: number | null = profiles.freelancerId;
-  if (employerId != null) freelancerId = bodyFreelancerId;
-  else if (freelancerId != null) employerId = bodyEmployerId;
-  else {
-    res.status(403).json({ error: "No employer or freelancer profile found" });
-    return;
-  }
-  if (employerId == null || freelancerId == null) {
-    res.status(400).json({ error: "Both conversation participants are required" });
-    return;
-  }
-  const resolvedEmployerId = employerId;
-  const resolvedFreelancerId = freelancerId;
+  let employerId: number | null = null;
+  let freelancerId: number | null = null;
 
   try {
+    // Prefer resolving both parties from meeting/booking so clients can pass only the scope id.
+    if (meetingId != null) {
+      const [meeting] = await db.select().from(meetingsTable).where(eq(meetingsTable.id, meetingId)).limit(1);
+      if (!meeting) { res.status(404).json({ error: "Meeting not found" }); return; }
+      const isEmployerParty = profiles.employerId === meeting.employerId;
+      const isFreelancerParty = profiles.freelancerId === meeting.freelancerId;
+      if (!isEmployerParty && !isFreelancerParty) {
+        res.status(403).json({ error: "Meeting is not scoped to both participants" });
+        return;
+      }
+      employerId = meeting.employerId;
+      freelancerId = meeting.freelancerId;
+    } else if (bookingId != null) {
+      const [booking] = await db.select().from(bookingsTable).where(eq(bookingsTable.id, bookingId)).limit(1);
+      if (!booking) { res.status(404).json({ error: "Booking not found" }); return; }
+      const isEmployerParty = profiles.employerId === booking.employerId;
+      const isFreelancerParty = profiles.freelancerId === booking.freelancerId;
+      if (!isEmployerParty && !isFreelancerParty) {
+        res.status(403).json({ error: "Booking is not scoped to both participants" });
+        return;
+      }
+      employerId = booking.employerId;
+      freelancerId = booking.freelancerId;
+    } else {
+      employerId = profiles.employerId;
+      freelancerId = profiles.freelancerId;
+      if (employerId != null) freelancerId = bodyFreelancerId;
+      else if (freelancerId != null) employerId = bodyEmployerId;
+      else {
+        res.status(403).json({ error: "No employer or freelancer profile found" });
+        return;
+      }
+    }
+
+    if (employerId == null || freelancerId == null) {
+      res.status(400).json({ error: "Both conversation participants are required" });
+      return;
+    }
+    const resolvedEmployerId = employerId;
+    const resolvedFreelancerId = freelancerId;
+
     const [freelancer] = await db.select({ id: freelancerProfilesTable.id })
       .from(freelancerProfilesTable).where(eq(freelancerProfilesTable.id, resolvedFreelancerId)).limit(1);
     const [employer] = await db.select({ id: employerProfilesTable.id })
       .from(employerProfilesTable).where(eq(employerProfilesTable.id, resolvedEmployerId)).limit(1);
     if (!freelancer || !employer) { res.status(404).json({ error: "Conversation participant not found" }); return; }
-
-    if (bookingId != null) {
-      const [booking] = await db.select().from(bookingsTable).where(eq(bookingsTable.id, bookingId)).limit(1);
-      if (!booking || booking.employerId !== resolvedEmployerId || booking.freelancerId !== resolvedFreelancerId) {
-        res.status(403).json({ error: "Booking is not scoped to both participants" });
-        return;
-      }
-    }
-    if (meetingId != null) {
-      const [meeting] = await db.select().from(meetingsTable).where(eq(meetingsTable.id, meetingId)).limit(1);
-      if (!meeting || meeting.employerId !== resolvedEmployerId || meeting.freelancerId !== resolvedFreelancerId) {
-        res.status(403).json({ error: "Meeting is not scoped to both participants" });
-        return;
-      }
-    }
 
     const result = await findOrCreateConversation(db, {
       employerId: resolvedEmployerId,
@@ -118,75 +134,218 @@ router.post("/conversations/direct", async (req, res) => {
 router.get("/conversations/direct", async (req, res) => {
   const user = await currentUser(req);
   if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
+  const parsed = GetConversationsDirectQueryParams.safeParse(req.query);
+  if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
+
   const profiles = await profileIdsForUser(user.id);
   const participant: SQL[] = [];
   if (profiles.employerId != null) participant.push(eq(conversations.employerId, profiles.employerId));
   if (profiles.freelancerId != null) participant.push(eq(conversations.freelancerId, profiles.freelancerId));
-  const where = and(eq(conversations.type, "human_direct"), participant.length ? or(...participant) : undefined);
-  const { page, pageSize, offset } = parsePagination(req.query);
+
+  const conditions: SQL[] = [
+    eq(conversations.type, "human_direct"),
+  ];
+  if (participant.length) {
+    conditions.push(or(...participant)!);
+  }
+
+  const searchPattern = parsed.data.q ? sanitiseIlikeQuery(parsed.data.q) : null;
+  if (searchPattern) {
+    const nameFilters: SQL[] = [];
+    if (profiles.employerId != null) {
+      nameFilters.push(and(
+        eq(conversations.employerId, profiles.employerId),
+        exists(
+          db.select({ id: freelancerProfilesTable.id })
+            .from(freelancerProfilesTable)
+            .where(and(
+              eq(freelancerProfilesTable.id, conversations.freelancerId),
+              ilike(freelancerProfilesTable.name, searchPattern),
+            )),
+        ),
+      )!);
+    }
+    if (profiles.freelancerId != null) {
+      nameFilters.push(and(
+        eq(conversations.freelancerId, profiles.freelancerId),
+        exists(
+          db.select({ id: employerProfilesTable.id })
+            .from(employerProfilesTable)
+            .where(and(
+              eq(employerProfilesTable.id, conversations.employerId),
+              ilike(employerProfilesTable.companyName, searchPattern),
+            )),
+        ),
+      )!);
+    }
+    if (nameFilters.length) {
+      conditions.push(or(...nameFilters)!);
+    }
+  }
+
+  if (parsed.data.unread === true) {
+    conditions.push(exists(
+      db.select({ id: messages.id })
+        .from(messages)
+        .where(and(
+          eq(messages.conversationId, conversations.id),
+          humanMessageWhere,
+          isNull(messages.readAt),
+          ne(messages.senderId, user.id),
+        )),
+    ));
+  }
+
+  const where = and(...conditions);
+  const { page, pageSize, offset } = parsePagination(parsed.data);
 
   try {
     const [rows, totalResult] = await Promise.all([
       db.select().from(conversations).where(where).orderBy(desc(conversations.lastMessageAt), desc(conversations.createdAt)).limit(pageSize).offset(offset),
       db.select({ total: count() }).from(conversations).where(where),
     ]);
-    const data = await Promise.all(rows.map(async (conversation) => {
-      const isEmployer = profiles.employerId === conversation.employerId;
-      const otherProfileId = isEmployer ? conversation.freelancerId : conversation.employerId;
-      const [other] = await db.select({
-        name: isEmployer ? freelancerProfilesTable.name : employerProfilesTable.companyName,
-        avatarUrl: usersTable.avatarUrl,
-        userId: isEmployer ? freelancerProfilesTable.userId : employerProfilesTable.userId,
-      })
-        .from(isEmployer ? freelancerProfilesTable : employerProfilesTable)
-        .innerJoin(usersTable, eq(
-          isEmployer ? freelancerProfilesTable.userId : employerProfilesTable.userId,
-          usersTable.id,
-        ))
-        .where(eq(
-          isEmployer ? freelancerProfilesTable.id : employerProfilesTable.id,
-          otherProfileId ?? -1,
-        ))
-        .limit(1);
-      const [last] = await db.select({ content: messages.content, createdAt: messages.createdAt })
-        .from(messages)
-        .where(and(eq(messages.conversationId, conversation.id), humanMessageWhere))
-        .orderBy(desc(messages.createdAt))
-        .limit(1);
-      const [unread] = await db.select({ total: count() })
+
+    if (rows.length === 0) {
+      res.json(paginatedResponse([], Number(totalResult[0]?.total ?? 0), page, pageSize));
+      return;
+    }
+
+    const conversationIds = rows.map((r) => r.id);
+    const freelancerIds = [...new Set(rows.map((r) => r.freelancerId).filter((id): id is number => id != null))];
+    const employerIds = [...new Set(rows.map((r) => r.employerId).filter((id): id is number => id != null))];
+    const bookingIds = [...new Set(rows.map((r) => r.bookingId).filter((id): id is number => id != null))];
+    const meetingIds = [...new Set(rows.map((r) => r.meetingId).filter((id): id is number => id != null))];
+
+    const [
+      freelancerParties,
+      employerParties,
+      lastMessageRows,
+      unreadRows,
+      bookingRows,
+      meetingRows,
+    ] = await Promise.all([
+      freelancerIds.length
+        ? db
+          .select({
+            id: freelancerProfilesTable.id,
+            name: freelancerProfilesTable.name,
+            avatarUrl: usersTable.avatarUrl,
+            userId: freelancerProfilesTable.userId,
+          })
+          .from(freelancerProfilesTable)
+          .innerJoin(usersTable, eq(freelancerProfilesTable.userId, usersTable.id))
+          .where(inArray(freelancerProfilesTable.id, freelancerIds))
+        : Promise.resolve([]),
+      employerIds.length
+        ? db
+          .select({
+            id: employerProfilesTable.id,
+            name: employerProfilesTable.companyName,
+            avatarUrl: usersTable.avatarUrl,
+            userId: employerProfilesTable.userId,
+          })
+          .from(employerProfilesTable)
+          .innerJoin(usersTable, eq(employerProfilesTable.userId, usersTable.id))
+          .where(inArray(employerProfilesTable.id, employerIds))
+        : Promise.resolve([]),
+      db.execute<{ conversation_id: number; content: string; created_at: Date }>(sql`
+        SELECT DISTINCT ON (conversation_id)
+          conversation_id,
+          content,
+          created_at
+        FROM messages
+        WHERE conversation_id IN (${sql.join(conversationIds.map((id) => sql`${id}`), sql`, `)})
+          AND role IN ('human_employer', 'human_freelancer')
+        ORDER BY conversation_id, created_at DESC
+      `),
+      db
+        .select({
+          conversationId: messages.conversationId,
+          total: count(),
+        })
         .from(messages)
         .where(and(
-          eq(messages.conversationId, conversation.id),
+          inArray(messages.conversationId, conversationIds),
           humanMessageWhere,
           isNull(messages.readAt),
-          profiles.employerId === conversation.employerId
-            ? eq(messages.senderId, other?.userId ?? -1)
-            : eq(messages.senderId, other?.userId ?? -1),
-        ));
+          ne(messages.senderId, user.id),
+        ))
+        .groupBy(messages.conversationId),
+      bookingIds.length
+        ? db
+          .select({
+            id: bookingsTable.id,
+            jobRequirementId: bookingsTable.jobRequirementId,
+          })
+          .from(bookingsTable)
+          .where(inArray(bookingsTable.id, bookingIds))
+        : Promise.resolve([]),
+      meetingIds.length
+        ? db
+          .select({ id: meetingsTable.id, title: meetingsTable.title })
+          .from(meetingsTable)
+          .where(inArray(meetingsTable.id, meetingIds))
+        : Promise.resolve([]),
+    ]);
+
+    const jobIds = [
+      ...new Set(
+        bookingRows
+          .map((b) => b.jobRequirementId)
+          .filter((id): id is number => id != null),
+      ),
+    ];
+    const jobRows = jobIds.length
+      ? await db
+        .select({ id: jobRequirementsTable.id, title: jobRequirementsTable.title })
+        .from(jobRequirementsTable)
+        .where(inArray(jobRequirementsTable.id, jobIds))
+      : [];
+
+    const freelancerById = new Map(freelancerParties.map((p) => [p.id, p]));
+    const employerById = new Map(employerParties.map((p) => [p.id, p]));
+    const lastMessageList = Array.isArray(lastMessageRows)
+      ? lastMessageRows
+      : ((lastMessageRows as { rows?: Array<{ conversation_id: number; content: string; created_at: Date }> }).rows ?? []);
+    const lastByConversation = new Map(
+      lastMessageList.map((row) => [
+        row.conversation_id,
+        { content: row.content, createdAt: row.created_at },
+      ]),
+    );
+    const unreadByConversation = new Map(unreadRows.map((r) => [r.conversationId, Number(r.total)]));
+    const bookingById = new Map(bookingRows.map((b) => [b.id, b]));
+    const jobById = new Map(jobRows.map((j) => [j.id, j]));
+    const meetingById = new Map(meetingRows.map((m) => [m.id, m]));
+
+    const data = rows.map((conversation) => {
+      const isEmployer = profiles.employerId === conversation.employerId;
+      const other = isEmployer
+        ? (conversation.freelancerId != null ? freelancerById.get(conversation.freelancerId) : undefined)
+        : (conversation.employerId != null ? employerById.get(conversation.employerId) : undefined);
+      const last = lastByConversation.get(conversation.id);
+
       let context: { bookingTitle?: string; meetingTitle?: string } = {};
       if (conversation.bookingId != null) {
-        const [booking] = await db.select({ jobRequirementId: bookingsTable.jobRequirementId })
-          .from(bookingsTable).where(eq(bookingsTable.id, conversation.bookingId)).limit(1);
-        const [job] = booking?.jobRequirementId
-          ? await db.select({ title: jobRequirementsTable.title })
-            .from(jobRequirementsTable).where(eq(jobRequirementsTable.id, booking.jobRequirementId)).limit(1)
-          : [];
+        const booking = bookingById.get(conversation.bookingId);
+        const job = booking?.jobRequirementId != null ? jobById.get(booking.jobRequirementId) : undefined;
         context = { bookingTitle: job?.title ?? "Booking" };
       } else if (conversation.meetingId != null) {
-        const [meeting] = await db.select({ title: meetingsTable.title })
-          .from(meetingsTable).where(eq(meetingsTable.id, conversation.meetingId)).limit(1);
+        const meeting = meetingById.get(conversation.meetingId);
         context = { meetingTitle: meeting?.title ?? "Discovery Meeting" };
       }
+
       return {
         conversationId: conversation.id,
         otherPartyName: other?.name ?? "Deleted User",
         otherPartyAvatar: other?.avatarUrl ?? null,
         lastMessagePreview: last?.content?.slice(0, 60) ?? "",
         lastMessageAt: last?.createdAt ?? conversation.lastMessageAt ?? conversation.createdAt,
-        unreadCount: Number(unread?.total ?? 0),
+        unreadCount: unreadByConversation.get(conversation.id) ?? 0,
         ...context,
       };
-    }));
+    });
+
     res.json(paginatedResponse(data, Number(totalResult[0]?.total ?? 0), page, pageSize));
   } catch (err) {
     req.log.error({ err }, "Failed to list direct conversations");

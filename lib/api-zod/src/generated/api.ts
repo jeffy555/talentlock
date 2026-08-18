@@ -1079,39 +1079,62 @@ export const UpsertMyEmployerProfileResponse = zod.object({
 /**
  * @summary List job requirements
  */
+export const listJobRequirementsQueryQMax = 100;
+
+export const listJobRequirementsQueryPageDefault = 1;
+
+export const listJobRequirementsQueryPageSizeDefault = 20;
+export const listJobRequirementsQueryPageSizeMax = 100;
+
 export const ListJobRequirementsQueryParams = zod.object({
   employerId: zod.coerce.number().optional().describe("Filter by employer"),
-  status: zod.coerce
-    .string()
+  status: zod
+    .enum(["open", "filled", "closed"])
     .optional()
     .describe("Filter by status (open, filled, closed)"),
+  q: zod.coerce
+    .string()
+    .max(listJobRequirementsQueryQMax)
+    .optional()
+    .describe("Keyword search (title, description)"),
+  page: zod.coerce.number().min(1).default(listJobRequirementsQueryPageDefault),
+  pageSize: zod.coerce
+    .number()
+    .min(1)
+    .max(listJobRequirementsQueryPageSizeMax)
+    .default(listJobRequirementsQueryPageSizeDefault),
 });
 
-export const ListJobRequirementsResponseItem = zod.object({
-  id: zod.number(),
-  employerId: zod.number(),
-  employerVerificationLevel: zod.enum([
-    "unverified",
-    "partially_verified",
-    "fully_verified",
-  ]),
-  title: zod.string(),
-  fieldOfWork: zod.string(),
-  description: zod.string(),
-  requiredSkills: zod.array(zod.string()),
-  minExperience: zod.number(),
-  paymentType: zod.string().describe("hourly or daily"),
-  budget: zod.number().nullish(),
-  startDate: zod.coerce.date(),
-  endDate: zod.coerce.date(),
-  status: zod.string().describe("open, filled, closed"),
-  professionCategory: zod.enum(["technology", "education"]),
-  rateType: zod.enum(["hourly", "per_day", "per_session", "per_course"]),
-  createdAt: zod.coerce.date(),
+export const ListJobRequirementsResponse = zod.object({
+  data: zod.array(
+    zod.object({
+      id: zod.number(),
+      employerId: zod.number(),
+      employerVerificationLevel: zod.enum([
+        "unverified",
+        "partially_verified",
+        "fully_verified",
+      ]),
+      title: zod.string(),
+      fieldOfWork: zod.string(),
+      description: zod.string(),
+      requiredSkills: zod.array(zod.string()),
+      minExperience: zod.number(),
+      paymentType: zod.string().describe("hourly or daily"),
+      budget: zod.number().nullish(),
+      startDate: zod.coerce.date(),
+      endDate: zod.coerce.date(),
+      status: zod.string().describe("open, filled, closed"),
+      professionCategory: zod.enum(["technology", "education"]),
+      rateType: zod.enum(["hourly", "per_day", "per_session", "per_course"]),
+      createdAt: zod.coerce.date(),
+    }),
+  ),
+  total: zod.number(),
+  page: zod.number(),
+  pageSize: zod.number(),
+  totalPages: zod.number(),
 });
-export const ListJobRequirementsResponse = zod.array(
-  ListJobRequirementsResponseItem,
-);
 
 /**
  * @summary Create a job requirement
@@ -1421,6 +1444,7 @@ export const getTokenUsageMeResponseBreakdownCruiseModeParseDefault = 0;
 export const getTokenUsageMeResponseBreakdownCruiseModeEvaluationDefault = 0;
 export const getTokenUsageMeResponseBreakdownTalentSearchParseDefault = 0;
 export const getTokenUsageMeResponseBreakdownTalentSearchEvaluationDefault = 0;
+export const getTokenUsageMeResponseBreakdownInterviewHandoffSummaryDefault = 0;
 
 export const GetTokenUsageMeResponse = zod.object({
   plan: zod.string(),
@@ -1477,6 +1501,9 @@ export const GetTokenUsageMeResponse = zod.object({
     talent_search_evaluation: zod
       .number()
       .default(getTokenUsageMeResponseBreakdownTalentSearchEvaluationDefault),
+    interview_handoff_summary: zod
+      .number()
+      .default(getTokenUsageMeResponseBreakdownInterviewHandoffSummaryDefault),
   }),
 });
 
@@ -1509,14 +1536,18 @@ export const listBookingsQueryPageDefault = 1;
 export const listBookingsQueryPageSizeDefault = 20;
 
 export const ListBookingsQueryParams = zod.object({
-  status: zod.coerce
-    .string()
+  status: zod
+    .enum(["pending", "negotiating", "active", "completed", "cancelled"])
     .optional()
-    .describe("Filter by status (active, completed, cancelled)"),
+    .describe("Filter by booking status"),
   role: zod.coerce
     .string()
     .optional()
     .describe("Filter by role (freelancer, employer)"),
+  q: zod.coerce
+    .string()
+    .optional()
+    .describe("Keyword search across counterparty name, message, and notes"),
   page: zod.coerce.number().default(listBookingsQueryPageDefault),
   pageSize: zod.coerce.number().default(listBookingsQueryPageSizeDefault),
 });
@@ -1859,12 +1890,14 @@ export const listAgreementsQueryPageDefault = 1;
 export const listAgreementsQueryPageSizeDefault = 20;
 
 export const ListAgreementsQueryParams = zod.object({
-  status: zod.coerce
+  status: zod
+    .enum(["draft", "redlined", "partially_signed", "fully_signed"])
+    .optional()
+    .describe("Filter by agreement status"),
+  q: zod.coerce
     .string()
     .optional()
-    .describe(
-      "Filter by status (draft, redlined, partially_signed, fully_signed)",
-    ),
+    .describe("Keyword search across counterparty name and upload filename"),
   page: zod.coerce.number().default(listAgreementsQueryPageDefault),
   pageSize: zod.coerce.number().default(listAgreementsQueryPageSizeDefault),
 });
@@ -2685,6 +2718,14 @@ export const listMeetingsQueryPageDefault = 1;
 export const listMeetingsQueryPageSizeDefault = 20;
 
 export const ListMeetingsQueryParams = zod.object({
+  status: zod
+    .enum(["pending", "confirmed", "completed", "cancelled"])
+    .optional()
+    .describe("Filter by meeting status"),
+  q: zod.coerce
+    .string()
+    .optional()
+    .describe("Keyword search across title, agenda, and counterparty name"),
   page: zod.coerce.number().default(listMeetingsQueryPageDefault),
   pageSize: zod.coerce.number().default(listMeetingsQueryPageSizeDefault),
 });
@@ -2751,6 +2792,37 @@ export const ListMeetingsResponse = zod.object({
         ])
         .optional(),
       briefGeneratedAt: zod.coerce.date().nullish(),
+      interviewResult: zod
+        .enum(["selected", "not_selected"])
+        .nullish()
+        .describe("Deprecated — use disposition"),
+      disposition: zod
+        .enum(["next_round", "proceed_to_booking", "rejected"])
+        .nullish()
+        .describe(
+          "Hiring decision after meeting completion (employer\/panel only — stripped for freelancers)",
+        ),
+      feedbackText: zod
+        .string()
+        .nullish()
+        .describe("Internal interview notes — never returned to freelancers"),
+      feedbackSummary: zod
+        .string()
+        .nullish()
+        .describe("AI-1 handoff summary for next interviewer (next_round)"),
+      feedbackSubmittedAt: zod.coerce.date().nullish(),
+      feedbackMessageId: zod
+        .number()
+        .nullish()
+        .describe("Deprecated — candidate DM path removed"),
+      nextRoundPanelEmail: zod.string().email().nullish(),
+      nextRoundPanelName: zod.string().nullish(),
+      nextRoundTeamMemberId: zod.number().nullish(),
+      hasInterviewFeedback: zod
+        .boolean()
+        .describe(
+          "True when interview outcome has been submitted (employer); always false for freelancers",
+        ),
       createdAt: zod.coerce.date(),
     }),
   ),
@@ -2839,6 +2911,37 @@ export const GetMeetingResponse = zod.object({
     ])
     .optional(),
   briefGeneratedAt: zod.coerce.date().nullish(),
+  interviewResult: zod
+    .enum(["selected", "not_selected"])
+    .nullish()
+    .describe("Deprecated — use disposition"),
+  disposition: zod
+    .enum(["next_round", "proceed_to_booking", "rejected"])
+    .nullish()
+    .describe(
+      "Hiring decision after meeting completion (employer\/panel only — stripped for freelancers)",
+    ),
+  feedbackText: zod
+    .string()
+    .nullish()
+    .describe("Internal interview notes — never returned to freelancers"),
+  feedbackSummary: zod
+    .string()
+    .nullish()
+    .describe("AI-1 handoff summary for next interviewer (next_round)"),
+  feedbackSubmittedAt: zod.coerce.date().nullish(),
+  feedbackMessageId: zod
+    .number()
+    .nullish()
+    .describe("Deprecated — candidate DM path removed"),
+  nextRoundPanelEmail: zod.string().email().nullish(),
+  nextRoundPanelName: zod.string().nullish(),
+  nextRoundTeamMemberId: zod.number().nullish(),
+  hasInterviewFeedback: zod
+    .boolean()
+    .describe(
+      "True when interview outcome has been submitted (employer); always false for freelancers",
+    ),
   createdAt: zod.coerce.date(),
 });
 
@@ -2918,6 +3021,37 @@ export const UpdateMeetingResponse = zod.object({
     ])
     .optional(),
   briefGeneratedAt: zod.coerce.date().nullish(),
+  interviewResult: zod
+    .enum(["selected", "not_selected"])
+    .nullish()
+    .describe("Deprecated — use disposition"),
+  disposition: zod
+    .enum(["next_round", "proceed_to_booking", "rejected"])
+    .nullish()
+    .describe(
+      "Hiring decision after meeting completion (employer\/panel only — stripped for freelancers)",
+    ),
+  feedbackText: zod
+    .string()
+    .nullish()
+    .describe("Internal interview notes — never returned to freelancers"),
+  feedbackSummary: zod
+    .string()
+    .nullish()
+    .describe("AI-1 handoff summary for next interviewer (next_round)"),
+  feedbackSubmittedAt: zod.coerce.date().nullish(),
+  feedbackMessageId: zod
+    .number()
+    .nullish()
+    .describe("Deprecated — candidate DM path removed"),
+  nextRoundPanelEmail: zod.string().email().nullish(),
+  nextRoundPanelName: zod.string().nullish(),
+  nextRoundTeamMemberId: zod.number().nullish(),
+  hasInterviewFeedback: zod
+    .boolean()
+    .describe(
+      "True when interview outcome has been submitted (employer); always false for freelancers",
+    ),
   createdAt: zod.coerce.date(),
 });
 
@@ -2926,6 +3060,58 @@ export const UpdateMeetingResponse = zod.object({
  */
 export const GenerateMeetingBriefParams = zod.object({
   id: zod.coerce.number(),
+});
+
+/**
+ * @summary Submit discovery interview outcome (employer only, completed meetings)
+ */
+export const PostMeetingFeedbackParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const postMeetingFeedbackBodyFeedbackTextMin = 20;
+export const postMeetingFeedbackBodyFeedbackTextMax = 2000;
+
+export const postMeetingFeedbackBodyNextRoundPanelNameMax = 200;
+
+export const PostMeetingFeedbackBody = zod.object({
+  disposition: zod.enum(["next_round", "proceed_to_booking", "rejected"]),
+  feedbackText: zod
+    .string()
+    .min(postMeetingFeedbackBodyFeedbackTextMin)
+    .max(postMeetingFeedbackBodyFeedbackTextMax),
+  nextRoundTeamMemberId: zod
+    .number()
+    .optional()
+    .describe(
+      "Required for next_round when employer has an active team with members",
+    ),
+  nextRoundPanelEmail: zod
+    .string()
+    .email()
+    .optional()
+    .describe("Required for next_round when no team member is selected"),
+  nextRoundPanelName: zod
+    .string()
+    .max(postMeetingFeedbackBodyNextRoundPanelNameMax)
+    .optional(),
+});
+
+/**
+ * @summary Get employer hiring-file notes for a freelancer (F2)
+ */
+export const GetEmployerCandidateNotesParams = zod.object({
+  freelancerId: zod.coerce.number(),
+});
+
+export const GetEmployerCandidateNotesResponse = zod.object({
+  freelancerId: zod.number(),
+  disposition: zod.enum(["proceed_to_booking", "rejected"]),
+  feedbackText: zod.string(),
+  feedbackSummary: zod.string().nullish(),
+  latestMeetingId: zod.number().nullish(),
+  updatedAt: zod.coerce.date(),
+  createdAt: zod.coerce.date(),
 });
 
 /**
@@ -2951,6 +3137,8 @@ export const getConversationsDirectQueryPageDefault = 1;
 export const getConversationsDirectQueryPageSizeDefault = 20;
 export const getConversationsDirectQueryPageSizeMax = 100;
 
+export const getConversationsDirectQueryQMax = 100;
+
 export const GetConversationsDirectQueryParams = zod.object({
   page: zod.coerce
     .number()
@@ -2961,6 +3149,17 @@ export const GetConversationsDirectQueryParams = zod.object({
     .min(1)
     .max(getConversationsDirectQueryPageSizeMax)
     .default(getConversationsDirectQueryPageSizeDefault),
+  q: zod.coerce
+    .string()
+    .max(getConversationsDirectQueryQMax)
+    .optional()
+    .describe("Keyword search on counterparty display name"),
+  unread: zod.coerce
+    .boolean()
+    .optional()
+    .describe(
+      "When true, only conversations with unread messages from the other party",
+    ),
 });
 
 export const GetConversationsDirectResponse = zod.object({
@@ -5013,6 +5212,8 @@ export const listCruiseModeActivityQueryPageDefault = 1;
 export const listCruiseModeActivityQueryPageSizeDefault = 20;
 export const listCruiseModeActivityQueryPageSizeMax = 100;
 
+export const listCruiseModeActivityQueryQMax = 100;
+
 export const ListCruiseModeActivityQueryParams = zod.object({
   page: zod.coerce
     .number()
@@ -5023,6 +5224,22 @@ export const ListCruiseModeActivityQueryParams = zod.object({
     .min(1)
     .max(listCruiseModeActivityQueryPageSizeMax)
     .default(listCruiseModeActivityQueryPageSizeDefault),
+  q: zod.coerce
+    .string()
+    .max(listCruiseModeActivityQueryQMax)
+    .optional()
+    .describe("Keyword search on job title"),
+  decision: zod
+    .enum([
+      "sent",
+      "dry_run_would_send",
+      "skipped",
+      "prefilter_rejected",
+      "duplicate_skipped",
+      "dm_failed",
+    ])
+    .optional()
+    .describe("Filter by activity decision"),
 });
 
 export const ListCruiseModeActivityResponse = zod.object({
@@ -5636,6 +5853,8 @@ export const listTalentSearchActivityQueryPageDefault = 1;
 export const listTalentSearchActivityQueryPageSizeDefault = 20;
 export const listTalentSearchActivityQueryPageSizeMax = 100;
 
+export const listTalentSearchActivityQueryQMax = 100;
+
 export const ListTalentSearchActivityQueryParams = zod.object({
   page: zod.coerce
     .number()
@@ -5646,6 +5865,22 @@ export const ListTalentSearchActivityQueryParams = zod.object({
     .min(1)
     .max(listTalentSearchActivityQueryPageSizeMax)
     .default(listTalentSearchActivityQueryPageSizeDefault),
+  q: zod.coerce
+    .string()
+    .max(listTalentSearchActivityQueryQMax)
+    .optional()
+    .describe("Keyword search on freelancer name"),
+  decision: zod
+    .enum([
+      "sent",
+      "dry_run_would_send",
+      "skipped",
+      "prefilter_rejected",
+      "duplicate_skipped",
+      "dm_failed",
+    ])
+    .optional()
+    .describe("Filter by activity decision"),
 });
 
 export const ListTalentSearchActivityResponse = zod.object({

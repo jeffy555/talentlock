@@ -188,6 +188,6 @@ This is a one-line frontend addition. Zero backend changes. Zero new API routes.
 - Advanced search with boolean operators, fuzzy matching, or relevance tuning
 - Profile completeness gamification (badges, leaderboards)
 - Employer-submitted feedback for freelancer profile improvement
-- Meeting list pagination (meetings are typically few — defer if usage grows)
+- Meeting list pagination (meetings are typically few — defer if usage grows) — **superseded:** basic pagination shipped in Module 5; full search/filter/page-size-10 UX lives in `spec/engagement-lists/`
 - Infinite scroll on list pages (use page-based pagination for consistency)
-- Filtering bookings/agreements by status on the list page (separate feature)
+- Filtering bookings/agreements by status on the list page (separate feature) — **moved to** `spec/engagement-lists/`

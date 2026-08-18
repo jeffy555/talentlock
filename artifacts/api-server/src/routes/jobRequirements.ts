@@ -2,7 +2,7 @@ import { Router } from "express";
 import { getAuth } from "@clerk/express";
 import { db } from "@workspace/db";
 import { jobRequirementsTable, employerProfilesTable, usersTable } from "@workspace/db";
-import { eq, and, gte, sql, SQL } from "drizzle-orm";
+import { eq, and, gte, sql, SQL, or, ilike, count, desc } from "drizzle-orm";
 import {
   CreateJobRequirementBody,
   UpdateJobRequirementBody,
@@ -12,12 +12,14 @@ import { getUserSubscription, checkLimit } from "../lib/subscriptionGating";
 import { sanitiseText } from "../lib/sanitise";
 import { resolveUserByClerkId, canAccessJobRequirement } from "../lib/accessControl";
 import { evaluateCruiseModeForNewJob } from "../lib/cruiseModeEvaluator";
+import { parsePagination, paginatedResponse } from "../lib/paginationUtils";
+import { sanitiseIlikeQuery } from "../lib/searchUtils";
 
 const router = Router();
 
 router.get("/job-requirements", async (req, res) => {
   const parsed = ListJobRequirementsQueryParams.safeParse(req.query);
-  const params = parsed.success ? parsed.data : {};
+  const params = parsed.success ? parsed.data : { page: 1, pageSize: 20 };
   try {
     const conditions: SQL[] = [];
     if (params.employerId !== undefined) {
@@ -26,15 +28,37 @@ router.get("/job-requirements", async (req, res) => {
     if (params.status) {
       conditions.push(eq(jobRequirementsTable.status, params.status));
     }
-    const results = conditions.length > 0
-      ? await db.select({ job: jobRequirementsTable, verificationLevel: employerProfilesTable.verificationLevel })
+    const searchPattern = params.q ? sanitiseIlikeQuery(params.q) : null;
+    if (searchPattern) {
+      conditions.push(or(
+        ilike(jobRequirementsTable.title, searchPattern),
+        ilike(jobRequirementsTable.description, searchPattern),
+      )!);
+    }
+
+    const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+    const { page, pageSize, offset } = parsePagination(params);
+
+    const [results, countResult] = await Promise.all([
+      db.select({ job: jobRequirementsTable, verificationLevel: employerProfilesTable.verificationLevel })
         .from(jobRequirementsTable)
         .leftJoin(employerProfilesTable, eq(jobRequirementsTable.employerId, employerProfilesTable.id))
-        .where(and(...conditions))
-      : await db.select({ job: jobRequirementsTable, verificationLevel: employerProfilesTable.verificationLevel })
+        .where(whereClause)
+        .orderBy(desc(jobRequirementsTable.createdAt))
+        .limit(pageSize)
+        .offset(offset),
+      db.select({ count: count() })
         .from(jobRequirementsTable)
-        .leftJoin(employerProfilesTable, eq(jobRequirementsTable.employerId, employerProfilesTable.id));
-    res.json(results.map((row) => mapJob(row.job, row.verificationLevel)));
+        .where(whereClause),
+    ]);
+
+    const total = Number(countResult[0]?.count ?? 0);
+    res.json(paginatedResponse(
+      results.map((row) => mapJob(row.job, row.verificationLevel)),
+      total,
+      page,
+      pageSize,
+    ));
   } catch (err) {
     req.log.error({ err }, "Failed to list job requirements");
     res.status(500).json({ error: "Internal server error" });

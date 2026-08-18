@@ -1,14 +1,14 @@
 import { useParams, useLocation } from "wouter";
 import { useGetMeeting, useUpdateMeeting, useGetMe, useGetMySubscription } from "@workspace/api-client-react";
 import { MeetingBriefCard } from "@/components/meetings/MeetingBriefCard";
-import { MeetingMessageThread } from "@/components/messages/MeetingMessageThread";
+import { MeetingOutcomeCard } from "@/components/meetings/MeetingOutcomeCard";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import {
   ArrowLeft, Calendar, Clock, Users, Video, CheckCircle2,
-  XCircle, ExternalLink, ArrowRight, BookOpen,
+  XCircle, ExternalLink, BookOpen,
 } from "lucide-react";
 import { Link } from "wouter";
 import { VerifiedEmployerBadge } from "@/components/employer/VerifiedEmployerBadge";
@@ -42,7 +42,7 @@ export default function MeetingDetail() {
     try {
       await updateMeeting.mutateAsync({ id: parseInt(id!), data: { status } });
       toast({ title: `Meeting ${status}`, description: `The meeting has been marked as ${status}.` });
-      refetch();
+      await refetch();
     } catch {
       toast({ title: "Update failed", variant: "destructive" });
     }
@@ -95,21 +95,13 @@ export default function MeetingDetail() {
         </Button>
       </div>
 
-      {/* "Proceed to book" banner after completed meeting */}
-      {isCompleted && isEmployer && (
-        <div className="flex items-center justify-between gap-3 rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">
-          <div>
-            <p className="font-semibold">Meeting completed — ready to move forward?</p>
-            <p className="mt-0.5 text-green-700">
-              You can now book {meeting.freelancerName} and generate a legal agreement.
-            </p>
-          </div>
-          <Button size="sm" asChild>
-            <Link href={`/freelancers/${meeting.freelancerId}`}>
-              Book Now <ArrowRight className="h-3.5 w-3.5 ml-1.5" />
-            </Link>
-          </Button>
-        </div>
+      {/* Interview outcome — prominent after completed */}
+      {isCompleted && (
+        <MeetingOutcomeCard
+          meeting={meeting}
+          isEmployer={isEmployer}
+          onSubmitted={() => refetch()}
+        />
       )}
 
       <Card>
@@ -185,13 +177,6 @@ export default function MeetingDetail() {
               }}
             />
           )}
-
-          <div className="border-t pt-4 space-y-3">
-            <h2 className="font-serif text-xl font-semibold">Messages</h2>
-            <div className="rounded-lg border border-border overflow-hidden">
-              <MeetingMessageThread meetingId={meeting.id} />
-            </div>
-          </div>
 
           {/* Calendar export — quick access to all major calendar apps */}
           {!isCancelled && (

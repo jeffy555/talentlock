@@ -15,6 +15,8 @@ import {
   tokenUsage,
   messages,
   employerDocumentsTable,
+  meetingsTable,
+  employerCandidateNotesTable,
 } from "@workspace/db";
 import { and, eq, inArray, or, SQL } from "drizzle-orm";
 import { deleteCachedAgreementPdfsForUser } from "./agreementPdfCache";
@@ -157,6 +159,29 @@ export async function anonymiseUserData(
         })
         .where(or(...bookingPartyConditions));
     }
+
+    const meetingPartyConditions: SQL[] = [];
+    if (freelancer) meetingPartyConditions.push(eq(meetingsTable.freelancerId, freelancer.id));
+    if (employer) meetingPartyConditions.push(eq(meetingsTable.employerId, employer.id));
+    if (meetingPartyConditions.length > 0) {
+      await tx
+        .update(meetingsTable)
+        .set({
+          feedbackText: null,
+          feedbackSummary: null,
+          disposition: null,
+          nextRoundPanelEmail: null,
+          nextRoundPanelName: null,
+          nextRoundTeamMemberId: null,
+          interviewResult: null,
+          feedbackSubmittedAt: null,
+          feedbackMessageId: null,
+          updatedAt: new Date(),
+        })
+        .where(or(...meetingPartyConditions));
+    }
+
+    await tx.delete(employerCandidateNotesTable).where(eq(employerCandidateNotesTable.employerUserId, userId));
 
     await tx.delete(notificationsTable).where(eq(notificationsTable.userId, userId));
     await tx.delete(tokenUsage).where(eq(tokenUsage.userId, userId));

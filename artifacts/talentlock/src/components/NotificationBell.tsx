@@ -17,7 +17,7 @@ export function NotificationBell({ userId, triggerClassName }: NotificationBellP
   const { data, isLoading } = useGetNotificationsUnreadCount({
     query: {
       enabled: !!userId,
-      refetchInterval: 30_000,
+      refetchInterval: 60_000,
       refetchIntervalInBackground: false,
     } as any,
   });

@@ -72,6 +72,7 @@ import type {
   DocumentsUploadUrlBody,
   DocumentsUploadUrlResponse,
   EarningsIntelligence,
+  EmployerCandidateNotes,
   EmployerDocumentConfirmBody,
   EmployerDocumentConfirmResponse,
   EmployerDocumentType,
@@ -131,6 +132,7 @@ import type {
   PaginatedAgreementsResult,
   PaginatedBookingsResult,
   PaginatedCruiseModeActivityResult,
+  PaginatedJobRequirementsResult,
   PaginatedMeetingsResult,
   PaginatedTalentSearchActivityResult,
   ParseCruiseModeRulesBody,
@@ -160,6 +162,7 @@ import type {
   PostAiProposalBody,
   PostAiRateSuggestionBody,
   PostBookingDebrief202,
+  PostMeetingFeedbackBody,
   PublicFreelancerProfile,
   PublicReview,
   RateSuggestionResponse,
@@ -1897,11 +1900,14 @@ export const getListJobRequirementsUrl = (
 export const listJobRequirements = async (
   params?: ListJobRequirementsParams,
   options?: RequestInit,
-): Promise<JobRequirement[]> => {
-  return customFetch<JobRequirement[]>(getListJobRequirementsUrl(params), {
-    ...options,
-    method: "GET",
-  });
+): Promise<PaginatedJobRequirementsResult> => {
+  return customFetch<PaginatedJobRequirementsResult>(
+    getListJobRequirementsUrl(params),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
 };
 
 export const getListJobRequirementsQueryKey = (
@@ -5680,6 +5686,191 @@ export const useGenerateMeetingBrief = <
 > => {
   return useMutation(getGenerateMeetingBriefMutationOptions(options));
 };
+
+/**
+ * @summary Submit discovery interview outcome (employer only, completed meetings)
+ */
+export const getPostMeetingFeedbackUrl = (id: number) => {
+  return `/api/meetings/${id}/feedback`;
+};
+
+export const postMeetingFeedback = async (
+  id: number,
+  postMeetingFeedbackBody: PostMeetingFeedbackBody,
+  options?: RequestInit,
+): Promise<Meeting> => {
+  return customFetch<Meeting>(getPostMeetingFeedbackUrl(id), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(postMeetingFeedbackBody),
+  });
+};
+
+export const getPostMeetingFeedbackMutationOptions = <
+  TError = ErrorType<ErrorEnvelope | PlanLimitError>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof postMeetingFeedback>>,
+    TError,
+    { id: number; data: BodyType<PostMeetingFeedbackBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof postMeetingFeedback>>,
+  TError,
+  { id: number; data: BodyType<PostMeetingFeedbackBody> },
+  TContext
+> => {
+  const mutationKey = ["postMeetingFeedback"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof postMeetingFeedback>>,
+    { id: number; data: BodyType<PostMeetingFeedbackBody> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return postMeetingFeedback(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type PostMeetingFeedbackMutationResult = NonNullable<
+  Awaited<ReturnType<typeof postMeetingFeedback>>
+>;
+export type PostMeetingFeedbackMutationBody = BodyType<PostMeetingFeedbackBody>;
+export type PostMeetingFeedbackMutationError = ErrorType<
+  ErrorEnvelope | PlanLimitError
+>;
+
+/**
+ * @summary Submit discovery interview outcome (employer only, completed meetings)
+ */
+export const usePostMeetingFeedback = <
+  TError = ErrorType<ErrorEnvelope | PlanLimitError>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof postMeetingFeedback>>,
+    TError,
+    { id: number; data: BodyType<PostMeetingFeedbackBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof postMeetingFeedback>>,
+  TError,
+  { id: number; data: BodyType<PostMeetingFeedbackBody> },
+  TContext
+> => {
+  return useMutation(getPostMeetingFeedbackMutationOptions(options));
+};
+
+/**
+ * @summary Get employer hiring-file notes for a freelancer (F2)
+ */
+export const getGetEmployerCandidateNotesUrl = (freelancerId: number) => {
+  return `/api/employers/me/candidate-notes/${freelancerId}`;
+};
+
+export const getEmployerCandidateNotes = async (
+  freelancerId: number,
+  options?: RequestInit,
+): Promise<EmployerCandidateNotes> => {
+  return customFetch<EmployerCandidateNotes>(
+    getGetEmployerCandidateNotesUrl(freelancerId),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getGetEmployerCandidateNotesQueryKey = (freelancerId: number) => {
+  return [`/api/employers/me/candidate-notes/${freelancerId}`] as const;
+};
+
+export const getGetEmployerCandidateNotesQueryOptions = <
+  TData = Awaited<ReturnType<typeof getEmployerCandidateNotes>>,
+  TError = ErrorType<ErrorEnvelope>,
+>(
+  freelancerId: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getEmployerCandidateNotes>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ??
+    getGetEmployerCandidateNotesQueryKey(freelancerId);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getEmployerCandidateNotes>>
+  > = ({ signal }) =>
+    getEmployerCandidateNotes(freelancerId, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!freelancerId,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getEmployerCandidateNotes>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetEmployerCandidateNotesQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getEmployerCandidateNotes>>
+>;
+export type GetEmployerCandidateNotesQueryError = ErrorType<ErrorEnvelope>;
+
+/**
+ * @summary Get employer hiring-file notes for a freelancer (F2)
+ */
+
+export function useGetEmployerCandidateNotes<
+  TData = Awaited<ReturnType<typeof getEmployerCandidateNotes>>,
+  TError = ErrorType<ErrorEnvelope>,
+>(
+  freelancerId: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getEmployerCandidateNotes>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetEmployerCandidateNotesQueryOptions(
+    freelancerId,
+    options,
+  );
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
 
 /**
  * @summary Create or retrieve a direct conversation

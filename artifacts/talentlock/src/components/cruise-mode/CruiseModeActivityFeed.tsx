@@ -6,10 +6,12 @@ import {
   getListCruiseModeActivityQueryKey,
   type CruiseModeActivityItem,
 } from "@workspace/api-client-react";
+import { useDebounce } from "use-debounce";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PaginationControls } from "@/components/PaginationControls";
+import { EngagementListToolbar } from "@/components/lists/EngagementListToolbar";
 import { CheckCircle2, ChevronDown, Loader2, MessageSquare } from "lucide-react";
 import { Link } from "wouter";
 import { formatRelativeTime } from "@/lib/formatRelativeTime";
@@ -19,6 +21,18 @@ import {
   scoreColour,
 } from "@/lib/cruiseModeDisplayUtils";
 import { useToast } from "@/hooks/use-toast";
+
+const PAGE_SIZE = 10;
+
+const DECISION_OPTIONS = [
+  { value: "all", label: "All" },
+  { value: "sent", label: "Sent" },
+  { value: "dry_run_would_send", label: "Dry run" },
+  { value: "skipped", label: "Skipped" },
+  { value: "prefilter_rejected", label: "Pre-filter" },
+  { value: "duplicate_skipped", label: "Duplicate" },
+  { value: "dm_failed", label: "Failed" },
+];
 
 function ActivityEntry({
   item,
@@ -115,13 +129,19 @@ function ActivityEntry({
 }
 
 export function CruiseModeActivityFeed() {
+  const [search, setSearch] = useState("");
+  const [decision, setDecision] = useState("all");
   const [page, setPage] = useState(1);
-  const pageSize = 10;
+  const [debouncedSearch] = useDebounce(search, 400);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
+  const apiQ = debouncedSearch.trim().length >= 2 ? debouncedSearch.trim() : undefined;
+  const apiDecision = decision === "all" ? undefined : decision;
+  const hasFilters = search.trim().length > 0 || (decision !== "" && decision !== "all");
+
   const { data, isLoading, isError } = useListCruiseModeActivity(
-    { page, pageSize },
+    { page, pageSize: PAGE_SIZE, q: apiQ, decision: apiDecision as any },
     { query: { keepPreviousData: true } as any },
   );
 
@@ -141,48 +161,82 @@ export function CruiseModeActivityFeed() {
     );
   };
 
-  if (isLoading) {
-    return (
-      <div className="space-y-4">
-        <Skeleton className="h-20 w-full" />
-        <Skeleton className="h-20 w-full" />
-      </div>
-    );
-  }
-
-  if (isError) {
-    return <p className="text-sm text-muted-foreground text-center py-8">Could not load activity.</p>;
-  }
+  const onSearchChange = (value: string) => {
+    setSearch(value);
+    setPage(1);
+  };
+  const onDecisionChange = (value: string) => {
+    setDecision(value);
+    setPage(1);
+  };
+  const onClear = () => {
+    setSearch("");
+    setDecision("all");
+    setPage(1);
+  };
 
   const items = data?.data ?? [];
-
-  if (items.length === 0) {
-    return (
-      <p className="text-sm text-muted-foreground text-center py-12">
-        No Cruise Mode activity yet. Activate Cruise Mode and new job matches will appear here.
-      </p>
-    );
-  }
+  const total = data?.total ?? 0;
+  const totalPages = data?.totalPages ?? 1;
 
   return (
-    <div>
-      <div className="flex items-center justify-between mb-2">
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
         <h3 className="text-sm font-semibold text-slate-800">Activity</h3>
       </div>
-      {items.map((item) => (
-        <ActivityEntry
-          key={item.id}
-          item={item}
-          onFollowUp={handleFollowUp}
-          followUpPending={followUp.isPending}
-        />
-      ))}
-      <PaginationControls
-        page={page}
-        totalPages={data?.totalPages ?? 1}
-        onPageChange={setPage}
-        disabled={isLoading}
+
+      <EngagementListToolbar
+        search={search}
+        onSearchChange={onSearchChange}
+        searchPlaceholder="Search by job title…"
+        status={decision}
+        statusOptions={DECISION_OPTIONS}
+        onStatusChange={onDecisionChange}
+        onClear={onClear}
+        resultSummary={isLoading ? undefined : `${total} matching`}
       />
+
+      {isLoading ? (
+        <div className="space-y-4">
+          <Skeleton className="h-20 w-full" />
+          <Skeleton className="h-20 w-full" />
+        </div>
+      ) : isError ? (
+        <p className="text-sm text-muted-foreground text-center py-8">Could not load activity.</p>
+      ) : items.length === 0 ? (
+        <div className="text-center py-12 space-y-3">
+          <p className="text-sm text-muted-foreground">
+            {hasFilters
+              ? "No activity matches your search or filters."
+              : "No Cruise Mode activity yet. Activate Cruise Mode and new job matches will appear here."}
+          </p>
+          {hasFilters && (
+            <Button variant="outline" size="sm" onClick={onClear}>Clear filters</Button>
+          )}
+        </div>
+      ) : (
+        <>
+          {items.map((item) => (
+            <ActivityEntry
+              key={item.id}
+              item={item}
+              onFollowUp={handleFollowUp}
+              followUpPending={followUp.isPending}
+            />
+          ))}
+          <PaginationControls
+            page={page}
+            totalPages={totalPages}
+            onPageChange={(p) => {
+              setPage(p);
+              window.scrollTo({ top: 0, behavior: "smooth" });
+            }}
+            disabled={isLoading}
+            total={total}
+            pageSize={PAGE_SIZE}
+          />
+        </>
+      )}
     </div>
   );
 }

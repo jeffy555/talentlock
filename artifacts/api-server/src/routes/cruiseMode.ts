@@ -8,8 +8,10 @@ import {
   desc,
   eq,
   gte,
+  ilike,
   isNull,
   sql,
+  type SQL,
 } from "drizzle-orm";
 import { db } from "@workspace/db";
 import {
@@ -28,6 +30,7 @@ import {
 import { logTokenUsage } from "../lib/tokenLogger";
 import { parsePagination, paginatedResponse } from "../lib/paginationUtils";
 import { sanitiseText } from "../lib/sanitise";
+import { sanitiseIlikeQuery } from "../lib/searchUtils";
 import {
   getNextMidnightUTC,
   normaliseParsedRules,
@@ -140,7 +143,15 @@ router.get("/cruise-mode/activity", async (req, res) => {
     if (!ctx) { res.status(403).json({ error: "Freelancer profile required" }); return; }
 
     const { page, pageSize, offset } = parsePagination(parsed.data);
-    const whereClause = eq(cruiseModeActivityTable.freelancerId, ctx.profile.id);
+    const conditions: SQL[] = [eq(cruiseModeActivityTable.freelancerId, ctx.profile.id)];
+    if (parsed.data.decision) {
+      conditions.push(eq(cruiseModeActivityTable.decision, parsed.data.decision));
+    }
+    const searchPattern = parsed.data.q ? sanitiseIlikeQuery(parsed.data.q) : null;
+    if (searchPattern) {
+      conditions.push(ilike(jobRequirementsTable.title, searchPattern));
+    }
+    const whereClause = and(...conditions)!;
 
     const [rows, countResult] = await Promise.all([
       db
@@ -157,7 +168,14 @@ router.get("/cruise-mode/activity", async (req, res) => {
         .orderBy(desc(cruiseModeActivityTable.createdAt))
         .limit(pageSize)
         .offset(offset),
-      db.select({ count: count() }).from(cruiseModeActivityTable).where(whereClause),
+      db
+        .select({ count: count() })
+        .from(cruiseModeActivityTable)
+        .innerJoin(
+          jobRequirementsTable,
+          eq(cruiseModeActivityTable.jobRequirementId, jobRequirementsTable.id),
+        )
+        .where(whereClause),
     ]);
 
     const total = countResult[0]?.count ?? 0;

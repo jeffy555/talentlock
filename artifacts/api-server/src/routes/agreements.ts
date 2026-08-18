@@ -8,7 +8,7 @@ import {
   agreementsTable, bookingsTable, freelancerProfilesTable, employerProfilesTable, usersTable,
   jobRequirementsTable,
 } from "@workspace/db";
-import { eq, or, and, SQL, count } from "drizzle-orm";
+import { eq, or, and, SQL, count, ilike, exists } from "drizzle-orm";
 import {
   CreateAgreementBody,
   SignAgreementBody,
@@ -38,6 +38,7 @@ import {
 } from "../lib/createNotification";
 import { logAudit } from "../lib/auditLogger";
 import { sendNotificationEmailAsync } from "../lib/emailService";
+import { sanitiseIlikeQuery } from "../lib/searchUtils";
 import { parsePagination, paginatedResponse } from "../lib/paginationUtils";
 import { sanitiseText } from "../lib/sanitise";
 import { buildHealthScorePrompt, validateHealthScoreResponse } from "../lib/contractHealthUtils";
@@ -303,6 +304,29 @@ router.get("/agreements", async (req, res) => {
       conditions.push(eq(agreementsTable.employerId, employer.id));
     }
     if (params.status) conditions.push(eq(agreementsTable.status, params.status));
+
+    const searchPattern = params.q ? sanitiseIlikeQuery(params.q) : null;
+    if (searchPattern) {
+      conditions.push(or(
+        ilike(agreementsTable.uploadFilename, searchPattern),
+        exists(
+          db.select({ id: freelancerProfilesTable.id })
+            .from(freelancerProfilesTable)
+            .where(and(
+              eq(freelancerProfilesTable.id, agreementsTable.freelancerId),
+              ilike(freelancerProfilesTable.name, searchPattern),
+            )),
+        ),
+        exists(
+          db.select({ id: employerProfilesTable.id })
+            .from(employerProfilesTable)
+            .where(and(
+              eq(employerProfilesTable.id, agreementsTable.employerId),
+              ilike(employerProfilesTable.companyName, searchPattern),
+            )),
+        ),
+      )!);
+    }
 
     const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
     const { page, pageSize, offset } = parsePagination(params);

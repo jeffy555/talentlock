@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link } from "wouter";
+import { useDebounce } from "use-debounce";
 import { ArrowLeft, MessageSquare, RefreshCw } from "lucide-react";
 import { useGetConversationsDirect, useGetMe } from "@workspace/api-client-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -7,7 +8,16 @@ import { Button } from "@/components/ui/button";
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { InlineMessageThread } from "@/components/messages/InlineMessageThread";
 import { FreelancerChatSearch } from "@/components/messages/FreelancerChatSearch";
+import { EngagementListToolbar } from "@/components/lists/EngagementListToolbar";
+import { PaginationControls } from "@/components/PaginationControls";
 import { cn } from "@/lib/utils";
+
+const PAGE_SIZE = 10;
+
+const UNREAD_OPTIONS = [
+  { value: "all", label: "All" },
+  { value: "unread", label: "Unread" },
+];
 
 function timeAgo(value: string | Date | null | undefined) {
   if (!value) return "";
@@ -31,106 +41,159 @@ function ConversationList({
   onClose?: () => void;
 }) {
   const { data: user } = useGetMe();
+  const [search, setSearch] = useState("");
+  const [status, setStatus] = useState("all");
+  const [page, setPage] = useState(1);
+  const [debouncedSearch] = useDebounce(search, 400);
+
+  const apiQ = debouncedSearch.trim().length >= 2 ? debouncedSearch.trim() : undefined;
+  const unreadOnly = status === "unread";
+  const hasFilters = search.trim().length > 0 || status === "unread";
+
   const conversationsQuery = useGetConversationsDirect(
-    { page: 1, pageSize: 50 },
-    { query: { refetchInterval: 30_000 } as any },
+    {
+      page,
+      pageSize: PAGE_SIZE,
+      q: apiQ,
+      ...(unreadOnly ? { unread: true } : {}),
+    },
+    { query: { refetchInterval: 60_000, keepPreviousData: true } as any },
   );
   const conversations = conversationsQuery.data?.data ?? [];
+  const total = conversationsQuery.data?.total ?? 0;
+  const totalPages = conversationsQuery.data?.totalPages ?? 1;
   const isEmployer = user?.role === "employer";
 
-  if (conversationsQuery.isLoading) {
-    return (
-      <div className="space-y-1 overflow-y-auto p-2">
-        {[0, 1, 2, 3, 4].map((item) => (
-          <div key={item} className="flex gap-3 p-3 animate-pulse">
-            <div className="h-10 w-10 shrink-0 rounded-full bg-muted" />
-            <div className="flex-1 space-y-2">
-              <div className="h-3.5 w-1/3 rounded bg-muted" />
-              <div className="h-3 w-2/3 rounded bg-muted" />
-            </div>
-          </div>
-        ))}
-      </div>
-    );
-  }
-
-  if (conversationsQuery.isError) {
-    return (
-      <div className="flex flex-col items-center gap-3 px-6 py-16 text-center">
-        <p className="text-sm text-destructive">Could not load conversations. Try again.</p>
-        <Button variant="outline" size="sm" onClick={() => void conversationsQuery.refetch()}>
-          <RefreshCw className="mr-2 h-4 w-4" /> Try again
-        </Button>
-      </div>
-    );
-  }
-
-  if (conversations.length === 0) {
-    return (
-      <Empty className="border-0 px-6 py-12">
-        <EmptyHeader>
-          <EmptyMedia variant="icon"><MessageSquare className="text-slate-300" /></EmptyMedia>
-          <EmptyTitle className="font-serif">No conversations yet</EmptyTitle>
-          <EmptyDescription className="max-w-xs">
-            {isEmployer
-              ? "Search for a freelancer above to start messaging. Nothing is selected until you pick someone."
-              : "Conversations from employers will appear here."}
-          </EmptyDescription>
-        </EmptyHeader>
-        {isEmployer && (
-          <Button asChild variant="outline" size="sm" onClick={onClose}>
-            <Link href="/freelancers">Browse Talent Vault →</Link>
-          </Button>
-        )}
-      </Empty>
-    );
-  }
+  const onSearchChange = (value: string) => {
+    setSearch(value);
+    setPage(1);
+  };
+  const onStatusChange = (value: string) => {
+    setStatus(value);
+    setPage(1);
+  };
+  const onClear = () => {
+    setSearch("");
+    setStatus("all");
+    setPage(1);
+  };
 
   return (
-    <div className="min-h-0 flex-1 divide-y divide-border overflow-y-auto">
-      {conversations.map((conversation) => (
-        <button
-          key={conversation.conversationId}
-          type="button"
-          onClick={() => onSelect(conversation.conversationId)}
-          className={cn(
-            "flex w-full gap-3 border-l-2 border-transparent px-4 py-3.5 text-left transition-colors hover:bg-slate-50",
-            conversation.conversationId === selectedId && "border-l-blue-500 bg-blue-50",
-            conversation.unreadCount > 0 && conversation.conversationId !== selectedId && "bg-primary/5",
-          )}
-        >
-          <div className="relative shrink-0">
-            <Avatar className="h-10 w-10">
-              <AvatarImage src={conversation.otherPartyAvatar ?? undefined} />
-              <AvatarFallback>{conversation.otherPartyName[0] ?? "?"}</AvatarFallback>
-            </Avatar>
-            {conversation.unreadCount > 0 && (
-              <span className="absolute -right-0.5 -top-0.5 h-3 w-3 rounded-full border-2 border-card bg-blue-500" />
-            )}
-          </div>
-          <div className="min-w-0 flex-1">
-            <div className="mb-0.5 flex items-center justify-between gap-2">
-              <span
+    <div className="flex min-h-0 flex-1 flex-col">
+      <div className="shrink-0 border-b border-border px-3 py-2">
+        <EngagementListToolbar
+          search={search}
+          onSearchChange={onSearchChange}
+          searchPlaceholder="Search by name…"
+          status={status}
+          statusOptions={UNREAD_OPTIONS}
+          onStatusChange={onStatusChange}
+          onClear={onClear}
+          resultSummary={conversationsQuery.isLoading ? undefined : `${total} matching`}
+        />
+      </div>
+
+      {conversationsQuery.isLoading ? (
+        <div className="space-y-1 overflow-y-auto p-2">
+          {[0, 1, 2, 3, 4].map((item) => (
+            <div key={item} className="flex gap-3 p-3 animate-pulse">
+              <div className="h-10 w-10 shrink-0 rounded-full bg-muted" />
+              <div className="flex-1 space-y-2">
+                <div className="h-3.5 w-1/3 rounded bg-muted" />
+                <div className="h-3 w-2/3 rounded bg-muted" />
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : conversationsQuery.isError ? (
+        <div className="flex flex-col items-center gap-3 px-6 py-16 text-center">
+          <p className="text-sm text-destructive">Could not load conversations. Try again.</p>
+          <Button variant="outline" size="sm" onClick={() => void conversationsQuery.refetch()}>
+            <RefreshCw className="mr-2 h-4 w-4" /> Try again
+          </Button>
+        </div>
+      ) : conversations.length === 0 ? (
+        <Empty className="border-0 px-6 py-12">
+          <EmptyHeader>
+            <EmptyMedia variant="icon"><MessageSquare className="text-slate-300" /></EmptyMedia>
+            <EmptyTitle className="font-serif">
+              {hasFilters ? "No conversations match" : "No conversations yet"}
+            </EmptyTitle>
+            <EmptyDescription className="max-w-xs">
+              {hasFilters
+                ? "Try a different name or clear filters."
+                : isEmployer
+                  ? "Search for a freelancer above to start messaging. Nothing is selected until you pick someone."
+                  : "Conversations from employers will appear here."}
+            </EmptyDescription>
+          </EmptyHeader>
+          {hasFilters ? (
+            <Button variant="outline" size="sm" onClick={onClear}>Clear filters</Button>
+          ) : isEmployer ? (
+            <Button asChild variant="outline" size="sm" onClick={onClose}>
+              <Link href="/freelancers">Browse Talent Vault →</Link>
+            </Button>
+          ) : null}
+        </Empty>
+      ) : (
+        <>
+          <div className="min-h-0 flex-1 divide-y divide-border overflow-y-auto">
+            {conversations.map((conversation) => (
+              <button
+                key={conversation.conversationId}
+                type="button"
+                onClick={() => onSelect(conversation.conversationId)}
                 className={cn(
-                  "truncate text-sm",
-                  conversation.unreadCount > 0 ? "font-semibold text-foreground" : "font-medium text-muted-foreground",
+                  "flex w-full gap-3 border-l-2 border-transparent px-4 py-3.5 text-left transition-colors hover:bg-slate-50",
+                  conversation.conversationId === selectedId && "border-l-blue-500 bg-blue-50",
+                  conversation.unreadCount > 0 && conversation.conversationId !== selectedId && "bg-primary/5",
                 )}
               >
-                {conversation.otherPartyName}
-              </span>
-              <span className="shrink-0 text-xs text-muted-foreground">{timeAgo(conversation.lastMessageAt)}</span>
-            </div>
-            <p className="truncate text-xs text-muted-foreground">
-              {conversation.lastMessagePreview || "No messages yet"}
-            </p>
-            {(conversation.bookingTitle || conversation.meetingTitle) && (
-              <span className="mt-1 inline-block rounded bg-secondary px-1.5 py-0.5 text-xs text-muted-foreground">
-                Re: {conversation.bookingTitle ?? conversation.meetingTitle}
-              </span>
-            )}
+                <div className="relative shrink-0">
+                  <Avatar className="h-10 w-10">
+                    <AvatarImage src={conversation.otherPartyAvatar ?? undefined} />
+                    <AvatarFallback>{conversation.otherPartyName[0] ?? "?"}</AvatarFallback>
+                  </Avatar>
+                  {conversation.unreadCount > 0 && (
+                    <span className="absolute -right-0.5 -top-0.5 h-3 w-3 rounded-full border-2 border-card bg-blue-500" />
+                  )}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="mb-0.5 flex items-center justify-between gap-2">
+                    <span
+                      className={cn(
+                        "truncate text-sm",
+                        conversation.unreadCount > 0 ? "font-semibold text-foreground" : "font-medium text-muted-foreground",
+                      )}
+                    >
+                      {conversation.otherPartyName}
+                    </span>
+                    <span className="shrink-0 text-xs text-muted-foreground">{timeAgo(conversation.lastMessageAt)}</span>
+                  </div>
+                  <p className="truncate text-xs text-muted-foreground">
+                    {conversation.lastMessagePreview || "No messages yet"}
+                  </p>
+                  {(conversation.bookingTitle || conversation.meetingTitle) && (
+                    <span className="mt-1 inline-block rounded bg-secondary px-1.5 py-0.5 text-xs text-muted-foreground">
+                      Re: {conversation.bookingTitle ?? conversation.meetingTitle}
+                    </span>
+                  )}
+                </div>
+              </button>
+            ))}
           </div>
-        </button>
-      ))}
+          <div className="shrink-0 border-t border-border px-2 py-2">
+            <PaginationControls
+              page={page}
+              totalPages={totalPages}
+              onPageChange={setPage}
+              disabled={conversationsQuery.isLoading}
+              total={total}
+              pageSize={PAGE_SIZE}
+            />
+          </div>
+        </>
+      )}
     </div>
   );
 }
@@ -147,9 +210,10 @@ export function MessagesWorkspace({
   onSelectConversation?: (conversationId: number | null) => void;
   onClose?: () => void;
 }) {
+  // Unfiltered lookup for selected conversation header (list may be filtered).
   const conversationsQuery = useGetConversationsDirect(
-    { page: 1, pageSize: 50 },
-    { query: { refetchInterval: 30_000 } as any },
+    { page: 1, pageSize: 100 },
+    { query: { refetchInterval: 60_000 } as any },
   );
   const conversations = conversationsQuery.data?.data ?? [];
   const selectedConversation = conversations.find((c) => c.conversationId === selectedId);
@@ -160,7 +224,6 @@ export function MessagesWorkspace({
     onSelectConversation?.(conversationId);
   };
 
-  // Panel mode: single column — show list or thread, never both (avoids md: two-pane crush in 420px box)
   if (isPanel) {
     if (selectedId) {
       return (
@@ -209,11 +272,6 @@ export function MessagesWorkspace({
               <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                 Recent
               </h2>
-              {conversations.length > 0 && (
-                <p className="mt-0.5 text-xs text-muted-foreground">
-                  {conversations.length} conversation{conversations.length === 1 ? "" : "s"}
-                </p>
-              )}
             </div>
             <ConversationList
               selectedId={selectedId}
@@ -231,7 +289,6 @@ export function MessagesWorkspace({
     );
   }
 
-  // Page / deep-link fallback (unused as primary UX, kept for completeness)
   return (
     <div className="mx-auto flex max-w-6xl flex-col gap-4 animate-fade-in">
       <div>

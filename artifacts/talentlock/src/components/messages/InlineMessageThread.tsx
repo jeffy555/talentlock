@@ -3,7 +3,6 @@ import {
   useGetConversationsIdMessages,
   useGetMe,
   usePostConversationsIdMessages,
-  usePatchConversationsIdRead,
   getGetConversationsIdMessagesQueryKey,
   getGetConversationsDirectQueryKey,
   getGetMessagesUnreadCountQueryKey,
@@ -38,32 +37,27 @@ export function InlineMessageThread({
   const [draft, setDraft] = useState("");
   const [optimistic, setOptimistic] = useState<HumanMessage[]>([]);
   const [rateLimited, setRateLimited] = useState(false);
-  const markedRead = useRef(false);
+  const badgesInvalidated = useRef(false);
   const messagesQuery = useGetConversationsIdMessages(
     conversationId,
     { page: 1, pageSize: 100 },
-    { query: { refetchInterval: 30_000 } as any },
+    { query: { refetchInterval: 60_000 } as any },
   );
-  const markRead = usePatchConversationsIdRead();
   const sendMessage = usePostConversationsIdMessages();
 
   useEffect(() => {
-    markedRead.current = false;
+    badgesInvalidated.current = false;
   }, [conversationId]);
 
+  // GET /messages already marks the thread read — only refresh inbox badges once.
   useEffect(() => {
-    if (markedRead.current) return;
-    markedRead.current = true;
-    void markRead.mutateAsync({ id: conversationId }).then(() => {
-      void queryClient.invalidateQueries({
-        queryKey: getGetConversationsIdMessagesQueryKey(conversationId, { page: 1, pageSize: 100 }),
-      });
-      void queryClient.invalidateQueries({
-        queryKey: getGetConversationsDirectQueryKey({ page: 1, pageSize: 50 }),
-      });
-      void queryClient.invalidateQueries({ queryKey: getGetMessagesUnreadCountQueryKey() });
-    }).catch(() => undefined);
-  }, [conversationId, queryClient]);
+    if (!messagesQuery.isSuccess || badgesInvalidated.current) return;
+    badgesInvalidated.current = true;
+    void queryClient.invalidateQueries({
+      queryKey: getGetConversationsDirectQueryKey({ page: 1, pageSize: 50 }),
+    });
+    void queryClient.invalidateQueries({ queryKey: getGetMessagesUnreadCountQueryKey() });
+  }, [messagesQuery.isSuccess, conversationId, queryClient]);
 
   const messages = useMemo(
     () => [...(messagesQuery.data?.data ?? []), ...optimistic],

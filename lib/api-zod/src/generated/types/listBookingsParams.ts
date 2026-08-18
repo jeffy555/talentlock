@@ -5,16 +5,21 @@
  * TalentLock API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { ListBookingsStatus } from "./listBookingsStatus";
 
 export type ListBookingsParams = {
   /**
-   * Filter by status (active, completed, cancelled)
+   * Filter by booking status
    */
-  status?: string;
+  status?: ListBookingsStatus;
   /**
    * Filter by role (freelancer, employer)
    */
   role?: string;
+  /**
+   * Keyword search across counterparty name, message, and notes
+   */
+  q?: string;
   page?: number;
   pageSize?: number;
 };

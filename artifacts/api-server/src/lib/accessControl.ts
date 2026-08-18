@@ -33,10 +33,12 @@ export async function resolveUserByClerkId(clerkId: string, db: DB = defaultDb) 
 }
 
 export async function profileIdsForUser(userId: number, db: DB = defaultDb) {
-  const [emp] = await db.select({ id: employerProfilesTable.id })
-    .from(employerProfilesTable).where(eq(employerProfilesTable.userId, userId)).limit(1);
-  const [fl] = await db.select({ id: freelancerProfilesTable.id })
-    .from(freelancerProfilesTable).where(eq(freelancerProfilesTable.userId, userId)).limit(1);
+  const [[emp], [fl]] = await Promise.all([
+    db.select({ id: employerProfilesTable.id })
+      .from(employerProfilesTable).where(eq(employerProfilesTable.userId, userId)).limit(1),
+    db.select({ id: freelancerProfilesTable.id })
+      .from(freelancerProfilesTable).where(eq(freelancerProfilesTable.userId, userId)).limit(1),
+  ]);
   return { employerId: emp?.id ?? null, freelancerId: fl?.id ?? null };
 }
 

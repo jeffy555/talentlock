@@ -17,6 +17,7 @@ export const TOKEN_FEATURE_LABELS: Record<keyof TokenUsageBreakdown, string> = {
   cruise_mode_evaluation: "Cruise Mode Evaluation",
   talent_search_parse: "TalentSearch Parse",
   talent_search_evaluation: "TalentSearch Evaluation",
+  interview_handoff_summary: "Interview Handoff Summary",
 };
 
 export interface TokenBreakdownEntry {

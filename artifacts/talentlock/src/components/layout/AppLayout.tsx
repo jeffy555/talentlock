@@ -172,7 +172,7 @@ function AppLayoutInner({ children }: { children: React.ReactNode }) {
   });
   const talentSearchActive = talentSearchConfig?.isActive === true;
   const { data: unreadMessages } = useGetMessagesUnreadCount({
-    query: { enabled: !!dbUser, refetchInterval: 30_000 } as any,
+    query: { enabled: !!dbUser, refetchInterval: 60_000 } as any,
   });
   const unreadCount = Number(unreadMessages?.count ?? 0);
 

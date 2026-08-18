@@ -215,7 +215,23 @@ talentlock/
 │   │   ├── UI.md
 │   │   └── validation.md
 │   │
-│   ├── aimeetingdebrief/                           ← ✅ Complete (AI Meeting Brief)
+│   ├── aimeetingdebrief/                           ← ✅ Complete (AI Meeting Brief — pre-meeting)
+│   │   ├── features.md
+│   │   ├── clarify.md
+│   │   ├── plan.md
+│   │   ├── task.md
+│   │   ├── UI.md
+│   │   └── validation.md
+│   │
+│   ├── discovery-meeting-outcome/                  ← ✅ Complete (A / Hybrid C / AI-1 / F2 — locked 2026-08-01)
+│   │   ├── features.md
+│   │   ├── clarify.md
+│   │   ├── plan.md
+│   │   ├── task.md
+│   │   ├── UI.md
+│   │   └── validation.md
+│   │
+│   ├── engagement-lists/                           ← ✅ Complete (Meetings/Bookings/Agreements/Jobs/Messages + TalentSearch & Cruise Mode activity)
 │   │   ├── features.md
 │   │   ├── clarify.md
 │   │   ├── plan.md
@@ -488,7 +504,7 @@ The `.cursor/rules/talentlock.mdc` file at the repo root enforces these rules au
 | Employer Analytics Dashboard | `spec/EmployerAnalyticsDashboard/` | ✅ Complete |
 | Availability Calendar (Visual) | `spec/AvailabilityCalendar/` | ✅ Complete · 🟢 P1 follow-up (defer lock to confirmation) validated 2026-06-09 |
 | Security Hardening | `spec/SecurityHardening/` | ✅ Complete · 🟢 P1 follow-up (sanitisation on 6 routes) validated 2026-06-09 |
-| Product Gaps | `spec/ProductGaps/` | ✅ Complete (validated 2026-06-08) |
+| Product Gaps | `spec/ProductGaps/` | ✅ Complete (validated 2026-06-08) · status filter / list search deferred → `spec/engagement-lists/` |
 | AI Proposal Generator | `spec/ai-proposal-generator/` | ✅ Complete (validated 2026-06-08) |
 | Smart Rate Suggestions | `spec/smart-rate-suggestions/` | ✅ Complete |
 | Team Accounts (Enterprise) | `spec/team-accounts-enterprise/` | ✅ Complete |
@@ -501,7 +517,9 @@ The `.cursor/rules/talentlock.mdc` file at the repo root enforces these rules au
 | TalentSearch (Employer Cruise Mode) | `spec/employer-cruisemode/` | ✅ Complete · DM delivery spec in `spec/cruise-mode-dm-delivery/` |
 | **Cruise Mode & TalentSearch DM Delivery** | `spec/cruise-mode-dm-delivery/` | ✅ Complete |
 | AI Meeting Brief Generator | `spec/aimeetingdebrief/` | ✅ Complete |
+| **Discovery Meeting Outcome** | `spec/discovery-meeting-outcome/` | ✅ Complete — binary Next/Final; hybrid team/email handoff; AI-1 summary; F2 employer hiring file; **never** candidate-facing |
 | In-App Direct Messaging | `spec/messaging-service/` | ✅ Complete |
+| **Engagement Lists (Search / Filter / Pagination)** | `spec/engagement-lists/` | ✅ Complete — Meetings, Bookings, Agreements, Jobs, Messages inbox, TalentSearch & Cruise Mode activity: keyword search, status/decision filters, page size 10, showing X–Y of Z |
 | Employer Verification | `spec/employee-verification/` | ✅ Complete · admin employer docs tab with Pending / Approved / Rejected trackers |
 | Credential Expiry Tracking | `spec/credential-expiry-tracking/` | ✅ Complete |
 | Freelancer Watchlist | `spec/freelancer-watchlist/` | ✅ Complete |
@@ -529,6 +547,7 @@ These landed as product hardening outside a dedicated feature folder. Canonical 
 |---|---|---|
 | Job start/end date validation | `spec/JobDescAssistant/plan.md` + `project.md` feature 46 | Form + `POST` job create reject `end < start` |
 | Enriched discovery meeting invite email | `spec/aimeetingdebrief/plan.md` | UTC time, meeting link, accept/decline CTA (in-app stays short) |
+| Discovery meeting interview outcome | `spec/discovery-meeting-outcome/` | ✅ Complete — A / Hybrid C / AI-1 / F2 — not candidate DM |
 | Mandatory registration email | `spec/onboarding-scaffolding/plan.md` | Clerk primary email required; `isValidEmail` on onboarding + `PUT /users/me` |
 | Country/State selectors | `spec/multi-currency-location/plan.md` + onboarding scaffolding | Shared `CountryStateFields` — no free-text country/state |
 | Demo Login panel removed | `spec/AvailabilityCalendar/validation.md` | `/sign-in` panel gone; automation may still call `POST /api/demo/sign-in-token` |

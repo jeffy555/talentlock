@@ -590,16 +590,34 @@ paths:
           in: query
           schema:
             type: string
+            enum: [open, filled, closed]
           description: Filter by status (open, filled, closed)
+        - name: q
+          in: query
+          schema:
+            type: string
+            maxLength: 100
+          description: Keyword search (title, description)
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: pageSize
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
       responses:
         "200":
-          description: List of job requirements
+          description: Paginated list of job requirements
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: "#/components/schemas/JobRequirement"
+                $ref: "#/components/schemas/PaginatedJobRequirementsResult"
     post:
       operationId: createJobRequirement
       tags: [job-requirements]
@@ -968,12 +986,18 @@ paths:
           in: query
           schema:
             type: string
-          description: Filter by status (active, completed, cancelled)
+            enum: [pending, negotiating, active, completed, cancelled]
+          description: Filter by booking status
         - name: role
           in: query
           schema:
             type: string
           description: Filter by role (freelancer, employer)
+        - name: q
+          in: query
+          schema:
+            type: string
+          description: Keyword search across counterparty name, message, and notes
         - name: page
           in: query
           schema:
@@ -1188,7 +1212,13 @@ paths:
           in: query
           schema:
             type: string
-          description: Filter by status (draft, redlined, partially_signed, fully_signed)
+            enum: [draft, redlined, partially_signed, fully_signed]
+          description: Filter by agreement status
+        - name: q
+          in: query
+          schema:
+            type: string
+          description: Keyword search across counterparty name and upload filename
         - name: page
           in: query
           schema:
@@ -1747,6 +1777,17 @@ paths:
       tags: [meetings]
       summary: List meetings for the current user
       parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [pending, confirmed, completed, cancelled]
+          description: Filter by meeting status
+        - name: q
+          in: query
+          schema:
+            type: string
+          description: Keyword search across title, agenda, and counterparty name
         - name: page
           in: query
           schema:
@@ -1878,6 +1919,104 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorEnvelope"
 
+  /meetings/{id}/feedback:
+    post:
+      operationId: postMeetingFeedback
+      tags: [meetings]
+      summary: Submit discovery interview outcome (employer only, completed meetings)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PostMeetingFeedbackBody"
+      responses:
+        "201":
+          description: Feedback recorded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Meeting"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "403":
+          description: Forbidden — employer party only
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "409":
+          description: Feedback already submitted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "422":
+          description: Meeting is not completed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "402":
+          description: AI handoff summary token limit reached
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlanLimitError"
+
+  /employers/me/candidate-notes/{freelancerId}:
+    get:
+      operationId: getEmployerCandidateNotes
+      tags: [employers]
+      summary: Get employer hiring-file notes for a freelancer (F2)
+      parameters:
+        - name: freelancerId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Candidate hiring notes
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EmployerCandidateNotes"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "403":
+          description: Employer only
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "404":
+          description: No notes for this freelancer
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+
   # ── In-App Direct Messaging ─────────────────────────────────────────────────
   /conversations/direct:
     post:
@@ -1921,6 +2060,17 @@ paths:
             minimum: 1
             maximum: 100
             default: 20
+        - name: q
+          in: query
+          schema:
+            type: string
+            maxLength: 100
+          description: Keyword search on counterparty display name
+        - name: unread
+          in: query
+          schema:
+            type: boolean
+          description: When true, only conversations with unread messages from the other party
       responses:
         "200":
           description: Direct conversation inbox
@@ -3899,6 +4049,24 @@ paths:
             minimum: 1
             maximum: 100
             default: 20
+        - name: q
+          in: query
+          schema:
+            type: string
+            maxLength: 100
+          description: Keyword search on job title
+        - name: decision
+          in: query
+          schema:
+            type: string
+            enum:
+              - sent
+              - dry_run_would_send
+              - skipped
+              - prefilter_rejected
+              - duplicate_skipped
+              - dm_failed
+          description: Filter by activity decision
       responses:
         "200":
           description: Paginated activity
@@ -4186,6 +4354,24 @@ paths:
             minimum: 1
             maximum: 100
             default: 20
+        - name: q
+          in: query
+          schema:
+            type: string
+            maxLength: 100
+          description: Keyword search on freelancer name
+        - name: decision
+          in: query
+          schema:
+            type: string
+            enum:
+              - sent
+              - dry_run_would_send
+              - skipped
+              - prefilter_rejected
+              - duplicate_skipped
+              - dm_failed
+          description: Filter by activity decision
       responses:
         "200":
           description: Paginated activity
@@ -6044,6 +6230,38 @@ components:
         briefGeneratedAt:
           type: ["string", "null"]
           format: date-time
+        interviewResult:
+          type: ["string", "null"]
+          enum: [selected, not_selected]
+          deprecated: true
+          description: Deprecated — use disposition
+        disposition:
+          type: ["string", "null"]
+          enum: [next_round, proceed_to_booking, rejected]
+          description: Hiring decision after meeting completion (employer/panel only — stripped for freelancers)
+        feedbackText:
+          type: ["string", "null"]
+          description: Internal interview notes — never returned to freelancers
+        feedbackSummary:
+          type: ["string", "null"]
+          description: AI-1 handoff summary for next interviewer (next_round)
+        feedbackSubmittedAt:
+          type: ["string", "null"]
+          format: date-time
+        feedbackMessageId:
+          type: ["integer", "null"]
+          deprecated: true
+          description: Deprecated — candidate DM path removed
+        nextRoundPanelEmail:
+          type: ["string", "null"]
+          format: email
+        nextRoundPanelName:
+          type: ["string", "null"]
+        nextRoundTeamMemberId:
+          type: ["integer", "null"]
+        hasInterviewFeedback:
+          type: boolean
+          description: True when interview outcome has been submitted (employer); always false for freelancers
         createdAt:
           type: string
           format: date-time
@@ -6055,6 +6273,58 @@ components:
         - scheduledAt
         - durationMinutes
         - status
+        - hasInterviewFeedback
+        - createdAt
+
+    PostMeetingFeedbackBody:
+      type: object
+      properties:
+        disposition:
+          type: string
+          enum: [next_round, proceed_to_booking, rejected]
+        feedbackText:
+          type: string
+          minLength: 20
+          maxLength: 2000
+        nextRoundTeamMemberId:
+          type: integer
+          description: Required for next_round when employer has an active team with members
+        nextRoundPanelEmail:
+          type: string
+          format: email
+          description: Required for next_round when no team member is selected
+        nextRoundPanelName:
+          type: string
+          maxLength: 200
+      required:
+        - disposition
+        - feedbackText
+
+    EmployerCandidateNotes:
+      type: object
+      properties:
+        freelancerId:
+          type: integer
+        disposition:
+          type: string
+          enum: [proceed_to_booking, rejected]
+        feedbackText:
+          type: string
+        feedbackSummary:
+          type: ["string", "null"]
+        latestMeetingId:
+          type: ["integer", "null"]
+        updatedAt:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - freelancerId
+        - disposition
+        - feedbackText
+        - updatedAt
         - createdAt
 
     MeetingBrief:
@@ -7618,6 +7888,7 @@ components:
         cruise_mode_evaluation: { type: integer, default: 0 }
         talent_search_parse: { type: integer, default: 0 }
         talent_search_evaluation: { type: integer, default: 0 }
+        interview_handoff_summary: { type: integer, default: 0 }
       required:
         - ai_match
         - ai_match_explanation
@@ -7635,6 +7906,7 @@ components:
         - cruise_mode_evaluation
         - talent_search_parse
         - talent_search_evaluation
+        - interview_handoff_summary
 
     TokenUsageSummary:
       type: object
@@ -7786,6 +8058,28 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/Booking"
+        total:
+          type: integer
+        page:
+          type: integer
+        pageSize:
+          type: integer
+        totalPages:
+          type: integer
+      required:
+        - data
+        - total
+        - page
+        - pageSize
+        - totalPages
+
+    PaginatedJobRequirementsResult:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/JobRequirement"
         total:
           type: integer
         page:

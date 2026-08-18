@@ -23,4 +23,5 @@ export interface TokenUsageBreakdown {
   cruise_mode_evaluation: number;
   talent_search_parse: number;
   talent_search_evaluation: number;
+  interview_handoff_summary: number;
 }

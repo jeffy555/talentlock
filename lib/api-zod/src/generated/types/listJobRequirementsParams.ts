@@ -5,6 +5,7 @@
  * TalentLock API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { ListJobRequirementsStatus } from "./listJobRequirementsStatus";
 
 export type ListJobRequirementsParams = {
   /**
@@ -14,5 +15,19 @@ export type ListJobRequirementsParams = {
   /**
    * Filter by status (open, filled, closed)
    */
-  status?: string;
+  status?: ListJobRequirementsStatus;
+  /**
+   * Keyword search (title, description)
+   * @maxLength 100
+   */
+  q?: string;
+  /**
+   * @minimum 1
+   */
+  page?: number;
+  /**
+   * @minimum 1
+   * @maximum 100
+   */
+  pageSize?: number;
 };

@@ -79,3 +79,24 @@ export function sendNotificationEmailAsync(
   sendNotificationEmail(db, userId, subject, message, ctaUrl)
     .catch((err) => log.warn({ err, userId }, "notification email failed"));
 }
+
+/** Fire-and-forget email to an arbitrary address (e.g. external panelist). */
+export function sendDirectEmailAsync(
+  toEmail: string,
+  subject: string,
+  message: string,
+  ctaPath: string,
+  log: { warn: (obj: object, msg: string) => void },
+): void {
+  if (!resend || !toEmail) return;
+  const ctaUrl = `${appBaseUrl()}${ctaPath}`;
+  const unsubscribeUrl = `${appBaseUrl()}/profile`;
+  resend.emails
+    .send({
+      from: process.env.EMAIL_FROM || "noreply@talentlock.io",
+      to: toEmail,
+      subject,
+      html: buildEmailHtml(message.replace(/\n/g, "<br/>"), ctaUrl, unsubscribeUrl),
+    })
+    .catch((err) => log.warn({ err, toEmail }, "direct notification email failed"));
+}

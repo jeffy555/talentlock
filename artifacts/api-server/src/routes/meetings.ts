@@ -1,9 +1,17 @@
 import { Router } from "express";
 import { getAuth } from "@clerk/express";
 import { db } from "@workspace/db";
-import { meetingsTable, freelancerProfilesTable, employerProfilesTable, usersTable } from "@workspace/db";
-import { eq, or, and, count } from "drizzle-orm";
-import { CreateMeetingBody, UpdateMeetingBody } from "@workspace/api-zod";
+import {
+  meetingsTable,
+  freelancerProfilesTable,
+  employerProfilesTable,
+  usersTable,
+  teamsTable,
+  teamMembersTable,
+  employerCandidateNotesTable,
+} from "@workspace/db";
+import { eq, or, and, count, ilike, exists, inArray, type SQL } from "drizzle-orm";
+import { CreateMeetingBody, UpdateMeetingBody, PostMeetingFeedbackBody, ListMeetingsQueryParams } from "@workspace/api-zod";
 import { randomBytes } from "crypto";
 import {
   createNotification,
@@ -13,57 +21,146 @@ import {
   freelancerNameForProfile,
   employerCompanyForProfile,
 } from "../lib/createNotification";
-import { sendNotificationEmailAsync } from "../lib/emailService";
+import { sendNotificationEmailAsync, sendDirectEmailAsync } from "../lib/emailService";
 import { resolveUserByClerkId, canAccessMeeting, profileIdsForUser } from "../lib/accessControl";
 import { parsePagination, paginatedResponse } from "../lib/paginationUtils";
 import { sanitiseText } from "../lib/sanitise";
+import { sanitiseIlikeQuery } from "../lib/searchUtils";
 import { generateMeetingBrief } from "../lib/meetingBriefGenerator";
+import { generateInterviewHandoffSummary } from "../lib/interviewHandoffSummary";
+import { checkTokenQuota } from "../lib/subscriptionGating";
 
 const router = Router();
 
-async function enrichMeeting(m: typeof meetingsTable.$inferSelect) {
-  const [f] = await db
-    .select({ name: freelancerProfilesTable.name, clerkId: freelancerProfilesTable.clerkId })
-    .from(freelancerProfilesTable)
-    .where(eq(freelancerProfilesTable.id, m.freelancerId))
-    .limit(1);
-  const [e] = await db
-    .select({
-      name: employerProfilesTable.companyName,
-      clerkId: employerProfilesTable.clerkId,
-      verificationLevel: employerProfilesTable.verificationLevel,
-    })
-    .from(employerProfilesTable)
-    .where(eq(employerProfilesTable.id, m.employerId))
-    .limit(1);
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-  const [[fu], [eu]] = await Promise.all([
-    f?.clerkId
-      ? db.select({ email: usersTable.email }).from(usersTable).where(eq(usersTable.clerkId, f.clerkId)).limit(1)
-      : Promise.resolve([undefined]),
-    e?.clerkId
-      ? db.select({ email: usersTable.email }).from(usersTable).where(eq(usersTable.clerkId, e.clerkId)).limit(1)
-      : Promise.resolve([undefined]),
+type MeetingRow = typeof meetingsTable.$inferSelect;
+type EnrichMeetingOpts = {
+  viewerEmployerProfileId: number | null;
+  includeFeedbackBody?: boolean;
+};
+
+/** Batch-enrich meetings (3 queries total) instead of 4 round-trips per row. */
+async function enrichMeetings(rows: MeetingRow[], opts: EnrichMeetingOpts) {
+  if (rows.length === 0) return [];
+
+  const freelancerIds = [...new Set(rows.map((r) => r.freelancerId))];
+  const employerIds = [...new Set(rows.map((r) => r.employerId))];
+
+  const [freelancers, employers] = await Promise.all([
+    db
+      .select({
+        id: freelancerProfilesTable.id,
+        name: freelancerProfilesTable.name,
+        clerkId: freelancerProfilesTable.clerkId,
+      })
+      .from(freelancerProfilesTable)
+      .where(inArray(freelancerProfilesTable.id, freelancerIds)),
+    db
+      .select({
+        id: employerProfilesTable.id,
+        name: employerProfilesTable.companyName,
+        clerkId: employerProfilesTable.clerkId,
+        verificationLevel: employerProfilesTable.verificationLevel,
+      })
+      .from(employerProfilesTable)
+      .where(inArray(employerProfilesTable.id, employerIds)),
   ]);
 
-  return {
-    ...m,
-    freelancerName: f?.name ?? null,
-    employerName: e?.name ?? null,
-    employerVerificationLevel: e?.verificationLevel ?? "unverified",
-    freelancerEmail: fu?.email ?? null,
-    employerEmail: eu?.email ?? null,
-  };
+  const freelancerById = new Map(freelancers.map((f) => [f.id, f]));
+  const employerById = new Map(employers.map((e) => [e.id, e]));
+  const clerkIds = [
+    ...new Set(
+      [...freelancers, ...employers]
+        .map((p) => p.clerkId)
+        .filter((id): id is string => Boolean(id)),
+    ),
+  ];
+
+  const emailByClerkId = new Map<string, string | null>();
+  if (clerkIds.length > 0) {
+    const emails = await db
+      .select({ clerkId: usersTable.clerkId, email: usersTable.email })
+      .from(usersTable)
+      .where(inArray(usersTable.clerkId, clerkIds));
+    for (const row of emails) {
+      if (row.clerkId) emailByClerkId.set(row.clerkId, row.email ?? null);
+    }
+  }
+
+  return rows.map((m) => {
+    const f = freelancerById.get(m.freelancerId);
+    const e = employerById.get(m.employerId);
+    const isEmployerParty =
+      opts.viewerEmployerProfileId != null && opts.viewerEmployerProfileId === m.employerId;
+
+    const base = {
+      ...m,
+      freelancerName: f?.name ?? null,
+      employerName: e?.name ?? null,
+      employerVerificationLevel: e?.verificationLevel ?? "unverified",
+      freelancerEmail: f?.clerkId ? (emailByClerkId.get(f.clerkId) ?? null) : null,
+      employerEmail: e?.clerkId ? (emailByClerkId.get(e.clerkId) ?? null) : null,
+      hasInterviewFeedback: isEmployerParty && m.feedbackSubmittedAt != null,
+    };
+
+    if (!isEmployerParty) {
+      return {
+        ...base,
+        disposition: null,
+        feedbackText: null,
+        feedbackSummary: null,
+        nextRoundPanelEmail: null,
+        nextRoundPanelName: null,
+        nextRoundTeamMemberId: null,
+        interviewResult: null,
+        feedbackMessageId: null,
+        hasInterviewFeedback: false,
+      };
+    }
+
+    if (!opts.includeFeedbackBody) {
+      return {
+        ...base,
+        feedbackText: null,
+        feedbackSummary: null,
+      };
+    }
+
+    return base;
+  });
+}
+
+async function enrichMeeting(m: MeetingRow, opts: EnrichMeetingOpts) {
+  const [enriched] = await enrichMeetings([m], opts);
+  return enriched;
+}
+
+async function resolveViewerEmployerId(clerkId: string): Promise<number | null> {
+  const [employer] = await db
+    .select({ id: employerProfilesTable.id })
+    .from(employerProfilesTable)
+    .where(eq(employerProfilesTable.clerkId, clerkId))
+    .limit(1);
+  return employer?.id ?? null;
 }
 
 router.get("/meetings", async (req, res) => {
   const { userId: clerkId } = getAuth(req);
   if (!clerkId) { res.status(401).json({ error: "Unauthorized" }); return; }
+  const parsed = ListMeetingsQueryParams.safeParse(req.query);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+  const params = parsed.data;
   try {
-    const [freelancer] = await db.select().from(freelancerProfilesTable).where(eq(freelancerProfilesTable.clerkId, clerkId)).limit(1);
-    const [employer] = await db.select().from(employerProfilesTable).where(eq(employerProfilesTable.clerkId, clerkId)).limit(1);
+    const [[freelancer], [employer]] = await Promise.all([
+      db.select().from(freelancerProfilesTable).where(eq(freelancerProfilesTable.clerkId, clerkId)).limit(1),
+      db.select().from(employerProfilesTable).where(eq(employerProfilesTable.clerkId, clerkId)).limit(1),
+    ]);
 
-    const conditions = [];
+    const conditions: SQL[] = [];
     if (freelancer && employer) {
       conditions.push(or(eq(meetingsTable.freelancerId, freelancer.id), eq(meetingsTable.employerId, employer.id))!);
     } else if (freelancer) {
@@ -71,18 +168,44 @@ router.get("/meetings", async (req, res) => {
     } else if (employer) {
       conditions.push(eq(meetingsTable.employerId, employer.id));
     }
+    if (params.status) conditions.push(eq(meetingsTable.status, params.status));
+
+    const searchPattern = params.q ? sanitiseIlikeQuery(params.q) : null;
+    if (searchPattern) {
+      conditions.push(or(
+        ilike(meetingsTable.title, searchPattern),
+        ilike(meetingsTable.agenda, searchPattern),
+        exists(
+          db.select({ id: freelancerProfilesTable.id })
+            .from(freelancerProfilesTable)
+            .where(and(
+              eq(freelancerProfilesTable.id, meetingsTable.freelancerId),
+              ilike(freelancerProfilesTable.name, searchPattern),
+            )),
+        ),
+        exists(
+          db.select({ id: employerProfilesTable.id })
+            .from(employerProfilesTable)
+            .where(and(
+              eq(employerProfilesTable.id, meetingsTable.employerId),
+              ilike(employerProfilesTable.companyName, searchPattern),
+            )),
+        ),
+      )!);
+    }
 
     const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
-    const page = Math.max(1, parseInt(String(req.query.page ?? "1"), 10) || 1);
-    const pageSize = Math.min(Math.max(1, parseInt(String(req.query.pageSize ?? "20"), 10) || 20), 100);
-    const offset = (page - 1) * pageSize;
+    const { page, pageSize, offset } = parsePagination(params);
 
     const [rows, countResult] = await Promise.all([
       db.select().from(meetingsTable).where(whereClause).limit(pageSize).offset(offset),
       db.select({ count: count() }).from(meetingsTable).where(whereClause),
     ]);
 
-    const enriched = await Promise.all(rows.map(enrichMeeting));
+    const enriched = await enrichMeetings(rows, {
+      viewerEmployerProfileId: employer?.id ?? null,
+      includeFeedbackBody: false,
+    });
     const total = Number(countResult[0]?.count ?? 0);
     res.json(paginatedResponse(enriched, total, page, pageSize));
   } catch (err) {
@@ -159,7 +282,10 @@ router.post("/meetings", async (req, res) => {
       );
     }
 
-    res.status(201).json(await enrichMeeting(meeting));
+    res.status(201).json(await enrichMeeting(meeting, {
+      viewerEmployerProfileId: employer.id,
+      includeFeedbackBody: true,
+    }));
   } catch (err) {
     req.log.error({ err }, "Failed to create meeting");
     res.status(500).json({ error: "Internal server error" });
@@ -181,7 +307,8 @@ router.get("/meetings/:id", async (req, res) => {
     }
     const [m] = await db.select().from(meetingsTable).where(eq(meetingsTable.id, id)).limit(1);
     if (!m) { res.status(404).json({ error: "Meeting not found" }); return; }
-    res.json(await enrichMeeting(m));
+    const viewerEmployerProfileId = await resolveViewerEmployerId(clerkId);
+    res.json(await enrichMeeting(m, { viewerEmployerProfileId, includeFeedbackBody: true }));
   } catch (err) {
     req.log.error({ err }, "Failed to get meeting");
     res.status(500).json({ error: "Internal server error" });
@@ -247,7 +374,10 @@ router.patch("/meetings/:id", async (req, res) => {
       }
     }
 
-    res.json(await enrichMeeting(updated));
+    res.json(await enrichMeeting(updated, {
+      viewerEmployerProfileId: await resolveViewerEmployerId(clerkId),
+      includeFeedbackBody: true,
+    }));
 
     // Fire-and-forget AI meeting brief when a meeting first becomes confirmed.
     // Never awaited — must not delay or affect the PATCH response.
@@ -291,6 +421,286 @@ router.post("/meetings/:id/brief", async (req, res) => {
       .catch((err) => req.log.warn({ err, meetingId: id }, "meeting brief manual generation failed"));
   } catch (err) {
     req.log.error({ err }, "Failed to start meeting brief generation");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// POST /api/meetings/:id/feedback — employer hiring decision (internal only; A / Hybrid C / AI-1 / F2).
+router.post("/meetings/:id/feedback", async (req, res) => {
+  const id = parseInt(req.params.id);
+  if (isNaN(id)) { res.status(400).json({ error: "Invalid ID" }); return; }
+  const { userId: clerkId } = getAuth(req);
+  if (!clerkId) { res.status(401).json({ error: "Unauthorized" }); return; }
+
+  const parsed = PostMeetingFeedbackBody.safeParse(req.body);
+  if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
+
+  try {
+    const user = await resolveUserByClerkId(clerkId);
+    if (!user) { res.status(401).json({ error: "Unauthorized" }); return; }
+
+    const access = await canAccessMeeting(user.id, id);
+    if (!access.ok) {
+      res.status(access.status).json({ error: access.status === 404 ? "Meeting not found" : "Forbidden" });
+      return;
+    }
+
+    const [meeting] = await db.select().from(meetingsTable).where(eq(meetingsTable.id, id)).limit(1);
+    if (!meeting) { res.status(404).json({ error: "Meeting not found" }); return; }
+
+    const { employerId } = await profileIdsForUser(user.id);
+    if (employerId === null || employerId !== meeting.employerId) {
+      res.status(403).json({ error: "Only the employer on this meeting can submit interview feedback" });
+      return;
+    }
+    if (meeting.status !== "completed") {
+      res.status(422).json({ error: "Meeting must be completed before submitting interview feedback" });
+      return;
+    }
+    if (meeting.feedbackSubmittedAt != null) {
+      res.status(409).json({ error: "Interview feedback already submitted" });
+      return;
+    }
+
+    const feedbackText = sanitiseText(parsed.data.feedbackText).trim();
+    if (feedbackText.length < 20 || feedbackText.length > 2000) {
+      res.status(400).json({ error: "feedbackText must be between 20 and 2000 characters" });
+      return;
+    }
+
+    const disposition = parsed.data.disposition;
+    let nextRoundTeamMemberId: number | null = null;
+    let nextRoundPanelEmail: string | null = null;
+    let nextRoundPanelName: string | null = null;
+    let panelNotifyUserId: number | null = null;
+    let panelNotifyEmail: string | null = null;
+    let panelDisplayName: string | null = null;
+
+    if (disposition === "next_round") {
+      const [ownedTeam] = await db
+        .select()
+        .from(teamsTable)
+        .where(eq(teamsTable.ownerUserId, user.id))
+        .limit(1);
+
+      let activeMembers: Array<typeof teamMembersTable.$inferSelect> = [];
+      if (ownedTeam) {
+        activeMembers = await db
+          .select()
+          .from(teamMembersTable)
+          .where(and(
+            eq(teamMembersTable.teamId, ownedTeam.id),
+            eq(teamMembersTable.status, "active"),
+          ));
+      }
+
+      if (activeMembers.length > 0) {
+        const memberId = parsed.data.nextRoundTeamMemberId;
+        if (memberId == null) {
+          res.status(400).json({ error: "nextRoundTeamMemberId is required when your team has members" });
+          return;
+        }
+        const member = activeMembers.find((m) => m.id === memberId);
+        if (!member) {
+          res.status(400).json({ error: "nextRoundTeamMemberId must be an active member of your team" });
+          return;
+        }
+        nextRoundTeamMemberId = member.id;
+        panelNotifyEmail = member.invitedEmail;
+        panelDisplayName = member.invitedEmail;
+        panelNotifyUserId = member.userId ?? null;
+        if (member.userId) {
+          const [memberUser] = await db
+            .select({ email: usersTable.email, name: usersTable.name })
+            .from(usersTable)
+            .where(eq(usersTable.id, member.userId))
+            .limit(1);
+          if (memberUser?.email) panelNotifyEmail = memberUser.email;
+          if (memberUser?.name) panelDisplayName = memberUser.name;
+        }
+      } else {
+        const email = parsed.data.nextRoundPanelEmail?.trim().toLowerCase() ?? "";
+        if (!email || !EMAIL_RE.test(email)) {
+          res.status(400).json({ error: "nextRoundPanelEmail is required for next-round handoff" });
+          return;
+        }
+        nextRoundPanelEmail = email;
+        nextRoundPanelName = parsed.data.nextRoundPanelName
+          ? sanitiseText(parsed.data.nextRoundPanelName).trim().slice(0, 200) || null
+          : null;
+        panelNotifyEmail = email;
+        panelDisplayName = nextRoundPanelName ?? email;
+        const [matched] = await db
+          .select({ id: usersTable.id })
+          .from(usersTable)
+          .where(eq(usersTable.email, email))
+          .limit(1);
+        panelNotifyUserId = matched?.id ?? null;
+      }
+
+      const quota = await checkTokenQuota(db, user.id);
+      if (!quota.allowed) {
+        res.status(402).json({
+          error: "Monthly AI token limit reached",
+          code: "TOKEN_LIMIT",
+          planNeeded: quota.planNeeded ?? "employer_growth",
+        });
+        return;
+      }
+    }
+
+    const [freelancer] = await db
+      .select({ name: freelancerProfilesTable.name })
+      .from(freelancerProfilesTable)
+      .where(eq(freelancerProfilesTable.id, meeting.freelancerId))
+      .limit(1);
+    const candidateName = freelancer?.name ?? "Candidate";
+
+    let feedbackSummary: string | null = null;
+    if (disposition === "next_round") {
+      try {
+        const result = await generateInterviewHandoffSummary({
+          feedbackText,
+          candidateName,
+          meetingTitle: meeting.title,
+          dbClient: db,
+          employerUserId: user.id,
+        });
+        feedbackSummary = result.summary;
+      } catch (err) {
+        req.log.error({ err, meetingId: id }, "Failed to generate interview handoff summary");
+        res.status(500).json({ error: "Could not generate handoff summary. Please try again." });
+        return;
+      }
+    }
+
+    const updated = await db.transaction(async (tx) => {
+      const [locked] = await tx.select()
+        .from(meetingsTable)
+        .where(eq(meetingsTable.id, id))
+        .for("update")
+        .limit(1);
+      if (!locked) {
+        const err = new Error("MEETING_NOT_FOUND");
+        (err as Error & { status?: number }).status = 404;
+        throw err;
+      }
+      if (locked.feedbackSubmittedAt != null) {
+        const err = new Error("FEEDBACK_ALREADY_SUBMITTED");
+        (err as Error & { status?: number }).status = 409;
+        throw err;
+      }
+      if (locked.status !== "completed") {
+        const err = new Error("MEETING_NOT_COMPLETED");
+        (err as Error & { status?: number }).status = 422;
+        throw err;
+      }
+
+      const [row] = await tx.update(meetingsTable)
+        .set({
+          disposition,
+          feedbackText,
+          feedbackSummary,
+          feedbackSubmittedAt: new Date(),
+          nextRoundTeamMemberId,
+          nextRoundPanelEmail,
+          nextRoundPanelName,
+          interviewResult: null,
+          feedbackMessageId: null,
+          updatedAt: new Date(),
+        })
+        .where(eq(meetingsTable.id, id))
+        .returning();
+
+      if (disposition === "proceed_to_booking" || disposition === "rejected") {
+        await tx
+          .insert(employerCandidateNotesTable)
+          .values({
+            employerUserId: user.id,
+            freelancerId: locked.freelancerId,
+            latestMeetingId: locked.id,
+            disposition,
+            feedbackText,
+            feedbackSummary: null,
+          })
+          .onConflictDoUpdate({
+            target: [
+              employerCandidateNotesTable.employerUserId,
+              employerCandidateNotesTable.freelancerId,
+            ],
+            set: {
+              latestMeetingId: locked.id,
+              disposition,
+              feedbackText,
+              feedbackSummary: null,
+              updatedAt: new Date(),
+            },
+          });
+      }
+
+      return row;
+    });
+
+    if (disposition === "next_round" && panelNotifyEmail) {
+      const employerName = await employerCompanyForProfile(updated.employerId);
+      const summaryBody = [
+        `${employerName} shared confidential interview notes for the next round.`,
+        `Candidate: ${candidateName}`,
+        `Meeting: ${updated.title}`,
+        "",
+        "Handoff summary:",
+        feedbackSummary ?? feedbackText,
+        "",
+        "These notes are internal — do not share with the candidate.",
+      ].join("\n");
+
+      if (panelNotifyUserId) {
+        createNotification(db, {
+          userId: panelNotifyUserId,
+          type: NotificationType.MEETING_NEXT_ROUND_PANEL,
+          entityType: "meeting",
+          entityId: id,
+          message: `Next-round interview handoff for ${candidateName}`,
+        }).catch((err) => req.log.warn({ err, meetingId: id }, "panel notification write failed"));
+        sendNotificationEmailAsync(
+          db,
+          panelNotifyUserId,
+          `Next-round handoff — ${candidateName}`,
+          summaryBody,
+          `/meetings/${id}`,
+          req.log,
+        );
+      } else {
+        sendDirectEmailAsync(
+          panelNotifyEmail,
+          `Next-round handoff — ${candidateName}`,
+          summaryBody,
+          `/meetings/${id}`,
+          req.log,
+        );
+      }
+      void panelDisplayName;
+    }
+
+    res.status(201).json(await enrichMeeting(updated, {
+      viewerEmployerProfileId: employerId,
+      includeFeedbackBody: true,
+    }));
+  } catch (err) {
+    const status = (err as Error & { status?: number }).status;
+    if (status === 409) {
+      res.status(409).json({ error: "Interview feedback already submitted" });
+      return;
+    }
+    if (status === 422) {
+      res.status(422).json({ error: "Meeting must be completed before submitting interview feedback" });
+      return;
+    }
+    if (status === 404) {
+      res.status(404).json({ error: "Meeting not found" });
+      return;
+    }
+    req.log.error({ err }, "Failed to submit meeting interview feedback");
     res.status(500).json({ error: "Internal server error" });
   }
 });

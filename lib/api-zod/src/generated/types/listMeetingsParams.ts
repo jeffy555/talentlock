@@ -5,8 +5,17 @@
  * TalentLock API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { ListMeetingsStatus } from "./listMeetingsStatus";
 
 export type ListMeetingsParams = {
+  /**
+   * Filter by meeting status
+   */
+  status?: ListMeetingsStatus;
+  /**
+   * Keyword search across title, agenda, and counterparty name
+   */
+  q?: string;
   page?: number;
   pageSize?: number;
 };

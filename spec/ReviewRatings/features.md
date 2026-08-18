@@ -114,3 +114,4 @@ Reviews and Ratings are available on all plans for both employers and freelancer
 - Review reminders via email or push notification
 - Rating filters on the Talent Vault (filter by minimum rating)
 - Review import from external platforms
+- Discovery meeting hiring decision / internal interview notes — owned by `spec/discovery-meeting-outcome/` (pre-booking; not a star review; never candidate-facing)
