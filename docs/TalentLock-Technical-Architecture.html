@@ -2246,7 +2246,7 @@ ul.tight ul li{font-size:8.1pt;color:var(--gray-600);margin-bottom:2pt;}
           <td>Country-derived currency; booking currency frozen with FX snapshot; cached rate
               endpoint; currency-correct agreement rate clauses.</td></tr>
       <tr><td class="mono">14</td><td class="k">Subscription Tiers</td><td><span class="pill auth">AUTH</span></td>
-          <td>Five plans with enforced booking, job-post, and interest ceilings — currently open via
+          <td>Six plan definitions with enforced booking, job-post, and interest ceilings — currently open via
               <code>PREMIUM_FEATURES_FREE</code>.</td></tr>
       <tr><td class="mono">17</td><td class="k">AI Token Tracking</td><td><span class="pill auth">AUTH</span></td>
           <td>Monthly quota per employer plan; per-conversation breakdown on Growth+.</td></tr>
@@ -2372,18 +2372,29 @@ ul.tight ul li{font-size:8.1pt;color:var(--gray-600);margin-bottom:2pt;}
           <th style="width:14%">List Price</th><th style="width:50%">Enforced Ceilings</th></tr>
     </thead>
     <tbody>
+      <tr><td class="k mono">free</td><td>Any</td><td>$0</td>
+          <td>1 active booking &middot; 1 job post/month &middot; 3 interests/month &middot; transitional
+              default held before a plan is chosen</td></tr>
       <tr><td class="k mono">freelancer_free</td><td>Freelancer</td><td>$0</td>
-          <td>3 active bookings &middot; 5 interests/month &middot; no token quota</td></tr>
+          <td>1 active booking &middot; 3 interests/month &middot; no token quota</td></tr>
       <tr><td class="k mono">freelancer_pro</td><td>Freelancer</td><td>$0 <span style="color:var(--gray-400)">(was&nbsp;$19)</span></td>
-          <td>10 active bookings &middot; unlimited interests &middot; Cruise Mode entitlement</td></tr>
+          <td>5 active bookings &middot; unlimited interests &middot; Cruise Mode entitlement</td></tr>
       <tr><td class="k mono">employer_starter</td><td>Employer</td><td>$49/mo</td>
-          <td>3 active bookings &middot; 5 job posts/month &middot; 50k tokens/month &middot; 25 watchlist</td></tr>
+          <td>2 active bookings &middot; 5 job posts/month &middot; 50k tokens/month &middot; 1 seat
+              &middot; 25 watchlist</td></tr>
       <tr><td class="k mono">employer_growth</td><td>Employer</td><td>$0 <span style="color:var(--gray-400)">(was&nbsp;$199)</span></td>
-          <td>15 active bookings &middot; 30 job posts/month &middot; 250k tokens/month &middot; 100 watchlist</td></tr>
+          <td>10 active bookings &middot; unlimited job posts &middot; 250k tokens/month &middot; 3 seats
+              &middot; 100 watchlist</td></tr>
       <tr><td class="k mono">employer_enterprise</td><td>Employer</td><td>Custom</td>
-          <td>Unlimited &middot; team accounts &middot; custom clauses &middot; shared shortlist</td></tr>
+          <td>Unlimited bookings, posts, seats and tokens &middot; team accounts &middot; custom clauses
+              &middot; shared shortlist</td></tr>
     </tbody>
   </table>
+  <p class="tnote">Figures taken from <code>artifacts/api-server/src/lib/plans.ts</code>, which is the
+    code that enforces them. <strong>The plan table in <code>project.md</code> is out of date</strong> —
+    it lists five plans rather than six and overstates the booking ceilings on
+    <code>freelancer_free</code>, <code>freelancer_pro</code>, <code>employer_starter</code>, and
+    <code>employer_growth</code>. Treat <code>plans.ts</code> as authoritative.</p>
 
   <div class="endrule"></div>
 </div>
