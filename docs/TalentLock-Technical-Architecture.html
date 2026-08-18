@@ -3,9 +3,12 @@
 <head>
 <meta charset="utf-8" />
 <title>TalentLock — Technical Architecture &amp; Executive Brief</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<!-- Fonts are resolved from locally installed static TTFs (Inter 400/500/600/700,
+     JetBrains Mono) rather than a webfont CDN. Google Fonts serves *variable*
+     Inter, which Chromium's PDF backend can only embed as Type 3 glyph programs —
+     that inflates the file roughly tenfold and degrades text fidelity. Static
+     faces embed as subsetted TrueType instead. Fallbacks keep the document
+     renderable where these families are absent. -->
 <style>
 /* ============================================================
    TalentLock Technical Architecture — Print Stylesheet
@@ -79,6 +82,9 @@ body{
   color:var(--gray-700);
   -webkit-font-smoothing:antialiased;
   text-rendering:optimizeLegibility;
+  /* Never strand one or two lines of a paragraph across a page boundary. */
+  orphans:3;
+  widows:3;
 }
 
 /* Horizontal rhythm — content inset lives on the wrapper so full-bleed
@@ -124,7 +130,7 @@ code{
   width:26pt;height:26pt;border-radius:7pt;flex:none;
   background:linear-gradient(140deg,var(--teal-500),var(--emerald-600));
   display:flex;align-items:center;justify-content:center;
-  font-weight:800;font-size:13pt;color:#04211C;letter-spacing:-.04em;
+  font-weight:700;font-size:13pt;color:#04211C;letter-spacing:-.04em;
 }
 .cover-brandname{font-size:13pt;font-weight:700;letter-spacing:.20em;color:#fff;text-transform:uppercase;}
 .cover-brandsub{font-size:7.6pt;letter-spacing:.28em;color:var(--teal-500);text-transform:uppercase;font-weight:600;margin-top:1.5pt;}
@@ -134,13 +140,13 @@ code{
   color:var(--teal-500);font-weight:700;margin-bottom:9pt;
 }
 .cover-title{
-  font-size:39pt;line-height:1.03;font-weight:800;color:#fff;
+  font-size:39pt;line-height:1.03;font-weight:700;color:#fff;
   letter-spacing:-.028em;margin-bottom:0;
 }
-.cover-title .thin{font-weight:300;color:#B4C6D8;display:block;}
+.cover-title .thin{font-weight:400;color:#B4C6D8;display:block;}
 .cover-rule{height:3.5pt;width:64pt;background:var(--teal-500);margin:15pt 0 15pt 0;border-radius:2pt;}
 .cover-lede{
-  font-size:11.2pt;line-height:1.62;color:#C0D0E0;max-width:126mm;font-weight:300;
+  font-size:11.2pt;line-height:1.62;color:#C0D0E0;max-width:126mm;font-weight:400;
 }
 .cover-lede b{color:#fff;font-weight:600;}
 
@@ -176,7 +182,7 @@ code{
   padding:8pt 0;border-radius:4pt 0 0 4pt;
 }
 .sec-num-lab{font-size:5.9pt;letter-spacing:.2em;text-transform:uppercase;color:var(--teal-500);font-weight:700;}
-.sec-num-v{font-size:21pt;font-weight:800;line-height:1;letter-spacing:-.04em;margin-top:1pt;}
+.sec-num-v{font-size:21pt;font-weight:700;line-height:1;letter-spacing:-.04em;margin-top:1pt;}
 .sec-head{
   flex:1;background:var(--wash);border:.6pt solid var(--line);border-left:0;
   border-radius:0 4pt 4pt 0;padding:9pt 12pt;display:flex;flex-direction:column;justify-content:center;
@@ -530,6 +536,9 @@ dl.defs dt .tag{
 dl.defs dd{margin:2pt 0 0 0;font-size:8.2pt;color:var(--gray-600);line-height:1.5;}
 
 /* ---------- Bullets ---------- */
+/* These lists are all short (six items or fewer); keeping them whole avoids
+   stranding a single bullet at the top of the next page. */
+ul.tight,ol.tight{break-inside:avoid;}
 ul.tight{margin:4pt 0 9pt 0;padding-left:12pt;}
 ul.tight li{margin-bottom:3.2pt;font-size:8.5pt;line-height:1.5;}
 ul.tight li::marker{color:var(--teal-600);}
@@ -694,7 +703,7 @@ ul.tight ul li{font-size:8.1pt;color:var(--gray-600);margin-bottom:2pt;}
           <span class="toc-sub">3.7 Cross-Cutting Concerns</span>
         </div>
       </div>
-      <div class="toc-p">16</div>
+      <div class="toc-p">15</div>
     </div>
 
     <div class="toc-sec">
@@ -717,7 +726,7 @@ ul.tight ul li{font-size:8.1pt;color:var(--gray-600);margin-bottom:2pt;}
           <span class="toc-sub">4.10 External Boundaries</span>
         </div>
       </div>
-      <div class="toc-p">25</div>
+      <div class="toc-p">24</div>
     </div>
 
     <div class="toc-sec">
@@ -727,12 +736,12 @@ ul.tight ul li{font-size:8.1pt;color:var(--gray-600);margin-bottom:2pt;}
         <div class="toc-d">Complete API surface index, environment configuration matrix,
           and the verification &amp; quality posture.</div>
         <div class="toc-subs">
-          <span class="toc-sub">A. API Surface Index &middot; 36</span>
-          <span class="toc-sub">B. Environment Matrix &middot; 43</span>
-          <span class="toc-sub">C. Verification Posture &middot; 45</span>
+          <span class="toc-sub">A. API Surface Index &middot; 35</span>
+          <span class="toc-sub">B. Environment Matrix &middot; 42</span>
+          <span class="toc-sub">C. Verification Posture &middot; 44</span>
         </div>
       </div>
-      <div class="toc-p">36</div>
+      <div class="toc-p">35</div>
     </div>
   </div>
 
@@ -1409,12 +1418,9 @@ ul.tight ul li{font-size:8.1pt;color:var(--gray-600);margin-bottom:2pt;}
     </div>
   </div>
 
-  <div class="endrule"></div>
-</div>
 
 <!-- ---------- 2.4 Request lifecycle ---------- -->
-<div class="sheet page-break">
-  <h3 class="blk" style="margin-top:0"><span class="ix">2.4</span> Canonical Request Lifecycle</h3>
+  <h3 class="blk"><span class="ix">2.4</span> Canonical Request Lifecycle</h3>
 
   <p class="lede">Every authenticated API call traverses a fixed, ordered middleware chain assembled in
      <code>artifacts/api-server/src/app.ts</code>. Order is load-bearing: body parsing must precede
@@ -1594,12 +1600,9 @@ ul.tight ul li{font-size:8.1pt;color:var(--gray-600);margin-bottom:2pt;}
        established pattern.</p>
   </div>
 
-  <div class="endrule"></div>
-</div>
 
 <!-- ---------- 2.6 / 2.7 ---------- -->
-<div class="sheet page-break">
-  <h3 class="blk" style="margin-top:0"><span class="ix">2.6</span> Autonomous Agent Loops</h3>
+  <h3 class="blk"><span class="ix">2.6</span> Autonomous Agent Loops</h3>
 
   <p class="lede">Cruise Mode and TalentSearch are structural mirrors — one freelancer-side, one
      employer-side — sharing a two-stage filter, a governor stack, and DM delivery. Both are triggered
@@ -2012,12 +2015,9 @@ ul.tight ul li{font-size:8.1pt;color:var(--gray-600);margin-bottom:2pt;}
        <code>lib/api-zod/src/generated/</code> guarantees loss on the next codegen.</p>
   </div>
 
-  <div class="endrule"></div>
-</div>
 
 <!-- ---------- 3.5 Persistence ---------- -->
-<div class="sheet page-break">
-  <h3 class="blk" style="margin-top:0"><span class="ix">3.5</span> Persistence Design</h3>
+  <h3 class="blk"><span class="ix">3.5</span> Persistence Design</h3>
 
   <p class="lede">Thirty-one tables across 28 schema modules. Schema evolution is
      <strong>declarative</strong>: <code>drizzle-kit push</code> diffs TypeScript definitions against the
@@ -2275,12 +2275,9 @@ ul.tight ul li{font-size:8.1pt;color:var(--gray-600);margin-bottom:2pt;}
     </tbody>
   </table>
 
-  <div class="endrule"></div>
-</div>
 
 <!-- ---------- 3.7 Cross-cutting ---------- -->
-<div class="sheet page-break">
-  <h3 class="blk" style="margin-top:0"><span class="ix">3.7</span> Cross-Cutting Concerns</h3>
+  <h3 class="blk"><span class="ix">3.7</span> Cross-Cutting Concerns</h3>
 
   <h4 class="sub">Security Posture</h4>
   <table class="long">
@@ -2344,7 +2341,30 @@ ul.tight ul li{font-size:8.1pt;color:var(--gray-600);margin-bottom:2pt;}
        before paid launch.</p>
   </div>
 
+  <h4 class="sub">Observability</h4>
+  <ul class="tight">
+    <li><strong>Structured logging</strong> — Pino via <code>req.log</code> in every handler;
+      <code>console.log</code> is prohibited by convention. Sensitive fields are redacted at the
+      logger, not at call sites.</li>
+    <li><strong>Decision ledgers</strong> — both autonomous agents append an activity row for every
+      outcome, including refusals, making agent behaviour auditable without log archaeology.</li>
+    <li><strong>Cost attribution</strong> — <code>token_usage</code> supports per-user, per-feature,
+      and per-conversation rollups, surfaced in both the user billing view and the admin console.</li>
+    <li><strong>Audit trail</strong> — <code>audit_logs</code> records authentication events and
+      sensitive mutations with request provenance.</li>
+    <li><strong>Gap</strong> — no APM, distributed tracing, error aggregation, or uptime metrics are
+      wired. Diagnosis currently depends on log inspection and database queries.</li>
+  </ul>
+
   <h4 class="sub">Entitlement &amp; Metering</h4>
+
+  <p>Two enforcement mechanisms operate independently. <code>checkLimit()</code> counts domain rows
+     against plan ceilings for job posts, active bookings, express interests, and team seats.
+     <code>checkTokenQuota()</code> sums <code>token_usage.totalTokens</code> for the current month
+     inside a transaction that first acquires <code>SELECT id FROM users WHERE id = $1 FOR UPDATE</code>,
+     serialising concurrent inference requests so a burst cannot straddle the ceiling. Both are bypassed
+     wholesale when <code>PREMIUM_FEATURES_FREE</code> is set, and the internal system user is always
+     exempt.</p>
 
   <table>
     <thead>
@@ -2364,29 +2384,6 @@ ul.tight ul li{font-size:8.1pt;color:var(--gray-600);margin-bottom:2pt;}
           <td>Unlimited &middot; team accounts &middot; custom clauses &middot; shared shortlist</td></tr>
     </tbody>
   </table>
-
-  <p>Two enforcement mechanisms operate independently. <code>checkLimit()</code> counts domain rows
-     against plan ceilings for job posts, active bookings, express interests, and team seats.
-     <code>checkTokenQuota()</code> sums <code>token_usage.totalTokens</code> for the current month
-     inside a transaction that first acquires <code>SELECT id FROM users WHERE id = $1 FOR UPDATE</code>,
-     serialising concurrent inference requests so a burst cannot straddle the ceiling. Both are bypassed
-     wholesale when <code>PREMIUM_FEATURES_FREE</code> is set, and the internal system user is always
-     exempt.</p>
-
-  <h4 class="sub">Observability</h4>
-  <ul class="tight">
-    <li><strong>Structured logging</strong> — Pino via <code>req.log</code> in every handler;
-      <code>console.log</code> is prohibited by convention. Sensitive fields are redacted at the
-      logger, not at call sites.</li>
-    <li><strong>Decision ledgers</strong> — both autonomous agents append an activity row for every
-      outcome, including refusals, making agent behaviour auditable without log archaeology.</li>
-    <li><strong>Cost attribution</strong> — <code>token_usage</code> supports per-user, per-feature,
-      and per-conversation rollups, surfaced in both the user billing view and the admin console.</li>
-    <li><strong>Audit trail</strong> — <code>audit_logs</code> records authentication events and
-      sensitive mutations with request provenance.</li>
-    <li><strong>Gap</strong> — no APM, distributed tracing, error aggregation, or uptime metrics are
-      wired. Diagnosis currently depends on log inspection and database queries.</li>
-  </ul>
 
   <div class="endrule"></div>
 </div>
@@ -2663,12 +2660,9 @@ ul.tight ul li{font-size:8.1pt;color:var(--gray-600);margin-bottom:2pt;}
     </div>
   </div>
 
-  <div class="endrule"></div>
-</div>
 
 <!-- ---------- 4.4 / 4.5 ---------- -->
-<div class="sheet page-break">
-  <h3 class="blk" style="margin-top:0"><span class="ix">4.4</span> AI Inference Components</h3>
+  <h3 class="blk"><span class="ix">4.4</span> AI Inference Components</h3>
 
   <p>Every inference module separates <strong>deterministic prompt construction</strong> from the
      network call, which is what makes the prompt builders unit-testable without mocking OpenAI. Each
@@ -2867,12 +2861,9 @@ ul.tight ul li{font-size:8.1pt;color:var(--gray-600);margin-bottom:2pt;}
     </div>
   </div>
 
-  <div class="endrule"></div>
-</div>
 
 <!-- ---------- 4.6 – 4.8 ---------- -->
-<div class="sheet page-break">
-  <h3 class="blk" style="margin-top:0"><span class="ix">4.6</span> Notification &amp; Messaging Fabric</h3>
+  <h3 class="blk"><span class="ix">4.6</span> Notification &amp; Messaging Fabric</h3>
 
   <div class="io">
     <div class="io-h">
@@ -3038,12 +3029,9 @@ ul.tight ul li{font-size:8.1pt;color:var(--gray-600);margin-bottom:2pt;}
     </div>
   </div>
 
-  <div class="endrule"></div>
-</div>
 
 <!-- ---------- 4.9 / 4.10 ---------- -->
-<div class="sheet page-break">
-  <h3 class="blk" style="margin-top:0"><span class="ix">4.9</span> Client Composition &amp; State Management</h3>
+  <h3 class="blk"><span class="ix">4.9</span> Client Composition &amp; State Management</h3>
 
   <div class="io">
     <div class="io-h">
