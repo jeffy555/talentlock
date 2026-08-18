@@ -1,0 +1,2793 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>TalentLock — Commercial Strategy &amp; Sales Brief</title>
+<!-- Fonts resolve from locally installed static TTFs (Inter 400/500/600/700 and
+     JetBrains Mono). Google Fonts serves *variable* Inter, which Chromium's PDF
+     backend can only embed as Type 3 glyph programs — that inflates the file and
+     degrades text fidelity. Static faces embed as subsetted CID TrueType. -->
+<style>
+/* ============================================================
+   TalentLock Commercial Strategy — Print Stylesheet
+   Palette: Deep Slate/Navy dominant · Cool Gray secondary
+            Gold/Brass accent for commercial value, pricing, positioning
+   Sister document to the Technical Architecture brief, which uses the
+   same structure with a teal accent. Gold marks the commercial edition.
+   ============================================================ */
+
+:root{
+  --navy-900:#081726;
+  --navy-800:#0C1E33;
+  --navy-700:#123049;
+  --navy-600:#1B4165;
+  --navy-500:#2A5680;
+
+  --gray-700:#3E4C5E;
+  --gray-600:#5A6B7F;
+  --gray-500:#78899D;
+  --gray-400:#9AA9BA;
+  --gray-300:#C3CEDA;
+  --line:#DBE3EC;
+  --line-soft:#EDF1F6;
+  --wash:#F5F8FB;
+  --wash-2:#EFF3F8;
+  --paper:#FFFFFF;
+
+  /* Accent — gold / brass */
+  --gold-700:#8C6716;
+  --gold-600:#B08422;
+  --gold-500:#C9A84C;
+  --gold-400:#DCC176;
+  --gold-100:#F5E9C6;
+  --gold-50:#FBF6E7;
+
+  --blue-600:#2563EB;
+  --blue-50:#EFF6FF;
+  --blue-900:#1E3A5F;
+  --amber-600:#D97706;
+  --amber-50:#FFFBEB;
+  --amber-900:#78350F;
+  --emerald-600:#059669;
+  --emerald-500:#10B981;
+  --emerald-50:#ECFDF5;
+  --rose-600:#E11D48;
+  --rose-50:#FFF1F2;
+  --violet-600:#7C3AED;
+  --violet-50:#F5F3FF;
+}
+
+/* Page margins are supplied per pass by scripts/render-brief-pdf.mjs.
+   Declaring `margin` here would override that option in Chromium. */
+@page{ size:A4; }
+
+body.only-cover .sheet{display:none;}
+body.no-cover .cover{display:none;}
+
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;}
+
+body{
+  font-family:'Inter','Helvetica Neue',Arial,'Liberation Sans',sans-serif;
+  font-size:9.4pt;line-height:1.55;color:var(--gray-700);
+  -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;
+  orphans:3;widows:3;
+}
+
+.sheet{padding:0 18mm;}
+
+h1,h2,h3,h4,h5{margin:0;font-weight:700;color:var(--navy-800);letter-spacing:-.012em;}
+p{margin:0 0 7pt 0;}
+strong{font-weight:600;color:var(--navy-700);}
+em{font-style:normal;color:var(--gold-700);font-weight:500;}
+code,kbd,pre,.mono{font-family:'JetBrains Mono','DejaVu Sans Mono',ui-monospace,Menlo,monospace;}
+code{
+  font-size:8.1pt;background:var(--wash-2);color:var(--navy-700);
+  padding:.8pt 3pt;border-radius:2.5pt;border:.4pt solid var(--line);
+  font-weight:500;white-space:nowrap;
+}
+
+/* ============================================================ COVER */
+.cover{
+  position:relative;width:210mm;height:297mm;margin:0;
+  background:linear-gradient(158deg,var(--navy-900) 0%,var(--navy-800) 42%,var(--navy-700) 100%);
+  color:#fff;overflow:hidden;break-after:page;padding:40mm 20mm 0 20mm;
+}
+.cover::before{
+  content:'';position:absolute;top:-70mm;right:-70mm;width:180mm;height:180mm;border-radius:50%;
+  background:radial-gradient(circle at 34% 34%,rgba(201,168,76,.30),rgba(176,132,34,.05) 58%,transparent 72%);
+}
+.cover::after{
+  content:'';position:absolute;left:0;right:0;bottom:0;height:12mm;
+  background:linear-gradient(90deg,var(--gold-400) 0%,var(--gold-500) 30%,var(--gold-600) 62%,var(--navy-600) 100%);
+}
+.cover-inner{position:relative;z-index:2;}
+.cover-brand{display:flex;align-items:center;gap:8pt;margin-bottom:38mm;}
+.cover-mark{
+  width:26pt;height:26pt;border-radius:7pt;flex:none;
+  background:linear-gradient(140deg,var(--gold-400),var(--gold-600));
+  display:flex;align-items:center;justify-content:center;
+  font-weight:700;font-size:13pt;color:#2A1E04;letter-spacing:-.04em;
+}
+.cover-brandname{font-size:13pt;font-weight:700;letter-spacing:.20em;color:#fff;text-transform:uppercase;}
+.cover-brandsub{font-size:7.6pt;letter-spacing:.28em;color:var(--gold-500);text-transform:uppercase;font-weight:600;margin-top:1.5pt;}
+.cover-kicker{font-size:8.4pt;letter-spacing:.32em;text-transform:uppercase;color:var(--gold-500);font-weight:700;margin-bottom:9pt;}
+.cover-title{font-size:39pt;line-height:1.03;font-weight:700;color:#fff;letter-spacing:-.028em;}
+.cover-title .thin{font-weight:400;color:#B4C6D8;display:block;}
+.cover-rule{height:3.5pt;width:64pt;background:var(--gold-500);margin:15pt 0;border-radius:2pt;}
+.cover-lede{font-size:11.2pt;line-height:1.62;color:#C0D0E0;max-width:126mm;font-weight:400;}
+.cover-lede b{color:#fff;font-weight:600;}
+.cover-stats{display:flex;margin-top:26mm;border-top:.6pt solid rgba(255,255,255,.17);padding-top:9pt;}
+.cover-stat{flex:1;border-right:.6pt solid rgba(255,255,255,.13);padding-right:6pt;}
+.cover-stat:last-child{border-right:0;}
+.cover-stat-n{font-size:19pt;font-weight:700;color:var(--gold-500);letter-spacing:-.03em;line-height:1.1;}
+.cover-stat-l{font-size:6.9pt;letter-spacing:.13em;text-transform:uppercase;color:#8FA5BC;margin-top:2.5pt;font-weight:500;line-height:1.35;}
+.cover-meta{
+  position:absolute;bottom:24mm;left:20mm;right:20mm;z-index:2;
+  display:flex;justify-content:space-between;align-items:flex-end;
+  border-top:.6pt solid rgba(255,255,255,.15);padding-top:8pt;
+}
+.cover-meta-k{font-size:6.8pt;letter-spacing:.2em;text-transform:uppercase;color:#7B92AB;font-weight:600;}
+.cover-meta-v{font-size:8.9pt;color:#DCE7F1;margin-top:2pt;font-weight:500;}
+
+/* ============================================================ SCAFFOLD */
+.page-break{break-before:page;}
+.avoid-break{break-inside:avoid;}
+
+.sec-open{display:flex;align-items:stretch;margin:0 0 13pt 0;break-after:avoid;}
+.sec-num{
+  flex:none;width:46pt;background:var(--navy-800);color:#fff;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  padding:8pt 0;border-radius:4pt 0 0 4pt;
+}
+.sec-num-lab{font-size:5.9pt;letter-spacing:.2em;text-transform:uppercase;color:var(--gold-500);font-weight:700;}
+.sec-num-v{font-size:21pt;font-weight:700;line-height:1;letter-spacing:-.04em;margin-top:1pt;}
+.sec-head{
+  flex:1;background:var(--wash);border:.6pt solid var(--line);border-left:0;
+  border-radius:0 4pt 4pt 0;padding:9pt 12pt;display:flex;flex-direction:column;justify-content:center;
+}
+.sec-head h2{font-size:16.5pt;line-height:1.16;letter-spacing:-.022em;}
+.sec-head p{margin:3pt 0 0 0;font-size:8.9pt;color:var(--gray-600);line-height:1.5;}
+
+h3.blk{
+  font-size:11.6pt;margin:16pt 0 7pt 0;padding-bottom:4pt;
+  border-bottom:1.6pt solid var(--navy-800);color:var(--navy-800);
+  display:flex;align-items:baseline;gap:6pt;break-after:avoid;
+}
+h3.blk .ix{font-family:'JetBrains Mono',monospace;font-size:8.2pt;color:var(--gold-600);font-weight:700;}
+h4.sub{font-size:9.9pt;margin:12pt 0 5pt 0;color:var(--navy-700);display:flex;align-items:center;gap:5pt;break-after:avoid;}
+h4.sub::before{content:'';width:3pt;height:10pt;background:var(--gold-600);border-radius:1pt;flex:none;}
+h5.mini{font-size:8.5pt;margin:9pt 0 4pt 0;color:var(--gray-600);text-transform:uppercase;letter-spacing:.11em;font-weight:700;break-after:avoid;}
+.lede{font-size:10pt;color:var(--gray-600);line-height:1.6;margin-bottom:10pt;}
+
+/* ============================================================ TABLES */
+table{width:100%;border-collapse:collapse;margin:6pt 0 11pt 0;font-size:8.2pt;break-inside:avoid;}
+table.long{break-inside:auto;}
+table.long tr{break-inside:avoid;}
+thead{display:table-header-group;}
+th{
+  background:var(--navy-800);color:#fff;font-weight:600;text-align:left;
+  padding:5pt 6pt;font-size:7.3pt;letter-spacing:.075em;text-transform:uppercase;
+  border-right:.5pt solid rgba(255,255,255,.13);vertical-align:middle;
+}
+th:last-child{border-right:0;}
+th.accent{background:var(--gold-700);}
+td{padding:4.6pt 6pt;border-bottom:.5pt solid var(--line);vertical-align:top;color:var(--gray-700);line-height:1.45;}
+tbody tr:nth-child(even) td{background:var(--wash);}
+tbody tr:last-child td{border-bottom:.8pt solid var(--line);}
+td.k{font-weight:600;color:var(--navy-700);}
+td.mono,th.mono{font-family:'JetBrains Mono',monospace;font-size:7.5pt;}
+td.c{text-align:center;}
+td.num{text-align:right;font-family:'JetBrains Mono',monospace;font-weight:500;color:var(--navy-700);}
+.tnote{font-size:7.5pt;color:var(--gray-500);margin:-6pt 0 11pt 0;line-height:1.45;}
+
+/* Yes / partial / no marks */
+.yes{color:var(--emerald-600);font-weight:700;}
+.par{color:var(--amber-600);font-weight:700;}
+.no{color:var(--gray-300);font-weight:700;}
+.gap{color:var(--rose-600);font-weight:700;}
+
+/* ============================================================ CALLOUTS */
+.call{
+  border-left:2.6pt solid;border-radius:0 3.5pt 3.5pt 0;
+  padding:7.5pt 10pt;margin:8pt 0 11pt 0;font-size:8.4pt;line-height:1.53;break-inside:avoid;
+}
+.call .ct{font-weight:700;font-size:6.9pt;letter-spacing:.15em;text-transform:uppercase;display:block;margin-bottom:3pt;}
+.call p{margin:0 0 4pt 0;}
+.call p:last-child{margin-bottom:0;}
+.call ul,.call ol{margin:3pt 0 0 0;padding-left:12pt;}
+.call li{margin-bottom:2.5pt;}
+
+.call.note{background:var(--blue-50);border-color:var(--blue-600);color:var(--blue-900);}
+.call.note .ct{color:var(--blue-600);}
+.call.note code{background:#DCEAFE;border-color:#BFD8FD;color:#1D4ED8;}
+
+.call.accent{background:var(--gold-50);border-color:var(--gold-600);color:#5C430C;}
+.call.accent .ct{color:var(--gold-700);}
+.call.accent code{background:#F3E7C2;border-color:#E7D5A4;color:#7A5A11;}
+
+.call.win{background:var(--emerald-50);border-color:var(--emerald-600);color:#065F46;}
+.call.win .ct{color:var(--emerald-600);}
+.call.win code{background:#D1FAE5;border-color:#A7F3D0;color:#047857;}
+
+.call.risk{background:var(--rose-50);border-color:var(--rose-600);color:#7F1129;}
+.call.risk .ct{color:var(--rose-600);}
+.call.risk code{background:#FFE0E4;border-color:#FFCBD3;color:#A2103A;}
+
+.call.caution{background:var(--amber-50);border-color:var(--amber-600);color:var(--amber-900);}
+.call.caution .ct{color:var(--amber-600);}
+.call.caution code{background:#FDF0D2;border-color:#F6DFAE;color:#8A4B08;}
+
+/* ============================================================ METRIC CARDS */
+.mgrid{display:flex;flex-wrap:wrap;gap:6pt;margin:8pt 0 12pt 0;}
+.mcard{
+  flex:1 1 0;min-width:74pt;background:var(--paper);
+  border:.6pt solid var(--line);border-top:2.4pt solid var(--gold-600);
+  border-radius:3.5pt;padding:7pt 8pt;break-inside:avoid;
+}
+.mcard.navy{border-top-color:var(--navy-700);}
+.mcard.emerald{border-top-color:var(--emerald-500);}
+.mcard.rose{border-top-color:var(--rose-600);}
+.mcard.violet{border-top-color:var(--violet-600);}
+.mcard-n{font-size:16pt;font-weight:700;color:var(--navy-800);letter-spacing:-.035em;line-height:1.1;}
+.mcard-n small{font-size:8.5pt;font-weight:600;color:var(--gray-500);letter-spacing:0;}
+.mcard-l{font-size:6.7pt;letter-spacing:.12em;text-transform:uppercase;color:var(--gray-500);margin-top:2.5pt;font-weight:600;line-height:1.35;}
+.mcard-s{font-size:7.3pt;color:var(--gray-500);margin-top:3pt;line-height:1.4;}
+
+/* Dark snapshot panel */
+.snap{background:var(--navy-800);color:#fff;border-radius:4.5pt;padding:12pt 13pt;margin:8pt 0 12pt 0;break-inside:avoid;position:relative;overflow:hidden;}
+.snap::after{content:'';position:absolute;top:0;right:0;bottom:0;width:2.6pt;background:linear-gradient(180deg,var(--gold-400),var(--gold-600));}
+.snap h4{color:#fff;font-size:9.6pt;margin:0 0 8pt 0;display:flex;align-items:center;gap:5pt;}
+.snap h4::before{content:'';width:3pt;height:10pt;background:var(--gold-500);border-radius:1pt;}
+.snap-row{display:flex;flex-wrap:wrap;}
+.snap-item{flex:1 1 0;min-width:70pt;padding-right:8pt;border-right:.5pt solid rgba(255,255,255,.14);margin-right:8pt;}
+.snap-item:last-child{border-right:0;margin-right:0;padding-right:0;}
+.snap-k{font-size:6.6pt;letter-spacing:.14em;text-transform:uppercase;color:#7F97AE;font-weight:600;}
+.snap-v{font-size:9.4pt;color:#EAF2F8;font-weight:600;margin-top:2pt;line-height:1.35;}
+.snap-v .ok{color:var(--emerald-500);}
+.snap-v .warn{color:var(--gold-500);}
+.snap-v .bad{color:#FB7185;}
+
+/* ============================================================ PILLARS */
+.pillars{display:flex;flex-wrap:wrap;gap:6pt;margin:8pt 0 12pt 0;}
+.pillar{
+  flex:1 1 0;min-width:104pt;background:var(--paper);border:.6pt solid var(--line);
+  border-radius:4pt;padding:8pt 9pt;break-inside:avoid;position:relative;
+  border-top:2.4pt solid var(--gold-600);
+}
+.pillar-n{font-family:'JetBrains Mono',monospace;font-size:6.6pt;font-weight:700;color:var(--gold-600);letter-spacing:.1em;}
+.pillar-t{font-size:9.4pt;font-weight:700;color:var(--navy-800);margin-top:2pt;line-height:1.25;}
+.pillar-d{font-size:7.7pt;color:var(--gray-600);margin-top:3.5pt;line-height:1.45;}
+.pillar-p{font-size:7.2pt;color:var(--gold-700);margin-top:4pt;font-weight:600;line-height:1.4;border-top:.5pt solid var(--line-soft);padding-top:3.5pt;}
+
+/* ============================================================ PERSONA CARDS */
+.persona{border:.6pt solid var(--line);border-radius:4pt;margin:8pt 0 10pt 0;break-inside:avoid;background:var(--paper);overflow:hidden;}
+.persona-h{background:var(--navy-800);color:#fff;padding:6.5pt 10pt;display:flex;align-items:baseline;gap:7pt;}
+.persona-h .role{font-size:9.4pt;font-weight:700;}
+.persona-h .tag{font-family:'JetBrains Mono',monospace;font-size:6.6pt;color:var(--gold-500);font-weight:700;}
+.persona-h .who{font-size:7.2pt;color:#94AABF;margin-left:auto;text-align:right;font-weight:500;}
+.persona-r{display:flex;border-bottom:.5pt solid var(--line);}
+.persona-r:last-child{border-bottom:0;}
+.persona-k{
+  flex:none;width:60pt;padding:5.5pt 8pt;font-size:6.6pt;font-weight:700;
+  letter-spacing:.12em;text-transform:uppercase;color:var(--gray-500);
+  background:var(--wash);border-right:.5pt solid var(--line);
+}
+.persona-r.pain .persona-k{color:var(--rose-600);}
+.persona-r.win .persona-k{color:var(--emerald-600);}
+.persona-r.hook .persona-k{color:var(--gold-700);}
+.persona-r.risk .persona-k{color:var(--amber-600);}
+.persona-v{flex:1;padding:5.5pt 9pt;font-size:8.1pt;line-height:1.5;}
+.persona-v ul{margin:0;padding-left:11pt;}
+.persona-v li{margin-bottom:2.5pt;}
+.persona-v li:last-child{margin-bottom:0;}
+
+/* ============================================================ PIPELINE */
+.pipe{display:flex;align-items:stretch;margin:8pt 0 10pt 0;break-inside:avoid;}
+.pipe-s{flex:1;background:var(--paper);border:.6pt solid var(--line);padding:6pt 7pt;}
+.pipe-s:not(:last-child){border-right:0;}
+.pipe-s:first-child{border-radius:3.5pt 0 0 3.5pt;}
+.pipe-s:last-child{border-radius:0 3.5pt 3.5pt 0;}
+.pipe-s.acc{background:var(--gold-50);}
+.pipe-n{font-size:6.4pt;font-weight:700;color:var(--gold-600);letter-spacing:.13em;font-family:'JetBrains Mono',monospace;}
+.pipe-t{font-size:7.9pt;font-weight:600;color:var(--navy-800);margin-top:1.5pt;line-height:1.3;}
+.pipe-d{font-size:6.9pt;color:var(--gray-500);margin-top:2pt;line-height:1.4;}
+
+/* ============================================================ DIAGRAM */
+.diagram{border:.6pt solid var(--line);border-radius:4.5pt;background:var(--wash);padding:11pt 12pt;margin:8pt 0 6pt 0;break-inside:avoid;}
+.diagram-t{font-size:7.2pt;letter-spacing:.16em;text-transform:uppercase;font-weight:700;color:var(--gray-500);margin-bottom:8pt;display:flex;align-items:center;gap:5pt;}
+.diagram-t::after{content:'';flex:1;height:.5pt;background:var(--line);}
+.dcap{font-size:7.4pt;color:var(--gray-500);margin:0 0 11pt 0;line-height:1.45;font-style:italic;}
+pre.flow{
+  font-size:6.9pt;line-height:1.5;color:var(--navy-700);background:var(--paper);
+  border:.6pt solid var(--line);border-left:2.6pt solid var(--gold-600);
+  border-radius:0 3.5pt 3.5pt 0;padding:9pt 11pt;margin:7pt 0 9pt 0;
+  overflow:hidden;white-space:pre;break-inside:avoid;font-weight:500;
+}
+pre.flow b{color:var(--gold-700);font-weight:700;}
+pre.flow i{color:var(--gray-500);font-style:normal;}
+
+/* Tier rows */
+.tier{display:flex;align-items:stretch;margin-bottom:4.5pt;break-inside:avoid;border-radius:3.5pt;overflow:hidden;border:.6pt solid var(--line);background:var(--paper);}
+.tier-lab{flex:none;width:66pt;background:var(--navy-800);color:#fff;padding:6pt 7pt;font-size:6.9pt;font-weight:700;letter-spacing:.1em;text-transform:uppercase;display:flex;align-items:center;line-height:1.3;}
+.tier.t1 .tier-lab{background:var(--navy-700);}
+.tier.t2 .tier-lab{background:var(--gold-700);}
+.tier.t3 .tier-lab{background:var(--gold-600);}
+.tier.t4 .tier-lab{background:var(--navy-600);}
+.tier.t5 .tier-lab{background:var(--gray-600);}
+.tier-body{flex:1;padding:5.5pt 8pt;display:flex;flex-wrap:wrap;gap:3.5pt;align-items:center;}
+.node{font-size:7.3pt;font-weight:600;padding:2.6pt 6pt;border-radius:2.5pt;background:var(--wash-2);border:.5pt solid var(--line);color:var(--navy-700);white-space:nowrap;}
+.node.acc{background:var(--gold-50);border-color:var(--gold-100);color:var(--gold-700);}
+.node.hot{background:var(--rose-50);border-color:#FFCBD3;color:#A2103A;}
+.node.ext{background:var(--violet-50);border-color:#DDD3FE;color:#5B21B6;}
+
+/* ============================================================ PILLS */
+.pill{font-size:6.5pt;font-weight:700;padding:1.4pt 4.5pt;border-radius:7pt;letter-spacing:.05em;white-space:nowrap;display:inline-block;}
+.pill.free{background:var(--wash-2);color:var(--gray-600);border:.5pt solid var(--line);}
+.pill.pro{background:var(--emerald-50);color:var(--emerald-600);border:.5pt solid #A7F3D0;}
+.pill.start{background:var(--blue-50);color:var(--blue-600);border:.5pt solid #BFD8FD;}
+.pill.growth{background:var(--gold-50);color:var(--gold-700);border:.5pt solid var(--gold-100);}
+.pill.ent{background:var(--navy-800);color:#fff;}
+.pill.all{background:var(--wash);color:var(--gray-600);border:.5pt solid var(--line);}
+.pill.built{background:var(--emerald-50);color:var(--emerald-600);border:.5pt solid #A7F3D0;}
+.pill.notbuilt{background:var(--rose-50);color:var(--rose-600);border:.5pt solid #FFCBD3;}
+.pill.partial{background:var(--amber-50);color:var(--amber-600);border:.5pt solid #F6DFAE;}
+
+/* ============================================================ TOC */
+.toc{margin-top:4pt;}
+.toc-sec{display:flex;align-items:baseline;gap:8pt;padding:6.5pt 0 5pt 0;border-bottom:.5pt solid var(--line);break-inside:avoid;}
+.toc-n{font-family:'JetBrains Mono',monospace;font-size:11pt;font-weight:700;color:var(--gold-600);flex:none;width:26pt;letter-spacing:-.02em;}
+.toc-body{flex:1;}
+.toc-t{font-size:10.4pt;font-weight:700;color:var(--navy-800);letter-spacing:-.012em;}
+.toc-d{font-size:7.9pt;color:var(--gray-500);margin-top:1.5pt;line-height:1.45;}
+.toc-p{font-family:'JetBrains Mono',monospace;font-size:8.4pt;color:var(--gray-500);flex:none;font-weight:600;}
+.toc-subs{display:flex;flex-wrap:wrap;gap:2.5pt 5pt;margin-top:4pt;}
+.toc-sub{font-size:7.2pt;color:var(--gray-600);background:var(--wash);border:.5pt solid var(--line-soft);border-radius:2.5pt;padding:1.6pt 4.5pt;}
+
+/* ============================================================ DEFS & LISTS */
+dl.defs{margin:6pt 0 10pt 0;}
+dl.defs dt{font-size:8.4pt;font-weight:700;color:var(--navy-800);margin-top:6pt;display:flex;align-items:baseline;gap:5pt;}
+dl.defs dt:first-child{margin-top:0;}
+dl.defs dt .tag{font-family:'JetBrains Mono',monospace;font-size:6.6pt;font-weight:700;color:var(--gold-700);background:var(--gold-50);border:.5pt solid var(--gold-100);border-radius:2pt;padding:1pt 3.5pt;}
+dl.defs dd{margin:2pt 0 0 0;font-size:8.2pt;color:var(--gray-600);line-height:1.5;}
+
+ul.tight,ol.tight{break-inside:avoid;}
+ul.tight{margin:4pt 0 9pt 0;padding-left:12pt;}
+ul.tight li{margin-bottom:3.2pt;font-size:8.5pt;line-height:1.5;}
+ul.tight li::marker{color:var(--gold-600);}
+ol.tight{margin:4pt 0 9pt 0;padding-left:14pt;}
+ol.tight li{margin-bottom:3.2pt;font-size:8.5pt;line-height:1.5;}
+ol.tight li::marker{color:var(--gold-600);font-weight:700;}
+
+/* Q&A block for objection handling */
+.qa{border-left:2.2pt solid var(--line);padding-left:9pt;margin:7pt 0 10pt 0;}
+.qa-item{margin-bottom:8pt;break-inside:avoid;}
+.qa-item:last-child{margin-bottom:0;}
+.qa-q{font-size:8.6pt;font-weight:700;color:var(--navy-800);line-height:1.4;}
+.qa-q::before{content:'“';color:var(--gold-600);font-weight:700;}
+.qa-q::after{content:'”';color:var(--gold-600);font-weight:700;}
+.qa-a{font-size:8.2pt;color:var(--gray-600);margin-top:3pt;line-height:1.5;}
+.qa-a strong{color:var(--navy-700);}
+.qa-ev{font-size:7.3pt;color:var(--gold-700);margin-top:2.5pt;font-weight:600;line-height:1.4;}
+
+/* KV strip */
+.kv{display:flex;flex-wrap:wrap;gap:5pt;margin:6pt 0 10pt 0;}
+.kvi{flex:1 1 0;min-width:96pt;border:.6pt solid var(--line);border-radius:3.5pt;padding:6pt 8pt;background:var(--paper);break-inside:avoid;}
+.kvi-k{font-size:6.5pt;letter-spacing:.13em;text-transform:uppercase;color:var(--gold-700);font-weight:700;}
+.kvi-v{font-size:8.3pt;color:var(--gray-700);margin-top:2.5pt;line-height:1.45;}
+.kvi-v strong{color:var(--navy-800);}
+
+</style>
+</head>
+<body>
+
+<!-- ============================================================ COVER -->
+<section class="cover">
+  <div class="cover-inner">
+    <div class="cover-brand">
+      <div class="cover-mark">TL</div>
+      <div>
+        <div class="cover-brandname">TalentLock</div>
+        <div class="cover-brandsub">Exclusive Talent Infrastructure</div>
+      </div>
+    </div>
+
+    <div class="cover-kicker">Commercial Strategy &amp; Sales Brief</div>
+    <h1 class="cover-title">Market Positioning<span class="thin">&amp; Revenue Architecture</span></h1>
+    <div class="cover-rule"></div>
+    <p class="cover-lede">
+      A go-to-market assessment of the TalentLock platform: what it sells, who buys it,
+      why it wins, and how it monetises. <b>48 shipped capabilities</b> mapped to buyer value,
+      a <b>six-tier plan architecture</b> audited against the code that enforces it, and a
+      candid account of what must ship before the platform can charge.
+    </p>
+
+    <div class="cover-stats">
+      <div class="cover-stat">
+        <div class="cover-stat-n">48</div>
+        <div class="cover-stat-l">Sellable<br>Capabilities</div>
+      </div>
+      <div class="cover-stat">
+        <div class="cover-stat-n">2</div>
+        <div class="cover-stat-l">Sides of the<br>Marketplace</div>
+      </div>
+      <div class="cover-stat">
+        <div class="cover-stat-n">6</div>
+        <div class="cover-stat-l">Plan Tiers<br>Defined</div>
+      </div>
+      <div class="cover-stat">
+        <div class="cover-stat-n">4</div>
+        <div class="cover-stat-l">Revenue<br>Blockers</div>
+      </div>
+      <div class="cover-stat">
+        <div class="cover-stat-n">$0</div>
+        <div class="cover-stat-l">Collected<br>To Date</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="cover-meta">
+    <div>
+      <div class="cover-meta-k">Basis of Assessment</div>
+      <div class="cover-meta-v mono" style="font-size:8.2pt">main @ 23d405b</div>
+    </div>
+    <div>
+      <div class="cover-meta-k">Document Class</div>
+      <div class="cover-meta-v">Commercial Strategy &middot; Confidential</div>
+    </div>
+    <div style="text-align:right">
+      <div class="cover-meta-k">Revision</div>
+      <div class="cover-meta-v">18 August 2026</div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================ CONTENTS -->
+<div class="sheet">
+  <div class="sec-open">
+    <div class="sec-num"><div class="sec-num-lab">Part</div><div class="sec-num-v">—</div></div>
+    <div class="sec-head">
+      <h2>Table of Contents</h2>
+      <p>Seven commercial parts and three appendices. Product claims in this document are
+         verified against the source tree; market and pricing judgements are labelled as such.</p>
+    </div>
+  </div>
+
+  <div class="toc">
+    <div class="toc-sec">
+      <div class="toc-n">01</div>
+      <div class="toc-body">
+        <div class="toc-t">Commercial Summary</div>
+        <div class="toc-d">The proposition in one page, what is actually being sold, an honest
+          commercial readiness scorecard, and the headline commercial facts.</div>
+        <div class="toc-subs">
+          <span class="toc-sub">1.1 The Proposition</span>
+          <span class="toc-sub">1.2 What We Sell</span>
+          <span class="toc-sub">1.3 Readiness Scorecard</span>
+          <span class="toc-sub">1.4 Commercial Facts</span>
+        </div>
+      </div>
+      <div class="toc-p">03</div>
+    </div>
+
+    <div class="toc-sec">
+      <div class="toc-n">02</div>
+      <div class="toc-body">
+        <div class="toc-t">Market Problem &amp; Positioning</div>
+        <div class="toc-d">The trust gap in freelance hiring, the cost of the status quo, category
+          positioning against adjacent tooling, competitive differentiation, and defensibility.</div>
+        <div class="toc-subs">
+          <span class="toc-sub">2.1 The Trust Gap</span>
+          <span class="toc-sub">2.2 Cost of Status Quo</span>
+          <span class="toc-sub">2.3 Category Position</span>
+          <span class="toc-sub">2.4 Competitive Matrix</span>
+          <span class="toc-sub">2.5 Defensibility</span>
+        </div>
+      </div>
+      <div class="toc-p">06</div>
+    </div>
+
+    <div class="toc-sec">
+      <div class="toc-n">03</div>
+      <div class="toc-body">
+        <div class="toc-t">Buyers, Segments &amp; Qualification</div>
+        <div class="toc-d">Two-sided market dynamics, employer and professional ideal customer
+          profiles, buying-committee personas, the education vertical wedge, and a qualification
+          framework for the sales team.</div>
+        <div class="toc-subs">
+          <span class="toc-sub">3.1 Two-Sided Dynamics</span>
+          <span class="toc-sub">3.2 Employer ICP</span>
+          <span class="toc-sub">3.3 Buying Committee</span>
+          <span class="toc-sub">3.4 Supply-Side ICP</span>
+          <span class="toc-sub">3.5 Education Wedge</span>
+          <span class="toc-sub">3.6 Qualification</span>
+        </div>
+      </div>
+      <div class="toc-p">10</div>
+    </div>
+
+    <div class="toc-sec">
+      <div class="toc-n">04</div>
+      <div class="toc-body">
+        <div class="toc-t">Value Architecture — Features as Commercial Assets</div>
+        <div class="toc-d">Four value pillars, every capability mapped from feature to benefit to
+          quantified buyer value, and a classification of which features acquire, retain, and
+          expand revenue.</div>
+        <div class="toc-subs">
+          <span class="toc-sub">4.1 Four Pillars</span>
+          <span class="toc-sub">4.2 Value Mapping</span>
+          <span class="toc-sub">4.3 Acquire / Retain / Expand</span>
+          <span class="toc-sub">4.4 Demo Narrative</span>
+        </div>
+      </div>
+      <div class="toc-p">14</div>
+    </div>
+
+    <div class="toc-sec">
+      <div class="toc-n">05</div>
+      <div class="toc-body">
+        <div class="toc-t">Packaging, Pricing &amp; Revenue Architecture</div>
+        <div class="toc-d">Plan architecture as enforced in code, value-metric analysis, the
+          entitlement gating map, land-and-expand mechanics, AI cost-to-serve and gross margin,
+          and pricing recommendations.</div>
+        <div class="toc-subs">
+          <span class="toc-sub">5.1 Plans As Built</span>
+          <span class="toc-sub">5.2 Value Metric</span>
+          <span class="toc-sub">5.3 Gating Map</span>
+          <span class="toc-sub">5.4 Land &amp; Expand</span>
+          <span class="toc-sub">5.5 Cost to Serve</span>
+          <span class="toc-sub">5.6 Recommendations</span>
+        </div>
+      </div>
+      <div class="toc-p">19</div>
+    </div>
+
+    <div class="toc-sec">
+      <div class="toc-n">06</div>
+      <div class="toc-body">
+        <div class="toc-t">Sales Enablement</div>
+        <div class="toc-d">The narrative arc and demo sequence, discovery questions by persona,
+          objection handling with evidence, proof points, and competitive traps.</div>
+        <div class="toc-subs">
+          <span class="toc-sub">6.1 Narrative Arc</span>
+          <span class="toc-sub">6.2 Discovery Questions</span>
+          <span class="toc-sub">6.3 Objection Handling</span>
+          <span class="toc-sub">6.4 Proof Points</span>
+          <span class="toc-sub">6.5 Competitive Traps</span>
+        </div>
+      </div>
+      <div class="toc-p">23</div>
+    </div>
+
+    <div class="toc-sec">
+      <div class="toc-n">07</div>
+      <div class="toc-body">
+        <div class="toc-t">Go-to-Market &amp; Commercial Readiness</div>
+        <div class="toc-d">Motion by segment, the activation funnel and its conversion levers,
+          the revenue blockers that must clear before charging, and a commercial risk register.</div>
+        <div class="toc-subs">
+          <span class="toc-sub">7.1 Motion by Segment</span>
+          <span class="toc-sub">7.2 Activation Funnel</span>
+          <span class="toc-sub">7.3 Revenue Blockers</span>
+          <span class="toc-sub">7.4 Risk Register</span>
+        </div>
+      </div>
+      <div class="toc-p">27</div>
+    </div>
+
+    <div class="toc-sec">
+      <div class="toc-n">A</div>
+      <div class="toc-body">
+        <div class="toc-t">Appendices</div>
+        <div class="toc-d">Complete capability-to-value index, the as-built plan comparison matrix,
+          and claims discipline for customer-facing teams.</div>
+        <div class="toc-subs">
+          <span class="toc-sub">A. Capability Index &middot; 30</span>
+          <span class="toc-sub">B. Plan Matrix &middot; 32</span>
+          <span class="toc-sub">C. Claims Discipline &middot; 34</span>
+        </div>
+      </div>
+      <div class="toc-p">30</div>
+    </div>
+  </div>
+
+  <div class="call note" style="margin-top:14pt">
+    <span class="ct">Evidence Standard Used In This Document</span>
+    <p>Every product capability claim was verified against the repository at
+       <code>main @ 23d405b</code> — plan limits from
+       <code>artifacts/api-server/src/lib/plans.ts</code>, entitlement behaviour from
+       <code>subscriptionGating.ts</code> and <code>planAccess.ts</code>, and buyer-visible copy from
+       <code>artifacts/talentlock/src/pages/Pricing.tsx</code>.</p>
+    <p><strong>Market sizing figures are deliberately omitted.</strong> No first-party market research,
+       funnel data, win/loss history, or customer telemetry exists in this repository, so any TAM or
+       conversion-rate number here would be invented. Where commercial judgement is offered it is
+       labelled <em>Recommendation</em> or <em>Assumption</em> and the reasoning is shown so it can be
+       challenged.</p>
+  </div>
+
+  <div class="call caution">
+    <span class="ct">Companion Document</span>
+    <p>This brief is the commercial counterpart to <strong>TalentLock — System Architecture &amp;
+       Component Reference</strong> (teal edition), which covers the same platform from an engineering
+       perspective. Where this document asserts that a capability exists, the architecture brief
+       identifies the module that implements it.</p>
+  </div>
+</div>
+
+<!-- ============================================================ PART 01 -->
+<div class="sheet page-break">
+  <div class="sec-open">
+    <div class="sec-num"><div class="sec-num-lab">Part</div><div class="sec-num-v">01</div></div>
+    <div class="sec-head">
+      <h2>Commercial Summary</h2>
+      <p>What the business sells, to whom, on what commercial terms — and an unvarnished view of how
+         close the platform is to collecting revenue.</p>
+    </div>
+  </div>
+
+  <h3 class="blk"><span class="ix">1.1</span> The Proposition</h3>
+
+  <p class="lede">
+    TalentLock sells <strong>certainty in freelance hiring</strong>. It is not a job board and not a
+    staffing agency. It is the transactional system of record for an engagement — from
+    discovery through verification, negotiation, contract, delivery, and retrospective — with
+    <em>exclusivity</em> and <em>verified identity</em> enforced by the platform rather than promised
+    by the counterparty.
+  </p>
+
+  <p>
+    The commercial insight is that buyers of specialist freelance talent are not short of
+    <strong>candidates</strong>; they are short of <strong>confidence</strong>. The expensive failures in
+    freelance hiring happen after the match: the contractor takes a second engagement mid-project, the
+    credential turns out to be unverified or expired, the contract is an email thread, the scope was
+    never written down, and nobody can say afterwards whether the engagement was actually good value.
+    Marketplaces optimise the match and disengage precisely where the risk begins.
+  </p>
+
+  <p>
+    TalentLock monetises that gap. Its differentiated assets are the <strong>exclusivity lock</strong>
+    (a booked professional is made unavailable by the system, with availability blocks written
+    automatically), <strong>bilateral verification</strong> (both employer and professional present
+    tiered, AI-adjudicated identity and credential badges, with expiry tracked on a 90/30/7-day alert
+    ladder), and a <strong>complete contract lifecycle</strong> (AI drafting or upload, redlining, a
+    five-dimension health score, plain-English summarisation, dual e-signature, and a certified PDF)
+    that never requires leaving the platform.
+  </p>
+
+  <div class="call accent">
+    <span class="ct">The One-Sentence Pitch</span>
+    <p><strong>TalentLock is where you hire a specialist and know they are actually yours</strong> —
+       verified, exclusively committed, under a signed contract, with the whole engagement recorded in
+       one place instead of scattered across a marketplace, an inbox, and a folder of PDFs.</p>
+  </div>
+
+  <h3 class="blk"><span class="ix">1.2</span> What We Are Actually Selling</h3>
+
+  <p>Commercially it is important to be precise about the unit of value, because it determines how the
+     product is priced and how a sales conversation should be framed. TalentLock sells four distinct
+     things, in descending order of willingness to pay.</p>
+
+  <div class="pillars">
+    <div class="pillar">
+      <div class="pillar-n">SELL 01</div>
+      <div class="pillar-t">Risk removal</div>
+      <div class="pillar-d">Exclusivity enforcement, bilateral verification, credential expiry
+        monitoring, and a signed enforceable agreement for every engagement.</div>
+      <div class="pillar-p">Buyer pays to avoid a failed engagement</div>
+    </div>
+    <div class="pillar">
+      <div class="pillar-n">SELL 02</div>
+      <div class="pillar-t">Time compression</div>
+      <div class="pillar-d">AI matching, autonomous outreach agents, AI-drafted contracts, generated
+        meeting briefs and proposals — hours of manual work removed per engagement.</div>
+      <div class="pillar-p">Buyer pays to reclaim hiring-manager time</div>
+    </div>
+    <div class="pillar">
+      <div class="pillar-n">SELL 03</div>
+      <div class="pillar-t">Decision quality</div>
+      <div class="pillar-d">Rate benchmarking against market and historical spend, contract health
+        scoring, hiring funnel analytics, and post-engagement debriefs.</div>
+      <div class="pillar-p">Buyer pays to stop overpaying and re-hiring badly</div>
+    </div>
+    <div class="pillar">
+      <div class="pillar-n">SELL 04</div>
+      <div class="pillar-t">System of record</div>
+      <div class="pillar-d">One auditable place holding contracts, signatures, credentials, messages,
+        spend, and outcomes across every engagement.</div>
+      <div class="pillar-p">Buyer pays for auditability and continuity</div>
+    </div>
+  </div>
+
+  <p>The supply side buys something different and narrower: <strong>qualified inbound demand without
+     bidding</strong>. Professionals pay to be found, to be visibly verified, and to have an autonomous
+     agent pitch on their behalf while they work — not to browse listings.</p>
+
+  <h3 class="blk"><span class="ix">1.3</span> Commercial Readiness Scorecard</h3>
+
+  <p>The product is materially further along than the commercial apparatus around it. The distinction
+     matters for forecasting: <strong>capability is not the constraint on revenue; collection and
+     claim integrity are.</strong></p>
+
+  <table class="long">
+    <thead>
+      <tr>
+        <th style="width:29%">Commercial Dimension</th>
+        <th style="width:13%" class="c">Status</th>
+        <th style="width:58%">Evidence</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td class="k">Product breadth</td><td class="c"><span class="pill built">READY</span></td>
+          <td>48 feature domains shipped across both sides of the marketplace, backed by 37 written
+              specifications.</td></tr>
+      <tr><td class="k">Differentiated capability</td><td class="c"><span class="pill built">READY</span></td>
+          <td>Exclusivity lock, bilateral verification, full contract lifecycle, and two autonomous
+              outreach agents — none of which are table stakes in adjacent tooling.</td></tr>
+      <tr><td class="k">AI depth</td><td class="c"><span class="pill built">READY</span></td>
+          <td>20 metered inference surfaces embedded in workflow, each with per-account cost
+              attribution in a single accounting table.</td></tr>
+      <tr><td class="k">Multi-currency &amp; international</td><td class="c"><span class="pill built">READY</span></td>
+          <td>Country-derived currency, booking currency frozen with an FX snapshot, dual-currency
+              display — no re-platforming needed to sell outside one market.</td></tr>
+      <tr><td class="k">Vertical differentiation</td><td class="c"><span class="pill built">READY</span></td>
+          <td>Education vertical carries a dedicated profile model, DBS status, teaching licence
+              expiry enforcement, and subject/level matching.</td></tr>
+      <tr><td class="k">Entitlement enforcement</td><td class="c"><span class="pill partial">BUILT, OFF</span></td>
+          <td>Plan ceilings and token quotas are fully implemented and unit-tested, then bypassed
+              wholesale by the <code>PREMIUM_FEATURES_FREE</code> flag, which is currently on.</td></tr>
+      <tr><td class="k">Usage telemetry for CS</td><td class="c"><span class="pill partial">PARTIAL</span></td>
+          <td>Per-account, per-feature token consumption and activity ledgers exist. There is no
+              product-analytics instrumentation, funnel tracking, or health scoring.</td></tr>
+      <tr><td class="k">Payment collection</td><td class="c"><span class="pill notbuilt">BLOCKER</span></td>
+          <td>Upgrade is a <strong>simulated</strong> transition. Stripe columns are reserved on
+              <code>subscriptions</code> but no processor is integrated. <strong>The platform cannot
+              take money today.</strong></td></tr>
+      <tr><td class="k">Advertised-vs-built parity</td><td class="c"><span class="pill notbuilt">BLOCKER</span></td>
+          <td>Four capabilities are listed on the live pricing page but not implemented — see the
+              risk note below. This is a mis-selling exposure, not a roadmap gap.</td></tr>
+      <tr><td class="k">Published pricing accuracy</td><td class="c"><span class="pill notbuilt">BLOCKER</span></td>
+          <td>Internal documentation and the enforcing code disagree on four of six plans' limits.
+              Any quote built from the wrong source is wrong.</td></tr>
+      <tr><td class="k">Abuse &amp; margin protection</td><td class="c"><span class="pill notbuilt">BLOCKER</span></td>
+          <td>No global rate limit on AI endpoints. With quotas disabled, inference cost per account
+              is currently unbounded.</td></tr>
+    </tbody>
+  </table>
+
+  <div class="call risk">
+    <span class="ct">Material Commercial Risk — Selling What Is Not Built</span>
+    <p>The pricing page renders each plan's <code>features</code> array verbatim to prospects. Four
+       entries describe capabilities that do not exist in the codebase:</p>
+    <ul>
+      <li><strong>SSO / SCIM</strong> (Enterprise) — authentication is Clerk-based; no SAML or SCIM
+        provisioning path exists anywhere in the tree.</li>
+      <li><strong>Audit log export</strong> (Enterprise) — an <code>audit_logs</code> table and a
+        platform-admin view exist, but there is no customer-facing export.</li>
+      <li><strong>Priority placement in Vault search</strong> (Freelancer Pro) — no ranking logic
+        anywhere reads the subscription plan.</li>
+      <li><strong>Verified Pro badge on profile</strong> (Freelancer Pro) — badges are derived from
+        verified documents, not from plan tier.</li>
+    </ul>
+    <p>Two of these sit in the <strong>Enterprise</strong> tier, which is precisely where they will be
+       written into a contract and diligenced by a security reviewer. <strong>Remove or build them
+       before the first enterprise conversation.</strong> Of the four, SSO/SCIM is the only one likely
+       to be a genuine deal-breaker for that segment, and it is also the most expensive to deliver.</p>
+  </div>
+
+  <h3 class="blk"><span class="ix">1.4</span> Headline Commercial Facts</h3>
+
+  <div class="mgrid">
+    <div class="mcard navy">
+      <div class="mcard-n">48</div>
+      <div class="mcard-l">Sellable capabilities</div>
+      <div class="mcard-s">Both marketplace sides</div>
+    </div>
+    <div class="mcard">
+      <div class="mcard-n">$49</div>
+      <div class="mcard-l">Only live price</div>
+      <div class="mcard-s">Employer Starter, per month</div>
+    </div>
+    <div class="mcard emerald">
+      <div class="mcard-n">20</div>
+      <div class="mcard-l">Metered AI surfaces</div>
+      <div class="mcard-s">Per-account attribution</div>
+    </div>
+    <div class="mcard violet">
+      <div class="mcard-n">5×</div>
+      <div class="mcard-l">Token headroom</div>
+      <div class="mcard-s">Starter 50k &rarr; Growth 250k</div>
+    </div>
+    <div class="mcard rose">
+      <div class="mcard-n">4</div>
+      <div class="mcard-l">Revenue blockers</div>
+      <div class="mcard-s">All non-architectural</div>
+    </div>
+  </div>
+
+  <div class="snap">
+    <h4>Monetisation Posture At A Glance</h4>
+    <div class="snap-row">
+      <div class="snap-item">
+        <div class="snap-k">Model</div>
+        <div class="snap-v">SaaS subscription</div>
+      </div>
+      <div class="snap-item">
+        <div class="snap-k">Sides charged</div>
+        <div class="snap-v">Both <span class="warn">(asymmetric)</span></div>
+      </div>
+      <div class="snap-item">
+        <div class="snap-k">Take rate on work</div>
+        <div class="snap-v"><span class="bad">None</span></div>
+      </div>
+      <div class="snap-item">
+        <div class="snap-k">Payments in scope</div>
+        <div class="snap-v"><span class="bad">No</span></div>
+      </div>
+      <div class="snap-item">
+        <div class="snap-k">Contract term</div>
+        <div class="snap-v">Monthly</div>
+      </div>
+    </div>
+    <div class="snap-row" style="margin-top:9pt;border-top:.5pt solid rgba(255,255,255,.14);padding-top:8pt">
+      <div class="snap-item">
+        <div class="snap-k">Primary value metric</div>
+        <div class="snap-v">Active bookings</div>
+      </div>
+      <div class="snap-item">
+        <div class="snap-k">Secondary metric</div>
+        <div class="snap-v">AI tokens / month</div>
+      </div>
+      <div class="snap-item">
+        <div class="snap-k">Seat expansion</div>
+        <div class="snap-v">Enterprise only</div>
+      </div>
+      <div class="snap-item">
+        <div class="snap-k">Gates active</div>
+        <div class="snap-v"><span class="bad">No</span> — flag open</div>
+      </div>
+      <div class="snap-item">
+        <div class="snap-k">Revenue to date</div>
+        <div class="snap-v"><span class="bad">$0</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="call win">
+    <span class="ct">The Commercial Headline</span>
+    <p>TalentLock has built an <strong>enterprise-grade product on a pre-revenue commercial chassis</strong>.
+       The capability inventory would credibly support a $49–$199 per seat-month employer subscription
+       today. What stands between the product and its first invoice is a payment integration, one
+       configuration flag, and the removal of four unbuilt claims — <strong>days of commercial work, not
+       quarters of engineering</strong>. That asymmetry is the single most important fact in this
+       document.</p>
+  </div>
+</div>
+
+<!-- ============================================================ PART 02 -->
+<div class="sheet page-break">
+  <div class="sec-open">
+    <div class="sec-num"><div class="sec-num-lab">Part</div><div class="sec-num-v">02</div></div>
+    <div class="sec-head">
+      <h2>Market Problem &amp; Positioning</h2>
+      <p>The buyer problem in its own language, the cost of leaving it unsolved, and where TalentLock
+         sits relative to the tools a prospect is already paying for.</p>
+    </div>
+  </div>
+
+  <h3 class="blk"><span class="ix">2.1</span> The Trust Gap</h3>
+
+  <p class="lede">
+    Freelance hiring has abundant supply and almost no assurance. The market has solved
+    <em>finding</em> people and left <em>relying</em> on them entirely to the buyer.
+  </p>
+
+  <p>
+    A hiring manager engaging a specialist contractor today runs an unmanaged risk portfolio. Five
+    failure modes recur, and none of them are addressed by the platform that made the introduction.
+  </p>
+
+  <div class="diagram">
+    <div class="diagram-t">Figure 2.1 — Where freelance engagements fail, and who currently owns the risk</div>
+<pre class="flow">
+   STAGE            FAILURE MODE                            WHO OWNS IT TODAY
+   ─────────────────────────────────────────────────────────────────────────────────
+   Discovery        Volume without signal — hundreds of      <i>Buyer, manually</i>
+                    profiles, no verified differentiation
+
+   Vetting          Credentials asserted, not verified.      <b>Nobody</b>
+                    Licences and checks silently expire
+
+   Commitment       Contractor takes a parallel              <b>Nobody</b>
+                    engagement mid-project
+
+   Contracting      Terms live in an email thread or a       <i>Buyer, or their lawyer</i>
+                    template nobody reviewed
+
+   Retrospective    No record of whether the engagement      <b>Nobody</b>
+                    was good value or worth repeating
+   ─────────────────────────────────────────────────────────────────────────────────
+   <b>TalentLock owns all five.</b>  Exclusivity and verification are enforced by the
+   system; contracting and retrospective are first-class product surfaces.
+</pre>
+    <div class="dcap">The three "nobody" rows are the commercial opening. They are precisely the
+      failures a buyer has learned to absorb because no vendor has offered to carry them.</div>
+  </div>
+
+  <div class="call accent">
+    <span class="ct">Positioning Consequence</span>
+    <p>Because the differentiation sits <strong>after</strong> the match, TalentLock should never be
+       sold on the strength of its matching. Every marketplace claims good matching and buyers have
+       learned to discount the claim. Lead instead with the <strong>exclusivity lock</strong> — it is
+       concrete, demonstrable in thirty seconds, and no incumbent offers it.</p>
+  </div>
+
+  <h3 class="blk"><span class="ix">2.2</span> The Cost of the Status Quo</h3>
+
+  <p>Buyers rarely have a line item called "freelance hiring risk", so the value has to be constructed
+     with them during discovery. The framework below is the arithmetic to walk a prospect through. The
+     <strong>inputs come from the prospect</strong> — the platform supplies the structure, not the
+     numbers.</p>
+
+  <table class="long">
+    <thead>
+      <tr>
+        <th style="width:22%">Cost Centre</th>
+        <th style="width:36%">How It Is Incurred Today</th>
+        <th style="width:42%">What TalentLock Changes</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td class="k">Failed engagement</td>
+          <td>A contractor is unavailable, under-qualified, or exits mid-project. Cost is the sunk fee
+              plus re-hiring plus the delivery slip.</td>
+          <td>Exclusivity is enforced in the schema and credentials are AI-verified before engagement.
+              The two most common causes are removed structurally.</td></tr>
+      <tr><td class="k">Hiring-manager time</td>
+          <td>Screening, chasing references, drafting scope, negotiating by email, writing the contract,
+              chasing signatures.</td>
+          <td>AI matching with explanations, AI-drafted contracts, generated meeting briefs, in-platform
+              negotiation and e-signature. Measured in hours per engagement.</td></tr>
+      <tr><td class="k">Rate leakage</td>
+          <td>No visibility into market rate or the organisation's own historical spend, so each rate is
+              negotiated from zero.</td>
+          <td>Rate benchmarking against market median and the employer's own history, surfaced at the
+              moment of negotiation.</td></tr>
+      <tr><td class="k">Legal exposure</td>
+          <td>Unreviewed templates, missing IP or termination clauses, unverifiable signature trails.</td>
+          <td>Contract health scored across five dimensions, AI redlining, dual e-signature with stored
+              signature images and timestamps, certified PDF.</td></tr>
+      <tr><td class="k">Compliance risk</td>
+          <td>Expired professional licences or background checks go unnoticed until an audit or an
+              incident.</td>
+          <td>Expiry tracked with a 90/30/7-day alert ladder; lapsed credentials downgrade the badge
+              automatically and, in the education vertical, remove the profile from the Vault.</td></tr>
+      <tr><td class="k">Institutional amnesia</td>
+          <td>When the hiring manager leaves, the knowledge of who was good and why leaves with them.</td>
+          <td>Reviews, post-engagement AI debriefs with rehire recommendations, candidate hiring files,
+              and retained spend and outcome analytics.</td></tr>
+    </tbody>
+  </table>
+
+  <div class="call note">
+    <span class="ct">Discovery Technique — Make The Buyer Do The Arithmetic</span>
+    <p>The strongest version of this conversation is not a slide. Ask three questions and let the
+       prospect compute the number themselves: <strong>"How many contractor engagements did you run last
+       year?"</strong> &middot; <strong>"How many went wrong enough that you had to re-hire or slip a
+       date?"</strong> &middot; <strong>"What did one of those cost you, all in?"</strong> A single
+       prevented failure typically dwarfs an annual subscription, which reframes the pricing
+       conversation from cost to insurance before pricing is ever discussed.</p>
+  </div>
+
+  <h3 class="blk"><span class="ix">2.3</span> Category Positioning</h3>
+
+  <p>TalentLock overlaps several categories without belonging to any of them. That is commercially
+     useful — it means there is rarely a like-for-like incumbent to be displaced — but it is also a
+     risk, because prospects will try to file the product under something familiar and budget for it
+     accordingly.</p>
+
+  <div class="diagram">
+    <div class="diagram-t">Figure 2.3 — Adjacent categories and the ground TalentLock occupies</div>
+
+    <div class="tier t1">
+      <div class="tier-lab">Supply</div>
+      <div class="tier-body">
+        <span class="node">General freelance marketplaces</span>
+        <span class="node">Vertical talent networks</span>
+        <span class="node">Staffing &amp; recruitment agencies</span>
+      </div>
+    </div>
+    <div class="tier t4">
+      <div class="tier-lab">Process</div>
+      <div class="tier-body">
+        <span class="node">ATS / HR suites</span>
+        <span class="node">Vendor management systems</span>
+        <span class="node">Freelancer management systems</span>
+      </div>
+    </div>
+    <div class="tier t4">
+      <div class="tier-lab">Paperwork</div>
+      <div class="tier-body">
+        <span class="node">E-signature tools</span>
+        <span class="node">Contract lifecycle management</span>
+        <span class="node">Background-check providers</span>
+      </div>
+    </div>
+    <div class="tier t2">
+      <div class="tier-lab">TalentLock</div>
+      <div class="tier-body">
+        <span class="node acc">Verified two-sided supply</span>
+        <span class="node acc">Enforced exclusivity</span>
+        <span class="node acc">Full contract lifecycle</span>
+        <span class="node acc">Credential expiry compliance</span>
+        <span class="node acc">Spend &amp; hiring analytics</span>
+        <span class="node acc">Autonomous outreach agents</span>
+      </div>
+    </div>
+    <div class="tier t5">
+      <div class="tier-lab">Status quo</div>
+      <div class="tier-body">
+        <span class="node hot">Spreadsheet + inbox + folder of PDFs &ensp;— the real incumbent in most deals</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="call caution">
+    <span class="ct">Positioning Risk — Being Mis-Filed</span>
+    <p>If a prospect files TalentLock as "another marketplace" it will be benchmarked against a
+       zero-subscription, take-rate model and lose on price. If filed as "e-signature plus a directory"
+       it will be benchmarked against a low per-seat tool. <strong>The category to claim is engagement
+       assurance</strong> — the system of record for contractor engagements — because that framing
+       carries a compliance-and-risk budget rather than a tools budget. Insist on that frame early; it
+       is very hard to change after the first pricing discussion.</p>
+  </div>
+
+  <h3 class="blk"><span class="ix">2.4</span> Competitive Differentiation Matrix</h3>
+
+  <p>Compared by capability against category archetypes rather than named vendors, since individual
+     vendor feature sets change and no first-party competitive research exists in this repository.</p>
+
+  <table class="long">
+    <thead>
+      <tr>
+        <th style="width:26%">Capability</th>
+        <th style="width:11%" class="c">Freelance<br>marketplace</th>
+        <th style="width:11%" class="c">Staffing<br>agency</th>
+        <th style="width:11%" class="c">ATS /<br>HR suite</th>
+        <th style="width:11%" class="c">CLM /<br>e-sign</th>
+        <th style="width:12%" class="c accent">TalentLock</th>
+        <th style="width:18%">Commercial read</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td class="k">Talent discovery</td>
+          <td class="c yes">✓</td><td class="c yes">✓</td><td class="c par">~</td><td class="c no">✗</td>
+          <td class="c yes">✓</td><td>Table stakes — do not lead here</td></tr>
+      <tr><td class="k">AI matching with rationale</td>
+          <td class="c par">~</td><td class="c no">✗</td><td class="c par">~</td><td class="c no">✗</td>
+          <td class="c yes">✓</td><td>Differentiated but widely claimed</td></tr>
+      <tr><td class="k">Verified identity, both sides</td>
+          <td class="c par">~</td><td class="c yes">✓</td><td class="c no">✗</td><td class="c no">✗</td>
+          <td class="c yes">✓</td><td><strong>Agency-grade trust without agency margin</strong></td></tr>
+      <tr><td class="k">Enforced exclusivity</td>
+          <td class="c no">✗</td><td class="c par">~</td><td class="c no">✗</td><td class="c no">✗</td>
+          <td class="c yes">✓</td><td><strong>Unique — lead with this</strong></td></tr>
+      <tr><td class="k">Credential expiry monitoring</td>
+          <td class="c no">✗</td><td class="c par">~</td><td class="c par">~</td><td class="c no">✗</td>
+          <td class="c yes">✓</td><td><strong>Compliance budget unlock</strong></td></tr>
+      <tr><td class="k">In-platform rate negotiation</td>
+          <td class="c par">~</td><td class="c no">✗</td><td class="c no">✗</td><td class="c no">✗</td>
+          <td class="c yes">✓</td><td>Keeps the transaction on-platform</td></tr>
+      <tr><td class="k">AI contract drafting</td>
+          <td class="c no">✗</td><td class="c no">✗</td><td class="c no">✗</td><td class="c par">~</td>
+          <td class="c yes">✓</td><td>Displaces legal review cycles</td></tr>
+      <tr><td class="k">Contract quality scoring</td>
+          <td class="c no">✗</td><td class="c no">✗</td><td class="c no">✗</td><td class="c par">~</td>
+          <td class="c yes">✓</td><td>Strong with legal stakeholders</td></tr>
+      <tr><td class="k">Dual e-signature + certified PDF</td>
+          <td class="c no">✗</td><td class="c par">~</td><td class="c no">✗</td><td class="c yes">✓</td>
+          <td class="c yes">✓</td><td>Removes a separate line item</td></tr>
+      <tr><td class="k">Spend &amp; hiring analytics</td>
+          <td class="c no">✗</td><td class="c no">✗</td><td class="c yes">✓</td><td class="c no">✗</td>
+          <td class="c yes">✓</td><td>Wins finance and procurement</td></tr>
+      <tr><td class="k">Post-engagement retrospective</td>
+          <td class="c no">✗</td><td class="c no">✗</td><td class="c par">~</td><td class="c no">✗</td>
+          <td class="c yes">✓</td><td>Rare; drives renewal narrative</td></tr>
+      <tr><td class="k">Autonomous outreach agents</td>
+          <td class="c no">✗</td><td class="c par">~</td><td class="c no">✗</td><td class="c no">✗</td>
+          <td class="c yes">✓</td><td>Replaces the agency's core labour</td></tr>
+      <tr><td class="k">No take rate on the work</td>
+          <td class="c no">✗</td><td class="c no">✗</td><td class="c yes">✓</td><td class="c yes">✓</td>
+          <td class="c yes">✓</td><td><strong>Decisive against agencies</strong></td></tr>
+      <tr><td class="k">Payment &amp; escrow</td>
+          <td class="c yes">✓</td><td class="c yes">✓</td><td class="c no">✗</td><td class="c no">✗</td>
+          <td class="c gap">✗</td><td><strong>Our gap</strong> — see 6.3</td></tr>
+      <tr><td class="k">SSO / SCIM provisioning</td>
+          <td class="c no">✗</td><td class="c no">✗</td><td class="c yes">✓</td><td class="c yes">✓</td>
+          <td class="c gap">✗</td><td><strong>Our gap</strong> — blocks enterprise</td></tr>
+    </tbody>
+  </table>
+  <p class="tnote">✓ core capability &middot; ~ partial or varies by vendor &middot; ✗ absent.
+    Archetype assessments reflect category norms and should be replaced with vendor-specific research
+    before being used in a competitive deal.</p>
+
+  <h3 class="blk"><span class="ix">2.5</span> Defensibility</h3>
+
+  <p>Feature parity is achievable by a funded competitor. The durable advantages are the ones that
+     compound with usage or would require a rival to rebuild a data model rather than ship a screen.</p>
+
+  <dl class="defs">
+    <dt><span class="tag">STRONG</span> Two-sided verified graph</dt>
+    <dd>Verification is bilateral and tiered, with expiry state machines on both credentials and
+      teaching licences. A competitor can add document upload in a sprint; accumulating a population of
+      <em>currently verified, non-expired</em> professionals takes calendar time that cannot be
+      compressed.</dd>
+
+    <dt><span class="tag">STRONG</span> Engagement history as a data asset</dt>
+    <dd>Rate benchmarking, spend analytics, retention metrics, and rehire recommendations all improve
+      with completed engagements. This is a genuine switching cost: leaving means losing the
+      organisation's own negotiating history and outcome record.</dd>
+
+    <dt><span class="tag">MODERATE</span> Exclusivity as a schema invariant</dt>
+    <dd>Copyable in principle, but it constrains a marketplace's core incentive. An incumbent monetising
+      volume through a take rate is structurally reluctant to make its highest-earning supply
+      unavailable. This is a <em>business-model</em> moat more than a technical one.</dd>
+
+    <dt><span class="tag">MODERATE</span> Vertical depth in education</dt>
+    <dd>Teaching profession types, subject and level matching, DBS status, and licence-expiry-driven
+      Vault exclusion are modelled in the schema rather than bolted on. A horizontal competitor would
+      need a vertical data model to match it.</dd>
+
+    <dt><span class="tag">WEAK</span> AI features in isolation</dt>
+    <dd>Drafting, summarisation, and scoring are commodity capabilities over commodity models. They are
+      valuable as <em>workflow embedding</em> — twenty surfaces sitting exactly where the decision is
+      made — not as differentiators in their own right. <strong>Never sell "we have AI".</strong></dd>
+
+    <dt><span class="tag">ABSENT</span> Network effects across employers</dt>
+    <dd>Nothing yet makes the platform more valuable to Employer A because Employer B uses it — no
+      shared reputation signal, benchmark pool, or portable trust score. This is the most significant
+      strategic gap and the clearest candidate for the next moat-building investment.</dd>
+  </dl>
+</div>
+
+<!-- ============================================================ PART 03 -->
+<div class="sheet page-break">
+  <div class="sec-open">
+    <div class="sec-num"><div class="sec-num-lab">Part</div><div class="sec-num-v">03</div></div>
+    <div class="sec-head">
+      <h2>Buyers, Segments &amp; Qualification</h2>
+      <p>Who pays, who champions, who blocks, and how a sales team decides quickly whether an
+         opportunity is real.</p>
+    </div>
+  </div>
+
+  <h3 class="blk"><span class="ix">3.1</span> Two-Sided Dynamics</h3>
+
+  <p class="lede">
+    Both sides are monetised, but asymmetrically and for different reasons. Getting this asymmetry
+    right is the difference between a marketplace that fills and one that stalls.
+  </p>
+
+  <table>
+    <thead>
+      <tr><th style="width:16%">Dimension</th><th style="width:42%">Employer side (demand)</th>
+          <th style="width:42%">Professional side (supply)</th></tr>
+    </thead>
+    <tbody>
+      <tr><td class="k">Buys</td><td>Risk removal and time compression</td>
+          <td>Qualified inbound demand without bidding</td></tr>
+      <tr><td class="k">Willingness to pay</td><td><strong>High</strong> — cost of failure is large and
+          attributable</td><td><strong>Low</strong> — treated as a marketing expense</td></tr>
+      <tr><td class="k">Live price</td><td>$49/mo Starter; Growth and Enterprise not yet priced live</td>
+          <td>$0 — Pro tier temporarily free</td></tr>
+      <tr><td class="k">Value metric</td><td>Active bookings, then AI tokens</td>
+          <td>Express-interest volume and outreach capacity</td></tr>
+      <tr><td class="k">Churn trigger</td><td>A quarter with no hiring need</td>
+          <td>No inbound interest received</td></tr>
+      <tr><td class="k">Strategic role</td><td><strong>Revenue</strong></td>
+          <td><strong>Inventory</strong> — must be seeded ahead of demand</td></tr>
+    </tbody>
+  </table>
+
+  <div class="call accent">
+    <span class="ct">Recommendation — Do Not Rush To Monetise Supply</span>
+    <p>Freelancer Pro currently lists at <strong>$0</strong> (previously $19). Keeping it free longer is
+       likely the correct commercial choice: supply liquidity is the precondition for every employer
+       deal, and the Vault has a hard quality gate at <code>completenessScore ≥ 60</code> that already
+       filters low-effort profiles without charging for it. Charging supply too early suppresses the
+       inventory that demand-side revenue depends on. Revisit only once employer demand
+       demonstrably exceeds available verified supply in a given category.</p>
+    <p>Note also that two of the four Pro benefits currently advertised — priority Vault placement and a
+       Pro badge — <strong>are not implemented</strong>, so the tier cannot presently be sold with
+       integrity at any price.</p>
+  </div>
+
+  <h3 class="blk"><span class="ix">3.2</span> Employer Ideal Customer Profile</h3>
+
+  <table class="long">
+    <thead>
+      <tr><th style="width:20%">Attribute</th><th style="width:40%" class="accent">Best fit</th>
+          <th style="width:40%">Poor fit</th></tr>
+    </thead>
+    <tbody>
+      <tr><td class="k">Engagement pattern</td>
+          <td>Recurring specialist engagements — several per quarter, each material enough that failure
+              is visible</td>
+          <td>One-off micro-tasks, or continuous full-time headcount</td></tr>
+      <tr><td class="k">Engagement value</td>
+          <td>High enough that exclusivity and a real contract matter</td>
+          <td>Small commodity tasks where speed beats assurance</td></tr>
+      <tr><td class="k">Organisation size</td>
+          <td>Founder-led through mid-market; 1–3 hiring seats</td>
+          <td>Large enterprise requiring SSO and procurement integration <em>today</em></td></tr>
+      <tr><td class="k">Compliance posture</td>
+          <td>Regulated or credential-sensitive — education, healthcare-adjacent, professional
+              services</td>
+          <td>No credential requirements whatsoever</td></tr>
+      <tr><td class="k">Current process</td>
+              <td>Spreadsheet, inbox, and ad-hoc contract templates</td>
+          <td>Established VMS or FMS with procurement already integrated</td></tr>
+      <tr><td class="k">Pain evidence</td>
+          <td>Can name a specific engagement that failed and what it cost</td>
+          <td>Cannot recall a problem worth solving</td></tr>
+      <tr><td class="k">Geography</td>
+          <td>Any — multi-currency and country/state modelling already shipped</td>
+          <td>Markets requiring localised payroll or statutory employment handling</td></tr>
+    </tbody>
+  </table>
+
+  <div class="call win">
+    <span class="ct">Sharpest Employer Segment</span>
+    <p><strong>Education institutions and tutoring organisations</strong> hiring teaching
+       professionals. They combine recurring specialist demand, a legally material credential
+       requirement (teaching licences, DBS checks), and an acute exclusivity problem — a tutor or
+       lecturer double-booking is an immediate service failure. This is the only segment where the
+       product's compliance features are not a nice-to-have but the reason to buy. See 3.5.</p>
+  </div>
+
+  <h3 class="blk"><span class="ix">3.3</span> The Buying Committee</h3>
+
+  <p>Even in mid-market deals, three to five people touch the decision. Each cares about a different
+     subset of the product, and the champion is rarely the person who blocks.</p>
+
+  <div class="persona">
+    <div class="persona-h">
+      <span class="tag">CHAMPION</span><span class="role">Hiring Manager</span>
+      <span class="who">Head of Engineering &middot; Head of School &middot; Delivery Lead</span>
+    </div>
+    <div class="persona-r pain"><div class="persona-k">Pain</div><div class="persona-v">
+      Carries the delivery date personally. Has been burned by a contractor who became unavailable or
+      misrepresented experience. Spends hours screening and chasing paperwork that is not their job.
+    </div></div>
+    <div class="persona-r win"><div class="persona-k">Wins with</div><div class="persona-v">
+      Exclusivity lock &middot; AI match explanations &middot; AI meeting brief with suggested questions
+      &middot; verified credential badges &middot; watchlist pipeline
+    </div></div>
+    <div class="persona-r hook"><div class="persona-k">Hook</div><div class="persona-v">
+      &ldquo;When you book someone here, the platform makes them unavailable to everyone else and writes
+      the availability block itself. They are actually yours.&rdquo;
+    </div></div>
+  </div>
+
+  <div class="persona">
+    <div class="persona-h">
+      <span class="tag">ECONOMIC BUYER</span><span class="role">Founder / COO / Finance</span>
+      <span class="who">Signs the subscription</span>
+    </div>
+    <div class="persona-r pain"><div class="persona-k">Pain</div><div class="persona-v">
+      Contractor spend is real money with no visibility. Cannot answer what was spent, with whom, at
+      what rate, or whether it was good value. Rates are negotiated inconsistently across the team.
+    </div></div>
+    <div class="persona-r win"><div class="persona-k">Wins with</div><div class="persona-v">
+      Spend analytics with field breakdown and committed spend &middot; rate benchmarking against market
+      and own history &middot; hiring funnel and retention analytics &middot; predictable subscription
+      with no take rate
+    </div></div>
+    <div class="persona-r hook"><div class="persona-k">Hook</div><div class="persona-v">
+      &ldquo;A flat subscription instead of an agency percentage — and for the first time, a rate
+      benchmark and a spend trend you can actually take to a board meeting.&rdquo;
+    </div></div>
+  </div>
+
+  <div class="persona">
+    <div class="persona-h">
+      <span class="tag">BLOCKER</span><span class="role">Legal / Compliance</span>
+      <span class="who">Can veto; rarely champions</span>
+    </div>
+    <div class="persona-r pain"><div class="persona-k">Pain</div><div class="persona-v">
+      Contractor agreements are unreviewed templates. IP assignment and termination clauses are
+      inconsistent. Signature trails are unverifiable. Expired professional credentials are discovered
+      during audits, not before.
+    </div></div>
+    <div class="persona-r win"><div class="persona-k">Wins with</div><div class="persona-v">
+      Five-dimension contract health score &middot; AI redlining &middot; dual e-signature with stored
+      images and timestamps &middot; certified PDF &middot; credential expiry alert ladder &middot; audit
+      logging &middot; GDPR deletion with active-engagement guard
+    </div></div>
+    <div class="persona-r risk"><div class="persona-k">Watch</div><div class="persona-v">
+      Will ask about data residency, retention, sub-processors, and breach process. The architecture
+      supports the answers; there is <strong>no security documentation pack</strong> to hand over. Prepare
+      one before entering regulated deals.
+    </div></div>
+  </div>
+
+  <div class="persona">
+    <div class="persona-h">
+      <span class="tag">BLOCKER</span><span class="role">IT / Security Reviewer</span>
+      <span class="who">Enterprise deals only</span>
+    </div>
+    <div class="persona-r pain"><div class="persona-k">Pain</div><div class="persona-v">
+      Another SaaS tool holding personal data and identity documents, outside centralised identity
+      management.
+    </div></div>
+    <div class="persona-r risk"><div class="persona-k">Blocks on</div><div class="persona-v">
+      <strong>SSO / SCIM — advertised on the pricing page but not built.</strong> This will surface in the
+      first enterprise security review and, if it was quoted, will cost credibility as well as the deal.
+      Also expect requests for audit log export (also advertised, also not built), penetration test
+      results, and an uptime commitment — none of which exist today.
+    </div></div>
+    <div class="persona-r win"><div class="persona-k">Can win with</div><div class="persona-v">
+      Per-resource authorisation, deny-by-default private object storage, admin CSRF protection, field
+      redaction in logs, and audit trails — all genuinely implemented and defensible under scrutiny.
+    </div></div>
+  </div>
+
+  <div class="persona">
+    <div class="persona-h">
+      <span class="tag">INFLUENCER</span><span class="role">Talent / HR Operations</span>
+      <span class="who">Owns the process; may feel displaced</span>
+    </div>
+    <div class="persona-r pain"><div class="persona-k">Pain</div><div class="persona-v">
+      Coordinates hiring across managers with no shared pipeline. Chases documents and signatures.
+      Cannot report on contractor hiring alongside permanent hiring.
+    </div></div>
+    <div class="persona-r win"><div class="persona-k">Wins with</div><div class="persona-v">
+      Shared team shortlist &middot; team seats and invitations &middot; team-level analytics &middot;
+      document review queues &middot; hiring funnel reporting
+    </div></div>
+    <div class="persona-r risk"><div class="persona-k">Watch</div><div class="persona-v">
+      Shared shortlist and team analytics are <strong>Enterprise-gated</strong>. In a Starter or Growth
+      deal this persona gets comparatively little, and an unaddressed HR Ops stakeholder is a common
+      cause of stalled mid-market deals.
+    </div></div>
+  </div>
+
+  <h3 class="blk"><span class="ix">3.4</span> Supply-Side Ideal Profile</h3>
+
+  <p>Supply quality determines whether demand-side value is deliverable. Two archetypes matter; the
+     platform's gates already select for both.</p>
+
+  <div class="kv">
+    <div class="kvi">
+      <div class="kvi-k">Independent Specialist</div>
+      <div class="kvi-v"><strong>Fits:</strong> senior technology or professional-services contractor,
+        works on a small number of substantial engagements, wants inbound demand without competing on
+        price. <strong>Signals:</strong> completes the profile past the 60% gate, uploads credentials,
+        activates Cruise Mode.</div>
+    </div>
+    <div class="kvi">
+      <div class="kvi-k">Teaching Professional</div>
+      <div class="kvi-v"><strong>Fits:</strong> school teacher, university lecturer, tutor, or
+        researcher with a licence and background check to evidence. <strong>Signals:</strong> supplies
+        teaching subjects and levels, licence expiry, and DBS status — all first-class schema fields
+        rather than free text.</div>
+    </div>
+    <div class="kvi">
+      <div class="kvi-k">Does Not Fit</div>
+      <div class="kvi-v">High-volume commodity task workers. The exclusivity model actively penalises
+        them — a booking removes their availability — and the verification burden exceeds the value of
+        a small engagement.</div>
+    </div>
+  </div>
+
+  <h3 class="blk"><span class="ix">3.5</span> The Education Vertical — Sharpest Wedge</h3>
+
+  <p class="lede">
+    Education is the one segment where TalentLock's compliance machinery is not a differentiator but a
+    <em>requirement</em>. That converts a &ldquo;nice product&rdquo; conversation into a
+    &ldquo;how do you currently prove this&rdquo; conversation.
+  </p>
+
+  <table class="long">
+    <thead>
+      <tr><th style="width:28%">Vertical requirement</th><th style="width:34%">Platform capability</th>
+          <th style="width:38%">Commercial leverage</th></tr>
+    </thead>
+    <tbody>
+      <tr><td class="k">Right-to-work and background checks</td>
+          <td>Identity document verification with AI adjudication; <code>dbsCheckStatus</code> as a
+              first-class field; rules can <strong>require</strong> verified DBS before outreach</td>
+          <td>Turns a legal obligation into a product feature the institution can evidence in an
+              inspection</td></tr>
+      <tr><td class="k">Current teaching licence</td>
+          <td><code>teachingLicenceExpiry</code> with a monotonic alert ladder; expired
+              school-teacher licences are <strong>removed from the Vault automatically</strong></td>
+          <td>Removes the possibility of engaging an unlicensed teacher — the single highest-consequence
+              failure in this segment</td></tr>
+      <tr><td class="k">Subject and level matching</td>
+          <td><code>teachingSubjects</code> and <code>teachingLevels</code> arrays with dedicated
+              filters and AI prompt context</td>
+          <td>Demonstrates the product was built for education rather than adapted to it</td></tr>
+      <tr><td class="k">Role differentiation</td>
+          <td>Four profession types — school teacher, university lecturer, tutor, researcher — each with
+              its own required-document set</td>
+          <td>Credible vertical depth; hard for a horizontal competitor to answer quickly</td></tr>
+      <tr><td class="k">Session-based commercials</td>
+          <td>Rate types of <code>per_session</code> and <code>per_course</code> alongside hourly and
+              daily</td>
+          <td>Prices the way the segment actually buys, avoiding an immediate objection</td></tr>
+      <tr><td class="k">No double-booking</td>
+          <td>Exclusivity lock plus availability calendar with immutable booking-derived blocks</td>
+          <td>Directly addresses the segment's most visible operational failure</td></tr>
+    </tbody>
+  </table>
+
+  <div class="call accent">
+    <span class="ct">Recommendation — Lead With Education</span>
+    <p>Concentrating early go-to-market on education produces a compounding advantage: it is the segment
+       where the differentiators are mandatory, where the buyer has a named compliance owner with
+       budget, and where a reference customer is most persuasive to the next prospect. Horizontal
+       technology contracting is a larger pool but a much flatter, more crowded sale in which the
+       exclusivity argument competes against price.</p>
+  </div>
+
+  <h3 class="blk"><span class="ix">3.6</span> Qualification Framework</h3>
+
+  <p>A deal is qualified when four conditions hold. Any missing condition predicts a specific, known
+     failure mode.</p>
+
+  <table class="long">
+    <thead>
+      <tr><th style="width:6%" class="mono">#</th><th style="width:22%">Condition</th>
+          <th style="width:38%">Evidence to obtain</th><th style="width:34%">If absent</th></tr>
+    </thead>
+    <tbody>
+      <tr><td class="mono">1</td><td class="k">Recurring specialist demand</td>
+          <td>A number of engagements per quarter, and named roles</td>
+          <td>No renewal case — they will churn after one hire</td></tr>
+      <tr><td class="mono">2</td><td class="k">A remembered failure</td>
+          <td>A specific engagement that went wrong and its cost</td>
+          <td>No urgency; the deal will slip indefinitely</td></tr>
+      <tr><td class="mono">3</td><td class="k">Compliance or exclusivity stake</td>
+          <td>Credential requirements, or a double-booking incident</td>
+          <td>Product is over-specified; they will buy a cheaper directory</td></tr>
+      <tr><td class="mono">4</td><td class="k">Budget owner engaged</td>
+          <td>Founder, COO, or Finance in the conversation</td>
+          <td>Champion cannot buy; expect a stall at procurement</td></tr>
+    </tbody>
+  </table>
+
+  <h4 class="sub">Disqualify early on any of these</h4>
+  <ul class="tight">
+    <li><strong>SSO or SCIM is a stated requirement.</strong> It is advertised but not built. Disqualify
+      or scope explicitly as a roadmap commitment with dates — never imply it exists.</li>
+    <li><strong>Escrow or platform payment is required.</strong> Payments are entirely out of scope;
+      there is no processor integration.</li>
+    <li><strong>Procurement demands an uptime SLA or penetration test report.</strong> Neither exists
+      today; no monitoring is instrumented to support an availability commitment.</li>
+    <li><strong>The buyer wants a take-rate or success-fee model.</strong> The product is a subscription;
+      no billing mechanism exists to support transactional pricing.</li>
+  </ul>
+</div>
+
+<!-- ============================================================ PART 04 -->
+<div class="sheet page-break">
+  <div class="sec-open">
+    <div class="sec-num"><div class="sec-num-lab">Part</div><div class="sec-num-v">04</div></div>
+    <div class="sec-head">
+      <h2>Value Architecture — Features as Commercial Assets</h2>
+      <p>Every shipped capability translated from engineering fact into buyer benefit, then classified
+         by the commercial job it performs.</p>
+    </div>
+  </div>
+
+  <h3 class="blk"><span class="ix">4.1</span> The Four Value Pillars</h3>
+
+  <p class="lede">
+    Forty-eight features is unsellable as a list. It is sellable as four promises, each with a small
+    number of proof features behind it.
+  </p>
+
+  <div class="pillars">
+    <div class="pillar">
+      <div class="pillar-n">PILLAR 01</div>
+      <div class="pillar-t">They are actually yours</div>
+      <div class="pillar-d">Exclusivity enforced by the system, availability calendar with immutable
+        booking blocks, rate convergence gating, and a signed agreement before work starts.</div>
+      <div class="pillar-p">Answers: will they still be here next week?</div>
+    </div>
+    <div class="pillar">
+      <div class="pillar-n">PILLAR 02</div>
+      <div class="pillar-t">They are who they say</div>
+      <div class="pillar-d">Bilateral AI-adjudicated document verification, tiered badges, credential
+        and licence expiry ladder, DBS status, reviews and ratings.</div>
+      <div class="pillar-p">Answers: can I evidence this in an audit?</div>
+    </div>
+    <div class="pillar">
+      <div class="pillar-n">PILLAR 03</div>
+      <div class="pillar-t">The paperwork is done</div>
+      <div class="pillar-d">AI drafting or upload, amendments, enrichment, redlining, five-dimension
+        health score, plain-English summary, dual e-signature, certified PDF.</div>
+      <div class="pillar-p">Answers: who is writing the contract?</div>
+    </div>
+    <div class="pillar">
+      <div class="pillar-n">PILLAR 04</div>
+      <div class="pillar-t">You will know if it worked</div>
+      <div class="pillar-d">Rate benchmarking, spend analytics, hiring funnel and retention metrics,
+        AI meeting briefs, post-engagement debriefs with rehire recommendations.</div>
+      <div class="pillar-p">Answers: was that good value?</div>
+    </div>
+  </div>
+
+  <h3 class="blk"><span class="ix">4.2</span> Feature-to-Value Mapping</h3>
+
+  <p>Grouped by pillar. The <strong>value</strong> column is deliberately written in the buyer's
+     language — what changes for them, not what the software does.</p>
+
+  <h4 class="sub">Pillar 1 — Commitment &amp; exclusivity</h4>
+  <table class="long">
+    <thead>
+      <tr><th style="width:23%">Capability</th><th style="width:36%">What it does</th>
+          <th style="width:29%">Buyer value</th><th style="width:12%" class="c">Tier</th></tr>
+    </thead>
+    <tbody>
+      <tr><td class="k">Exclusive Bookings</td>
+          <td>A confirmed booking marks the professional unavailable and writes an availability block
+              automatically</td>
+          <td>Eliminates mid-project loss to a competing engagement — the most expensive failure mode</td>
+          <td class="c"><span class="pill all">ALL</span></td></tr>
+      <tr><td class="k">Availability Calendar</td>
+          <td>Manual and booking-derived blocks; booking-derived blocks cannot be deleted; next-available
+              date surfaced on search cards</td>
+          <td>Stop discovering unavailability after making an offer</td>
+          <td class="c"><span class="pill all">ALL</span></td></tr>
+      <tr><td class="k">Rate Negotiation</td>
+          <td>Alternating proposals; agreement generation blocked until both sides converge</td>
+          <td>No engagement begins on an unagreed rate</td>
+          <td class="c"><span class="pill all">ALL</span></td></tr>
+      <tr><td class="k">Milestone Tracking</td>
+          <td>Title, amount, due date, and status per milestone</td>
+          <td>Delivery is visible without a status meeting</td>
+          <td class="c"><span class="pill all">ALL</span></td></tr>
+      <tr><td class="k">Job Timeline Validation</td>
+          <td>End dates must be on or after start dates, enforced in form and API</td>
+          <td>Removes a small but recurring source of scheduling disputes</td>
+          <td class="c"><span class="pill all">ALL</span></td></tr>
+    </tbody>
+  </table>
+
+  <h4 class="sub">Pillar 2 — Verified trust</h4>
+  <table class="long">
+    <thead>
+      <tr><th style="width:23%">Capability</th><th style="width:36%">What it does</th>
+          <th style="width:29%">Buyer value</th><th style="width:12%" class="c">Tier</th></tr>
+    </thead>
+    <tbody>
+      <tr><td class="k">Document Verification</td>
+          <td>AI vision review of identity and credential documents with a confidence score; low
+              confidence escalates to human review</td>
+          <td>Credentials are checked, not asserted — without building a vetting team</td>
+          <td class="c"><span class="pill all">ALL</span></td></tr>
+      <tr><td class="k">Employer Verification</td>
+          <td>Five business document types; tiered employer badge recalculated on every status change;
+              Representative ID mandatory at registration</td>
+          <td>Professionals can see the employer is real — improves response rates to outreach</td>
+          <td class="c"><span class="pill all">ALL</span></td></tr>
+      <tr><td class="k">Credential Expiry Tracking</td>
+          <td>Daily scan advancing a 90/30/7-day alert ladder; lapsed credentials downgrade the badge;
+              expired teaching licences leave the Vault</td>
+          <td>Compliance becomes continuous instead of a point-in-time check</td>
+          <td class="c"><span class="pill all">ALL</span></td></tr>
+      <tr><td class="k">Teaching Professional Profile</td>
+          <td>Four profession types, subject and level arrays, licence state and expiry, DBS status,
+              per-type required documents</td>
+          <td>Education hiring is modelled properly rather than forced into a generic profile</td>
+          <td class="c"><span class="pill all">ALL</span></td></tr>
+      <tr><td class="k">Reviews &amp; Ratings</td>
+          <td>One review per completed booking with an optional single reply</td>
+          <td>Reputation grounded in completed engagements, not unverifiable testimonials</td>
+          <td class="c"><span class="pill all">ALL</span></td></tr>
+      <tr><td class="k">Profile Completeness Gate</td>
+          <td>Profiles below 60% completeness are invisible in the Vault</td>
+          <td>Search results contain only genuinely evaluable candidates</td>
+          <td class="c"><span class="pill all">ALL</span></td></tr>
+      <tr><td class="k">Public Profiles</td>
+          <td>Unauthenticated shareable profile pages with read-only availability</td>
+          <td>Professionals can be referenced externally; a light organic acquisition channel</td>
+          <td class="c"><span class="pill all">ALL</span></td></tr>
+    </tbody>
+  </table>
+
+  <h4 class="sub">Pillar 3 — Contract lifecycle</h4>
+  <table class="long">
+    <thead>
+      <tr><th style="width:23%">Capability</th><th style="width:36%">What it does</th>
+          <th style="width:29%">Buyer value</th><th style="width:12%" class="c">Tier</th></tr>
+    </thead>
+    <tbody>
+      <tr><td class="k">AI Agreement Generation</td>
+          <td>Drafts a contract from booking particulars and industry clause templates in the booking's
+              currency</td>
+          <td>A real contract in minutes without legal drafting time</td>
+          <td class="c"><span class="pill all">ALL</span></td></tr>
+      <tr><td class="k">Employer Uploaded Agreement</td>
+          <td>Upload PDF/DOCX/TXT, AI summary, amendment points, AI enrichment with booking terms, then
+              finalisation</td>
+          <td>Organisations keep their own paper and still get the platform's workflow</td>
+          <td class="c"><span class="pill all">ALL</span></td></tr>
+      <tr><td class="k">Contract Health Score</td>
+          <td>0–100 composite across Clarity, Fairness, Completeness, Enforceability, Industry Fit, with
+              an A–F grade</td>
+          <td>Non-lawyers can judge contract quality; strong with legal stakeholders</td>
+          <td class="c"><span class="pill all">ALL</span></td></tr>
+      <tr><td class="k">Contract Redlining</td>
+          <td>AI edit suggestions; accepting one invalidates dependent AI caches atomically</td>
+          <td>Improve terms without a legal review cycle</td>
+          <td class="c"><span class="pill growth">GROWTH</span></td></tr>
+      <tr><td class="k">Agreement AI Summary</td>
+          <td>Six-section plain-English digest with attention flags, freelancer-only</td>
+          <td>Professionals sign understanding the terms — fewer disputes later</td>
+          <td class="c"><span class="pill all">ALL</span></td></tr>
+      <tr><td class="k">Signature &amp; Safe Locker</td>
+          <td>Stored signature images reused across agreements; certified download unlocked when fully
+              executed</td>
+          <td>Signing without a separate e-signature subscription</td>
+          <td class="c"><span class="pill all">ALL</span></td></tr>
+      <tr><td class="k">Agreement PDF Download</td>
+          <td>Formatted PDF with both signatures, timestamps, and metadata; cached after first
+              generation</td>
+          <td>An artefact that satisfies finance, legal, and audit</td>
+          <td class="c"><span class="pill all">ALL</span></td></tr>
+      <tr><td class="k">Agreement Templates</td>
+          <td>Industry-specific templates; custom clauses for enterprise</td>
+          <td>Consistent terms across every engagement in the organisation</td>
+          <td class="c"><span class="pill ent">ENT</span></td></tr>
+    </tbody>
+  </table>
+
+  <h4 class="sub">Pillar 4 — Decision quality &amp; intelligence</h4>
+  <table class="long">
+    <thead>
+      <tr><th style="width:23%">Capability</th><th style="width:36%">What it does</th>
+          <th style="width:29%">Buyer value</th><th style="width:12%" class="c">Tier</th></tr>
+    </thead>
+    <tbody>
+      <tr><td class="k">Smart Rate Suggestions</td>
+          <td>Market median and the employer's own historical average at the moment of negotiation;
+              AI recommendation on Growth</td>
+          <td>Stop overpaying and stop losing candidates by underbidding</td>
+          <td class="c"><span class="pill growth">GROWTH</span></td></tr>
+      <tr><td class="k">Spend Analytics</td>
+          <td>Spend trend, field breakdown, top professionals by spend, committed spend, rate vs market</td>
+          <td>Contractor spend becomes reportable to a board</td>
+          <td class="c"><span class="pill all">ALL</span></td></tr>
+      <tr><td class="k">Hiring Analytics</td>
+          <td>Funnel conversion, skills demand/supply gap, retention rate, lifecycle duration, outcome
+              breakdown</td>
+          <td>Manage contractor hiring as a process rather than a series of favours</td>
+          <td class="c"><span class="pill all">ALL</span></td></tr>
+      <tr><td class="k">AI Meeting Brief</td>
+          <td>Five-section brief on confirmation — candidate snapshot, match rationale, suggested
+              questions, rate context, watch points</td>
+          <td>Every interview is prepared, even when the manager had no time to prepare</td>
+          <td class="c"><span class="pill growth">GROWTH</span></td></tr>
+      <tr><td class="k">Discovery Meeting Outcome</td>
+          <td>Internal notes with a disposition; AI handoff summary for next-round; candidate hiring
+              file on final decisions</td>
+          <td>Interview knowledge is retained by the organisation, not the interviewer</td>
+          <td class="c"><span class="pill all">ALL</span></td></tr>
+      <tr><td class="k">Post-Engagement AI Debrief</td>
+          <td>Dual role-specific retrospective with a rehire recommendation, generated on completion</td>
+          <td>Institutional memory of who was worth rehiring</td>
+          <td class="c"><span class="pill growth">GROWTH</span></td></tr>
+      <tr><td class="k">Earnings Intelligence</td>
+          <td>Six-month trend vs platform average, rate percentile, projection, top earning skills</td>
+          <td>Supply-side retention — the reason professionals keep the profile current</td>
+          <td class="c"><span class="pill all">ALL</span></td></tr>
+      <tr><td class="k">AI Token Tracking</td>
+          <td>Monthly consumption by feature; per-conversation breakdown on Growth</td>
+          <td>AI spend is transparent rather than an opaque platform cost</td>
+          <td class="c"><span class="pill growth">GROWTH</span></td></tr>
+    </tbody>
+  </table>
+
+  <h4 class="sub">Acceleration &amp; workflow</h4>
+  <table class="long">
+    <thead>
+      <tr><th style="width:23%">Capability</th><th style="width:36%">What it does</th>
+          <th style="width:29%">Buyer value</th><th style="width:12%" class="c">Tier</th></tr>
+    </thead>
+    <tbody>
+      <tr><td class="k">AI Talent Matching</td>
+          <td>Conversational matching that reads job requirements and recommends candidates</td>
+          <td>Describe the need instead of filtering a directory</td>
+          <td class="c"><span class="pill all">ALL</span></td></tr>
+      <tr><td class="k">Smarter Matching</td>
+          <td>Per-candidate explanation across skills, rate, and availability</td>
+          <td>Recommendations that can be justified to a colleague</td>
+          <td class="c"><span class="pill all">ALL</span></td></tr>
+      <tr><td class="k">TalentSearch agent</td>
+          <td>Autonomously evaluates profiles as they change and sends AI-authored outreach under
+              strict budget, duplicate, and recipient caps</td>
+          <td>Sourcing continues while the hiring manager does other work</td>
+          <td class="c"><span class="pill all">ALL</span></td></tr>
+      <tr><td class="k">Cruise Mode agent</td>
+          <td>Freelancer-side mirror — evaluates every new posting and pitches on the professional's
+              behalf</td>
+          <td>Supply-side liquidity without professionals monitoring the platform</td>
+          <td class="c"><span class="pill pro">PRO</span></td></tr>
+      <tr><td class="k">Freelancer Watchlist</td>
+          <td>Personal pipeline with private notes; alerts on availability and ≥5% rate change</td>
+          <td>Warm bench for the next requirement instead of starting from scratch</td>
+          <td class="c"><span class="pill start">STARTER</span></td></tr>
+      <tr><td class="k">Talent Vault</td>
+          <td>Filter by field, rate, availability window, keyword, profession category, teaching subject</td>
+          <td>Fast shortlisting from pre-qualified supply</td>
+          <td class="c"><span class="pill all">ALL</span></td></tr>
+      <tr><td class="k">Job Description Assistant</td>
+          <td>AI generate, improve, and check modes</td>
+          <td>Better postings attract better candidates; removes blank-page friction</td>
+          <td class="c"><span class="pill all">ALL</span></td></tr>
+      <tr><td class="k">AI Proposal Generator</td>
+          <td>Three-tone drafting for professionals responding to bookings</td>
+          <td>Supply-side conversion; better-quality responses to employers</td>
+          <td class="c"><span class="pill all">ALL</span></td></tr>
+      <tr><td class="k">Direct Messaging</td>
+          <td>Employer↔professional threads scoped to bookings or meetings, with unread tracking and
+              rate limiting</td>
+          <td>Conversation stays attached to the engagement instead of in personal email</td>
+          <td class="c"><span class="pill all">ALL</span></td></tr>
+      <tr><td class="k">Notifications Centre</td>
+          <td>Fifteen event triggers, in-app plus email with opt-out</td>
+          <td>Nothing waits on someone remembering to check</td>
+          <td class="c"><span class="pill all">ALL</span></td></tr>
+      <tr><td class="k">Engagement Lists</td>
+          <td>Server-side search, filter, and pagination across six list surfaces</td>
+          <td>Usable at volume — a retention feature, not a demo feature</td>
+          <td class="c"><span class="pill all">ALL</span></td></tr>
+      <tr><td class="k">Multi-Currency &amp; Location</td>
+          <td>Country-derived currency, booking currency frozen with FX snapshot, dual-currency display</td>
+          <td>Hire across borders without spreadsheet conversion or restated history</td>
+          <td class="c"><span class="pill all">ALL</span></td></tr>
+      <tr><td class="k">Team Accounts</td>
+          <td>Team creation, single-use expiring invites, shared shortlist, team analytics</td>
+          <td>Coordinated hiring across managers with consolidated reporting</td>
+          <td class="c"><span class="pill ent">ENT</span></td></tr>
+      <tr><td class="k">Portfolio</td>
+          <td>Portfolio items with images, links, and tags</td>
+          <td>Evidence of work quality alongside verified identity</td>
+          <td class="c"><span class="pill all">ALL</span></td></tr>
+      <tr><td class="k">Security &amp; Auth Hardening</td>
+          <td>Per-resource authorisation, deny-by-default object access, admin CSRF, log redaction,
+              audit logging, GDPR deletion</td>
+          <td>Survives a security questionnaire — an enabler for regulated buyers</td>
+          <td class="c"><span class="pill all">ALL</span></td></tr>
+      <tr><td class="k">Admin Console</td>
+          <td>Document review queues, platform statistics, audit log, token attribution</td>
+          <td>Internal — makes human-in-the-loop verification operable at scale</td>
+          <td class="c"><span class="pill ent">INTERNAL</span></td></tr>
+    </tbody>
+  </table>
+
+  <div class="call caution">
+    <span class="ct">Note On The Tier Column</span>
+    <p>Tiers above reflect the gates <strong>as written in code</strong>. Because
+       <code>PREMIUM_FEATURES_FREE</code> is currently enabled, <strong>every prospect today receives
+       every capability regardless of plan</strong>. Demonstrating Growth or Enterprise features to a
+       Starter prospect is therefore easy — and dangerous, because it sets an expectation that will
+       break the moment gating is switched on. Demo to the tier being quoted.</p>
+  </div>
+
+  <h3 class="blk"><span class="ix">4.3</span> Which Features Acquire, Retain, and Expand</h3>
+
+  <p>Not all capability carries the same commercial weight. This classification should drive demo
+     sequencing, onboarding priorities, and roadmap arguments.</p>
+
+  <table class="long">
+    <thead>
+      <tr><th style="width:16%">Commercial job</th><th style="width:44%">Features that do it</th>
+          <th style="width:40%">Implication</th></tr>
+    </thead>
+    <tbody>
+      <tr><td class="k">Acquire<br><span style="font-weight:400;color:var(--gray-500);font-size:7.4pt">wins the deal</span></td>
+          <td>Exclusive Bookings &middot; Document &amp; Employer Verification &middot; Credential Expiry
+              Tracking &middot; AI Agreement Generation &middot; Contract Health Score &middot; AI Talent
+              Matching</td>
+          <td>These belong in the first fifteen minutes of every demo. They are the only features that
+              are genuinely hard to answer competitively.</td></tr>
+      <tr><td class="k">Retain<br><span style="font-weight:400;color:var(--gray-500);font-size:7.4pt">prevents churn</span></td>
+          <td>Spend &amp; Hiring Analytics &middot; Watchlist &middot; Engagement Lists &middot;
+              Notifications &middot; Direct Messaging &middot; Post-Engagement Debrief &middot; Reviews</td>
+          <td>Value accrues with usage and history. Drive adoption in onboarding — an account with no
+              accumulated history is trivially cancellable.</td></tr>
+      <tr><td class="k">Expand<br><span style="font-weight:400;color:var(--gray-500);font-size:7.4pt">grows the account</span></td>
+          <td>Team Accounts &middot; Team Analytics &middot; Custom Clauses &middot; Contract Redlining
+              &middot; Rate Suggestions &middot; Meeting Brief &middot; Token headroom</td>
+          <td>The expansion path is <strong>seats and AI consumption</strong>. Both are already
+              instrumented, so upsell triggers can be built from existing data.</td></tr>
+      <tr><td class="k">Supply liquidity<br><span style="font-weight:400;color:var(--gray-500);font-size:7.4pt">enables everything</span></td>
+          <td>Cruise Mode &middot; Earnings Intelligence &middot; AI Proposal Generator &middot; Public
+              Profiles &middot; Portfolio</td>
+          <td>Not directly monetised and should not be. These exist so the demand side has something to
+              buy.</td></tr>
+    </tbody>
+  </table>
+
+  <h3 class="blk"><span class="ix">4.4</span> Demo Narrative</h3>
+
+  <p>A twenty-minute sequence that follows the buyer's risk chronology rather than the product's
+     navigation. Each step answers the question the previous step raises.</p>
+
+  <div class="pipe">
+    <div class="pipe-s"><div class="pipe-n">01</div><div class="pipe-t">Describe the need</div><div class="pipe-d">AI match with explanations — not a filter grid</div></div>
+    <div class="pipe-s acc"><div class="pipe-n">02</div><div class="pipe-t">Prove the person</div><div class="pipe-d">Verified badges, licence expiry, DBS</div></div>
+    <div class="pipe-s acc"><div class="pipe-n">03</div><div class="pipe-t">Lock them in</div><div class="pipe-d">Booking flips availability live</div></div>
+    <div class="pipe-s"><div class="pipe-n">04</div><div class="pipe-t">Agree the rate</div><div class="pipe-d">Benchmark vs market and own history</div></div>
+    <div class="pipe-s acc"><div class="pipe-n">05</div><div class="pipe-t">Paper it</div><div class="pipe-d">AI contract, health score, dual sign</div></div>
+    <div class="pipe-s"><div class="pipe-n">06</div><div class="pipe-t">Show the ledger</div><div class="pipe-d">Spend, funnel, debrief, rehire advice</div></div>
+  </div>
+
+  <div class="call win">
+    <span class="ct">The Demo Moment That Closes</span>
+    <p>Step 3. Book a professional in front of the prospect and let them watch the Talent Vault update —
+       the profile becomes unavailable, an availability block appears on the calendar, and it cannot be
+       deleted. It takes fifteen seconds, requires no explanation, and no marketplace or ATS can
+       reproduce it. Everything before step 3 earns the right to show it; everything after it justifies
+       the price.</p>
+  </div>
+</div>
+
+<!-- ============================================================ PART 05 -->
+<div class="sheet page-break">
+  <div class="sec-open">
+    <div class="sec-num"><div class="sec-num-lab">Part</div><div class="sec-num-v">05</div></div>
+    <div class="sec-head">
+      <h2>Packaging, Pricing &amp; Revenue Architecture</h2>
+      <p>The plan structure as the code actually enforces it, what scales with customer value,
+         where expansion revenue comes from, and what the AI features cost to serve.</p>
+    </div>
+  </div>
+
+  <h3 class="blk"><span class="ix">5.1</span> Plan Architecture As Built</h3>
+
+  <p class="lede">
+    Six plan definitions exist. The figures below are taken from
+    <code>artifacts/api-server/src/lib/plans.ts</code> — the only authoritative source, because it is
+    the code that enforces the limits and renders the pricing page.
+  </p>
+
+  <table class="long">
+    <thead>
+      <tr>
+        <th style="width:17%" class="mono">Plan</th>
+        <th style="width:10%">Audience</th>
+        <th style="width:10%">Price</th>
+        <th style="width:10%" class="c">Active<br>bookings</th>
+        <th style="width:10%" class="c">Job posts<br>/ month</th>
+        <th style="width:11%" class="c">Express<br>interests</th>
+        <th style="width:8%" class="c">Seats</th>
+        <th style="width:12%" class="c">Tokens<br>/ month</th>
+        <th style="width:12%">Role</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td class="k mono">free</td><td>Any</td><td class="num">$0</td>
+          <td class="c">1</td><td class="c">1</td><td class="c">3</td><td class="c">1</td>
+          <td class="c">∞</td><td>Transitional default before a plan is chosen</td></tr>
+      <tr><td class="k mono">freelancer_free</td><td>Freelancer</td><td class="num">$0</td>
+          <td class="c">1</td><td class="c">—</td><td class="c">3</td><td class="c">1</td>
+          <td class="c">∞</td><td>Supply acquisition</td></tr>
+      <tr><td class="k mono">freelancer_pro</td><td>Freelancer</td>
+          <td class="num">$0<br><span style="font-size:6.6pt;color:var(--gray-400)">was $19</span></td>
+          <td class="c">5</td><td class="c">—</td><td class="c">∞</td><td class="c">1</td>
+          <td class="c">∞</td><td>Supply monetisation <span class="pill notbuilt">SUSPENDED</span></td></tr>
+      <tr><td class="k mono">employer_starter</td><td>Employer</td><td class="num">$49</td>
+          <td class="c">2</td><td class="c">5</td><td class="c">—</td><td class="c">1</td>
+          <td class="c">50k</td><td><strong>Only live price point</strong></td></tr>
+      <tr><td class="k mono">employer_growth</td><td>Employer</td>
+          <td class="num">$0<br><span style="font-size:6.6pt;color:var(--gray-400)">was $199</span></td>
+          <td class="c">10</td><td class="c">∞</td><td class="c">—</td><td class="c">3</td>
+          <td class="c">250k</td><td>Primary target tier <span class="pill notbuilt">SUSPENDED</span></td></tr>
+      <tr><td class="k mono">employer_enterprise</td><td>Employer</td><td class="num">Custom</td>
+          <td class="c">∞</td><td class="c">∞</td><td class="c">—</td><td class="c">∞</td>
+          <td class="c">∞</td><td>Sales-led</td></tr>
+    </tbody>
+  </table>
+  <p class="tnote">∞ = no limit enforced. &mdash; = not applicable to that audience.
+    Token limits apply to employer plans only; freelancer plans carry no token ceiling.</p>
+
+  <div class="call risk">
+    <span class="ct">Critical — Internal Documentation Contradicts The Enforcing Code</span>
+    <p>The plan table in <code>project.md</code> disagrees with <code>plans.ts</code> on four of six
+       plans. <strong>Any quote, deck, or pricing page built from the documentation will be wrong.</strong></p>
+    <table style="margin-top:5pt;margin-bottom:0">
+      <thead><tr><th style="width:26%" class="mono">Plan</th><th style="width:37%">project.md claims</th>
+        <th style="width:37%" class="accent">plans.ts enforces</th></tr></thead>
+      <tbody>
+        <tr><td class="k mono">freelancer_free</td><td>3 active bookings, 5 interests/mo</td>
+            <td><strong>1</strong> active booking, <strong>3</strong> interests/mo</td></tr>
+        <tr><td class="k mono">freelancer_pro</td><td>10 active bookings</td>
+            <td><strong>5</strong> active bookings</td></tr>
+        <tr><td class="k mono">employer_starter</td><td>3 active bookings</td>
+            <td><strong>2</strong> active bookings</td></tr>
+        <tr><td class="k mono">employer_growth</td><td>15 active bookings, 30 job posts/mo</td>
+            <td><strong>10</strong> active bookings, <strong>unlimited</strong> job posts</td></tr>
+      </tbody>
+    </table>
+    <p style="margin-top:5pt">The documentation also describes <strong>five</strong> plans; the code
+       defines <strong>six</strong>, including a transitional <code>free</code> default that a new
+       account holds before choosing. Reconcile to <code>plans.ts</code> and treat it as the single
+       source of truth for all commercial material.</p>
+  </div>
+
+  <h3 class="blk"><span class="ix">5.2</span> Value Metric Analysis</h3>
+
+  <p>A good value metric rises with the customer's realised value, is predictable enough to budget, and
+     is hard to game. TalentLock enforces four simultaneously, which is at least one too many.</p>
+
+  <table class="long">
+    <thead>
+      <tr><th style="width:19%">Metric</th><th style="width:11%" class="c">Aligned<br>to value</th>
+          <th style="width:11%" class="c">Predictable<br>for buyer</th>
+          <th style="width:59%">Assessment</th></tr>
+    </thead>
+    <tbody>
+      <tr><td class="k">Active bookings</td><td class="c yes">Strong</td><td class="c yes">Strong</td>
+          <td><strong>The right primary metric.</strong> It rises precisely with the value delivered —
+              more concurrent engagements means more exclusivity, contracts, and assurance consumed. The
+              buyer can forecast it. <em>Keep as the headline ceiling.</em></td></tr>
+      <tr><td class="k">AI tokens / month</td><td class="c par">Moderate</td><td class="c gap">Weak</td>
+          <td>Correlates with cost to serve but not with buyer value, and no buyer can forecast token
+              consumption. Useful as a <strong>fair-use backstop</strong>; damaging if surfaced as a
+              headline number in a quote.</td></tr>
+      <tr><td class="k">Job posts / month</td><td class="c par">Moderate</td><td class="c yes">Strong</td>
+              <td>Weakly tied to value — a posting that hires nobody creates none. Growth already relaxes
+              this to unlimited, which is the correct direction. <em>Consider removing entirely.</em></td></tr>
+      <tr><td class="k">Team seats</td><td class="c yes">Strong</td><td class="c yes">Strong</td>
+          <td>Standard, well understood, and the natural expansion lever. Currently only meaningful at
+              Growth (3) and Enterprise (unlimited); Starter is single-seat.</td></tr>
+      <tr><td class="k">Express interests</td><td class="c par">Moderate</td><td class="c yes">Strong</td>
+          <td>Supply-side only. Reasonable free-tier throttle, and the main reason a professional would
+              consider upgrading.</td></tr>
+    </tbody>
+  </table>
+
+  <div class="call accent">
+    <span class="ct">Recommendation — Simplify To Two Metrics</span>
+    <p>Quote on <strong>active bookings</strong> and <strong>seats</strong>. Keep token ceilings as an
+       internal fair-use guard described in terms of outcomes rather than tokens
+       (&ldquo;approximately N AI-assisted engagements per month&rdquo;), and retire the job-post limit.
+       Buyers cannot reason about tokens, and a quota expressed in units the customer does not
+       understand converts a cost control into a trust problem the first time it is hit.</p>
+  </div>
+
+  <h3 class="blk"><span class="ix">5.3</span> Entitlement Gating Map</h3>
+
+  <p>Three gate functions control premium capability, each currently short-circuited by a single flag.</p>
+
+  <table>
+    <thead>
+      <tr><th style="width:28%" class="mono">Gate</th><th style="width:20%">Unlocks at</th>
+          <th style="width:52%">Capability behind it</th></tr>
+    </thead>
+    <tbody>
+      <tr><td class="k mono">hasEmployerGrowthFeatures()</td><td><span class="pill growth">GROWTH</span> + <span class="pill ent">ENT</span></td>
+          <td>AI rate suggestions, contract redlining, meeting-brief questions, debrief sections,
+              per-conversation token breakdown</td></tr>
+      <tr><td class="k mono">hasEmployerEnterpriseFeatures()</td><td><span class="pill ent">ENT</span></td>
+          <td>Team accounts, team analytics, custom agreement clauses</td></tr>
+      <tr><td class="k mono">hasFreelancerProFeatures()</td><td><span class="pill pro">PRO</span></td>
+          <td>Cruise Mode activation, unlimited express interests</td></tr>
+    </tbody>
+  </table>
+
+  <div class="call caution">
+    <span class="ct">Commercial Consequence Of The Open Flag</span>
+    <p>All three gates return <code>true</code> unconditionally while
+       <code>PREMIUM_FEATURES_FREE</code> is set, on both server and client. Every account therefore
+       enjoys Enterprise capability at $0. Three consequences follow:</p>
+    <ol>
+      <li><strong>No upgrade pressure exists.</strong> Nobody will ever hit a wall, so no self-serve
+        expansion can occur.</li>
+      <li><strong>Expectation debt is accumulating.</strong> Every current user is habituated to
+        capability they are not paying for. Enabling gates later is a takeaway, and takeaways churn
+        users.</li>
+      <li><strong>Margin is unprotected.</strong> Token ceilings are the only bound on inference cost,
+        and they are disabled — compounded by the absence of any request rate limit on AI endpoints.</li>
+    </ol>
+    <p><strong>Recommendation:</strong> enable gating before the user base grows further. The cost of
+       the takeaway rises with every account added.</p>
+  </div>
+
+  <h3 class="blk"><span class="ix">5.4</span> Land-and-Expand Mechanics</h3>
+
+  <div class="pipe">
+    <div class="pipe-s"><div class="pipe-n">LAND</div><div class="pipe-t">Starter $49</div><div class="pipe-d">1 seat &middot; 2 bookings &middot; 50k tokens</div></div>
+    <div class="pipe-s acc"><div class="pipe-n">TRIGGER</div><div class="pipe-t">Booking ceiling</div><div class="pipe-d">3rd concurrent engagement &rarr; 402</div></div>
+    <div class="pipe-s"><div class="pipe-n">EXPAND</div><div class="pipe-t">Growth</div><div class="pipe-d">3 seats &middot; 10 bookings &middot; 250k</div></div>
+    <div class="pipe-s acc"><div class="pipe-n">TRIGGER</div><div class="pipe-t">Seat + team need</div><div class="pipe-d">4th user or shared shortlist</div></div>
+    <div class="pipe-s"><div class="pipe-n">EXPAND</div><div class="pipe-t">Enterprise</div><div class="pipe-d">Unlimited &middot; custom clauses</div></div>
+  </div>
+
+  <table class="long">
+    <thead>
+      <tr><th style="width:22%">Expansion trigger</th><th style="width:24%">Signal already captured</th>
+          <th style="width:54%">Play</th></tr>
+    </thead>
+    <tbody>
+      <tr><td class="k">Booking ceiling reached</td><td><code>402 PLAN_LIMIT</code> on booking create</td>
+          <td>Strongest trigger available — the customer is actively trying to do more business.
+              Instrument it as a sales alert, not just a paywall redirect.</td></tr>
+      <tr><td class="k">Token consumption trend</td><td><code>token_usage</code> monthly sums per account</td>
+          <td>Approaching the ceiling indicates deep AI adoption and high switching cost. Reach out
+              before the wall, framed as headroom rather than overage.</td></tr>
+      <tr><td class="k">Second hiring manager appears</td><td>Team invite attempt; multiple users on one
+              employer profile</td>
+          <td>Seat expansion. Enterprise gating on team accounts means this currently jumps straight from
+              Growth to a sales-led motion — a large step.</td></tr>
+      <tr><td class="k">Watchlist saturation</td><td>Watchlist count vs plan limit (25 / 100)</td>
+          <td>Indicates pipeline building beyond current tier. A soft, non-blocking upgrade prompt.</td></tr>
+      <tr><td class="k">Redline or rate-suggestion attempt</td><td>Growth-gated feature interaction</td>
+          <td>Feature-led upsell at the exact moment of intent. Requires gating to be on to exist at
+              all.</td></tr>
+      <tr><td class="k">Contract volume growth</td><td>Agreements executed per month</td>
+          <td>Retention and expansion evidence for a renewal conversation; also the best proxy for
+              realised value.</td></tr>
+    </tbody>
+  </table>
+
+  <div class="call risk">
+    <span class="ct">Packaging Gap — The Growth-to-Enterprise Cliff</span>
+    <p>Growth allows <strong>3 seats</strong>; the next step is Enterprise at custom pricing. A customer
+       needing a fourth seat faces a sales-led negotiation rather than a self-serve increment. Worse,
+       <strong>team accounts, shared shortlist, and team analytics are all Enterprise-gated</strong>, so
+       the entire collaboration story is unavailable to the mid-market segment most likely to buy.
+       Consider moving team accounts down to Growth and introducing per-seat pricing above the included
+       three — that converts the cliff into a ramp and gives HR Operations a reason to advocate.</p>
+  </div>
+
+  <h3 class="blk"><span class="ix">5.5</span> AI Cost to Serve &amp; Gross Margin</h3>
+
+  <p>Twenty inference surfaces make AI a real cost line, not a rounding error. The platform's accounting
+     seam is well built; the controls around it are not yet switched on.</p>
+
+  <table class="long">
+    <thead>
+      <tr><th style="width:24%">Margin factor</th><th style="width:14%" class="c">Status</th>
+          <th style="width:62%">Detail</th></tr>
+    </thead>
+    <tbody>
+      <tr><td class="k">Per-account cost visibility</td><td class="c"><span class="pill built">GOOD</span></td>
+          <td>Every inference call records prompt, completion, and total tokens against a user and a
+              feature label. Cost per account is directly computable.</td></tr>
+      <tr><td class="k">Per-feature cost visibility</td><td class="c"><span class="pill built">GOOD</span></td>
+          <td>Twenty distinct labels allow unprofitable features to be identified individually.</td></tr>
+      <tr><td class="k">Model tiering</td><td class="c"><span class="pill built">GOOD</span></td>
+          <td>Cheaper <code>gpt-4o-mini</code> used for high-frequency assistive work; <code>gpt-4o</code>
+              reserved for contract drafting, scoring, vision review, and agent evaluation.</td></tr>
+      <tr><td class="k">Result caching</td><td class="c"><span class="pill built">GOOD</span></td>
+          <td>Briefs, debriefs, summaries, and health scores are cached on the owning row and only
+              invalidated when inputs change — repeat views are free.</td></tr>
+      <tr><td class="k">Non-billable cost isolation</td><td class="c"><span class="pill built">GOOD</span></td>
+          <td>Document verification is charged to an internal system account and employer document
+              review is tracked but excluded from quota — platform obligations are deliberately
+              separated from discretionary consumption.</td></tr>
+      <tr><td class="k">Quota enforcement</td><td class="c"><span class="pill notbuilt">OFF</span></td>
+          <td>Token ceilings are implemented with row-level locking, then bypassed by the open flag.</td></tr>
+      <tr><td class="k">Rate limiting</td><td class="c"><span class="pill notbuilt">ABSENT</span></td>
+          <td>No global limiter on AI endpoints. With quotas off, a single authenticated account can
+              drive inference cost without bound.</td></tr>
+      <tr><td class="k">Unmetered surface</td><td class="c"><span class="pill notbuilt">GAP</span></td>
+          <td>Résumé parsing calls <code>gpt-4o</code> without recording usage — the only inference path
+              invisible to cost reporting.</td></tr>
+      <tr><td class="k">Agent cost governors</td><td class="c"><span class="pill built">GOOD</span></td>
+          <td>Both autonomous agents carry hard budget caps — 6 evaluation-hours per day for
+              TalentSearch, 10 messages per month for Cruise Mode — plus duplicate suppression and
+              recipient caps. The most cost-exposed features are the best governed.</td></tr>
+    </tbody>
+  </table>
+
+  <div class="call note">
+    <span class="ct">Margin Assessment</span>
+    <p>The architecture supports a healthy software gross margin: costs are attributable, results are
+       cached, models are tiered, and the highest-volume automation is budget-capped. <strong>The risk is
+       operational, not structural.</strong> Once quotas and a rate limit are enabled, the Starter tier's
+       50,000 monthly tokens becomes a genuine floor on cost per account, and per-feature data already
+       exists to reprice or restrict any capability that proves unprofitable. Until then, cost per
+       account should be monitored directly from <code>token_usage</code> rather than assumed.</p>
+  </div>
+
+  <h3 class="blk"><span class="ix">5.6</span> Pricing Recommendations</h3>
+
+  <ol class="tight">
+    <li><strong>Reconcile the plan table to <code>plans.ts</code></strong> and publish a single internal
+      pricing sheet. Until this is done, every quote is a guess.</li>
+    <li><strong>Remove the four unbuilt claims</strong> from the pricing page — SSO/SCIM, audit log
+      export, priority Vault placement, and the Pro badge — or build them. Advertising unbuilt
+      capability at the Enterprise tier is the single largest commercial liability in the product today.</li>
+    <li><strong>Restore Growth to a real price</strong> before the user base grows further. The $49 to
+      $199 step is defensible on capability, but only if Growth capability is actually withheld from
+      Starter.</li>
+    <li><strong>Raise Starter's booking ceiling from 2 to 3.</strong> Two concurrent engagements is a
+      very low ceiling for a $49 product and risks reading as artificial rather than protective.</li>
+    <li><strong>Move team accounts from Enterprise to Growth</strong> with three seats included and
+      per-seat pricing above that, converting the Growth-to-Enterprise cliff into a ramp.</li>
+    <li><strong>Keep Freelancer Pro free</strong> until verified supply exceeds employer demand, and
+      remove its two unbuilt benefits immediately regardless.</li>
+    <li><strong>Express token limits as outcomes</strong> in all customer-facing material, never as raw
+      token counts.</li>
+    <li><strong>Do not introduce a take rate.</strong> No payment rail exists, and the absence of a
+      percentage cut is a decisive differentiator against staffing agencies — it should be defended as a
+      positioning asset, not treated as unrealised revenue.</li>
+  </ol>
+</div>
+
+<!-- ============================================================ PART 06 -->
+<div class="sheet page-break">
+  <div class="sec-open">
+    <div class="sec-num"><div class="sec-num-lab">Part</div><div class="sec-num-v">06</div></div>
+    <div class="sec-head">
+      <h2>Sales Enablement</h2>
+      <p>The narrative, the questions that qualify, the objections that will come, and what can be
+         claimed with evidence.</p>
+    </div>
+  </div>
+
+  <h3 class="blk"><span class="ix">6.1</span> The Narrative Arc</h3>
+
+  <p class="lede">
+    Four moves. The purpose of each is to make the next one feel inevitable rather than to describe
+    software.
+  </p>
+
+  <dl class="defs">
+    <dt><span class="tag">MOVE 1</span> Name the failure they have already lived</dt>
+    <dd>&ldquo;Most teams we speak to have had a contractor go quiet or take another project mid-delivery.
+      Has that happened to you?&rdquo; This is deliberately not a product statement. It establishes that
+      the problem being solved is one they recognise, and it surfaces the specific incident that becomes
+      the business case.</dd>
+
+    <dt><span class="tag">MOVE 2</span> Locate the gap in the tools they already pay for</dt>
+    <dd>&ldquo;The marketplace introduced them, the e-signature tool signed something, the spreadsheet
+      tracked the invoice. Which of those stopped them taking a second engagement, or told you their
+      licence had expired?&rdquo; The answer is none. This reframes TalentLock as filling a hole rather
+      than replacing an incumbent — which protects it from a like-for-like price comparison.</dd>
+
+    <dt><span class="tag">MOVE 3</span> Demonstrate the lock</dt>
+    <dd>Book someone live. The Vault updates, the availability block appears, and it cannot be removed.
+      Fifteen seconds, no narration required. This is the moment the category shifts in the buyer's
+      mind from &ldquo;another hiring tool&rdquo; to &ldquo;engagement assurance&rdquo;.</dd>
+
+    <dt><span class="tag">MOVE 4</span> Hand over the ledger</dt>
+    <dd>Spend by field, rate versus market, funnel conversion, retention, rehire recommendations.
+      This is the move that converts a hiring-manager enthusiasm into a Finance-approved subscription,
+      and it is what makes renewal a formality rather than a re-sale.</dd>
+  </dl>
+
+  <h3 class="blk"><span class="ix">6.2</span> Discovery Questions By Persona</h3>
+
+  <table class="long">
+    <thead>
+      <tr><th style="width:20%">Persona</th><th style="width:47%">Ask</th>
+          <th style="width:33%">Listening for</th></tr>
+    </thead>
+    <tbody>
+      <tr><td class="k">Hiring Manager</td>
+          <td>How many specialist contractors are you running right now? &middot; What happened the last
+              time one didn't work out? &middot; How do you currently know a credential is genuine and
+              still valid?</td>
+          <td>A remembered failure with a cost attached; concurrency high enough to hit a booking
+              ceiling</td></tr>
+      <tr><td class="k">Founder / COO / Finance</td>
+          <td>What did you spend on contractors last year, and can you break it down by discipline?
+              &middot; How do you know a rate is fair? &middot; Are you paying an agency percentage
+              today?</td>
+          <td>No spend visibility; inconsistent rates; agency fees that a flat subscription displaces</td></tr>
+      <tr><td class="k">Legal / Compliance</td>
+          <td>Who reviews contractor agreements before signature? &middot; How would you evidence a
+              current licence in an audit? &middot; Where do signed agreements live?</td>
+          <td>Unreviewed templates; point-in-time credential checks; contracts in email or shared
+              drives</td></tr>
+      <tr><td class="k">HR / Talent Ops</td>
+          <td>How many managers hire contractors independently? &middot; Is there a shared pipeline?
+              &middot; Can you report contractor hiring alongside permanent?</td>
+          <td>Fragmented process across managers; the seat and team-analytics expansion case</td></tr>
+      <tr><td class="k">IT / Security</td>
+          <td>What does a tool holding identity documents need to satisfy here? &middot; Is SSO
+              mandatory or preferred?</td>
+          <td><strong>Whether SSO is a hard requirement</strong> — if mandatory, disqualify or scope
+              honestly as roadmap</td></tr>
+      <tr><td class="k">Education buyer</td>
+          <td>How do you currently track teaching licence and DBS expiry? &middot; What happens
+              operationally when a tutor double-books? &middot; Who is accountable if an unlicensed
+              teacher takes a session?</td>
+          <td>Named compliance owner with budget; the highest-urgency version of the pitch</td></tr>
+    </tbody>
+  </table>
+
+  <h3 class="blk"><span class="ix">6.3</span> Objection Handling</h3>
+
+  <p>Each response below is grounded in a capability that genuinely exists, or concedes the gap plainly.
+     <strong>Do not improvise past a gap</strong> — three of these objections concern things that are not
+     built, and a confident wrong answer will surface in diligence.</p>
+
+  <div class="qa">
+    <div class="qa-item">
+      <div class="qa-q">We already use a freelance marketplace and it's cheaper.</div>
+      <div class="qa-a">Agree, and separate the jobs. A marketplace introduces people; it does not stop
+        the person you hired taking a parallel engagement, verify that a licence is still valid, draft
+        or score your contract, or tell you afterwards whether the engagement was good value.
+        <strong>Also compare total cost honestly</strong> — a percentage take rate on engagement value
+        will typically exceed a flat subscription well before the year is out.</div>
+      <div class="qa-ev">Evidence: exclusivity lock &middot; expiry ladder &middot; contract health score &middot; no take rate</div>
+    </div>
+
+    <div class="qa-item">
+      <div class="qa-q">Our agency handles vetting for us.</div>
+      <div class="qa-a">Agencies do vet well — and charge a margin on every hour for the privilege, while
+        the vetting evidence stays with them rather than with you. TalentLock gives you the verification
+        artefact and the audit trail directly, at a flat subscription, with the professional relationship
+        held by you rather than intermediated.</div>
+      <div class="qa-ev">Evidence: AI document verification &middot; tiered badges &middot; audit logging &middot; flat pricing</div>
+    </div>
+
+    <div class="qa-item">
+      <div class="qa-q">How is your AI matching better than everyone else's?</div>
+      <div class="qa-a">Don't fight on this ground — every vendor claims it and buyers discount it.
+        Redirect: &ldquo;Matching is table stakes and I'd rather not compete on adjectives. What nobody
+        else does is make the person unavailable to everyone else once you book them, and tell you when
+        their licence is about to expire. Can I show you that instead?&rdquo;</div>
+      <div class="qa-ev">Tactic: concede the commodity, pivot to the differentiator</div>
+    </div>
+
+    <div class="qa-item">
+      <div class="qa-q">Do you handle payments or escrow?</div>
+      <div class="qa-a"><strong>No — concede immediately and cleanly.</strong> There is no payment rail
+        and no processor integration. Position it as deliberate scope: TalentLock governs the engagement
+        — verification, exclusivity, contract, outcome — and leaves invoicing to the systems finance
+        already trusts. If escrow is a hard requirement, this is a genuine disqualifier today.</div>
+      <div class="qa-ev">Gap — do not imply a roadmap date that has not been committed</div>
+    </div>
+
+    <div class="qa-item">
+      <div class="qa-q">We need SSO. Our security policy requires it.</div>
+      <div class="qa-a"><strong>Not built.</strong> Say so. Authentication is handled by a managed
+        identity provider, but there is no SAML or SCIM provisioning path. If SSO is mandatory, either
+        disqualify or scope it as an explicit, dated roadmap commitment with engineering sign-off — never
+        as an existing feature, even though the pricing page currently lists it.</div>
+      <div class="qa-ev">Gap — pricing page claim must be corrected before enterprise conversations</div>
+    </div>
+
+    <div class="qa-item">
+      <div class="qa-q">What's your uptime commitment?</div>
+      <div class="qa-a">There is no contractual SLA today, and no monitoring instrumented to support one.
+        Be straightforward about that and offer what does exist: an autoscaling deployment, a continuous
+        integration suite covering the API surface, and a documented security posture. Do not invent a
+        number.</div>
+      <div class="qa-ev">Gap — no APM, tracing, or uptime metrics are wired</div>
+    </div>
+
+    <div class="qa-item">
+      <div class="qa-q">This looks like a lot of product. Will my team actually use it?</div>
+      <div class="qa-a">Fair challenge — narrow it. The daily surface is small: search, book, sign. The
+        rest is either automatic (verification, expiry alerts, briefs, debriefs generate themselves) or
+        reporting the buyer looks at monthly. Frame adoption around the three-step core and let the
+        automation reveal itself.</div>
+      <div class="qa-ev">Evidence: fire-and-forget automation &middot; briefs and debriefs generated without user action</div>
+    </div>
+
+    <div class="qa-item">
+      <div class="qa-q">Why is your $199 tier free right now?</div>
+      <div class="qa-a">Answer honestly: premium gating is temporarily open while billing is finalised.
+        Then use it — this is a legitimate reason to sign now, and a real deadline. Do not pretend the
+        list price is being charged; the prospect can see $0 on the pricing page.</div>
+      <div class="qa-ev">Context: <code>PREMIUM_FEATURES_FREE</code> is enabled; Growth and Pro list at $0</div>
+    </div>
+
+    <div class="qa-item">
+      <div class="qa-q">Who else in our sector uses this?</div>
+      <div class="qa-a">There are no named references yet. Do not manufacture them. Offer verifiable
+        substance instead — a live demonstration on their own requirement, the specification and test
+        coverage behind the product, and a pilot structured around one real engagement so they generate
+        their own proof.</div>
+      <div class="qa-ev">Gap — no customer references exist; pilots substitute for social proof</div>
+    </div>
+  </div>
+
+  <h3 class="blk"><span class="ix">6.4</span> Proof Points We Can Stand Behind</h3>
+
+  <table class="long">
+    <thead>
+      <tr><th style="width:30%">Claim</th><th style="width:14%" class="c">Standing</th>
+          <th style="width:56%">Basis</th></tr>
+    </thead>
+    <tbody>
+      <tr><td class="k">&ldquo;Exclusivity is enforced by the platform&rdquo;</td>
+          <td class="c"><span class="pill built">SOLID</span></td>
+          <td>Availability flips atomically on booking; booking-derived calendar blocks are immutable
+              and rejected on delete</td></tr>
+      <tr><td class="k">&ldquo;Credentials are verified, not asserted&rdquo;</td>
+          <td class="c"><span class="pill built">SOLID</span></td>
+          <td>AI vision adjudication with confidence scoring and human escalation on low confidence</td></tr>
+      <tr><td class="k">&ldquo;We tell you before a licence expires&rdquo;</td>
+          <td class="c"><span class="pill built">SOLID</span></td>
+          <td>Daily scan with a forward-only 90/30/7-day ladder; expired education licences leave the
+              Vault automatically</td></tr>
+      <tr><td class="k">&ldquo;A real contract, signed, in minutes&rdquo;</td>
+          <td class="c"><span class="pill built">SOLID</span></td>
+          <td>AI drafting, five-dimension scoring, dual e-signature, certified PDF with signature images
+              and timestamps</td></tr>
+      <tr><td class="k">&ldquo;You can see what you spend and whether it was fair&rdquo;</td>
+          <td class="c"><span class="pill built">SOLID</span></td>
+          <td>Spend analytics, rate benchmarking against market median and own history, hiring funnel and
+              retention metrics</td></tr>
+      <tr><td class="k">&ldquo;Hire in any currency&rdquo;</td>
+          <td class="c"><span class="pill built">SOLID</span></td>
+          <td>Country-derived currency, booking currency frozen with an FX snapshot, dual-currency
+              display</td></tr>
+      <tr><td class="k">&ldquo;Built for education hiring&rdquo;</td>
+          <td class="c"><span class="pill built">SOLID</span></td>
+          <td>Four profession types, subject/level matching, DBS status, licence expiry enforcement,
+              per-type document requirements, session and course rate types</td></tr>
+      <tr><td class="k">&ldquo;Enterprise-ready security&rdquo;</td>
+          <td class="c"><span class="pill partial">QUALIFY</span></td>
+          <td>Per-resource authorisation, deny-by-default object access, CSRF protection, log redaction,
+              audit trail and GDPR deletion are all real — but there is <strong>no SSO, no penetration
+              test, and no security documentation pack</strong>. Claim the controls, not the label.</td></tr>
+      <tr><td class="k">&ldquo;Trusted by teams like yours&rdquo;</td>
+          <td class="c"><span class="pill notbuilt">DO NOT</span></td>
+          <td>No customers, references, or usage data exist. Unsupportable.</td></tr>
+      <tr><td class="k">&ldquo;SSO, SCIM, audit export&rdquo;</td>
+          <td class="c"><span class="pill notbuilt">DO NOT</span></td>
+          <td>Advertised on the pricing page but absent from the codebase</td></tr>
+      <tr><td class="k">&ldquo;99.x% uptime&rdquo;</td>
+          <td class="c"><span class="pill notbuilt">DO NOT</span></td>
+          <td>No monitoring or availability measurement exists to substantiate any figure</td></tr>
+    </tbody>
+  </table>
+
+  <h3 class="blk"><span class="ix">6.5</span> Competitive Traps</h3>
+
+  <ul class="tight">
+    <li><strong>Being drawn into a matching bake-off.</strong> Matching quality is unprovable in a demo
+      and every competitor claims it. Concede it as table stakes and move to exclusivity.</li>
+    <li><strong>Being priced against a take rate.</strong> Insist on total-cost-of-engagement
+      arithmetic; a percentage of engagement value overtakes a flat subscription quickly.</li>
+    <li><strong>Letting an agency reframe verification as service.</strong> The counter is ownership: with
+      an agency the vetting evidence and the relationship both stay with the agency.</li>
+    <li><strong>Demonstrating gated features to a Starter prospect.</strong> Trivially easy today because
+      gates are open, and it manufactures a downgrade experience at contract time.</li>
+    <li><strong>Accepting an SSO requirement to keep a deal alive.</strong> It will fail security review.
+      Losing the deal at qualification is far cheaper than losing it at diligence.</li>
+    <li><strong>Promising payment or escrow &ldquo;soon&rdquo;.</strong> No rail exists and none is
+      scoped. This creates a commitment the roadmap has not accepted.</li>
+  </ul>
+</div>
+
+<!-- ============================================================ PART 07 -->
+<div class="sheet page-break">
+  <div class="sec-open">
+    <div class="sec-num"><div class="sec-num-lab">Part</div><div class="sec-num-v">07</div></div>
+    <div class="sec-head">
+      <h2>Go-to-Market &amp; Commercial Readiness</h2>
+      <p>How each segment should be approached, where the funnel already has leverage, and precisely
+         what stands between the product and its first invoice.</p>
+    </div>
+  </div>
+
+  <h3 class="blk"><span class="ix">7.1</span> Motion By Segment</h3>
+
+  <table class="long">
+    <thead>
+      <tr><th style="width:15%">Segment</th><th style="width:13%">Motion</th>
+          <th style="width:12%">Entry plan</th><th style="width:60%">Approach</th></tr>
+    </thead>
+    <tbody>
+      <tr><td class="k">Professionals<br>(supply)</td><td>Self-serve</td>
+          <td><span class="pill free">FREE</span></td>
+          <td>Zero-friction signup gated only by profile completeness and identity upload. Seed
+              deliberately by category <em>ahead</em> of demand — an employer who searches an empty
+              category does not return. Retain with Earnings Intelligence and Cruise Mode.</td></tr>
+      <tr><td class="k">Solo &amp; small teams</td><td>Self-serve<br>+ light touch</td>
+          <td><span class="pill start">STARTER</span></td>
+          <td>Product-led. The demo can be self-guided; the booking ceiling of two creates a natural
+              expansion trigger quickly. Requires payment collection to function at all.</td></tr>
+      <tr><td class="k">Mid-market</td><td>Sales-assisted</td>
+          <td><span class="pill growth">GROWTH</span></td>
+          <td><strong>The core commercial target.</strong> One demo plus a pilot on a real engagement.
+              Champion is the hiring manager; Finance signs. Address HR Ops explicitly — currently
+              under-served because team features sit in Enterprise.</td></tr>
+      <tr><td class="k">Education institutions</td><td>Sales-led,<br>vertical</td>
+          <td><span class="pill growth">GROWTH</span></td>
+          <td><strong>Highest-conviction segment.</strong> Lead with compliance: licence expiry, DBS,
+              double-booking prevention. The buyer has a named accountable owner. Reference customers
+              here compound fastest.</td></tr>
+      <tr><td class="k">Enterprise</td><td>Sales-led</td>
+          <td><span class="pill ent">ENT</span></td>
+          <td><strong>Defer.</strong> SSO/SCIM, audit export, an SLA, and a security pack are all absent,
+              and two of those are currently advertised. Entering this segment now risks a failed
+              security review and reputational cost. Revisit once the enterprise gap list is closed.</td></tr>
+    </tbody>
+  </table>
+
+  <h3 class="blk"><span class="ix">7.2</span> Activation Funnel &amp; Conversion Levers</h3>
+
+  <p>The product already imposes several hard gates. Each is a conversion risk <em>and</em> a quality
+     filter, and each is worth instrumenting before spending on acquisition.</p>
+
+  <table class="long">
+    <thead>
+      <tr><th style="width:22%">Funnel stage</th><th style="width:30%">Gate in the product</th>
+          <th style="width:48%">Commercial reading</th></tr>
+    </thead>
+    <tbody>
+      <tr><td class="k">Signup</td><td>Managed identity provider; new users receive a deliberate
+          &ldquo;not found&rdquo; and are routed to onboarding</td>
+          <td>Low friction. Nothing to fix.</td></tr>
+      <tr><td class="k">Registration completion</td>
+          <td><strong>Mandatory identity document upload</strong> before a role is assigned</td>
+          <td><strong>The single largest drop-off risk on both sides.</strong> It is also the source of
+              the trust differentiator, so it should not be removed — but it must be measured, and the
+              value of verification should be explained at the point of the ask rather than after it.</td></tr>
+      <tr><td class="k">Supply activation</td><td>Vault visibility requires
+          <code>completenessScore ≥ 60</code></td>
+          <td>Correct trade-off: protects buyer experience at the cost of supply volume. The completeness
+              checklist already exists to guide users over the line.</td></tr>
+      <tr><td class="k">Employer first value</td><td>First search, first watchlist save, first booking</td>
+          <td>Time-to-first-booking is the metric that matters. Everything before it is cost.</td></tr>
+      <tr><td class="k">Habit formation</td><td>Notifications, messaging, watchlist alerts, engagement
+          lists</td>
+          <td>Strong retention surface, but it only engages once an account has real engagements in
+              flight.</td></tr>
+      <tr><td class="k">Expansion</td><td><code>402</code> at the booking ceiling; Growth-gated features</td>
+          <td><strong>Currently inert</strong> — with gates open nobody reaches a wall, so self-serve
+              expansion cannot occur.</td></tr>
+      <tr><td class="k">Payment</td><td>Simulated upgrade transition</td>
+          <td><strong>Hard stop.</strong> The funnel cannot convert to revenue at all.</td></tr>
+    </tbody>
+  </table>
+
+  <div class="call caution">
+    <span class="ct">Instrumentation Gap</span>
+    <p>There is no product analytics, funnel tracking, or account-health scoring in the platform. Token
+       consumption, activity ledgers, and audit logs exist and can be queried, but nobody can currently
+       answer &ldquo;what fraction of signups complete registration?&rdquo; or &ldquo;how long until an
+       account's first booking?&rdquo;. <strong>Instrument the funnel before spending on
+       acquisition</strong> — otherwise acquisition spend cannot be evaluated, and the document-upload
+       drop-off in particular will remain invisible.</p>
+  </div>
+
+  <h3 class="blk"><span class="ix">7.3</span> Revenue Blockers</h3>
+
+  <p class="lede">
+    Four items stand between this product and its first invoice. None require architectural change.
+  </p>
+
+  <table class="long">
+    <thead>
+      <tr><th style="width:5%" class="mono">#</th><th style="width:23%">Blocker</th>
+          <th style="width:14%">Owner</th><th style="width:58%">Action required</th></tr>
+    </thead>
+    <tbody>
+      <tr><td class="mono">1</td><td class="k">No payment collection</td><td>Engineering</td>
+          <td>Integrate a processor into the existing upgrade surface and the reserved
+              <code>subscriptions</code> columns. The API shape already anticipates this; it is an
+              integration, not a redesign. <strong>Nothing can be sold until this ships.</strong></td></tr>
+      <tr><td class="mono">2</td><td class="k">Four unbuilt claims on the pricing page</td>
+          <td>Product &amp; Marketing</td>
+          <td>Remove SSO/SCIM, audit log export, priority Vault placement, and the Pro badge from the
+              plan feature arrays — or build them. This is a content change measured in minutes and is
+              the highest-leverage risk reduction available.</td></tr>
+      <tr><td class="mono">3</td><td class="k">Entitlement gates disabled</td><td>Engineering</td>
+          <td>Set <code>PREMIUM_FEATURES_FREE</code> and <code>VITE_PREMIUM_FEATURES_FREE</code> to
+              <code>false</code>, restore list prices, and verify the <code>402</code> paths against the
+              existing integration suite. Do this <em>before</em> the user base grows, since the
+              takeaway cost compounds.</td></tr>
+      <tr><td class="mono">4</td><td class="k">Pricing documentation conflict</td><td>Product</td>
+          <td>Reconcile the plan table to <code>plans.ts</code> and publish one internal pricing sheet as
+              the single source of truth for quotes and collateral.</td></tr>
+    </tbody>
+  </table>
+
+  <h4 class="sub">Strongly recommended before scaling, though not strictly blocking</h4>
+  <ul class="tight">
+    <li><strong>Global rate limit on AI endpoints</strong> — with quotas off, inference cost per account
+      is unbounded. This is a margin exposure that grows with every signup.</li>
+    <li><strong>Meter the résumé parser</strong> — the only inference path invisible to cost reporting.</li>
+    <li><strong>Funnel instrumentation</strong> — without it, acquisition spend cannot be assessed.</li>
+    <li><strong>Security documentation pack</strong> — the controls exist; the evidence package for a
+      buyer's security review does not.</li>
+    <li><strong>Move team accounts to Growth</strong> — removes the seat cliff and gives HR Operations a
+      reason to advocate in mid-market deals.</li>
+  </ul>
+
+  <h3 class="blk"><span class="ix">7.4</span> Commercial Risk Register</h3>
+
+  <table class="long">
+    <thead>
+      <tr><th style="width:22%">Risk</th><th style="width:10%" class="c">Severity</th>
+          <th style="width:10%" class="c">Likelihood</th><th style="width:58%">Mitigation</th></tr>
+    </thead>
+    <tbody>
+      <tr><td class="k">Selling unbuilt enterprise capability</td>
+          <td class="c gap">High</td><td class="c gap">High</td>
+          <td>Correct the pricing page now. Until then, prohibit enterprise conversations that touch SSO,
+              SCIM, or audit export.</td></tr>
+      <tr><td class="k">Cannot collect revenue</td>
+          <td class="c gap">High</td><td class="c gap">Certain</td>
+          <td>Payment integration is the top engineering priority with commercial consequence.</td></tr>
+      <tr><td class="k">Expectation debt from open gates</td>
+          <td class="c par">Medium</td><td class="c gap">High</td>
+          <td>Enable gating early; grandfather existing accounts explicitly and deliberately rather than
+              by accident.</td></tr>
+      <tr><td class="k">Quoting from stale documentation</td>
+          <td class="c par">Medium</td><td class="c gap">High</td>
+          <td>One authoritative pricing sheet generated from <code>plans.ts</code>.</td></tr>
+      <tr><td class="k">Unbounded AI cost per account</td>
+          <td class="c par">Medium</td><td class="c par">Medium</td>
+          <td>Rate limit plus re-enabled quotas; monitor cost per account from
+              <code>token_usage</code> in the interim.</td></tr>
+      <tr><td class="k">Supply liquidity gap by category</td>
+          <td class="c gap">High</td><td class="c par">Medium</td>
+          <td>Seed supply per category before selling into it. An employer who searches an empty
+              category churns immediately and rarely returns.</td></tr>
+      <tr><td class="k">Registration drop-off at document upload</td>
+          <td class="c par">Medium</td><td class="c par">Medium</td>
+          <td>Instrument it, then explain the verification benefit at the point of the ask. Do not remove
+              the gate — it is the differentiator.</td></tr>
+      <tr><td class="k">Mis-filed into a cheaper category</td>
+          <td class="c par">Medium</td><td class="c par">Medium</td>
+          <td>Claim &ldquo;engagement assurance&rdquo; explicitly in the first meeting and lead with
+              exclusivity, never with matching.</td></tr>
+      <tr><td class="k">No references or social proof</td>
+          <td class="c par">Medium</td><td class="c gap">Certain</td>
+          <td>Structure early deals as pilots on one real engagement so the customer generates their own
+              proof; convert the first education win into a reference deliberately.</td></tr>
+      <tr><td class="k">No SLA or uptime evidence</td>
+          <td class="c par">Medium</td><td class="c par">Medium</td>
+          <td>Instrument availability before offering any commitment. Decline SLA requests honestly in
+              the interim.</td></tr>
+    </tbody>
+  </table>
+
+  <div class="call win">
+    <span class="ct">Closing Commercial Assessment</span>
+    <p>TalentLock is a <strong>product-ready, commercially unfinished</strong> business. The capability
+       inventory is broad, differentiated, and genuinely hard to replicate in the two places that matter
+       most — enforced exclusivity and continuous credential compliance. The education vertical offers a
+       segment where those differentiators are mandatory rather than merely attractive, which is the
+       fastest available path to a defensible reference base.</p>
+    <p>The constraint is not the product. It is a missing payment integration, a configuration flag, four
+       lines of inaccurate marketing copy, and one contradictory table. <strong>Every blocker on the
+       critical path to revenue is measured in days of work, not quarters</strong> — and the single most
+       urgent of them, removing capability claims that cannot be honoured, costs nothing but the
+       decision to do it.</p>
+  </div>
+</div>
+
+<!-- ============================================================ APPENDIX A -->
+<div class="sheet page-break">
+  <div class="sec-open">
+    <div class="sec-num"><div class="sec-num-lab">Appx</div><div class="sec-num-v">A</div></div>
+    <div class="sec-head">
+      <h2>Capability-to-Value Index</h2>
+      <p>All 48 shipped capabilities in numerical order with their commercial job, audience, and
+         entitlement tier. Use as a quick-reference during discovery.</p>
+    </div>
+  </div>
+
+  <table class="long">
+    <thead>
+      <tr><th style="width:5%" class="mono">#</th><th style="width:24%">Capability</th>
+          <th style="width:11%">Audience</th><th style="width:11%" class="c">Tier</th>
+          <th style="width:13%">Job</th><th style="width:36%">Commercial one-liner</th></tr>
+    </thead>
+    <tbody>
+      <tr><td class="mono">01</td><td class="k">Dual Role System</td><td>Both</td><td class="c"><span class="pill all">ALL</span></td><td>Enable</td><td>Verified onboarding for both sides of the engagement</td></tr>
+      <tr><td class="mono">02</td><td class="k">Talent Vault</td><td>Employer</td><td class="c"><span class="pill all">ALL</span></td><td>Acquire</td><td>Shortlist from pre-qualified, quality-gated supply</td></tr>
+      <tr><td class="mono">03</td><td class="k">Exclusive Bookings</td><td>Employer</td><td class="c"><span class="pill all">ALL</span></td><td><strong>Acquire</strong></td><td><strong>They cannot be taken by someone else</strong></td></tr>
+      <tr><td class="mono">04</td><td class="k">Rate Negotiation</td><td>Both</td><td class="c"><span class="pill all">ALL</span></td><td>Acquire</td><td>No work begins on an unagreed rate</td></tr>
+      <tr><td class="mono">05</td><td class="k">AI Talent Matching</td><td>Employer</td><td class="c"><span class="pill all">ALL</span></td><td>Acquire</td><td>Describe the need instead of filtering a directory</td></tr>
+      <tr><td class="mono">06</td><td class="k">AI Agreement Generation</td><td>Employer</td><td class="c"><span class="pill all">ALL</span></td><td><strong>Acquire</strong></td><td>A real contract in minutes, not legal cycles</td></tr>
+      <tr><td class="mono">07</td><td class="k">Signature Upload</td><td>Both</td><td class="c"><span class="pill all">ALL</span></td><td>Retain</td><td>Sign once, reuse across every agreement</td></tr>
+      <tr><td class="mono">08</td><td class="k">Agreement Safe Locker</td><td>Both</td><td class="c"><span class="pill all">ALL</span></td><td>Retain</td><td>Certified copy for both parties on execution</td></tr>
+      <tr><td class="mono">09</td><td class="k">Milestone Tracking</td><td>Both</td><td class="c"><span class="pill all">ALL</span></td><td>Retain</td><td>Delivery visible without a status meeting</td></tr>
+      <tr><td class="mono">10</td><td class="k">Reviews &amp; Ratings</td><td>Both</td><td class="c"><span class="pill all">ALL</span></td><td>Retain</td><td>Reputation grounded in completed engagements</td></tr>
+      <tr><td class="mono">11</td><td class="k">Portfolio</td><td>Freelancer</td><td class="c"><span class="pill all">ALL</span></td><td>Supply</td><td>Evidence of quality alongside verified identity</td></tr>
+      <tr><td class="mono">12</td><td class="k">Public Profiles</td><td>Freelancer</td><td class="c"><span class="pill all">ALL</span></td><td>Supply</td><td>Shareable profile; light organic acquisition</td></tr>
+      <tr><td class="mono">13</td><td class="k">Availability Calendar</td><td>Both</td><td class="c"><span class="pill all">ALL</span></td><td><strong>Acquire</strong></td><td>Know availability before making an offer</td></tr>
+      <tr><td class="mono">14</td><td class="k">Subscription Tiers</td><td>Both</td><td class="c"><span class="pill all">ALL</span></td><td>Monetise</td><td>Predictable cost, no take rate on the work</td></tr>
+      <tr><td class="mono">15</td><td class="k">Admin Console</td><td>Internal</td><td class="c"><span class="pill ent">INT</span></td><td>Operate</td><td>Human-in-the-loop verification at scale</td></tr>
+      <tr><td class="mono">16</td><td class="k">Document Verification</td><td>Freelancer</td><td class="c"><span class="pill all">ALL</span></td><td><strong>Acquire</strong></td><td><strong>Credentials checked, not asserted</strong></td></tr>
+      <tr><td class="mono">17</td><td class="k">AI Token Tracking</td><td>Employer</td><td class="c"><span class="pill growth">GROWTH</span></td><td>Expand</td><td>Transparent AI consumption, not an opaque cost</td></tr>
+      <tr><td class="mono">18</td><td class="k">Agreement Templates</td><td>Employer</td><td class="c"><span class="pill ent">ENT</span></td><td>Expand</td><td>Consistent terms across the organisation</td></tr>
+      <tr><td class="mono">19</td><td class="k">Contract Redlining</td><td>Employer</td><td class="c"><span class="pill growth">GROWTH</span></td><td>Expand</td><td>Improve terms without a legal review cycle</td></tr>
+      <tr><td class="mono">20</td><td class="k">Job Description Assistant</td><td>Employer</td><td class="c"><span class="pill all">ALL</span></td><td>Retain</td><td>Better postings attract better candidates</td></tr>
+      <tr><td class="mono">21</td><td class="k">Smarter Matching</td><td>Employer</td><td class="c"><span class="pill all">ALL</span></td><td>Acquire</td><td>Recommendations you can justify to a colleague</td></tr>
+      <tr><td class="mono">22</td><td class="k">Notifications Centre</td><td>Both</td><td class="c"><span class="pill all">ALL</span></td><td>Retain</td><td>Nothing waits on someone remembering to check</td></tr>
+      <tr><td class="mono">23</td><td class="k">Earnings Intelligence</td><td>Freelancer</td><td class="c"><span class="pill all">ALL</span></td><td>Supply</td><td>Why professionals keep their profile current</td></tr>
+      <tr><td class="mono">24</td><td class="k">Spend Analytics</td><td>Employer</td><td class="c"><span class="pill all">ALL</span></td><td><strong>Retain</strong></td><td><strong>Contractor spend reportable to a board</strong></td></tr>
+      <tr><td class="mono">25</td><td class="k">Hiring Analytics</td><td>Employer</td><td class="c"><span class="pill all">ALL</span></td><td>Retain</td><td>Manage hiring as a process, not a favour</td></tr>
+      <tr><td class="mono">26</td><td class="k">Security Hardening</td><td>Both</td><td class="c"><span class="pill all">ALL</span></td><td>Enable</td><td>Survives a security questionnaire</td></tr>
+      <tr><td class="mono">27</td><td class="k">Product Gaps package</td><td>Both</td><td class="c"><span class="pill all">ALL</span></td><td>Retain</td><td>Email, search, pagination — usability at volume</td></tr>
+      <tr><td class="mono">28</td><td class="k">AI Proposal Generator</td><td>Freelancer</td><td class="c"><span class="pill all">ALL</span></td><td>Supply</td><td>Better-quality responses to employers</td></tr>
+      <tr><td class="mono">29</td><td class="k">Smart Rate Suggestions</td><td>Employer</td><td class="c"><span class="pill growth">GROWTH</span></td><td>Expand</td><td>Stop overpaying and stop underbidding</td></tr>
+      <tr><td class="mono">30</td><td class="k">Team Accounts</td><td>Employer</td><td class="c"><span class="pill ent">ENT</span></td><td><strong>Expand</strong></td><td>Coordinated hiring with consolidated reporting</td></tr>
+      <tr><td class="mono">31</td><td class="k">Contract Health Score</td><td>Both</td><td class="c"><span class="pill all">ALL</span></td><td><strong>Acquire</strong></td><td>Non-lawyers can judge contract quality</td></tr>
+      <tr><td class="mono">32</td><td class="k">Auth Hardening</td><td>Both</td><td class="c"><span class="pill all">ALL</span></td><td>Enable</td><td>Per-resource authorisation; IDOR protection</td></tr>
+      <tr><td class="mono">33</td><td class="k">Agreement AI Summary</td><td>Freelancer</td><td class="c"><span class="pill all">ALL</span></td><td>Supply</td><td>Professionals sign understanding the terms</td></tr>
+      <tr><td class="mono">34</td><td class="k">Agreement PDF Download</td><td>Both</td><td class="c"><span class="pill all">ALL</span></td><td>Retain</td><td>An artefact finance and legal accept</td></tr>
+      <tr><td class="mono">35</td><td class="k">Cruise Mode</td><td>Freelancer</td><td class="c"><span class="pill pro">PRO</span></td><td>Supply</td><td>Autonomous pitching while they work</td></tr>
+      <tr><td class="mono">36</td><td class="k">Teaching Professional Profile</td><td>Freelancer</td><td class="c"><span class="pill all">ALL</span></td><td><strong>Acquire</strong></td><td><strong>Education modelled, not adapted</strong></td></tr>
+      <tr><td class="mono">37</td><td class="k">TalentSearch</td><td>Employer</td><td class="c"><span class="pill all">ALL</span></td><td>Acquire</td><td>Sourcing continues while you work</td></tr>
+      <tr><td class="mono">38</td><td class="k">AI Meeting Brief</td><td>Employer</td><td class="c"><span class="pill growth">GROWTH</span></td><td>Expand</td><td>Every interview prepared, even unprepared</td></tr>
+      <tr><td class="mono">39</td><td class="k">Discovery Meeting Outcome</td><td>Employer</td><td class="c"><span class="pill all">ALL</span></td><td>Retain</td><td>Interview knowledge retained by the organisation</td></tr>
+      <tr><td class="mono">40</td><td class="k">In-App Direct Messaging</td><td>Both</td><td class="c"><span class="pill all">ALL</span></td><td>Retain</td><td>Conversation attached to the engagement</td></tr>
+      <tr><td class="mono">41</td><td class="k">Employer Verification</td><td>Employer</td><td class="c"><span class="pill all">ALL</span></td><td>Acquire</td><td>Professionals can see the employer is real</td></tr>
+      <tr><td class="mono">42</td><td class="k">Credential Expiry Tracking</td><td>Freelancer</td><td class="c"><span class="pill all">ALL</span></td><td><strong>Acquire</strong></td><td><strong>Compliance continuous, not point-in-time</strong></td></tr>
+      <tr><td class="mono">43</td><td class="k">Freelancer Watchlist</td><td>Employer</td><td class="c"><span class="pill start">START</span></td><td>Retain</td><td>Warm bench for the next requirement</td></tr>
+      <tr><td class="mono">44</td><td class="k">Post-Engagement AI Debrief</td><td>Both</td><td class="c"><span class="pill growth">GROWTH</span></td><td>Expand</td><td>Institutional memory of who to rehire</td></tr>
+      <tr><td class="mono">45</td><td class="k">Multi-Currency &amp; Location</td><td>Both</td><td class="c"><span class="pill all">ALL</span></td><td>Enable</td><td>Hire across borders without spreadsheets</td></tr>
+      <tr><td class="mono">46</td><td class="k">Employer Uploaded Agreement</td><td>Employer</td><td class="c"><span class="pill all">ALL</span></td><td>Acquire</td><td>Keep your own paper, gain the workflow</td></tr>
+      <tr><td class="mono">47</td><td class="k">Job Timeline Validation</td><td>Employer</td><td class="c"><span class="pill all">ALL</span></td><td>Enable</td><td>Removes a recurring scheduling dispute</td></tr>
+      <tr><td class="mono">48</td><td class="k">Engagement Lists</td><td>Both</td><td class="c"><span class="pill all">ALL</span></td><td>Retain</td><td>Usable at volume as the account grows</td></tr>
+    </tbody>
+  </table>
+  <p class="tnote">Bold entries are the six capabilities that most reliably differentiate in a
+    competitive conversation. Tiers reflect gates as written in code and are currently all open by
+    configuration.</p>
+</div>
+
+<!-- ============================================================ APPENDIX B -->
+<div class="sheet page-break">
+  <div class="sec-open">
+    <div class="sec-num"><div class="sec-num-lab">Appx</div><div class="sec-num-v">B</div></div>
+    <div class="sec-head">
+      <h2>Plan Comparison Matrix</h2>
+      <p>Customer-facing comparison built from <code>plans.ts</code>. Suitable as the basis for a
+         pricing sheet once the unbuilt claims are removed.</p>
+    </div>
+  </div>
+
+  <table class="long">
+    <thead>
+      <tr>
+        <th style="width:32%">Capability</th>
+        <th style="width:13%" class="c">Freelancer<br>Free</th>
+        <th style="width:13%" class="c">Freelancer<br>Pro</th>
+        <th style="width:14%" class="c">Employer<br>Starter</th>
+        <th style="width:14%" class="c">Employer<br>Growth</th>
+        <th style="width:14%" class="c accent">Employer<br>Enterprise</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td class="k">Monthly price</td><td class="c">$0</td>
+          <td class="c">$0 <span style="font-size:6.4pt;color:var(--gray-400)">(was $19)</span></td>
+          <td class="c"><strong>$49</strong></td>
+          <td class="c">$0 <span style="font-size:6.4pt;color:var(--gray-400)">(was $199)</span></td>
+          <td class="c">Custom</td></tr>
+      <tr><td class="k">Active bookings</td><td class="c">1</td><td class="c">5</td><td class="c">2</td><td class="c">10</td><td class="c">∞</td></tr>
+      <tr><td class="k">Job posts / month</td><td class="c">—</td><td class="c">—</td><td class="c">5</td><td class="c">∞</td><td class="c">∞</td></tr>
+      <tr><td class="k">Express interests / month</td><td class="c">3</td><td class="c">∞</td><td class="c">—</td><td class="c">—</td><td class="c">—</td></tr>
+      <tr><td class="k">Team seats</td><td class="c">1</td><td class="c">1</td><td class="c">1</td><td class="c">3</td><td class="c">∞</td></tr>
+      <tr><td class="k">AI tokens / month</td><td class="c">∞</td><td class="c">∞</td><td class="c">50k</td><td class="c">250k</td><td class="c">∞</td></tr>
+      <tr><td class="k">Watchlist entries</td><td class="c">—</td><td class="c">—</td><td class="c">25</td><td class="c">100</td><td class="c">Shared shortlist</td></tr>
+      <tr><td class="k">Talent Vault listing</td><td class="c yes">✓</td><td class="c yes">✓</td><td class="c">—</td><td class="c">—</td><td class="c">—</td></tr>
+      <tr><td class="k">Exclusivity lock</td><td class="c yes">✓</td><td class="c yes">✓</td><td class="c yes">✓</td><td class="c yes">✓</td><td class="c yes">✓</td></tr>
+      <tr><td class="k">Document verification</td><td class="c yes">✓</td><td class="c yes">✓</td><td class="c yes">✓</td><td class="c yes">✓</td><td class="c yes">✓</td></tr>
+      <tr><td class="k">Credential expiry alerts</td><td class="c yes">✓</td><td class="c yes">✓</td><td class="c yes">✓</td><td class="c yes">✓</td><td class="c yes">✓</td></tr>
+      <tr><td class="k">AI agreement generation</td><td class="c yes">✓</td><td class="c yes">✓</td><td class="c yes">✓</td><td class="c yes">✓</td><td class="c yes">✓</td></tr>
+      <tr><td class="k">Contract health score</td><td class="c yes">✓</td><td class="c yes">✓</td><td class="c yes">✓</td><td class="c yes">✓</td><td class="c yes">✓</td></tr>
+      <tr><td class="k">Dual e-signature + PDF</td><td class="c yes">✓</td><td class="c yes">✓</td><td class="c yes">✓</td><td class="c yes">✓</td><td class="c yes">✓</td></tr>
+      <tr><td class="k">Spend &amp; hiring analytics</td><td class="c">—</td><td class="c">—</td><td class="c yes">✓</td><td class="c yes">✓</td><td class="c yes">✓</td></tr>
+      <tr><td class="k">Contract redlining</td><td class="c">—</td><td class="c">—</td><td class="c no">✗</td><td class="c yes">✓</td><td class="c yes">✓</td></tr>
+      <tr><td class="k">AI rate suggestions</td><td class="c">—</td><td class="c">—</td><td class="c no">✗</td><td class="c yes">✓</td><td class="c yes">✓</td></tr>
+      <tr><td class="k">AI meeting brief questions</td><td class="c">—</td><td class="c">—</td><td class="c no">✗</td><td class="c yes">✓</td><td class="c yes">✓</td></tr>
+      <tr><td class="k">Post-engagement debrief (full)</td><td class="c">—</td><td class="c">—</td><td class="c no">✗</td><td class="c yes">✓</td><td class="c yes">✓</td></tr>
+      <tr><td class="k">Per-conversation token detail</td><td class="c">—</td><td class="c">—</td><td class="c no">✗</td><td class="c yes">✓</td><td class="c yes">✓</td></tr>
+      <tr><td class="k">Cruise Mode agent</td><td class="c no">✗</td><td class="c yes">✓</td><td class="c">—</td><td class="c">—</td><td class="c">—</td></tr>
+      <tr><td class="k">TalentSearch agent</td><td class="c">—</td><td class="c">—</td><td class="c yes">✓</td><td class="c yes">✓</td><td class="c yes">✓</td></tr>
+      <tr><td class="k">Team accounts &amp; shortlist</td><td class="c">—</td><td class="c">—</td><td class="c no">✗</td><td class="c no">✗</td><td class="c yes">✓</td></tr>
+      <tr><td class="k">Team analytics</td><td class="c">—</td><td class="c">—</td><td class="c no">✗</td><td class="c no">✗</td><td class="c yes">✓</td></tr>
+      <tr><td class="k">Custom agreement clauses</td><td class="c">—</td><td class="c">—</td><td class="c no">✗</td><td class="c no">✗</td><td class="c yes">✓</td></tr>
+      <tr style="background:var(--rose-50)"><td class="k">SSO / SCIM <span class="pill notbuilt">NOT BUILT</span></td>
+          <td class="c">—</td><td class="c">—</td><td class="c no">✗</td><td class="c no">✗</td><td class="c gap">✗</td></tr>
+      <tr style="background:var(--rose-50)"><td class="k">Audit log export <span class="pill notbuilt">NOT BUILT</span></td>
+          <td class="c">—</td><td class="c">—</td><td class="c no">✗</td><td class="c no">✗</td><td class="c gap">✗</td></tr>
+      <tr style="background:var(--rose-50)"><td class="k">Priority Vault placement <span class="pill notbuilt">NOT BUILT</span></td>
+          <td class="c no">✗</td><td class="c gap">✗</td><td class="c">—</td><td class="c">—</td><td class="c">—</td></tr>
+      <tr style="background:var(--rose-50)"><td class="k">Verified Pro badge <span class="pill notbuilt">NOT BUILT</span></td>
+          <td class="c no">✗</td><td class="c gap">✗</td><td class="c">—</td><td class="c">—</td><td class="c">—</td></tr>
+      <tr style="background:var(--rose-50)"><td class="k">Payments / escrow <span class="pill notbuilt">NOT BUILT</span></td>
+          <td class="c gap">✗</td><td class="c gap">✗</td><td class="c gap">✗</td><td class="c gap">✗</td><td class="c gap">✗</td></tr>
+    </tbody>
+  </table>
+  <p class="tnote">✓ included &middot; ✗ excluded &middot; — not applicable to that audience.
+    Rows shaded red are currently advertised on the pricing page but absent from the product; they must
+    be removed or built before this matrix is used with customers.
+    <strong>All gated rows are presently unlocked for every plan</strong> because
+    <code>PREMIUM_FEATURES_FREE</code> is enabled.</p>
+</div>
+
+<!-- ============================================================ APPENDIX C -->
+<div class="sheet page-break">
+  <div class="sec-open">
+    <div class="sec-num"><div class="sec-num-lab">Appx</div><div class="sec-num-v">C</div></div>
+    <div class="sec-head">
+      <h2>Claims Discipline</h2>
+      <p>A single reference for what customer-facing teams may state as fact, what must be qualified,
+         and what must not be said at all.</p>
+    </div>
+  </div>
+
+  <table class="long">
+    <thead>
+      <tr><th style="width:34%">Statement</th><th style="width:14%" class="c">Verdict</th>
+          <th style="width:52%">Required framing</th></tr>
+    </thead>
+    <tbody>
+      <tr><td class="k">Booking makes a professional exclusively unavailable</td>
+          <td class="c"><span class="pill built">SAY IT</span></td>
+          <td>Demonstrate live; it is enforced in the data model</td></tr>
+      <tr><td class="k">Identity and credentials are AI-verified with human escalation</td>
+          <td class="c"><span class="pill built">SAY IT</span></td>
+          <td>Accurate; low-confidence results route to an admin review queue</td></tr>
+      <tr><td class="k">Expiring licences trigger staged alerts</td>
+          <td class="c"><span class="pill built">SAY IT</span></td>
+          <td>90/30/7-day ladder; expired education licences leave the Vault</td></tr>
+      <tr><td class="k">Contracts are drafted, scored, signed and issued as PDF in-platform</td>
+          <td class="c"><span class="pill built">SAY IT</span></td>
+          <td>Complete lifecycle; no external e-signature tool required</td></tr>
+      <tr><td class="k">Spend and rate benchmarking are available</td>
+          <td class="c"><span class="pill built">SAY IT</span></td>
+          <td>Against market median and the customer's own history</td></tr>
+      <tr><td class="k">Multi-currency hiring is supported</td>
+          <td class="c"><span class="pill built">SAY IT</span></td>
+          <td>Booking currency frozen with an FX snapshot at creation</td></tr>
+      <tr><td class="k">Purpose-built for education hiring</td>
+          <td class="c"><span class="pill built">SAY IT</span></td>
+          <td>Profession types, subject/level matching, DBS, licence expiry, session rates</td></tr>
+      <tr><td class="k">&ldquo;Enterprise-ready&rdquo;</td>
+          <td class="c"><span class="pill partial">QUALIFY</span></td>
+          <td>Name the controls that exist. Do not use the phrase as a shorthand — it implies SSO and an
+              SLA, neither of which exist</td></tr>
+      <tr><td class="k">Plan limits and prices</td>
+          <td class="c"><span class="pill partial">QUALIFY</span></td>
+          <td>Quote only from <code>plans.ts</code>. Growth and Pro currently list at $0</td></tr>
+      <tr><td class="k">Premium features included</td>
+          <td class="c"><span class="pill partial">QUALIFY</span></td>
+          <td>Currently open to all plans by configuration. State that it is temporary, in writing</td></tr>
+      <tr><td class="k">SSO, SCIM, audit log export</td>
+          <td class="c"><span class="pill notbuilt">DO NOT</span></td>
+          <td>Not implemented. Remove from the pricing page; never quote</td></tr>
+      <tr><td class="k">Priority Vault placement, Verified Pro badge</td>
+          <td class="c"><span class="pill notbuilt">DO NOT</span></td>
+          <td>No ranking or badge logic reads the plan</td></tr>
+      <tr><td class="k">Payments, escrow, invoicing</td>
+          <td class="c"><span class="pill notbuilt">DO NOT</span></td>
+          <td>No payment rail exists in any form</td></tr>
+      <tr><td class="k">Uptime or availability figures</td>
+          <td class="c"><span class="pill notbuilt">DO NOT</span></td>
+          <td>Nothing is instrumented to measure or substantiate a number</td></tr>
+      <tr><td class="k">Customer counts, logos, references, case studies</td>
+          <td class="c"><span class="pill notbuilt">DO NOT</span></td>
+          <td>None exist. Use pilots so the customer generates their own evidence</td></tr>
+      <tr><td class="k">Penetration test or certification status</td>
+          <td class="c"><span class="pill notbuilt">DO NOT</span></td>
+          <td>No third-party assessment has been performed</td></tr>
+    </tbody>
+  </table>
+
+  <div class="call risk">
+    <span class="ct">Standing Instruction</span>
+    <p>Four capabilities are currently advertised on the live pricing page and are not implemented:
+       <strong>SSO/SCIM</strong>, <strong>audit log export</strong>, <strong>priority Vault
+       placement</strong>, and the <strong>Verified Pro badge</strong>. Until the pricing page is
+       corrected, treat everything rendered there as unverified and quote exclusively from this
+       document's Appendix B. If a prospect raises one of these four, correct the record immediately —
+       an early, honest correction costs a feature; a late one discovered in diligence costs the deal
+       and the relationship.</p>
+  </div>
+</div>
+
+</body>
+</html>
