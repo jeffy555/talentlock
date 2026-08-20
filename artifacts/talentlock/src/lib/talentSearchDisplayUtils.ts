@@ -6,6 +6,9 @@ export function emptyTalentSearchRules(): TalentSearchRules {
   return {
     professionCategory: null,
     educationSubType: null,
+    healthcareSubType: null,
+    clinicalSpecialty: null,
+    requireAadhaarVerified: false,
     requiredSkills: [],
     preferredSkills: [],
     minRate: null,

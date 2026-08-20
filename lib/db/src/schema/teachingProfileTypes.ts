@@ -2,7 +2,7 @@
 // Q1: skills column is text().array() — teachingSubjects/teachingLevels match that type
 // Q2: no existing location column on freelancer_profiles — location added as nullable text
 
-export type ProfessionCategory = "technology" | "education";
+export type ProfessionCategory = "technology" | "education" | "healthcare";
 export type EducationProfessionType =
   | "school_teacher"
   | "university_lecturer"
@@ -11,7 +11,7 @@ export type EducationProfessionType =
 export type HighestDegree = "bachelors" | "masters" | "phd" | "postdoc";
 export type DbsCheckStatus = "not_uploaded" | "uploaded" | "verified" | "expired";
 export type PreferredTeachingMode = "in_person" | "online" | "both";
-export type RateType = "hourly" | "per_day" | "per_session" | "per_course";
+export type RateType = "hourly" | "per_day" | "per_session" | "per_course" | "per_shift";
 
 export const REQUIRED_DOCUMENTS_BY_EDUCATION_TYPE: Record<
   EducationProfessionType,

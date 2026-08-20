@@ -16,18 +16,27 @@ import { messages } from "./messages";
 import { getNextMidnightUTC, type BlackoutWindow, type MatchReasons } from "./cruiseMode";
 
 export interface TalentSearchRules {
-  professionCategory: "technology" | "education" | null;
+  professionCategory: "technology" | "education" | "healthcare" | null;
   educationSubType:
     | "school_teacher"
     | "university_lecturer"
     | "tutor"
     | "researcher"
     | null;
+  healthcareSubType:
+    | "physician"
+    | "registered_nurse"
+    | "nurse_practitioner"
+    | "allied_health"
+    | "care_worker"
+    | null;
+  clinicalSpecialty: string | null;
+  requireAadhaarVerified: boolean;
   requiredSkills: string[];
   preferredSkills: string[];
   minRate: number | null;
   maxRate: number | null;
-  rateType: "hourly" | "per_day" | "per_session" | "per_course";
+  rateType: "hourly" | "per_day" | "per_session" | "per_course" | "per_shift";
   availableFrom: string | null;
   locationRequired: boolean;
   location: string | null;

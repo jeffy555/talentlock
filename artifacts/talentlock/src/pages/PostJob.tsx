@@ -43,6 +43,12 @@ export default function PostJob() {
   const [rateType, setRateType] = useState<RateType>("hourly");
 
   useEffect(() => {
+    if (professionCategory === "education") setRateType("per_session");
+    if (professionCategory === "healthcare") setRateType("per_shift");
+    if (professionCategory === "technology") setRateType("hourly");
+  }, [professionCategory]);
+
+  useEffect(() => {
     if (!isMdUp) setIsAssistantOpen(false);
   }, [isMdUp]);
 
@@ -73,7 +79,10 @@ export default function PostJob() {
           startDate: new Date(startDate).toISOString(),
           endDate: new Date(endDate).toISOString(),
           professionCategory,
-          rateType: professionCategory === "education" ? rateType : "hourly",
+          rateType:
+            professionCategory === "education" || professionCategory === "healthcare"
+              ? rateType
+              : "hourly",
         }
       });
 
@@ -202,8 +211,8 @@ export default function PostJob() {
                   <Label htmlFor="prof-technology" className="font-normal cursor-pointer">Technology</Label>
                 </div>
                 <div className="flex items-center gap-2">
-                  <RadioGroupItem value="education" id="prof-education" />
-                  <Label htmlFor="prof-education" className="font-normal cursor-pointer">Education</Label>
+                  <RadioGroupItem value="healthcare" id="prof-healthcare" />
+                  <Label htmlFor="prof-healthcare" className="font-normal cursor-pointer">Healthcare</Label>
                 </div>
               </RadioGroup>
             </div>
@@ -233,7 +242,7 @@ export default function PostJob() {
               </div>
             </CardHeader>
             <CardContent className="space-y-6 pt-6">
-              {professionCategory === "education" && (
+              {(professionCategory === "education" || professionCategory === "healthcare") && (
                 <div className="space-y-2.5">
                   <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Rate type</Label>
                   <RadioGroup
@@ -249,14 +258,24 @@ export default function PostJob() {
                       <RadioGroupItem value="per_day" id="rate-per-day" />
                       <Label htmlFor="rate-per-day" className="font-normal cursor-pointer">Per day</Label>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <RadioGroupItem value="per_session" id="rate-per-session" />
-                      <Label htmlFor="rate-per-session" className="font-normal cursor-pointer">Per session</Label>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <RadioGroupItem value="per_course" id="rate-per-course" />
-                      <Label htmlFor="rate-per-course" className="font-normal cursor-pointer">Per course</Label>
-                    </div>
+                    {professionCategory === "education" && (
+                      <>
+                        <div className="flex items-center gap-2">
+                          <RadioGroupItem value="per_session" id="rate-per-session" />
+                          <Label htmlFor="rate-per-session" className="font-normal cursor-pointer">Per session</Label>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <RadioGroupItem value="per_course" id="rate-per-course" />
+                          <Label htmlFor="rate-per-course" className="font-normal cursor-pointer">Per course</Label>
+                        </div>
+                      </>
+                    )}
+                    {professionCategory === "healthcare" && (
+                      <div className="flex items-center gap-2">
+                        <RadioGroupItem value="per_shift" id="rate-per-shift" />
+                        <Label htmlFor="rate-per-shift" className="font-normal cursor-pointer">Per shift</Label>
+                      </div>
+                    )}
                   </RadioGroup>
                 </div>
               )}
@@ -291,7 +310,9 @@ export default function PostJob() {
                     />
                   </div>
                   <span className="text-slate-500 text-sm whitespace-nowrap">
-                    {professionCategory === "education" ? rateUnitLabel(rateType) : "/hr"}
+                    {professionCategory === "technology"
+                      ? "/hr"
+                      : rateUnitLabel(rateType)}
                   </span>
                 </div>
               </div>

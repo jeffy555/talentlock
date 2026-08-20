@@ -17,6 +17,7 @@ import {
   isValidDocumentStoragePath,
 } from "../lib/documentConstants";
 import { triggerDocumentReview } from "../lib/documentReview";
+import { syncAadhaarVerificationStatus } from "../lib/healthcareProfileUtils";
 import { ObjectStorageService } from "../lib/objectStorage";
 import { logAudit } from "../lib/auditLogger";
 import { daysUntil } from "../lib/credentialExpiryUtils";
@@ -231,6 +232,10 @@ router.post("/documents/confirm", async (req, res) => {
       entityId: String(document!.id),
       metadata: { documentType },
     }).catch((err) => req.log.warn({ err }, "audit log write failed"));
+
+    if (documentType === "aadhaar") {
+      await syncAadhaarVerificationStatus(db, ctx.profile.id);
+    }
 
     triggerDocumentReview(db, req.log, ctx.profile.id, documentType).catch((err) => {
       req.log.error({ err, freelancerId: ctx.profile!.id, documentType }, "document review trigger failed");

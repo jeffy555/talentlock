@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { CruiseModeBlackoutWindows } from "./cruiseModeBlackoutWindows";
+import type { TalentSearchRulesHealthcareSubType } from "./talentSearchRulesHealthcareSubType";
 import type { TalentSearchRulesMessageTone } from "./talentSearchRulesMessageTone";
 import type { TalentSearchRulesRateType } from "./talentSearchRulesRateType";
 
@@ -14,6 +15,15 @@ export interface TalentSearchRules {
   professionCategory?: string | null;
   /** @nullable */
   educationSubType?: string | null;
+  /** @nullable */
+  healthcareSubType?: TalentSearchRulesHealthcareSubType;
+  /**
+   * Case-insensitive match against freelancer clinical specialties
+   * @nullable
+   */
+  clinicalSpecialty?: string | null;
+  /** When true, only freelancers with verified Aadhaar pass the pre-filter */
+  requireAadhaarVerified: boolean;
   requiredSkills: string[];
   preferredSkills: string[];
   /** @nullable */

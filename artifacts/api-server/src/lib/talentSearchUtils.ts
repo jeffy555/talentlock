@@ -8,6 +8,10 @@ export interface NormalisedFreelancer {
   id: number;
   professionCategory: string;
   educationProfessionType: string | null;
+  healthcareProfessionType: string | null;
+  clinicalSpecialties: string[] | null;
+  clinicalSettings: string[] | null;
+  aadhaarVerificationStatus: string | null;
   skills: string[];
   teachingSubjects: string[] | null;
   teachingLevels: string[] | null;
@@ -51,6 +55,10 @@ export function normaliseFreelancer(
     id: profile.id,
     professionCategory: profile.professionCategory,
     educationProfessionType: profile.educationProfessionType,
+    healthcareProfessionType: profile.healthcareProfessionType ?? null,
+    clinicalSpecialties: profile.clinicalSpecialties ?? null,
+    clinicalSettings: profile.clinicalSettings ?? null,
+    aadhaarVerificationStatus: profile.aadhaarVerificationStatus ?? null,
     skills: profile.skills ?? [],
     teachingSubjects: profile.teachingSubjects ?? null,
     teachingLevels: profile.teachingLevels ?? null,
@@ -78,6 +86,23 @@ export function talentSearchPreFilterReason(
     return `Education sub-type does not match (requires ${rules.educationSubType})`;
   }
 
+  if (rules.healthcareSubType && freelancer.healthcareProfessionType !== rules.healthcareSubType) {
+    return `Healthcare sub-type does not match (requires ${rules.healthcareSubType})`;
+  }
+
+  if (rules.clinicalSpecialty?.trim()) {
+    const needle = rules.clinicalSpecialty.trim().toLowerCase();
+    const specialties = freelancer.clinicalSpecialties ?? [];
+    const hasMatch = specialties.some((s) => s.toLowerCase().includes(needle));
+    if (!hasMatch) {
+      return `Clinical specialty does not match (requires ${rules.clinicalSpecialty})`;
+    }
+  }
+
+  if (rules.requireAadhaarVerified && freelancer.aadhaarVerificationStatus !== "verified") {
+    return "Verified Aadhaar required but not verified";
+  }
+
   if (rules.maxRate !== null && freelancer.rate > rules.maxRate) {
     return `Rate above maximum (${rules.maxRate})`;
   }
@@ -89,6 +114,8 @@ export function talentSearchPreFilterReason(
     ...(freelancer.skills ?? []),
     ...(freelancer.teachingSubjects ?? []),
     ...(freelancer.teachingLevels ?? []),
+    ...(freelancer.clinicalSpecialties ?? []),
+    ...(freelancer.clinicalSettings ?? []),
     freelancer.bio ?? "",
     freelancer.fieldOfWork ?? "",
   ]
@@ -183,7 +210,9 @@ Sector: ${sector}
 Recent hiring focus: ${recentHiring}
 
 EMPLOYER TALENT SEARCH RULES:
-Profession: ${rules.professionCategory ?? "any"}${rules.educationSubType ? ` — ${rules.educationSubType}` : ""}
+Profession: ${rules.professionCategory ?? "any"}${rules.educationSubType ? ` — ${rules.educationSubType}` : ""}${rules.healthcareSubType ? ` — ${rules.healthcareSubType}` : ""}
+Clinical specialty: ${rules.clinicalSpecialty ?? "any"}
+Aadhaar verified required: ${rules.requireAadhaarVerified ? "Yes" : "No"}
 Required skills: ${rules.requiredSkills.join(", ") || "any"}
 Preferred skills: ${rules.preferredSkills.join(", ") || "none specified"}
 Rate range: ${rules.minRate ?? 0}–${maxRateLabel} ${rules.rateType}
@@ -196,13 +225,17 @@ Preferred fields: ${rules.preferredFields.join(", ") || "any"}
 FREELANCER PROFILE:
 Field: ${freelancer.fieldOfWork}
 Profession: ${freelancer.professionCategory}
-Profession type: ${freelancer.educationProfessionType ?? "not specified"}
+Education type: ${freelancer.educationProfessionType ?? "not specified"}
+Healthcare type: ${freelancer.healthcareProfessionType ?? "not specified"}
+Clinical specialties: ${freelancer.clinicalSpecialties?.join(", ") ?? "N/A"}
+Clinical settings: ${freelancer.clinicalSettings?.join(", ") ?? "N/A"}
 Skills: ${freelancer.skills.join(", ")}
 Teaching subjects: ${freelancer.teachingSubjects?.join(", ") ?? "N/A"}
 Teaching levels: ${freelancer.teachingLevels?.join(", ") ?? "N/A"}
 Rate: ${freelancer.rate} ${rules.rateType}
 Location: ${freelancer.location ?? "not specified"} (country=${freelancer.countryCode ?? "n/a"}, state=${freelancer.stateCode ?? "n/a"})
 DBS status: ${freelancer.dbsCheckStatus ?? "not provided"}
+Aadhaar status: ${freelancer.aadhaarVerificationStatus ?? "not provided"}
 Has verified credential: ${freelancer.hasAnyVerifiedDocument ? "Yes" : "No"}
 Bio summary: ${freelancer.bio?.slice(0, 300) ?? ""}
 
@@ -254,6 +287,9 @@ export function defaultTalentSearchRules(): TalentSearchRules {
   return {
     professionCategory: null,
     educationSubType: null,
+    healthcareSubType: null,
+    clinicalSpecialty: null,
+    requireAadhaarVerified: false,
     requiredSkills: [],
     preferredSkills: [],
     minRate: null,
@@ -287,6 +323,9 @@ export function normaliseParsedTalentSearchRules(
     ...raw,
     professionCategory: raw.professionCategory ?? defaults.professionCategory,
     educationSubType: raw.educationSubType ?? defaults.educationSubType,
+    healthcareSubType: raw.healthcareSubType ?? defaults.healthcareSubType,
+    clinicalSpecialty: raw.clinicalSpecialty ?? defaults.clinicalSpecialty,
+    requireAadhaarVerified: raw.requireAadhaarVerified ?? defaults.requireAadhaarVerified,
     requiredSkills: raw.requiredSkills ?? defaults.requiredSkills,
     preferredSkills: raw.preferredSkills ?? defaults.preferredSkills,
     rateType: raw.rateType ?? defaults.rateType,
@@ -313,13 +352,16 @@ export const PARSE_TALENT_SEARCH_RULES_SYSTEM_PROMPT = `You parse free-form empl
 Return ONLY a JSON object with this shape — no preamble, no markdown:
 {
   "rules": {
-    "professionCategory": "technology" | "education" | null,
+    "professionCategory": "technology" | "education" | "healthcare" | null,
     "educationSubType": "school_teacher" | "university_lecturer" | "tutor" | "researcher" | null,
+    "healthcareSubType": "physician" | "registered_nurse" | "nurse_practitioner" | "allied_health" | "care_worker" | null,
+    "clinicalSpecialty": string | null,
+    "requireAadhaarVerified": boolean,
     "requiredSkills": string[],
     "preferredSkills": string[],
     "minRate": number | null,
     "maxRate": number | null,
-    "rateType": "hourly" | "per_day" | "per_session" | "per_course",
+    "rateType": "hourly" | "per_day" | "per_session" | "per_course" | "per_shift",
     "availableFrom": string | null,
     "locationRequired": boolean,
     "location": string | null,
@@ -340,6 +382,6 @@ Return ONLY a JSON object with this shape — no preamble, no markdown:
   "warnings": string[]
 }
 
-Defaults when not specified: professionCategory null, rateType "hourly", matchThreshold 70, messageTone "professional", locationRequired false, requireDbs false, requireVerifiedCredentials false, dryRun false, dailyDigest false, empty arrays, null rates/dates/location/countryCode/stateCode.
+Defaults when not specified: professionCategory null, healthcareSubType null, clinicalSpecialty null, requireAadhaarVerified false, rateType "hourly", matchThreshold 70, messageTone "professional", locationRequired false, requireDbs false, requireVerifiedCredentials false, dryRun false, dailyDigest false, empty arrays, null rates/dates/location/countryCode/stateCode.
 When a city/region/country is mentioned, set locationRequired true, fill location with a human label, and set countryCode (ISO-2) / stateCode when identifiable.
 Add a warning for each ambiguous or missing preference the user did not specify.`;
