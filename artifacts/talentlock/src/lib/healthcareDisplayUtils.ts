@@ -8,6 +8,12 @@ export const HEALTHCARE_TYPE_LABELS: Record<HealthcareProfessionType, string> = 
   care_worker: "Care Worker",
 };
 
+export const PREFERRED_CARE_MODE_LABELS: Record<string, string> = {
+  in_person: "In-person",
+  telehealth: "Telehealth",
+  both: "In-person & telehealth",
+};
+
 export const HEALTHCARE_QUALIFICATION_LABELS: Record<string, string> = {
   mbbs: "MBBS",
   bds: "BDS",

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   normaliseFreelancer,
   talentSearchPreFilter,
+  talentSearchPreFilterReason,
   validateTalentSearchResponse,
   defaultTalentSearchRules,
 } from "../../src/lib/talentSearchUtils";
@@ -71,6 +72,51 @@ describe("talentSearchPreFilter", () => {
     const usProfile = { ...baseProfile, countryCode: "US", location: "California" } as FreelancerProfile;
     const fl = normaliseFreelancer(usProfile, true, "CA");
     expect(talentSearchPreFilter(rules, fl)).toBe(true);
+  });
+});
+
+describe("talentSearchPreFilter healthcare rules", () => {
+  const healthcareProfile = {
+    ...baseProfile,
+    id: 2,
+    name: "Dr. Patel",
+    professionCategory: "healthcare",
+    educationProfessionType: null,
+    healthcareProfessionType: "physician",
+    clinicalSpecialties: ["Cardiology", "Internal Medicine"],
+    clinicalSettings: ["Hospital"],
+    aadhaarVerificationStatus: "verified",
+    fieldOfWork: "Healthcare",
+    hourlyRate: "5000",
+  } as FreelancerProfile;
+
+  it("passes when healthcare sub-type and specialty match", () => {
+    const rules = defaultTalentSearchRules();
+    rules.professionCategory = "healthcare";
+    rules.healthcareSubType = "physician";
+    rules.clinicalSpecialty = "cardiology";
+    const fl = normaliseFreelancer(healthcareProfile, true, null);
+    expect(talentSearchPreFilter(rules, fl)).toBe(true);
+  });
+
+  it("rejects healthcare sub-type mismatch", () => {
+    const rules = defaultTalentSearchRules();
+    rules.professionCategory = "healthcare";
+    rules.healthcareSubType = "registered_nurse";
+    const fl = normaliseFreelancer(healthcareProfile, true, null);
+    expect(talentSearchPreFilterReason(rules, fl)).toContain("Healthcare sub-type");
+  });
+
+  it("rejects when Aadhaar verified required but missing", () => {
+    const rules = defaultTalentSearchRules();
+    rules.professionCategory = "healthcare";
+    rules.requireAadhaarVerified = true;
+    const unverified = {
+      ...healthcareProfile,
+      aadhaarVerificationStatus: "uploaded",
+    } as FreelancerProfile;
+    const fl = normaliseFreelancer(unverified, true, null);
+    expect(talentSearchPreFilterReason(rules, fl)).toContain("Aadhaar");
   });
 });
 

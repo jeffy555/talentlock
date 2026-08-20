@@ -3039,6 +3039,21 @@ export interface ParseCruiseModeRulesResult {
   warnings: string[];
 }
 
+/**
+ * @nullable
+ */
+export type TalentSearchRulesHealthcareSubType =
+  | (typeof TalentSearchRulesHealthcareSubType)[keyof typeof TalentSearchRulesHealthcareSubType]
+  | null;
+
+export const TalentSearchRulesHealthcareSubType = {
+  physician: "physician",
+  registered_nurse: "registered_nurse",
+  nurse_practitioner: "nurse_practitioner",
+  allied_health: "allied_health",
+  care_worker: "care_worker",
+} as const;
+
 export type TalentSearchRulesRateType =
   (typeof TalentSearchRulesRateType)[keyof typeof TalentSearchRulesRateType];
 
@@ -3047,6 +3062,7 @@ export const TalentSearchRulesRateType = {
   per_day: "per_day",
   per_session: "per_session",
   per_course: "per_course",
+  per_shift: "per_shift",
 } as const;
 
 export type TalentSearchRulesMessageTone =
@@ -3063,6 +3079,15 @@ export interface TalentSearchRules {
   professionCategory?: string | null;
   /** @nullable */
   educationSubType?: string | null;
+  /** @nullable */
+  healthcareSubType?: TalentSearchRulesHealthcareSubType;
+  /**
+   * Case-insensitive match against freelancer clinical specialties
+   * @nullable
+   */
+  clinicalSpecialty?: string | null;
+  /** When true, only freelancers with verified Aadhaar pass the pre-filter */
+  requireAadhaarVerified: boolean;
   requiredSkills: string[];
   preferredSkills: string[];
   /** @nullable */

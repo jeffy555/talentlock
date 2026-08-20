@@ -9217,6 +9217,21 @@ components:
           type: ["string", "null"]
         educationSubType:
           type: ["string", "null"]
+        healthcareSubType:
+          type: ["string", "null"]
+          enum:
+            - physician
+            - registered_nurse
+            - nurse_practitioner
+            - allied_health
+            - care_worker
+            - null
+        clinicalSpecialty:
+          type: ["string", "null"]
+          description: Case-insensitive match against freelancer clinical specialties
+        requireAadhaarVerified:
+          type: boolean
+          description: When true, only freelancers with verified Aadhaar pass the pre-filter
         requiredSkills:
           type: array
           items: { type: string }
@@ -9229,7 +9244,7 @@ components:
           type: ["number", "null"]
         rateType:
           type: string
-          enum: [hourly, per_day, per_session, per_course]
+          enum: [hourly, per_day, per_session, per_course, per_shift]
         availableFrom:
           type: ["string", "null"]
         locationRequired:
@@ -9280,6 +9295,7 @@ components:
         - excludedKeywords
         - requireVerifiedCredentials
         - requireDbs
+        - requireAadhaarVerified
         - preferredFields
         - matchThreshold
         - messageTone

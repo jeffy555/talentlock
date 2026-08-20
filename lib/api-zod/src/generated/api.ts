@@ -5740,11 +5740,38 @@ export const GetTalentSearchResponse = zod.union([
     rules: zod.object({
       professionCategory: zod.string().nullish(),
       educationSubType: zod.string().nullish(),
+      healthcareSubType: zod
+        .union([
+          zod.literal("physician"),
+          zod.literal("registered_nurse"),
+          zod.literal("nurse_practitioner"),
+          zod.literal("allied_health"),
+          zod.literal("care_worker"),
+          zod.literal(null),
+        ])
+        .nullish(),
+      clinicalSpecialty: zod
+        .string()
+        .nullish()
+        .describe(
+          "Case-insensitive match against freelancer clinical specialties",
+        ),
+      requireAadhaarVerified: zod
+        .boolean()
+        .describe(
+          "When true, only freelancers with verified Aadhaar pass the pre-filter",
+        ),
       requiredSkills: zod.array(zod.string()),
       preferredSkills: zod.array(zod.string()),
       minRate: zod.number().nullish(),
       maxRate: zod.number().nullish(),
-      rateType: zod.enum(["hourly", "per_day", "per_session", "per_course"]),
+      rateType: zod.enum([
+        "hourly",
+        "per_day",
+        "per_session",
+        "per_course",
+        "per_shift",
+      ]),
       availableFrom: zod.string().nullish(),
       locationRequired: zod.boolean(),
       location: zod
@@ -5816,11 +5843,38 @@ export const UpsertTalentSearchBody = zod.object({
   rules: zod.object({
     professionCategory: zod.string().nullish(),
     educationSubType: zod.string().nullish(),
+    healthcareSubType: zod
+      .union([
+        zod.literal("physician"),
+        zod.literal("registered_nurse"),
+        zod.literal("nurse_practitioner"),
+        zod.literal("allied_health"),
+        zod.literal("care_worker"),
+        zod.literal(null),
+      ])
+      .nullish(),
+    clinicalSpecialty: zod
+      .string()
+      .nullish()
+      .describe(
+        "Case-insensitive match against freelancer clinical specialties",
+      ),
+    requireAadhaarVerified: zod
+      .boolean()
+      .describe(
+        "When true, only freelancers with verified Aadhaar pass the pre-filter",
+      ),
     requiredSkills: zod.array(zod.string()),
     preferredSkills: zod.array(zod.string()),
     minRate: zod.number().nullish(),
     maxRate: zod.number().nullish(),
-    rateType: zod.enum(["hourly", "per_day", "per_session", "per_course"]),
+    rateType: zod.enum([
+      "hourly",
+      "per_day",
+      "per_session",
+      "per_course",
+      "per_shift",
+    ]),
     availableFrom: zod.string().nullish(),
     locationRequired: zod.boolean(),
     location: zod
@@ -5882,11 +5936,38 @@ export const UpsertTalentSearchResponse = zod.object({
   rules: zod.object({
     professionCategory: zod.string().nullish(),
     educationSubType: zod.string().nullish(),
+    healthcareSubType: zod
+      .union([
+        zod.literal("physician"),
+        zod.literal("registered_nurse"),
+        zod.literal("nurse_practitioner"),
+        zod.literal("allied_health"),
+        zod.literal("care_worker"),
+        zod.literal(null),
+      ])
+      .nullish(),
+    clinicalSpecialty: zod
+      .string()
+      .nullish()
+      .describe(
+        "Case-insensitive match against freelancer clinical specialties",
+      ),
+    requireAadhaarVerified: zod
+      .boolean()
+      .describe(
+        "When true, only freelancers with verified Aadhaar pass the pre-filter",
+      ),
     requiredSkills: zod.array(zod.string()),
     preferredSkills: zod.array(zod.string()),
     minRate: zod.number().nullish(),
     maxRate: zod.number().nullish(),
-    rateType: zod.enum(["hourly", "per_day", "per_session", "per_course"]),
+    rateType: zod.enum([
+      "hourly",
+      "per_day",
+      "per_session",
+      "per_course",
+      "per_shift",
+    ]),
     availableFrom: zod.string().nullish(),
     locationRequired: zod.boolean(),
     location: zod
@@ -5960,11 +6041,38 @@ export const ActivateTalentSearchResponse = zod.object({
   rules: zod.object({
     professionCategory: zod.string().nullish(),
     educationSubType: zod.string().nullish(),
+    healthcareSubType: zod
+      .union([
+        zod.literal("physician"),
+        zod.literal("registered_nurse"),
+        zod.literal("nurse_practitioner"),
+        zod.literal("allied_health"),
+        zod.literal("care_worker"),
+        zod.literal(null),
+      ])
+      .nullish(),
+    clinicalSpecialty: zod
+      .string()
+      .nullish()
+      .describe(
+        "Case-insensitive match against freelancer clinical specialties",
+      ),
+    requireAadhaarVerified: zod
+      .boolean()
+      .describe(
+        "When true, only freelancers with verified Aadhaar pass the pre-filter",
+      ),
     requiredSkills: zod.array(zod.string()),
     preferredSkills: zod.array(zod.string()),
     minRate: zod.number().nullish(),
     maxRate: zod.number().nullish(),
-    rateType: zod.enum(["hourly", "per_day", "per_session", "per_course"]),
+    rateType: zod.enum([
+      "hourly",
+      "per_day",
+      "per_session",
+      "per_course",
+      "per_shift",
+    ]),
     availableFrom: zod.string().nullish(),
     locationRequired: zod.boolean(),
     location: zod
@@ -6038,11 +6146,38 @@ export const DryRunTalentSearchResponse = zod.object({
   rules: zod.object({
     professionCategory: zod.string().nullish(),
     educationSubType: zod.string().nullish(),
+    healthcareSubType: zod
+      .union([
+        zod.literal("physician"),
+        zod.literal("registered_nurse"),
+        zod.literal("nurse_practitioner"),
+        zod.literal("allied_health"),
+        zod.literal("care_worker"),
+        zod.literal(null),
+      ])
+      .nullish(),
+    clinicalSpecialty: zod
+      .string()
+      .nullish()
+      .describe(
+        "Case-insensitive match against freelancer clinical specialties",
+      ),
+    requireAadhaarVerified: zod
+      .boolean()
+      .describe(
+        "When true, only freelancers with verified Aadhaar pass the pre-filter",
+      ),
     requiredSkills: zod.array(zod.string()),
     preferredSkills: zod.array(zod.string()),
     minRate: zod.number().nullish(),
     maxRate: zod.number().nullish(),
-    rateType: zod.enum(["hourly", "per_day", "per_session", "per_course"]),
+    rateType: zod.enum([
+      "hourly",
+      "per_day",
+      "per_session",
+      "per_course",
+      "per_shift",
+    ]),
     availableFrom: zod.string().nullish(),
     locationRequired: zod.boolean(),
     location: zod
@@ -6116,11 +6251,38 @@ export const DeactivateTalentSearchResponse = zod.object({
   rules: zod.object({
     professionCategory: zod.string().nullish(),
     educationSubType: zod.string().nullish(),
+    healthcareSubType: zod
+      .union([
+        zod.literal("physician"),
+        zod.literal("registered_nurse"),
+        zod.literal("nurse_practitioner"),
+        zod.literal("allied_health"),
+        zod.literal("care_worker"),
+        zod.literal(null),
+      ])
+      .nullish(),
+    clinicalSpecialty: zod
+      .string()
+      .nullish()
+      .describe(
+        "Case-insensitive match against freelancer clinical specialties",
+      ),
+    requireAadhaarVerified: zod
+      .boolean()
+      .describe(
+        "When true, only freelancers with verified Aadhaar pass the pre-filter",
+      ),
     requiredSkills: zod.array(zod.string()),
     preferredSkills: zod.array(zod.string()),
     minRate: zod.number().nullish(),
     maxRate: zod.number().nullish(),
-    rateType: zod.enum(["hourly", "per_day", "per_session", "per_course"]),
+    rateType: zod.enum([
+      "hourly",
+      "per_day",
+      "per_session",
+      "per_course",
+      "per_shift",
+    ]),
     availableFrom: zod.string().nullish(),
     locationRequired: zod.boolean(),
     location: zod
@@ -6196,11 +6358,38 @@ export const ParseTalentSearchRulesResponse = zod.object({
   rules: zod.object({
     professionCategory: zod.string().nullish(),
     educationSubType: zod.string().nullish(),
+    healthcareSubType: zod
+      .union([
+        zod.literal("physician"),
+        zod.literal("registered_nurse"),
+        zod.literal("nurse_practitioner"),
+        zod.literal("allied_health"),
+        zod.literal("care_worker"),
+        zod.literal(null),
+      ])
+      .nullish(),
+    clinicalSpecialty: zod
+      .string()
+      .nullish()
+      .describe(
+        "Case-insensitive match against freelancer clinical specialties",
+      ),
+    requireAadhaarVerified: zod
+      .boolean()
+      .describe(
+        "When true, only freelancers with verified Aadhaar pass the pre-filter",
+      ),
     requiredSkills: zod.array(zod.string()),
     preferredSkills: zod.array(zod.string()),
     minRate: zod.number().nullish(),
     maxRate: zod.number().nullish(),
-    rateType: zod.enum(["hourly", "per_day", "per_session", "per_course"]),
+    rateType: zod.enum([
+      "hourly",
+      "per_day",
+      "per_session",
+      "per_course",
+      "per_shift",
+    ]),
     availableFrom: zod.string().nullish(),
     locationRequired: zod.boolean(),
     location: zod
