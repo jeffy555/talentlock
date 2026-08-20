@@ -154,6 +154,25 @@ export function buildMeetingBriefPrompt(ctx: PromptContext): string {
       ? `${currencySymbol(ctx.currencyCode)}${ctx.jobBudget}`
       : "not specified";
 
+  const professionDetail =
+    f.professionCategory === "healthcare"
+      ? `Healthcare type: ${f.healthcareProfessionType ?? "not specified"}`
+      : f.professionCategory === "education"
+        ? `Education type: ${f.educationProfessionType ?? "not specified"}`
+        : "Profession type: general";
+
+  const healthcareLines =
+    f.professionCategory === "healthcare"
+      ? [
+          `Clinical specialties: ${(f.clinicalSpecialties ?? []).join(", ") || "not specified"}`,
+          `Clinical settings: ${(f.clinicalSettings ?? []).join(", ") || "not specified"}`,
+          `Highest qualification: ${f.highestQualification ?? "not specified"}`,
+          `Registration council: ${f.registrationCouncil ?? "not specified"}`,
+          `Preferred care mode: ${f.preferredCareMode ?? "not specified"}`,
+          `Aadhaar status: ${f.aadhaarVerificationStatus ?? "not provided"}`,
+        ].join("\n")
+      : "";
+
   return `You are an AI assistant for a professional hiring marketplace, generating a pre-meeting brief for an employer.
 
 EMPLOYER MEETING CONTEXT:
@@ -164,10 +183,11 @@ Job role:     ${job?.title ?? "Discovery meeting (no specific role)"}
 FREELANCER PROFILE:
 Name:              ${f.name}
 Field:             ${f.fieldOfWork}
-Profession type:   ${f.educationProfessionType ?? "not specified"}
+Profession:        ${f.professionCategory}
+${professionDetail}
 Skills:            ${(f.skills ?? []).join(", ") || "not specified"}
 Teaching subjects: ${(f.teachingSubjects ?? []).join(", ") || "N/A"}
-Experience:        ${f.yearsExperience} years
+${healthcareLines ? `${healthcareLines}\n` : ""}Experience:        ${f.yearsExperience} years
 Experience bio:    ${f.bio?.slice(0, 400) ?? "not provided"}
 Rate:              ${rateLabel}
 Completeness:      ${f.completenessScore}/100

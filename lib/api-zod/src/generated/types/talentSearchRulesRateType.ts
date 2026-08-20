@@ -14,4 +14,5 @@ export const TalentSearchRulesRateType = {
   per_day: "per_day",
   per_session: "per_session",
   per_course: "per_course",
+  per_shift: "per_shift",
 } as const;

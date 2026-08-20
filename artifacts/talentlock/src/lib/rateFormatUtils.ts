@@ -1,12 +1,13 @@
 import { currencySymbol } from "./currencyUtils";
 
-export type RateType = "hourly" | "per_day" | "per_session" | "per_course";
+export type RateType = "hourly" | "per_day" | "per_session" | "per_course" | "per_shift";
 
 const RATE_UNIT_LABELS: Record<RateType, string> = {
   hourly: "/hr",
   per_day: "/day",
   per_session: "/session",
   per_course: "/course",
+  per_shift: "/shift",
 };
 
 export function formatRate(
@@ -24,7 +25,9 @@ export function rateUnitLabel(rateType: RateType | null | undefined): string {
 }
 
 export function profileDefaultRateType(professionCategory: string | null | undefined): RateType {
-  return professionCategory === "education" ? "per_session" : "hourly";
+  if (professionCategory === "education") return "per_session";
+  if (professionCategory === "healthcare") return "per_shift";
+  return "hourly";
 }
 
 export function paymentTypeToRateType(

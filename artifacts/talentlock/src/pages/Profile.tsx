@@ -31,6 +31,8 @@ import DeleteAccountSection from "@/components/DeleteAccountSection";
 import { resolveVerificationLevel } from "@/lib/verification";
 import { useQueryClient } from "@tanstack/react-query";
 import TeachingDetailsSection, { emptyTeachingDetails, type TeachingDetailsValues } from "@/components/onboarding/TeachingDetailsSection";
+import HealthcareDetailsSection, { emptyHealthcareDetails, type HealthcareDetailsValues } from "@/components/onboarding/HealthcareDetailsSection";
+import { HealthcareCredentialChecklist } from "@/components/healthcare/HealthcareCredentialChecklist";
 import EmployerVerificationSection from "@/components/employer/EmployerVerificationSection";
 import { CountryStateFields, formatLocationLabel, isLocationComplete } from "@/components/onboarding/CountryStateFields";
 import { PhoneWithCountryFields } from "@/components/onboarding/PhoneWithCountryFields";
@@ -412,6 +414,7 @@ export default function Profile() {
   const [availableFrom, setAvailableFrom] = useState(fp?.availableFrom ? fp.availableFrom.substring(0, 10) : "");
   const [availabilityNote, setAvailabilityNote] = useState(fp?.availabilityNote ?? "");
   const [teachingDetails, setTeachingDetails] = useState<TeachingDetailsValues>(emptyTeachingDetails());
+  const [healthcareDetails, setHealthcareDetails] = useState<HealthcareDetailsValues>(emptyHealthcareDetails());
   const [countryCode, setCountryCode] = useState(dbUser?.countryCode ?? "US");
   const [stateCode, setStateCode] = useState<string | null>(dbUser?.stateCode ?? null);
 
@@ -435,7 +438,12 @@ export default function Profile() {
         return;
       }
       await patchLocation.mutateAsync({ data: { countryCode, stateCode } });
-      const fp3 = freelancerProfile as typeof freelancerProfile & { professionCategory?: string; educationProfessionType?: string | null };
+      const fp3 = freelancerProfile as typeof freelancerProfile & {
+        professionCategory?: string;
+        educationProfessionType?: string | null;
+        healthcareProfessionType?: string | null;
+        aadhaarVerificationStatus?: string;
+      };
       const teachingPayload = fp3?.professionCategory === "education"
         ? {
             teachingSubjects: teachingDetails.teachingSubjects.length ? teachingDetails.teachingSubjects : undefined,
@@ -453,6 +461,27 @@ export default function Profile() {
             location: formatLocationLabel(countriesData?.countries ?? [], countryCode, stateCode) || teachingDetails.location || undefined,
           }
         : {};
+      const healthcarePayload = fp3?.professionCategory === "healthcare"
+        ? {
+            clinicalSpecialties: healthcareDetails.clinicalSpecialties.length
+              ? healthcareDetails.clinicalSpecialties
+              : undefined,
+            clinicalSettings: healthcareDetails.clinicalSettings.length
+              ? healthcareDetails.clinicalSettings
+              : undefined,
+            yearsClinicalExperience: healthcareDetails.yearsClinicalExperience ?? undefined,
+            highestQualification: healthcareDetails.highestQualification ?? undefined,
+            qualificationSpecialization: healthcareDetails.qualificationSpecialization || undefined,
+            qualificationInstitution: healthcareDetails.qualificationInstitution || undefined,
+            registrationCouncil: healthcareDetails.registrationCouncil || undefined,
+            registrationNumber: healthcareDetails.registrationNumber || undefined,
+            registrationExpiry: healthcareDetails.registrationExpiry
+              ? new Date(healthcareDetails.registrationExpiry).toISOString()
+              : undefined,
+            preferredCareMode: healthcareDetails.preferredCareMode ?? undefined,
+            location: formatLocationLabel(countriesData?.countries ?? [], countryCode, stateCode) || undefined,
+          }
+        : {};
 
       const parsedDaily = parseRateInput(dailyRate);
       await updateFreelancer.mutateAsync({
@@ -467,6 +496,7 @@ export default function Profile() {
           availableFrom: availableFrom ? new Date(availableFrom).toISOString() : undefined,
           availabilityNote: availabilityNote || undefined,
           ...teachingPayload,
+          ...healthcarePayload,
         },
       });
       toast({ title: "Profile updated", description: "Your freelancer profile has been saved." });
@@ -579,6 +609,18 @@ export default function Profile() {
       researchPublications?: string | null;
       preferredTeachingMode?: string | null;
       location?: string | null;
+      healthcareProfessionType?: string | null;
+      clinicalSpecialties?: string[] | null;
+      clinicalSettings?: string[] | null;
+      yearsClinicalExperience?: number | null;
+      highestQualification?: string | null;
+      qualificationSpecialization?: string | null;
+      qualificationInstitution?: string | null;
+      registrationCouncil?: string | null;
+      registrationNumber?: string | null;
+      registrationExpiry?: string | null;
+      preferredCareMode?: string | null;
+      aadhaarVerificationStatus?: string;
     };
     setBio(freelancerProfile.bio ?? "");
     setTagline(freelancerProfile.tagline ?? "");
@@ -603,6 +645,18 @@ export default function Profile() {
       researchPublications: fp2.researchPublications ?? "",
       preferredTeachingMode: (fp2.preferredTeachingMode as TeachingDetailsValues["preferredTeachingMode"]) ?? null,
       location: fp2.location ?? "",
+    });
+    setHealthcareDetails({
+      clinicalSpecialties: fp2.clinicalSpecialties ?? [],
+      clinicalSettings: fp2.clinicalSettings ?? [],
+      yearsClinicalExperience: fp2.yearsClinicalExperience ?? null,
+      highestQualification: (fp2.highestQualification as HealthcareDetailsValues["highestQualification"]) ?? null,
+      qualificationSpecialization: fp2.qualificationSpecialization ?? "",
+      qualificationInstitution: fp2.qualificationInstitution ?? "",
+      registrationCouncil: fp2.registrationCouncil ?? "",
+      registrationNumber: fp2.registrationNumber ?? "",
+      registrationExpiry: fp2.registrationExpiry ? fp2.registrationExpiry.substring(0, 10) : "",
+      preferredCareMode: (fp2.preferredCareMode as HealthcareDetailsValues["preferredCareMode"]) ?? null,
     });
   }, [freelancerProfile]);
 
@@ -813,6 +867,20 @@ export default function Profile() {
                 values={teachingDetails}
                 onChange={setTeachingDetails}
               />
+            )}
+
+            {(freelancerProfile as { professionCategory?: string }).professionCategory === "healthcare" && (
+              <>
+                <HealthcareDetailsSection
+                  healthcareProfessionType={(freelancerProfile as { healthcareProfessionType?: string | null }).healthcareProfessionType as import("@workspace/api-client-react").HealthcareProfessionType | null}
+                  values={healthcareDetails}
+                  onChange={setHealthcareDetails}
+                />
+                <HealthcareCredentialChecklist
+                  healthcareProfessionType={(freelancerProfile as { healthcareProfessionType?: string | null }).healthcareProfessionType as import("@workspace/api-client-react").HealthcareProfessionType | null}
+                  aadhaarVerificationStatus={(freelancerProfile as { aadhaarVerificationStatus?: string }).aadhaarVerificationStatus ?? "not_uploaded"}
+                />
+              </>
             )}
 
             <Button onClick={handleSaveFreelancer} disabled={updateFreelancer.isPending}>

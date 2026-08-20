@@ -199,6 +199,7 @@ export type ProfessionCategory =
 export const ProfessionCategory = {
   technology: "technology",
   education: "education",
+  healthcare: "healthcare",
 } as const;
 
 export type EducationProfessionType =
@@ -239,6 +240,56 @@ export const PreferredTeachingMode = {
   both: "both",
 } as const;
 
+export type HealthcareProfessionType =
+  (typeof HealthcareProfessionType)[keyof typeof HealthcareProfessionType];
+
+export const HealthcareProfessionType = {
+  physician: "physician",
+  registered_nurse: "registered_nurse",
+  nurse_practitioner: "nurse_practitioner",
+  allied_health: "allied_health",
+  care_worker: "care_worker",
+} as const;
+
+export type HealthcareQualification =
+  (typeof HealthcareQualification)[keyof typeof HealthcareQualification];
+
+export const HealthcareQualification = {
+  mbbs: "mbbs",
+  bds: "bds",
+  md_ms: "md_ms",
+  dnb: "dnb",
+  diploma_medical: "diploma_medical",
+  bsc_nursing: "bsc_nursing",
+  msc_nursing: "msc_nursing",
+  gnm: "gnm",
+  anm: "anm",
+  post_basic_bsc: "post_basic_bsc",
+  bpt: "bpt",
+  mph: "mph",
+  other: "other",
+} as const;
+
+export type AadhaarVerificationStatus =
+  (typeof AadhaarVerificationStatus)[keyof typeof AadhaarVerificationStatus];
+
+export const AadhaarVerificationStatus = {
+  not_uploaded: "not_uploaded",
+  uploaded: "uploaded",
+  verified: "verified",
+  rejected: "rejected",
+  expired: "expired",
+} as const;
+
+export type PreferredCareMode =
+  (typeof PreferredCareMode)[keyof typeof PreferredCareMode];
+
+export const PreferredCareMode = {
+  in_person: "in_person",
+  telehealth: "telehealth",
+  both: "both",
+} as const;
+
 export type RateType = (typeof RateType)[keyof typeof RateType];
 
 export const RateType = {
@@ -246,6 +297,7 @@ export const RateType = {
   per_day: "per_day",
   per_session: "per_session",
   per_course: "per_course",
+  per_shift: "per_shift",
 } as const;
 
 export interface TeachingProfileFields {
@@ -360,6 +412,26 @@ export interface FreelancerProfile {
   preferredTeachingMode?: PreferredTeachingMode | null;
   /** @nullable */
   location?: string | null;
+  healthcareProfessionType?: HealthcareProfessionType | null;
+  /** @nullable */
+  clinicalSpecialties?: string[] | null;
+  /** @nullable */
+  clinicalSettings?: string[] | null;
+  /** @nullable */
+  yearsClinicalExperience?: number | null;
+  highestQualification?: HealthcareQualification | null;
+  /** @nullable */
+  qualificationSpecialization?: string | null;
+  /** @nullable */
+  qualificationInstitution?: string | null;
+  /** @nullable */
+  registrationCouncil?: string | null;
+  /** @nullable */
+  registrationNumber?: string | null;
+  /** @nullable */
+  registrationExpiry?: string | null;
+  aadhaarVerificationStatus?: AadhaarVerificationStatus;
+  preferredCareMode?: PreferredCareMode | null;
   /** ISO 3166-1 alpha-2 country code */
   countryCode: string;
   /** ISO 4217 currency code derived from country */
@@ -455,6 +527,25 @@ export interface CreateFreelancerProfileBody {
   preferredTeachingMode?: PreferredTeachingMode | null;
   /** @nullable */
   location?: string | null;
+  healthcareProfessionType?: HealthcareProfessionType | null;
+  /** @nullable */
+  clinicalSpecialties?: string[] | null;
+  /** @nullable */
+  clinicalSettings?: string[] | null;
+  /** @nullable */
+  yearsClinicalExperience?: number | null;
+  highestQualification?: HealthcareQualification | null;
+  /** @nullable */
+  qualificationSpecialization?: string | null;
+  /** @nullable */
+  qualificationInstitution?: string | null;
+  /** @nullable */
+  registrationCouncil?: string | null;
+  /** @nullable */
+  registrationNumber?: string | null;
+  /** @nullable */
+  registrationExpiry?: string | null;
+  preferredCareMode?: PreferredCareMode | null;
 }
 
 export type AvailabilityBlockReason =
@@ -568,6 +659,25 @@ export interface UpdateFreelancerProfileBody {
   preferredTeachingMode?: PreferredTeachingMode | null;
   /** @nullable */
   location?: string | null;
+  healthcareProfessionType?: HealthcareProfessionType | null;
+  /** @nullable */
+  clinicalSpecialties?: string[] | null;
+  /** @nullable */
+  clinicalSettings?: string[] | null;
+  /** @nullable */
+  yearsClinicalExperience?: number | null;
+  highestQualification?: HealthcareQualification | null;
+  /** @nullable */
+  qualificationSpecialization?: string | null;
+  /** @nullable */
+  qualificationInstitution?: string | null;
+  /** @nullable */
+  registrationCouncil?: string | null;
+  /** @nullable */
+  registrationNumber?: string | null;
+  /** @nullable */
+  registrationExpiry?: string | null;
+  preferredCareMode?: PreferredCareMode | null;
 }
 
 export type EmployerProfileVerificationLevel =
@@ -2764,6 +2874,26 @@ export interface PublicFreelancerProfile {
   teachingLevels?: string[] | null;
   /** @nullable */
   location?: string | null;
+  healthcareProfessionType?: HealthcareProfessionType | null;
+  /** @nullable */
+  clinicalSpecialties?: string[] | null;
+  /** @nullable */
+  clinicalSettings?: string[] | null;
+  /** @nullable */
+  yearsClinicalExperience?: number | null;
+  highestQualification?: HealthcareQualification | null;
+  /** @nullable */
+  qualificationSpecialization?: string | null;
+  /** @nullable */
+  qualificationInstitution?: string | null;
+  /** @nullable */
+  registrationCouncil?: string | null;
+  /** @nullable */
+  registrationNumber?: string | null;
+  /** @nullable */
+  registrationExpiry?: string | null;
+  aadhaarVerificationStatus?: AadhaarVerificationStatus;
+  preferredCareMode?: PreferredCareMode | null;
   countryCode: string;
   currencyCode: string;
   createdAt: string;
@@ -2909,6 +3039,21 @@ export interface ParseCruiseModeRulesResult {
   warnings: string[];
 }
 
+/**
+ * @nullable
+ */
+export type TalentSearchRulesHealthcareSubType =
+  | (typeof TalentSearchRulesHealthcareSubType)[keyof typeof TalentSearchRulesHealthcareSubType]
+  | null;
+
+export const TalentSearchRulesHealthcareSubType = {
+  physician: "physician",
+  registered_nurse: "registered_nurse",
+  nurse_practitioner: "nurse_practitioner",
+  allied_health: "allied_health",
+  care_worker: "care_worker",
+} as const;
+
 export type TalentSearchRulesRateType =
   (typeof TalentSearchRulesRateType)[keyof typeof TalentSearchRulesRateType];
 
@@ -2917,6 +3062,7 @@ export const TalentSearchRulesRateType = {
   per_day: "per_day",
   per_session: "per_session",
   per_course: "per_course",
+  per_shift: "per_shift",
 } as const;
 
 export type TalentSearchRulesMessageTone =
@@ -2933,6 +3079,15 @@ export interface TalentSearchRules {
   professionCategory?: string | null;
   /** @nullable */
   educationSubType?: string | null;
+  /** @nullable */
+  healthcareSubType?: TalentSearchRulesHealthcareSubType;
+  /**
+   * Case-insensitive match against freelancer clinical specialties
+   * @nullable
+   */
+  clinicalSpecialty?: string | null;
+  /** When true, only freelancers with verified Aadhaar pass the pre-filter */
+  requireAadhaarVerified: boolean;
   requiredSkills: string[];
   preferredSkills: string[];
   /** @nullable */
@@ -3100,6 +3255,10 @@ export type ListFreelancersParams = {
    */
   teachingSubject?: string;
   /**
+   * Case-insensitive substring match on clinicalSpecialties (healthcare professionals)
+   */
+  clinicalSpecialty?: string;
+  /**
    * Filter by freelancer country code (ISO 3166-1 alpha-2)
    * @minLength 2
    * @maxLength 2
@@ -3119,6 +3278,7 @@ export type ListFreelancersProfessionCategory =
 export const ListFreelancersProfessionCategory = {
   technology: "technology",
   education: "education",
+  healthcare: "healthcare",
 } as const;
 
 export type ListJobRequirementsParams = {

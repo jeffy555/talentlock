@@ -22,6 +22,7 @@ import { PLANS, type PlanId } from "../lib/plans";
 import { aggregateTokenUsageRows, type TokenUsageBreakdown } from "../lib/subscriptionGating";
 import { TOKEN_FEATURES } from "../lib/tokenLogger";
 import { updateVerificationLevel, maybeTriggerTalentSearchAfterVerification } from "../lib/documentReview";
+import { syncAadhaarVerificationStatus } from "../lib/healthcareProfileUtils";
 import { createNotification, NotificationType, userIdFromFreelancerProfileId } from "../lib/createNotification";
 import { sendNotificationEmailAsync } from "../lib/emailService";
 import { isPdfStoragePath } from "../lib/documentConstants";
@@ -940,6 +941,10 @@ router.patch("/admin/documents/:id", requireAdmin, async (req, res) => {
       .returning();
 
     await updateVerificationLevel(db, doc.freelancerId);
+
+    if (doc.documentType === "aadhaar") {
+      await syncAadhaarVerificationStatus(db, doc.freelancerId);
+    }
 
     if (verdict === "verified") {
       maybeTriggerTalentSearchAfterVerification(doc.freelancerId, req.log).catch((err) =>

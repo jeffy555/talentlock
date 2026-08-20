@@ -11,4 +11,10 @@ describe("buildProfessionContext", () => {
     expect(ctx.length).toBeGreaterThan(0);
     expect(ctx).toContain("education");
   });
+
+  it("returns non-empty context for healthcare jobs", () => {
+    const ctx = buildProfessionContext({ professionCategory: "healthcare" });
+    expect(ctx.length).toBeGreaterThan(0);
+    expect(ctx).toContain("healthcare");
+  });
 });

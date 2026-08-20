@@ -14,11 +14,16 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, BadgeCheck, Briefcase, Calendar, CheckCircle2, Clock, DollarSign, GraduationCap, Lock, Star, ExternalLink, Video, Heart, Image, Info, MessageSquare, Loader2 } from "lucide-react";
+import { ArrowLeft, BadgeCheck, Briefcase, Calendar, CheckCircle2, Clock, DollarSign, GraduationCap, Lock, Star, ExternalLink, Video, Heart, Image, Info, MessageSquare, Loader2, Stethoscope } from "lucide-react";
 import { formatRate, paymentTypeToRateType, profileDefaultRateType } from "@/lib/rateFormatUtils";
 import { resolveProfileDisplayRate } from "@/lib/rateConversion";
 import { BookingCurrencyBanner } from "@/components/currency/BookingCurrencyBanner";
 import { EDUCATION_TYPE_LABELS } from "@/components/onboarding/TeachingDetailsSection";
+import {
+  HEALTHCARE_QUALIFICATION_LABELS,
+  HEALTHCARE_TYPE_LABELS,
+  PREFERRED_CARE_MODE_LABELS,
+} from "@/lib/healthcareDisplayUtils";
 import { useEffect, useRef, useState } from "react";
 import { Link } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
@@ -278,6 +283,19 @@ export default function FreelancerDetail() {
                       {EDUCATION_TYPE_LABELS[freelancer.educationProfessionType]}
                     </span>
                   )}
+                  {freelancer.professionCategory === "healthcare" && freelancer.healthcareProfessionType && (
+                    <span className="inline-flex items-center gap-1 text-xs bg-emerald-50 text-emerald-700 border border-emerald-200 rounded px-1.5 py-0.5">
+                      <Stethoscope className="h-3 w-3" />
+                      {HEALTHCARE_TYPE_LABELS[freelancer.healthcareProfessionType]}
+                    </span>
+                  )}
+                  {freelancer.professionCategory === "healthcare" &&
+                    freelancer.aadhaarVerificationStatus === "verified" && (
+                      <span className="inline-flex items-center gap-1 text-xs bg-emerald-50 text-emerald-700 border border-emerald-200 rounded px-1.5 py-0.5">
+                        <BadgeCheck className="h-3 w-3" />
+                        Aadhaar verified
+                      </span>
+                    )}
                 </div>
                 <h2 className="text-lg font-medium text-primary line-clamp-2">{freelancer.tagline}</h2>
                 <div className="mt-2">
@@ -365,6 +383,91 @@ export default function FreelancerDetail() {
               ))}
             </div>
           </section>
+
+          {freelancer.professionCategory === "healthcare" && (
+            <section className="space-y-4">
+              <h3 className="font-serif text-2xl font-semibold text-foreground">Clinical profile</h3>
+              <div className="grid sm:grid-cols-2 gap-4 text-sm">
+                {freelancer.clinicalSpecialties && freelancer.clinicalSpecialties.length > 0 && (
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">
+                      Clinical specialties
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {freelancer.clinicalSpecialties.map((item) => (
+                        <Badge key={item} variant="secondary" className="bg-emerald-50 text-emerald-800 border-emerald-200">
+                          {item}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {freelancer.clinicalSettings && freelancer.clinicalSettings.length > 0 && (
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">
+                      Clinical settings
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {freelancer.clinicalSettings.map((item) => (
+                        <Badge key={item} variant="secondary">{item}</Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {freelancer.highestQualification && (
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
+                      Qualification
+                    </p>
+                    <p className="text-foreground font-medium">
+                      {HEALTHCARE_QUALIFICATION_LABELS[freelancer.highestQualification] ??
+                        freelancer.highestQualification}
+                      {freelancer.qualificationSpecialization
+                        ? ` — ${freelancer.qualificationSpecialization}`
+                        : ""}
+                    </p>
+                    {freelancer.qualificationInstitution && (
+                      <p className="text-muted-foreground">{freelancer.qualificationInstitution}</p>
+                    )}
+                  </div>
+                )}
+                {(freelancer.registrationCouncil || freelancer.registrationNumber) && (
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
+                      Registration
+                    </p>
+                    <p className="text-foreground font-medium">
+                      {freelancer.registrationCouncil ?? "Council not specified"}
+                    </p>
+                    {freelancer.registrationNumber && (
+                      <p className="text-muted-foreground">No. {freelancer.registrationNumber}</p>
+                    )}
+                  </div>
+                )}
+                {freelancer.preferredCareMode && (
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
+                      Care mode
+                    </p>
+                    <p className="text-foreground font-medium">
+                      {PREFERRED_CARE_MODE_LABELS[freelancer.preferredCareMode] ??
+                        freelancer.preferredCareMode}
+                    </p>
+                  </div>
+                )}
+                {freelancer.yearsClinicalExperience != null && (
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
+                      Clinical experience
+                    </p>
+                    <p className="text-foreground font-medium">
+                      {freelancer.yearsClinicalExperience} years
+                    </p>
+                  </div>
+                )}
+              </div>
+            </section>
+          )}
 
           {/* Portfolio */}
           {portfolio && (portfolio as any[]).length > 0 && (

@@ -206,6 +206,14 @@ talentlock/
 │   │   ├── UI.md
 │   │   └── validation.md
 │   │
+│   ├── healthcare-professional-profile/            ← 🟡 Ready to Execute
+│   │   ├── features.md
+│   │   ├── clarify.md
+│   │   ├── plan.md
+│   │   ├── task.md
+│   │   ├── UI.md
+│   │   └── validation.md
+│   │
 │   ├── employer-cruisemode/                        ← ✅ Complete (TalentSearch)
 │   ├── cruise-mode-dm-delivery/                    ← ✅ Complete (real DM for Cruise Mode + TalentSearch)
 │   │   ├── features.md
@@ -514,6 +522,7 @@ The `.cursor/rules/talentlock.mdc` file at the repo root enforces these rules au
 | Agreement PDF Download | `spec/agreement-pdf-download/` | ✅ Complete |
 | Cruise Mode | `spec/cruisemode/` | ✅ Complete · DM delivery spec in `spec/cruise-mode-dm-delivery/` · rate matching normalized to hourly equivalents (daily ÷ 8) |
 | Teaching Professional Profile | `spec/teaching-professional-profile/` | ✅ Complete |
+| Healthcare Professional Profile | `spec/healthcare-professional-profile/` | 🟡 Ready to Execute |
 | TalentSearch (Employer Cruise Mode) | `spec/employer-cruisemode/` | ✅ Complete · DM delivery spec in `spec/cruise-mode-dm-delivery/` |
 | **Cruise Mode & TalentSearch DM Delivery** | `spec/cruise-mode-dm-delivery/` | ✅ Complete |
 | AI Meeting Brief Generator | `spec/aimeetingdebrief/` | ✅ Complete |

@@ -102,6 +102,9 @@ function ParsedPreview({
   const { rules, warnings } = result;
   const items = [
     rules.professionCategory && `Profession: ${rules.professionCategory}`,
+    rules.educationSubType && `Education sub-type: ${rules.educationSubType}`,
+    rules.healthcareSubType && `Healthcare sub-type: ${rules.healthcareSubType}`,
+    rules.clinicalSpecialty && `Clinical specialty: ${rules.clinicalSpecialty}`,
     rules.requiredSkills.length > 0 && `Required skills: ${rules.requiredSkills.join(", ")}`,
     rules.minRate != null || rules.maxRate != null
       ? `Rate range: ${rules.minRate ?? "—"} – ${rules.maxRate ?? "—"} ${rules.rateType}`
@@ -111,6 +114,7 @@ function ParsedPreview({
       `Location: ${rules.location ?? [rules.stateCode, rules.countryCode].filter(Boolean).join(", ")}`,
     rules.requireDbs && "Requires verified DBS",
     rules.requireVerifiedCredentials && "Requires verified credentials",
+    rules.requireAadhaarVerified && "Requires verified Aadhaar",
     rules.excludedKeywords.length > 0 && `Excluded keywords: ${rules.excludedKeywords.join(", ")}`,
   ].filter(Boolean) as string[];
 
@@ -401,11 +405,17 @@ export function TalentSearchRuleBuilder({
                 professionCategory:
                   value === "any" ? null : (value as TalentSearchRules["professionCategory"]),
                 educationSubType: value === "education" ? rules.educationSubType : null,
+                healthcareSubType: value === "healthcare" ? rules.healthcareSubType : null,
+                clinicalSpecialty: value === "healthcare" ? rules.clinicalSpecialty : null,
+                requireAadhaarVerified:
+                  value === "healthcare" ? rules.requireAadhaarVerified : false,
+                rateType:
+                  value === "healthcare" && rules.rateType === "hourly" ? "per_shift" : rules.rateType,
               })
             }
             className="flex flex-wrap gap-4"
           >
-            {(["any", "technology", "education"] as const).map((cat) => (
+            {(["any", "technology", "education", "healthcare"] as const).map((cat) => (
               <div key={cat} className="flex items-center space-x-2">
                 <RadioGroupItem value={cat} id={`prof-${cat}`} />
                 <Label htmlFor={`prof-${cat}`} className="capitalize font-normal cursor-pointer">
@@ -440,6 +450,66 @@ export function TalentSearchRuleBuilder({
                 ),
               )}
             </RadioGroup>
+          </div>
+        )}
+
+        {professionValue === "healthcare" && (
+          <div className="space-y-4 rounded-lg border border-emerald-200 bg-emerald-50/30 p-4">
+            <div className="space-y-2">
+              <Label>Healthcare sub-type</Label>
+              <RadioGroup
+                value={rules.healthcareSubType ?? "any"}
+                onValueChange={(value) =>
+                  updateRules({
+                    healthcareSubType:
+                      value === "any" ? null : (value as TalentSearchRules["healthcareSubType"]),
+                  })
+                }
+                className="flex flex-wrap gap-4"
+              >
+                {(
+                  [
+                    "any",
+                    "physician",
+                    "registered_nurse",
+                    "nurse_practitioner",
+                    "allied_health",
+                    "care_worker",
+                  ] as const
+                ).map((sub) => (
+                  <div key={sub} className="flex items-center space-x-2">
+                    <RadioGroupItem value={sub} id={`hc-sub-${sub}`} />
+                    <Label htmlFor={`hc-sub-${sub}`} className="font-normal cursor-pointer">
+                      {sub.replace(/_/g, " ")}
+                    </Label>
+                  </div>
+                ))}
+              </RadioGroup>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Clinical specialty (optional)</Label>
+              <Input
+                value={rules.clinicalSpecialty ?? ""}
+                onChange={(e) =>
+                  updateRules({ clinicalSpecialty: e.target.value.trim() || null })
+                }
+                placeholder="e.g. Cardiology, ICU, Pediatrics"
+              />
+            </div>
+
+            <div className="flex items-center justify-between rounded-lg border border-emerald-200 bg-white/60 p-3">
+              <div>
+                <Label>Require verified Aadhaar</Label>
+                <p className="text-xs text-muted-foreground">Healthcare profiles with verified Aadhaar only</p>
+              </div>
+              <Switch
+                checked={rules.requireAadhaarVerified}
+                onCheckedChange={(requireAadhaarVerified) =>
+                  updateRules({ requireAadhaarVerified })
+                }
+              />
+            </div>
           </div>
         )}
 
@@ -545,7 +615,7 @@ export function TalentSearchRuleBuilder({
             }
             className="flex flex-wrap gap-4"
           >
-            {(["hourly", "per_day", "per_session", "per_course"] as const).map((rt) => (
+            {(["hourly", "per_day", "per_session", "per_course", "per_shift"] as const).map((rt) => (
               <div key={rt} className="flex items-center space-x-2">
                 <RadioGroupItem value={rt} id={`rate-${rt}`} />
                 <Label htmlFor={`rate-${rt}`} className="font-normal cursor-pointer">

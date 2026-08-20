@@ -5,8 +5,12 @@
  * TalentLock API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { AadhaarVerificationStatus } from "./aadhaarVerificationStatus";
 import type { EducationProfessionType } from "./educationProfessionType";
+import type { HealthcareProfessionType } from "./healthcareProfessionType";
+import type { HealthcareQualification } from "./healthcareQualification";
 import type { PortfolioItem } from "./portfolioItem";
+import type { PreferredCareMode } from "./preferredCareMode";
 import type { ProfessionCategory } from "./professionCategory";
 import type { PublicReview } from "./publicReview";
 import type { ResumeAnalysis } from "./resumeAnalysis";
@@ -47,6 +51,26 @@ export interface PublicFreelancerProfile {
   teachingLevels?: string[] | null;
   /** @nullable */
   location?: string | null;
+  healthcareProfessionType?: HealthcareProfessionType | null;
+  /** @nullable */
+  clinicalSpecialties?: string[] | null;
+  /** @nullable */
+  clinicalSettings?: string[] | null;
+  /** @nullable */
+  yearsClinicalExperience?: number | null;
+  highestQualification?: HealthcareQualification | null;
+  /** @nullable */
+  qualificationSpecialization?: string | null;
+  /** @nullable */
+  qualificationInstitution?: string | null;
+  /** @nullable */
+  registrationCouncil?: string | null;
+  /** @nullable */
+  registrationNumber?: string | null;
+  /** @nullable */
+  registrationExpiry?: Date | null;
+  aadhaarVerificationStatus?: AadhaarVerificationStatus;
+  preferredCareMode?: PreferredCareMode | null;
   countryCode: string;
   currencyCode: string;
   createdAt: Date;

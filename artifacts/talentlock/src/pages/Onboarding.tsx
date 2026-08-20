@@ -21,11 +21,12 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Briefcase, Building, CheckCircle, GraduationCap, Laptop, Loader2 } from "lucide-react";
+import { Briefcase, Building, CheckCircle, GraduationCap, Laptop, Loader2, Stethoscope } from "lucide-react";
 import { FIELDS_OF_WORK, isFieldOfWork } from "@/lib/fields";
 import { ResumeImporter, type ParsedResume } from "@/components/ResumeImporter";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import TeachingDetailsSection, { emptyTeachingDetails, type TeachingDetailsValues } from "@/components/onboarding/TeachingDetailsSection";
+import HealthcareDetailsSection, { emptyHealthcareDetails, type HealthcareDetailsValues } from "@/components/onboarding/HealthcareDetailsSection";
 import { EmployerDocumentOnboardingStep } from "@/components/onboarding/EmployerDocumentOnboardingStep";
 import { FreelancerDocumentOnboardingStep } from "@/components/onboarding/FreelancerDocumentOnboardingStep";
 import {
@@ -40,6 +41,7 @@ import { cn } from "@/lib/utils";
 import { COMPANY_SIZE_OPTIONS } from "@/lib/employerDocuments";
 import type {
   EducationProfessionType,
+  HealthcareProfessionType,
   ProfessionCategory,
   PatchOnboardingStepBodyOnboardingStep,
 } from "@workspace/api-client-react";
@@ -91,7 +93,9 @@ export default function Onboarding() {
 
   const [professionCategory, setProfessionCategory] = useState<ProfessionCategory | null>("technology");
   const [educationProfessionType, setEducationProfessionType] = useState<EducationProfessionType | null>(null);
+  const [healthcareProfessionType, setHealthcareProfessionType] = useState<HealthcareProfessionType | null>(null);
   const [teachingDetails, setTeachingDetails] = useState<TeachingDetailsValues>(emptyTeachingDetails());
+  const [healthcareDetails, setHealthcareDetails] = useState<HealthcareDetailsValues>(emptyHealthcareDetails());
 
   const [tagline, setTagline] = useState("");
   const [bio, setBio] = useState("");
@@ -232,25 +236,50 @@ export default function Onboarding() {
     }
   }, [dbUser, setLocation]);
 
-  const buildTeachingPayload = () => {
-    if (professionCategory !== "education") return { professionCategory: "technology" as const };
-    return {
-      professionCategory: "education" as const,
-      educationProfessionType: educationProfessionType ?? undefined,
-      teachingSubjects: teachingDetails.teachingSubjects.length ? teachingDetails.teachingSubjects : undefined,
-      teachingLevels: teachingDetails.teachingLevels.length ? teachingDetails.teachingLevels : undefined,
-      yearsTeachingExperience: teachingDetails.yearsTeachingExperience ?? undefined,
-      highestDegree: teachingDetails.highestDegree ?? undefined,
-      degreeSubject: teachingDetails.degreeSubject || undefined,
-      degreeInstitution: teachingDetails.degreeInstitution || undefined,
-      teachingLicenceState: teachingDetails.teachingLicenceState || undefined,
-      teachingLicenceExpiry: teachingDetails.teachingLicenceExpiry
-        ? new Date(teachingDetails.teachingLicenceExpiry).toISOString()
-        : undefined,
-      researchPublications: teachingDetails.researchPublications || undefined,
-      preferredTeachingMode: teachingDetails.preferredTeachingMode ?? undefined,
-      location: formatLocationLabel(countries, countryCode, stateCode) || teachingDetails.location || undefined,
-    };
+  const buildProfessionPayload = () => {
+    if (professionCategory === "education") {
+      return {
+        professionCategory: "education" as const,
+        educationProfessionType: educationProfessionType ?? undefined,
+        teachingSubjects: teachingDetails.teachingSubjects.length ? teachingDetails.teachingSubjects : undefined,
+        teachingLevels: teachingDetails.teachingLevels.length ? teachingDetails.teachingLevels : undefined,
+        yearsTeachingExperience: teachingDetails.yearsTeachingExperience ?? undefined,
+        highestDegree: teachingDetails.highestDegree ?? undefined,
+        degreeSubject: teachingDetails.degreeSubject || undefined,
+        degreeInstitution: teachingDetails.degreeInstitution || undefined,
+        teachingLicenceState: teachingDetails.teachingLicenceState || undefined,
+        teachingLicenceExpiry: teachingDetails.teachingLicenceExpiry
+          ? new Date(teachingDetails.teachingLicenceExpiry).toISOString()
+          : undefined,
+        researchPublications: teachingDetails.researchPublications || undefined,
+        preferredTeachingMode: teachingDetails.preferredTeachingMode ?? undefined,
+        location: formatLocationLabel(countries, countryCode, stateCode) || teachingDetails.location || undefined,
+      };
+    }
+    if (professionCategory === "healthcare") {
+      return {
+        professionCategory: "healthcare" as const,
+        healthcareProfessionType: healthcareProfessionType ?? undefined,
+        clinicalSpecialties: healthcareDetails.clinicalSpecialties.length
+          ? healthcareDetails.clinicalSpecialties
+          : undefined,
+        clinicalSettings: healthcareDetails.clinicalSettings.length
+          ? healthcareDetails.clinicalSettings
+          : undefined,
+        yearsClinicalExperience: healthcareDetails.yearsClinicalExperience ?? undefined,
+        highestQualification: healthcareDetails.highestQualification ?? undefined,
+        qualificationSpecialization: healthcareDetails.qualificationSpecialization || undefined,
+        qualificationInstitution: healthcareDetails.qualificationInstitution || undefined,
+        registrationCouncil: healthcareDetails.registrationCouncil || undefined,
+        registrationNumber: healthcareDetails.registrationNumber || undefined,
+        registrationExpiry: healthcareDetails.registrationExpiry
+          ? new Date(healthcareDetails.registrationExpiry).toISOString()
+          : undefined,
+        preferredCareMode: healthcareDetails.preferredCareMode ?? undefined,
+        location: formatLocationLabel(countries, countryCode, stateCode) || undefined,
+      };
+    }
+    return { professionCategory: "technology" as const };
   };
 
   const ensureFreelancerProfile = useCallback(async () => {
@@ -269,6 +298,9 @@ export default function Onboarding() {
     if (professionCategory === "education" && !educationProfessionType) {
       throw new Error("Select what best describes you in Education.");
     }
+    if (professionCategory === "healthcare" && !healthcareProfessionType) {
+      throw new Error("Select what best describes you in Healthcare.");
+    }
     await persistOnboardingStep("freelancer", "form", { countryCode, stateCode });
     await createFreelancerProfile.mutateAsync({
       data: {
@@ -280,16 +312,16 @@ export default function Onboarding() {
         paymentPreference: "daily",
         ...buildRatePayload(),
         subscriptionPlan: "basic",
-        ...buildTeachingPayload(),
+        ...buildProfessionPayload(),
       },
     });
     profileSavedRef.current = true;
     await queryClient.invalidateQueries({ queryKey: getGetMeQueryKey() });
     await queryClient.invalidateQueries({ queryKey: getGetDocumentsMeQueryKey() });
   }, [
-    user, contactEmail, contactPhone, countries, countryCode, stateCode, professionCategory, educationProfessionType,
+    user, contactEmail, contactPhone, countries, countryCode, stateCode, professionCategory, educationProfessionType, healthcareProfessionType,
     tagline, bio, fieldOfWork, skills, yearsExperience, rateValue,
-    teachingDetails, createFreelancerProfile, queryClient, patchOnboardingStep,
+    teachingDetails, healthcareDetails, createFreelancerProfile, queryClient, patchOnboardingStep,
   ]);
 
   const ensureEmployerProfile = useCallback(async () => {
@@ -374,7 +406,7 @@ export default function Onboarding() {
       });
       return;
     }
-    if (!professionCategory || (professionCategory === "education" && !educationProfessionType)) {
+    if (!professionCategory || (professionCategory === "education" && !educationProfessionType) || (professionCategory === "healthcare" && !healthcareProfessionType)) {
       toast({ title: "Work category required", description: "Select your work category.", variant: "destructive" });
       return;
     }
@@ -612,10 +644,14 @@ export default function Onboarding() {
 
               <section className="space-y-4">
                 <h3 className="text-sm font-semibold text-foreground">Work category</h3>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <button
                     type="button"
-                    onClick={() => setProfessionCategory("technology")}
+                    onClick={() => {
+                      setProfessionCategory("technology");
+                      setEducationProfessionType(null);
+                      setHealthcareProfessionType(null);
+                    }}
                     className={cn(
                       "rounded-lg border-2 p-4 text-left transition-colors",
                       professionCategory === "technology"
@@ -629,7 +665,10 @@ export default function Onboarding() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => setProfessionCategory("education")}
+                    onClick={() => {
+                      setProfessionCategory("education");
+                      setHealthcareProfessionType(null);
+                    }}
                     className={cn(
                       "rounded-lg border-2 p-4 text-left transition-colors",
                       professionCategory === "education"
@@ -640,6 +679,23 @@ export default function Onboarding() {
                     <GraduationCap className="h-5 w-5 mb-2 text-muted-foreground" />
                     <p className="font-semibold">Education</p>
                     <p className="text-xs text-muted-foreground mt-1">Teaching, tutoring, research</p>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setProfessionCategory("healthcare");
+                      setEducationProfessionType(null);
+                    }}
+                    className={cn(
+                      "rounded-lg border-2 p-4 text-left transition-colors",
+                      professionCategory === "healthcare"
+                        ? "border-emerald-500 ring-2 ring-emerald-200 bg-emerald-50"
+                        : "border-border hover:border-muted-foreground/40",
+                    )}
+                  >
+                    <Stethoscope className="h-5 w-5 mb-2 text-emerald-700" />
+                    <p className="font-semibold">Healthcare</p>
+                    <p className="text-xs text-muted-foreground mt-1">Doctors, nurses, allied health</p>
                   </button>
                 </div>
                 {professionCategory === "education" && (
@@ -663,6 +719,34 @@ export default function Onboarding() {
                     <div className="flex items-center gap-2">
                       <RadioGroupItem value="researcher" id="researcher" />
                       <Label htmlFor="researcher" className="font-normal cursor-pointer">Researcher</Label>
+                    </div>
+                  </RadioGroup>
+                )}
+                {professionCategory === "healthcare" && (
+                  <RadioGroup
+                    value={healthcareProfessionType ?? ""}
+                    onValueChange={(v) => setHealthcareProfessionType(v as HealthcareProfessionType)}
+                    className="space-y-2"
+                  >
+                    <div className="flex items-center gap-2">
+                      <RadioGroupItem value="physician" id="physician" />
+                      <Label htmlFor="physician" className="font-normal cursor-pointer">Physician / Doctor</Label>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <RadioGroupItem value="registered_nurse" id="registered_nurse" />
+                      <Label htmlFor="registered_nurse" className="font-normal cursor-pointer">Registered Nurse</Label>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <RadioGroupItem value="nurse_practitioner" id="nurse_practitioner" />
+                      <Label htmlFor="nurse_practitioner" className="font-normal cursor-pointer">Nurse Practitioner</Label>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <RadioGroupItem value="allied_health" id="allied_health" />
+                      <Label htmlFor="allied_health" className="font-normal cursor-pointer">Allied Health Professional</Label>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <RadioGroupItem value="care_worker" id="care_worker" />
+                      <Label htmlFor="care_worker" className="font-normal cursor-pointer">Care Worker</Label>
                     </div>
                   </RadioGroup>
                 )}
@@ -720,6 +804,13 @@ export default function Onboarding() {
                     educationProfessionType={educationProfessionType}
                     values={teachingDetails}
                     onChange={setTeachingDetails}
+                  />
+                )}
+                {professionCategory === "healthcare" && (
+                  <HealthcareDetailsSection
+                    healthcareProfessionType={healthcareProfessionType}
+                    values={healthcareDetails}
+                    onChange={setHealthcareDetails}
                   />
                 )}
                 <div className="space-y-2">

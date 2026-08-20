@@ -464,7 +464,7 @@ export const ListFreelancersQueryParams = zod.object({
     .optional()
     .describe("Full-text keyword search across bio and skills"),
   professionCategory: zod
-    .enum(["technology", "education"])
+    .enum(["technology", "education", "healthcare"])
     .optional()
     .describe("Filter by profession category"),
   teachingSubject: zod.coerce
@@ -472,6 +472,12 @@ export const ListFreelancersQueryParams = zod.object({
     .optional()
     .describe(
       "Case-insensitive substring match on teachingSubjects (education professionals)",
+    ),
+  clinicalSpecialty: zod.coerce
+    .string()
+    .optional()
+    .describe(
+      "Case-insensitive substring match on clinicalSpecialties (healthcare professionals)",
     ),
   countryCode: zod.coerce
     .string()
@@ -533,7 +539,7 @@ export const ListFreelancersResponseItem = zod.object({
   completenessScore: zod
     .number()
     .describe("Profile completeness score 0–100 (Talent Vault requires ≥ 60)"),
-  professionCategory: zod.enum(["technology", "education"]),
+  professionCategory: zod.enum(["technology", "education", "healthcare"]),
   educationProfessionType: zod
     .enum(["school_teacher", "university_lecturer", "tutor", "researcher"])
     .nullish(),
@@ -551,6 +557,44 @@ export const ListFreelancersResponseItem = zod.object({
   researchPublications: zod.string().nullish(),
   preferredTeachingMode: zod.enum(["in_person", "online", "both"]).nullish(),
   location: zod.string().nullish(),
+  healthcareProfessionType: zod
+    .enum([
+      "physician",
+      "registered_nurse",
+      "nurse_practitioner",
+      "allied_health",
+      "care_worker",
+    ])
+    .nullish(),
+  clinicalSpecialties: zod.array(zod.string()).nullish(),
+  clinicalSettings: zod.array(zod.string()).nullish(),
+  yearsClinicalExperience: zod.number().nullish(),
+  highestQualification: zod
+    .enum([
+      "mbbs",
+      "bds",
+      "md_ms",
+      "dnb",
+      "diploma_medical",
+      "bsc_nursing",
+      "msc_nursing",
+      "gnm",
+      "anm",
+      "post_basic_bsc",
+      "bpt",
+      "mph",
+      "other",
+    ])
+    .nullish(),
+  qualificationSpecialization: zod.string().nullish(),
+  qualificationInstitution: zod.string().nullish(),
+  registrationCouncil: zod.string().nullish(),
+  registrationNumber: zod.string().nullish(),
+  registrationExpiry: zod.coerce.date().nullish(),
+  aadhaarVerificationStatus: zod
+    .enum(["not_uploaded", "uploaded", "verified", "rejected", "expired"])
+    .optional(),
+  preferredCareMode: zod.enum(["in_person", "telehealth", "both"]).nullish(),
   countryCode: zod
     .string()
     .default(listFreelancersResponseCountryCodeDefault)
@@ -613,7 +657,9 @@ export const CreateFreelancerProfileBody = zod.object({
       languages: zod.array(zod.string()),
     })
     .nullish(),
-  professionCategory: zod.enum(["technology", "education"]).optional(),
+  professionCategory: zod
+    .enum(["technology", "education", "healthcare"])
+    .optional(),
   educationProfessionType: zod
     .enum(["school_teacher", "university_lecturer", "tutor", "researcher"])
     .nullish(),
@@ -631,6 +677,41 @@ export const CreateFreelancerProfileBody = zod.object({
   researchPublications: zod.string().nullish(),
   preferredTeachingMode: zod.enum(["in_person", "online", "both"]).nullish(),
   location: zod.string().nullish(),
+  healthcareProfessionType: zod
+    .enum([
+      "physician",
+      "registered_nurse",
+      "nurse_practitioner",
+      "allied_health",
+      "care_worker",
+    ])
+    .nullish(),
+  clinicalSpecialties: zod.array(zod.string()).nullish(),
+  clinicalSettings: zod.array(zod.string()).nullish(),
+  yearsClinicalExperience: zod.number().nullish(),
+  highestQualification: zod
+    .enum([
+      "mbbs",
+      "bds",
+      "md_ms",
+      "dnb",
+      "diploma_medical",
+      "bsc_nursing",
+      "msc_nursing",
+      "gnm",
+      "anm",
+      "post_basic_bsc",
+      "bpt",
+      "mph",
+      "other",
+    ])
+    .nullish(),
+  qualificationSpecialization: zod.string().nullish(),
+  qualificationInstitution: zod.string().nullish(),
+  registrationCouncil: zod.string().nullish(),
+  registrationNumber: zod.string().nullish(),
+  registrationExpiry: zod.coerce.date().nullish(),
+  preferredCareMode: zod.enum(["in_person", "telehealth", "both"]).nullish(),
 });
 
 /**
@@ -682,7 +763,7 @@ export const GetMyFreelancerProfileResponse = zod.object({
   completenessScore: zod
     .number()
     .describe("Profile completeness score 0–100 (Talent Vault requires ≥ 60)"),
-  professionCategory: zod.enum(["technology", "education"]),
+  professionCategory: zod.enum(["technology", "education", "healthcare"]),
   educationProfessionType: zod
     .enum(["school_teacher", "university_lecturer", "tutor", "researcher"])
     .nullish(),
@@ -700,6 +781,44 @@ export const GetMyFreelancerProfileResponse = zod.object({
   researchPublications: zod.string().nullish(),
   preferredTeachingMode: zod.enum(["in_person", "online", "both"]).nullish(),
   location: zod.string().nullish(),
+  healthcareProfessionType: zod
+    .enum([
+      "physician",
+      "registered_nurse",
+      "nurse_practitioner",
+      "allied_health",
+      "care_worker",
+    ])
+    .nullish(),
+  clinicalSpecialties: zod.array(zod.string()).nullish(),
+  clinicalSettings: zod.array(zod.string()).nullish(),
+  yearsClinicalExperience: zod.number().nullish(),
+  highestQualification: zod
+    .enum([
+      "mbbs",
+      "bds",
+      "md_ms",
+      "dnb",
+      "diploma_medical",
+      "bsc_nursing",
+      "msc_nursing",
+      "gnm",
+      "anm",
+      "post_basic_bsc",
+      "bpt",
+      "mph",
+      "other",
+    ])
+    .nullish(),
+  qualificationSpecialization: zod.string().nullish(),
+  qualificationInstitution: zod.string().nullish(),
+  registrationCouncil: zod.string().nullish(),
+  registrationNumber: zod.string().nullish(),
+  registrationExpiry: zod.coerce.date().nullish(),
+  aadhaarVerificationStatus: zod
+    .enum(["not_uploaded", "uploaded", "verified", "rejected", "expired"])
+    .optional(),
+  preferredCareMode: zod.enum(["in_person", "telehealth", "both"]).nullish(),
   countryCode: zod
     .string()
     .default(getMyFreelancerProfileResponseCountryCodeDefault)
@@ -738,7 +857,9 @@ export const UpdateMyFreelancerProfileBody = zod.object({
   isAvailable: zod.boolean().optional(),
   availableFrom: zod.coerce.date().nullish(),
   availabilityNote: zod.string().nullish(),
-  professionCategory: zod.enum(["technology", "education"]).optional(),
+  professionCategory: zod
+    .enum(["technology", "education", "healthcare"])
+    .optional(),
   educationProfessionType: zod
     .enum(["school_teacher", "university_lecturer", "tutor", "researcher"])
     .nullish(),
@@ -756,6 +877,41 @@ export const UpdateMyFreelancerProfileBody = zod.object({
   researchPublications: zod.string().nullish(),
   preferredTeachingMode: zod.enum(["in_person", "online", "both"]).nullish(),
   location: zod.string().nullish(),
+  healthcareProfessionType: zod
+    .enum([
+      "physician",
+      "registered_nurse",
+      "nurse_practitioner",
+      "allied_health",
+      "care_worker",
+    ])
+    .nullish(),
+  clinicalSpecialties: zod.array(zod.string()).nullish(),
+  clinicalSettings: zod.array(zod.string()).nullish(),
+  yearsClinicalExperience: zod.number().nullish(),
+  highestQualification: zod
+    .enum([
+      "mbbs",
+      "bds",
+      "md_ms",
+      "dnb",
+      "diploma_medical",
+      "bsc_nursing",
+      "msc_nursing",
+      "gnm",
+      "anm",
+      "post_basic_bsc",
+      "bpt",
+      "mph",
+      "other",
+    ])
+    .nullish(),
+  qualificationSpecialization: zod.string().nullish(),
+  qualificationInstitution: zod.string().nullish(),
+  registrationCouncil: zod.string().nullish(),
+  registrationNumber: zod.string().nullish(),
+  registrationExpiry: zod.coerce.date().nullish(),
+  preferredCareMode: zod.enum(["in_person", "telehealth", "both"]).nullish(),
 });
 
 export const updateMyFreelancerProfileResponseCountryCodeDefault = `US`;
@@ -804,7 +960,7 @@ export const UpdateMyFreelancerProfileResponse = zod.object({
   completenessScore: zod
     .number()
     .describe("Profile completeness score 0–100 (Talent Vault requires ≥ 60)"),
-  professionCategory: zod.enum(["technology", "education"]),
+  professionCategory: zod.enum(["technology", "education", "healthcare"]),
   educationProfessionType: zod
     .enum(["school_teacher", "university_lecturer", "tutor", "researcher"])
     .nullish(),
@@ -822,6 +978,44 @@ export const UpdateMyFreelancerProfileResponse = zod.object({
   researchPublications: zod.string().nullish(),
   preferredTeachingMode: zod.enum(["in_person", "online", "both"]).nullish(),
   location: zod.string().nullish(),
+  healthcareProfessionType: zod
+    .enum([
+      "physician",
+      "registered_nurse",
+      "nurse_practitioner",
+      "allied_health",
+      "care_worker",
+    ])
+    .nullish(),
+  clinicalSpecialties: zod.array(zod.string()).nullish(),
+  clinicalSettings: zod.array(zod.string()).nullish(),
+  yearsClinicalExperience: zod.number().nullish(),
+  highestQualification: zod
+    .enum([
+      "mbbs",
+      "bds",
+      "md_ms",
+      "dnb",
+      "diploma_medical",
+      "bsc_nursing",
+      "msc_nursing",
+      "gnm",
+      "anm",
+      "post_basic_bsc",
+      "bpt",
+      "mph",
+      "other",
+    ])
+    .nullish(),
+  qualificationSpecialization: zod.string().nullish(),
+  qualificationInstitution: zod.string().nullish(),
+  registrationCouncil: zod.string().nullish(),
+  registrationNumber: zod.string().nullish(),
+  registrationExpiry: zod.coerce.date().nullish(),
+  aadhaarVerificationStatus: zod
+    .enum(["not_uploaded", "uploaded", "verified", "rejected", "expired"])
+    .optional(),
+  preferredCareMode: zod.enum(["in_person", "telehealth", "both"]).nullish(),
   countryCode: zod
     .string()
     .default(updateMyFreelancerProfileResponseCountryCodeDefault)
@@ -897,7 +1091,7 @@ export const GetFreelancerProfileResponse = zod
       .describe(
         "Profile completeness score 0–100 (Talent Vault requires ≥ 60)",
       ),
-    professionCategory: zod.enum(["technology", "education"]),
+    professionCategory: zod.enum(["technology", "education", "healthcare"]),
     educationProfessionType: zod
       .enum(["school_teacher", "university_lecturer", "tutor", "researcher"])
       .nullish(),
@@ -917,6 +1111,44 @@ export const GetFreelancerProfileResponse = zod
     researchPublications: zod.string().nullish(),
     preferredTeachingMode: zod.enum(["in_person", "online", "both"]).nullish(),
     location: zod.string().nullish(),
+    healthcareProfessionType: zod
+      .enum([
+        "physician",
+        "registered_nurse",
+        "nurse_practitioner",
+        "allied_health",
+        "care_worker",
+      ])
+      .nullish(),
+    clinicalSpecialties: zod.array(zod.string()).nullish(),
+    clinicalSettings: zod.array(zod.string()).nullish(),
+    yearsClinicalExperience: zod.number().nullish(),
+    highestQualification: zod
+      .enum([
+        "mbbs",
+        "bds",
+        "md_ms",
+        "dnb",
+        "diploma_medical",
+        "bsc_nursing",
+        "msc_nursing",
+        "gnm",
+        "anm",
+        "post_basic_bsc",
+        "bpt",
+        "mph",
+        "other",
+      ])
+      .nullish(),
+    qualificationSpecialization: zod.string().nullish(),
+    qualificationInstitution: zod.string().nullish(),
+    registrationCouncil: zod.string().nullish(),
+    registrationNumber: zod.string().nullish(),
+    registrationExpiry: zod.coerce.date().nullish(),
+    aadhaarVerificationStatus: zod
+      .enum(["not_uploaded", "uploaded", "verified", "rejected", "expired"])
+      .optional(),
+    preferredCareMode: zod.enum(["in_person", "telehealth", "both"]).nullish(),
     countryCode: zod
       .string()
       .default(getFreelancerProfileResponseOneCountryCodeDefault)
@@ -1125,8 +1357,14 @@ export const ListJobRequirementsResponse = zod.object({
       startDate: zod.coerce.date(),
       endDate: zod.coerce.date(),
       status: zod.string().describe("open, filled, closed"),
-      professionCategory: zod.enum(["technology", "education"]),
-      rateType: zod.enum(["hourly", "per_day", "per_session", "per_course"]),
+      professionCategory: zod.enum(["technology", "education", "healthcare"]),
+      rateType: zod.enum([
+        "hourly",
+        "per_day",
+        "per_session",
+        "per_course",
+        "per_shift",
+      ]),
       createdAt: zod.coerce.date(),
     }),
   ),
@@ -1149,9 +1387,11 @@ export const CreateJobRequirementBody = zod.object({
   budget: zod.number().nullish(),
   startDate: zod.coerce.date(),
   endDate: zod.coerce.date(),
-  professionCategory: zod.enum(["technology", "education"]).optional(),
+  professionCategory: zod
+    .enum(["technology", "education", "healthcare"])
+    .optional(),
   rateType: zod
-    .enum(["hourly", "per_day", "per_session", "per_course"])
+    .enum(["hourly", "per_day", "per_session", "per_course", "per_shift"])
     .optional(),
 });
 
@@ -1180,8 +1420,14 @@ export const GetJobRequirementResponse = zod.object({
   startDate: zod.coerce.date(),
   endDate: zod.coerce.date(),
   status: zod.string().describe("open, filled, closed"),
-  professionCategory: zod.enum(["technology", "education"]),
-  rateType: zod.enum(["hourly", "per_day", "per_session", "per_course"]),
+  professionCategory: zod.enum(["technology", "education", "healthcare"]),
+  rateType: zod.enum([
+    "hourly",
+    "per_day",
+    "per_session",
+    "per_course",
+    "per_shift",
+  ]),
   createdAt: zod.coerce.date(),
 });
 
@@ -1201,9 +1447,11 @@ export const UpdateJobRequirementBody = zod.object({
   startDate: zod.coerce.date().optional(),
   endDate: zod.coerce.date().optional(),
   status: zod.string().optional(),
-  professionCategory: zod.enum(["technology", "education"]).optional(),
+  professionCategory: zod
+    .enum(["technology", "education", "healthcare"])
+    .optional(),
   rateType: zod
-    .enum(["hourly", "per_day", "per_session", "per_course"])
+    .enum(["hourly", "per_day", "per_session", "per_course", "per_shift"])
     .optional(),
 });
 
@@ -1225,8 +1473,14 @@ export const UpdateJobRequirementResponse = zod.object({
   startDate: zod.coerce.date(),
   endDate: zod.coerce.date(),
   status: zod.string().describe("open, filled, closed"),
-  professionCategory: zod.enum(["technology", "education"]),
-  rateType: zod.enum(["hourly", "per_day", "per_session", "per_course"]),
+  professionCategory: zod.enum(["technology", "education", "healthcare"]),
+  rateType: zod.enum([
+    "hourly",
+    "per_day",
+    "per_session",
+    "per_course",
+    "per_shift",
+  ]),
   createdAt: zod.coerce.date(),
 });
 
@@ -3842,7 +4096,7 @@ export const ListSavedFreelancersResponseItem = zod.object({
       .describe(
         "Profile completeness score 0–100 (Talent Vault requires ≥ 60)",
       ),
-    professionCategory: zod.enum(["technology", "education"]),
+    professionCategory: zod.enum(["technology", "education", "healthcare"]),
     educationProfessionType: zod
       .enum(["school_teacher", "university_lecturer", "tutor", "researcher"])
       .nullish(),
@@ -3862,6 +4116,44 @@ export const ListSavedFreelancersResponseItem = zod.object({
     researchPublications: zod.string().nullish(),
     preferredTeachingMode: zod.enum(["in_person", "online", "both"]).nullish(),
     location: zod.string().nullish(),
+    healthcareProfessionType: zod
+      .enum([
+        "physician",
+        "registered_nurse",
+        "nurse_practitioner",
+        "allied_health",
+        "care_worker",
+      ])
+      .nullish(),
+    clinicalSpecialties: zod.array(zod.string()).nullish(),
+    clinicalSettings: zod.array(zod.string()).nullish(),
+    yearsClinicalExperience: zod.number().nullish(),
+    highestQualification: zod
+      .enum([
+        "mbbs",
+        "bds",
+        "md_ms",
+        "dnb",
+        "diploma_medical",
+        "bsc_nursing",
+        "msc_nursing",
+        "gnm",
+        "anm",
+        "post_basic_bsc",
+        "bpt",
+        "mph",
+        "other",
+      ])
+      .nullish(),
+    qualificationSpecialization: zod.string().nullish(),
+    qualificationInstitution: zod.string().nullish(),
+    registrationCouncil: zod.string().nullish(),
+    registrationNumber: zod.string().nullish(),
+    registrationExpiry: zod.coerce.date().nullish(),
+    aadhaarVerificationStatus: zod
+      .enum(["not_uploaded", "uploaded", "verified", "rejected", "expired"])
+      .optional(),
+    preferredCareMode: zod.enum(["in_person", "telehealth", "both"]).nullish(),
     countryCode: zod
       .string()
       .default(listSavedFreelancersResponseFreelancerCountryCodeDefault)
@@ -4172,13 +4464,51 @@ export const GetPublicFreelancerProfileResponse = zod.object({
   averageRating: zod.number().nullish(),
   reviewCount: zod.number().optional(),
   totalReviews: zod.number(),
-  professionCategory: zod.enum(["technology", "education"]),
+  professionCategory: zod.enum(["technology", "education", "healthcare"]),
   educationProfessionType: zod
     .enum(["school_teacher", "university_lecturer", "tutor", "researcher"])
     .nullish(),
   teachingSubjects: zod.array(zod.string()).nullish(),
   teachingLevels: zod.array(zod.string()).nullish(),
   location: zod.string().nullish(),
+  healthcareProfessionType: zod
+    .enum([
+      "physician",
+      "registered_nurse",
+      "nurse_practitioner",
+      "allied_health",
+      "care_worker",
+    ])
+    .nullish(),
+  clinicalSpecialties: zod.array(zod.string()).nullish(),
+  clinicalSettings: zod.array(zod.string()).nullish(),
+  yearsClinicalExperience: zod.number().nullish(),
+  highestQualification: zod
+    .enum([
+      "mbbs",
+      "bds",
+      "md_ms",
+      "dnb",
+      "diploma_medical",
+      "bsc_nursing",
+      "msc_nursing",
+      "gnm",
+      "anm",
+      "post_basic_bsc",
+      "bpt",
+      "mph",
+      "other",
+    ])
+    .nullish(),
+  qualificationSpecialization: zod.string().nullish(),
+  qualificationInstitution: zod.string().nullish(),
+  registrationCouncil: zod.string().nullish(),
+  registrationNumber: zod.string().nullish(),
+  registrationExpiry: zod.coerce.date().nullish(),
+  aadhaarVerificationStatus: zod
+    .enum(["not_uploaded", "uploaded", "verified", "rejected", "expired"])
+    .optional(),
+  preferredCareMode: zod.enum(["in_person", "telehealth", "both"]).nullish(),
   countryCode: zod
     .string()
     .default(getPublicFreelancerProfileResponseCountryCodeDefault),
@@ -4603,7 +4933,7 @@ export const ListTeamShortlistResponseItem = zod.object({
       .describe(
         "Profile completeness score 0–100 (Talent Vault requires ≥ 60)",
       ),
-    professionCategory: zod.enum(["technology", "education"]),
+    professionCategory: zod.enum(["technology", "education", "healthcare"]),
     educationProfessionType: zod
       .enum(["school_teacher", "university_lecturer", "tutor", "researcher"])
       .nullish(),
@@ -4623,6 +4953,44 @@ export const ListTeamShortlistResponseItem = zod.object({
     researchPublications: zod.string().nullish(),
     preferredTeachingMode: zod.enum(["in_person", "online", "both"]).nullish(),
     location: zod.string().nullish(),
+    healthcareProfessionType: zod
+      .enum([
+        "physician",
+        "registered_nurse",
+        "nurse_practitioner",
+        "allied_health",
+        "care_worker",
+      ])
+      .nullish(),
+    clinicalSpecialties: zod.array(zod.string()).nullish(),
+    clinicalSettings: zod.array(zod.string()).nullish(),
+    yearsClinicalExperience: zod.number().nullish(),
+    highestQualification: zod
+      .enum([
+        "mbbs",
+        "bds",
+        "md_ms",
+        "dnb",
+        "diploma_medical",
+        "bsc_nursing",
+        "msc_nursing",
+        "gnm",
+        "anm",
+        "post_basic_bsc",
+        "bpt",
+        "mph",
+        "other",
+      ])
+      .nullish(),
+    qualificationSpecialization: zod.string().nullish(),
+    qualificationInstitution: zod.string().nullish(),
+    registrationCouncil: zod.string().nullish(),
+    registrationNumber: zod.string().nullish(),
+    registrationExpiry: zod.coerce.date().nullish(),
+    aadhaarVerificationStatus: zod
+      .enum(["not_uploaded", "uploaded", "verified", "rejected", "expired"])
+      .optional(),
+    preferredCareMode: zod.enum(["in_person", "telehealth", "both"]).nullish(),
     countryCode: zod
       .string()
       .default(listTeamShortlistResponseFreelancerCountryCodeDefault)
@@ -4706,7 +5074,7 @@ export const AddTeamShortlistResponse = zod.object({
       .describe(
         "Profile completeness score 0–100 (Talent Vault requires ≥ 60)",
       ),
-    professionCategory: zod.enum(["technology", "education"]),
+    professionCategory: zod.enum(["technology", "education", "healthcare"]),
     educationProfessionType: zod
       .enum(["school_teacher", "university_lecturer", "tutor", "researcher"])
       .nullish(),
@@ -4726,6 +5094,44 @@ export const AddTeamShortlistResponse = zod.object({
     researchPublications: zod.string().nullish(),
     preferredTeachingMode: zod.enum(["in_person", "online", "both"]).nullish(),
     location: zod.string().nullish(),
+    healthcareProfessionType: zod
+      .enum([
+        "physician",
+        "registered_nurse",
+        "nurse_practitioner",
+        "allied_health",
+        "care_worker",
+      ])
+      .nullish(),
+    clinicalSpecialties: zod.array(zod.string()).nullish(),
+    clinicalSettings: zod.array(zod.string()).nullish(),
+    yearsClinicalExperience: zod.number().nullish(),
+    highestQualification: zod
+      .enum([
+        "mbbs",
+        "bds",
+        "md_ms",
+        "dnb",
+        "diploma_medical",
+        "bsc_nursing",
+        "msc_nursing",
+        "gnm",
+        "anm",
+        "post_basic_bsc",
+        "bpt",
+        "mph",
+        "other",
+      ])
+      .nullish(),
+    qualificationSpecialization: zod.string().nullish(),
+    qualificationInstitution: zod.string().nullish(),
+    registrationCouncil: zod.string().nullish(),
+    registrationNumber: zod.string().nullish(),
+    registrationExpiry: zod.coerce.date().nullish(),
+    aadhaarVerificationStatus: zod
+      .enum(["not_uploaded", "uploaded", "verified", "rejected", "expired"])
+      .optional(),
+    preferredCareMode: zod.enum(["in_person", "telehealth", "both"]).nullish(),
     countryCode: zod
       .string()
       .default(addTeamShortlistResponseFreelancerCountryCodeDefault)
@@ -5334,11 +5740,38 @@ export const GetTalentSearchResponse = zod.union([
     rules: zod.object({
       professionCategory: zod.string().nullish(),
       educationSubType: zod.string().nullish(),
+      healthcareSubType: zod
+        .union([
+          zod.literal("physician"),
+          zod.literal("registered_nurse"),
+          zod.literal("nurse_practitioner"),
+          zod.literal("allied_health"),
+          zod.literal("care_worker"),
+          zod.literal(null),
+        ])
+        .nullish(),
+      clinicalSpecialty: zod
+        .string()
+        .nullish()
+        .describe(
+          "Case-insensitive match against freelancer clinical specialties",
+        ),
+      requireAadhaarVerified: zod
+        .boolean()
+        .describe(
+          "When true, only freelancers with verified Aadhaar pass the pre-filter",
+        ),
       requiredSkills: zod.array(zod.string()),
       preferredSkills: zod.array(zod.string()),
       minRate: zod.number().nullish(),
       maxRate: zod.number().nullish(),
-      rateType: zod.enum(["hourly", "per_day", "per_session", "per_course"]),
+      rateType: zod.enum([
+        "hourly",
+        "per_day",
+        "per_session",
+        "per_course",
+        "per_shift",
+      ]),
       availableFrom: zod.string().nullish(),
       locationRequired: zod.boolean(),
       location: zod
@@ -5410,11 +5843,38 @@ export const UpsertTalentSearchBody = zod.object({
   rules: zod.object({
     professionCategory: zod.string().nullish(),
     educationSubType: zod.string().nullish(),
+    healthcareSubType: zod
+      .union([
+        zod.literal("physician"),
+        zod.literal("registered_nurse"),
+        zod.literal("nurse_practitioner"),
+        zod.literal("allied_health"),
+        zod.literal("care_worker"),
+        zod.literal(null),
+      ])
+      .nullish(),
+    clinicalSpecialty: zod
+      .string()
+      .nullish()
+      .describe(
+        "Case-insensitive match against freelancer clinical specialties",
+      ),
+    requireAadhaarVerified: zod
+      .boolean()
+      .describe(
+        "When true, only freelancers with verified Aadhaar pass the pre-filter",
+      ),
     requiredSkills: zod.array(zod.string()),
     preferredSkills: zod.array(zod.string()),
     minRate: zod.number().nullish(),
     maxRate: zod.number().nullish(),
-    rateType: zod.enum(["hourly", "per_day", "per_session", "per_course"]),
+    rateType: zod.enum([
+      "hourly",
+      "per_day",
+      "per_session",
+      "per_course",
+      "per_shift",
+    ]),
     availableFrom: zod.string().nullish(),
     locationRequired: zod.boolean(),
     location: zod
@@ -5476,11 +5936,38 @@ export const UpsertTalentSearchResponse = zod.object({
   rules: zod.object({
     professionCategory: zod.string().nullish(),
     educationSubType: zod.string().nullish(),
+    healthcareSubType: zod
+      .union([
+        zod.literal("physician"),
+        zod.literal("registered_nurse"),
+        zod.literal("nurse_practitioner"),
+        zod.literal("allied_health"),
+        zod.literal("care_worker"),
+        zod.literal(null),
+      ])
+      .nullish(),
+    clinicalSpecialty: zod
+      .string()
+      .nullish()
+      .describe(
+        "Case-insensitive match against freelancer clinical specialties",
+      ),
+    requireAadhaarVerified: zod
+      .boolean()
+      .describe(
+        "When true, only freelancers with verified Aadhaar pass the pre-filter",
+      ),
     requiredSkills: zod.array(zod.string()),
     preferredSkills: zod.array(zod.string()),
     minRate: zod.number().nullish(),
     maxRate: zod.number().nullish(),
-    rateType: zod.enum(["hourly", "per_day", "per_session", "per_course"]),
+    rateType: zod.enum([
+      "hourly",
+      "per_day",
+      "per_session",
+      "per_course",
+      "per_shift",
+    ]),
     availableFrom: zod.string().nullish(),
     locationRequired: zod.boolean(),
     location: zod
@@ -5554,11 +6041,38 @@ export const ActivateTalentSearchResponse = zod.object({
   rules: zod.object({
     professionCategory: zod.string().nullish(),
     educationSubType: zod.string().nullish(),
+    healthcareSubType: zod
+      .union([
+        zod.literal("physician"),
+        zod.literal("registered_nurse"),
+        zod.literal("nurse_practitioner"),
+        zod.literal("allied_health"),
+        zod.literal("care_worker"),
+        zod.literal(null),
+      ])
+      .nullish(),
+    clinicalSpecialty: zod
+      .string()
+      .nullish()
+      .describe(
+        "Case-insensitive match against freelancer clinical specialties",
+      ),
+    requireAadhaarVerified: zod
+      .boolean()
+      .describe(
+        "When true, only freelancers with verified Aadhaar pass the pre-filter",
+      ),
     requiredSkills: zod.array(zod.string()),
     preferredSkills: zod.array(zod.string()),
     minRate: zod.number().nullish(),
     maxRate: zod.number().nullish(),
-    rateType: zod.enum(["hourly", "per_day", "per_session", "per_course"]),
+    rateType: zod.enum([
+      "hourly",
+      "per_day",
+      "per_session",
+      "per_course",
+      "per_shift",
+    ]),
     availableFrom: zod.string().nullish(),
     locationRequired: zod.boolean(),
     location: zod
@@ -5632,11 +6146,38 @@ export const DryRunTalentSearchResponse = zod.object({
   rules: zod.object({
     professionCategory: zod.string().nullish(),
     educationSubType: zod.string().nullish(),
+    healthcareSubType: zod
+      .union([
+        zod.literal("physician"),
+        zod.literal("registered_nurse"),
+        zod.literal("nurse_practitioner"),
+        zod.literal("allied_health"),
+        zod.literal("care_worker"),
+        zod.literal(null),
+      ])
+      .nullish(),
+    clinicalSpecialty: zod
+      .string()
+      .nullish()
+      .describe(
+        "Case-insensitive match against freelancer clinical specialties",
+      ),
+    requireAadhaarVerified: zod
+      .boolean()
+      .describe(
+        "When true, only freelancers with verified Aadhaar pass the pre-filter",
+      ),
     requiredSkills: zod.array(zod.string()),
     preferredSkills: zod.array(zod.string()),
     minRate: zod.number().nullish(),
     maxRate: zod.number().nullish(),
-    rateType: zod.enum(["hourly", "per_day", "per_session", "per_course"]),
+    rateType: zod.enum([
+      "hourly",
+      "per_day",
+      "per_session",
+      "per_course",
+      "per_shift",
+    ]),
     availableFrom: zod.string().nullish(),
     locationRequired: zod.boolean(),
     location: zod
@@ -5710,11 +6251,38 @@ export const DeactivateTalentSearchResponse = zod.object({
   rules: zod.object({
     professionCategory: zod.string().nullish(),
     educationSubType: zod.string().nullish(),
+    healthcareSubType: zod
+      .union([
+        zod.literal("physician"),
+        zod.literal("registered_nurse"),
+        zod.literal("nurse_practitioner"),
+        zod.literal("allied_health"),
+        zod.literal("care_worker"),
+        zod.literal(null),
+      ])
+      .nullish(),
+    clinicalSpecialty: zod
+      .string()
+      .nullish()
+      .describe(
+        "Case-insensitive match against freelancer clinical specialties",
+      ),
+    requireAadhaarVerified: zod
+      .boolean()
+      .describe(
+        "When true, only freelancers with verified Aadhaar pass the pre-filter",
+      ),
     requiredSkills: zod.array(zod.string()),
     preferredSkills: zod.array(zod.string()),
     minRate: zod.number().nullish(),
     maxRate: zod.number().nullish(),
-    rateType: zod.enum(["hourly", "per_day", "per_session", "per_course"]),
+    rateType: zod.enum([
+      "hourly",
+      "per_day",
+      "per_session",
+      "per_course",
+      "per_shift",
+    ]),
     availableFrom: zod.string().nullish(),
     locationRequired: zod.boolean(),
     location: zod
@@ -5790,11 +6358,38 @@ export const ParseTalentSearchRulesResponse = zod.object({
   rules: zod.object({
     professionCategory: zod.string().nullish(),
     educationSubType: zod.string().nullish(),
+    healthcareSubType: zod
+      .union([
+        zod.literal("physician"),
+        zod.literal("registered_nurse"),
+        zod.literal("nurse_practitioner"),
+        zod.literal("allied_health"),
+        zod.literal("care_worker"),
+        zod.literal(null),
+      ])
+      .nullish(),
+    clinicalSpecialty: zod
+      .string()
+      .nullish()
+      .describe(
+        "Case-insensitive match against freelancer clinical specialties",
+      ),
+    requireAadhaarVerified: zod
+      .boolean()
+      .describe(
+        "When true, only freelancers with verified Aadhaar pass the pre-filter",
+      ),
     requiredSkills: zod.array(zod.string()),
     preferredSkills: zod.array(zod.string()),
     minRate: zod.number().nullish(),
     maxRate: zod.number().nullish(),
-    rateType: zod.enum(["hourly", "per_day", "per_session", "per_course"]),
+    rateType: zod.enum([
+      "hourly",
+      "per_day",
+      "per_session",
+      "per_course",
+      "per_shift",
+    ]),
     availableFrom: zod.string().nullish(),
     locationRequired: zod.boolean(),
     location: zod

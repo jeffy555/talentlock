@@ -45,9 +45,10 @@ import { resolveProfileDisplayRate } from "@/lib/rateConversion";
 import { DualRateDisplay } from "@/components/currency/DualRateDisplay";
 import { useExchangeRates, countryName } from "@/lib/currencyUtils";
 import { EDUCATION_TYPE_LABELS } from "@/components/onboarding/TeachingDetailsSection";
+import { HEALTHCARE_TYPE_LABELS } from "@/lib/healthcareDisplayUtils";
 import { cn } from "@/lib/utils";
 import type { ProfessionCategory } from "@workspace/api-client-react";
-import { GraduationCap } from "lucide-react";
+import { GraduationCap, Stethoscope } from "lucide-react";
 import { WatchlistToggleButton } from "@/components/watchlist/WatchlistToggleButton";
 import { WatchlistNotesEditor } from "@/components/watchlist/WatchlistNotesEditor";
 
@@ -168,6 +169,17 @@ function FreelancerCard({
             <span className="inline-flex items-center gap-1 text-xs bg-blue-50 text-blue-700 border border-blue-200 rounded px-1.5 py-0.5">
               <GraduationCap className="h-3 w-3" />
               {EDUCATION_TYPE_LABELS[freelancer.educationProfessionType]}
+            </span>
+          )}
+          {freelancer.professionCategory === "healthcare" && freelancer.healthcareProfessionType && (
+            <span className="inline-flex items-center gap-1 text-xs bg-emerald-50 text-emerald-800 border border-emerald-200 rounded px-1.5 py-0.5">
+              <Stethoscope className="h-3 w-3" />
+              {HEALTHCARE_TYPE_LABELS[freelancer.healthcareProfessionType]}
+            </span>
+          )}
+          {freelancer.professionCategory === "healthcare" && freelancer.aadhaarVerificationStatus === "verified" && (
+            <span className="inline-flex items-center gap-1 text-xs bg-green-50 text-green-700 border border-green-200 rounded px-1.5 py-0.5">
+              Aadhaar ✓
             </span>
           )}
         </div>
@@ -310,6 +322,7 @@ export default function FreelancersList() {
   const [availableFromDate, setAvailableFromDate] = useState<Date | undefined>();
   const [professionCategoryFilter, setProfessionCategoryFilter] = useState<ProfessionCategory | undefined>(undefined);
   const [teachingSubject, setTeachingSubject] = useState("");
+  const [clinicalSpecialty, setClinicalSpecialty] = useState("");
   const [countryFilter, setCountryFilter] = useState<string>("all");
   const [currencyFilter, setCurrencyFilter] = useState<string>("all");
 
@@ -323,6 +336,7 @@ export default function FreelancersList() {
     ...(debouncedQuery ? { q: debouncedQuery } : {}),
     ...(professionCategoryFilter ? { professionCategory: professionCategoryFilter } : {}),
     ...(professionCategoryFilter === "education" && teachingSubject ? { teachingSubject } : {}),
+    ...(professionCategoryFilter === "healthcare" && clinicalSpecialty ? { clinicalSpecialty } : {}),
     ...(countryFilter !== "all" ? { countryCode: countryFilter } : {}),
     ...(currencyFilter !== "all" ? { currencyCode: currencyFilter } : {}),
   };
@@ -371,10 +385,10 @@ export default function FreelancersList() {
     return true;
   });
 
-  const hasActiveFilters = fieldFilter !== "all" || minRate || maxRate || availableOnly || verifiedOnly || availableFromDate || debouncedQuery || professionCategoryFilter || teachingSubject || countryFilter !== "all" || currencyFilter !== "all";
+  const hasActiveFilters = fieldFilter !== "all" || minRate || maxRate || availableOnly || verifiedOnly || availableFromDate || debouncedQuery || professionCategoryFilter || teachingSubject || clinicalSpecialty || countryFilter !== "all" || currencyFilter !== "all";
 
   const clearFilters = () => {
-    setFieldFilter("all"); setMinRate(""); setMaxRate(""); setAvailableOnly(false); setVerifiedOnly(false); setAvailableFromDate(undefined); setSearchQuery(""); setProfessionCategoryFilter(undefined); setTeachingSubject(""); setCountryFilter("all"); setCurrencyFilter("all");
+    setFieldFilter("all"); setMinRate(""); setMaxRate(""); setAvailableOnly(false); setVerifiedOnly(false); setAvailableFromDate(undefined); setSearchQuery(""); setProfessionCategoryFilter(undefined); setTeachingSubject(""); setClinicalSpecialty(""); setCountryFilter("all"); setCurrencyFilter("all");
   };
 
   const watchlistCount = saved?.length ?? 0;
@@ -473,6 +487,9 @@ export default function FreelancersList() {
             <FilterChip active={professionCategoryFilter === "education"} onClick={() => setProfessionCategoryFilter("education")}>
               Education
             </FilterChip>
+            <FilterChip active={professionCategoryFilter === "healthcare"} onClick={() => setProfessionCategoryFilter("healthcare")}>
+              Healthcare
+            </FilterChip>
           </div>
           {professionCategoryFilter === "education" && (
             <div className="mb-3">
@@ -480,6 +497,16 @@ export default function FreelancersList() {
                 placeholder="Filter by subject (e.g. Mathematics)"
                 value={teachingSubject}
                 onChange={(e) => setTeachingSubject(e.target.value)}
+                className="max-w-xs"
+              />
+            </div>
+          )}
+          {professionCategoryFilter === "healthcare" && (
+            <div className="mb-3">
+              <Input
+                placeholder="Filter by specialty (e.g. Cardiology)"
+                value={clinicalSpecialty}
+                onChange={(e) => setClinicalSpecialty(e.target.value)}
                 className="max-w-xs"
               />
             </div>

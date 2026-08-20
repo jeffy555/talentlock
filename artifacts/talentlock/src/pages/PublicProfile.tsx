@@ -2,7 +2,7 @@ import { useParams } from "wouter";
 import { useGetPublicFreelancerProfile } from "@workspace/api-client-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { BadgeCheck, Briefcase, Building, Building2, CheckCircle, DollarSign, ExternalLink, GraduationCap, Globe, Lock, Star, Award, Calendar } from "lucide-react";
+import { BadgeCheck, Briefcase, Building, Building2, CheckCircle, DollarSign, ExternalLink, GraduationCap, Globe, Lock, Star, Award, Calendar, Stethoscope } from "lucide-react";
 import { format } from "date-fns";
 import VerificationBadge from "@/components/VerificationBadge";
 import StarRating from "@/components/StarRating";
@@ -12,6 +12,11 @@ import { AvailabilitySection } from "@/components/availability/AvailabilitySecti
 import { formatRate, profileDefaultRateType } from "@/lib/rateFormatUtils";
 import { resolveProfileDisplayRate } from "@/lib/rateConversion";
 import { EDUCATION_TYPE_LABELS } from "@/components/onboarding/TeachingDetailsSection";
+import {
+  HEALTHCARE_QUALIFICATION_LABELS,
+  HEALTHCARE_TYPE_LABELS,
+  PREFERRED_CARE_MODE_LABELS,
+} from "@/lib/healthcareDisplayUtils";
 
 function TimelineDot({ isFirst }: { isFirst?: boolean }) {
   return (
@@ -104,6 +109,19 @@ export default function PublicProfile() {
                     {EDUCATION_TYPE_LABELS[profile.educationProfessionType]}
                   </span>
                 )}
+                {profile.professionCategory === "healthcare" && profile.healthcareProfessionType && (
+                  <span className="inline-flex items-center gap-1 text-xs bg-emerald-50 text-emerald-700 border border-emerald-200 rounded px-1.5 py-0.5">
+                    <Stethoscope className="h-3 w-3" />
+                    {HEALTHCARE_TYPE_LABELS[profile.healthcareProfessionType]}
+                  </span>
+                )}
+                {profile.professionCategory === "healthcare" &&
+                  profile.aadhaarVerificationStatus === "verified" && (
+                    <span className="inline-flex items-center gap-1 text-xs bg-emerald-50 text-emerald-700 border border-emerald-200 rounded px-1.5 py-0.5">
+                      <BadgeCheck className="h-3 w-3" />
+                      Aadhaar verified
+                    </span>
+                  )}
               </div>
               <p className="text-lg font-medium text-primary">{profile.tagline}</p>
               <div className="mt-2">
@@ -274,6 +292,91 @@ export default function PublicProfile() {
                 ))}
               </div>
             </section>
+
+            {profile.professionCategory === "healthcare" && (
+              <section className="space-y-4">
+                <h2 className="font-serif text-2xl font-semibold text-foreground">Clinical profile</h2>
+                <div className="grid sm:grid-cols-2 gap-4 text-sm">
+                  {profile.clinicalSpecialties && profile.clinicalSpecialties.length > 0 && (
+                    <div>
+                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">
+                        Clinical specialties
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        {profile.clinicalSpecialties.map((item) => (
+                          <Badge key={item} variant="secondary" className="bg-emerald-50 text-emerald-800 border-emerald-200">
+                            {item}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {profile.clinicalSettings && profile.clinicalSettings.length > 0 && (
+                    <div>
+                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">
+                        Clinical settings
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        {profile.clinicalSettings.map((item) => (
+                          <Badge key={item} variant="secondary">{item}</Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {profile.highestQualification && (
+                    <div>
+                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
+                        Qualification
+                      </p>
+                      <p className="text-foreground font-medium">
+                        {HEALTHCARE_QUALIFICATION_LABELS[profile.highestQualification] ??
+                          profile.highestQualification}
+                        {profile.qualificationSpecialization
+                          ? ` — ${profile.qualificationSpecialization}`
+                          : ""}
+                      </p>
+                      {profile.qualificationInstitution && (
+                        <p className="text-muted-foreground">{profile.qualificationInstitution}</p>
+                      )}
+                    </div>
+                  )}
+                  {(profile.registrationCouncil || profile.registrationNumber) && (
+                    <div>
+                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
+                        Registration
+                      </p>
+                      <p className="text-foreground font-medium">
+                        {profile.registrationCouncil ?? "Council not specified"}
+                      </p>
+                      {profile.registrationNumber && (
+                        <p className="text-muted-foreground">No. {profile.registrationNumber}</p>
+                      )}
+                    </div>
+                  )}
+                  {profile.preferredCareMode && (
+                    <div>
+                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
+                        Care mode
+                      </p>
+                      <p className="text-foreground font-medium">
+                        {PREFERRED_CARE_MODE_LABELS[profile.preferredCareMode] ??
+                          profile.preferredCareMode}
+                      </p>
+                    </div>
+                  )}
+                  {profile.yearsClinicalExperience != null && (
+                    <div>
+                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1">
+                        Clinical experience
+                      </p>
+                      <p className="text-foreground font-medium">
+                        {profile.yearsClinicalExperience} years
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </section>
+            )}
 
             {profile.availabilityNote && (
               <section className="rounded-xl border border-border bg-card p-5 space-y-1">
