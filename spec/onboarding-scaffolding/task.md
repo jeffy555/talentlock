@@ -130,14 +130,16 @@ Props: `score: number`, `profile`, `avatarUrl: string | null`.
   4. Advance to document upload step (do **not** set `role: employer` yet)
 - On freelancer profile submit (manual or resume auto-create):
   1. `PATCH` → `freelancer_details` (ensure pending user + location)
-  2. `POST /freelancers`
+  2. `POST /freelancers` with normalized rates:
+     - hourly preference → save `hourlyRate` and derived `dailyRate = hourlyRate * 8`
+     - daily preference → save `dailyRate` and derived `hourlyRate = dailyRate / 8`
   3. `PATCH` → `freelancer_documents`
   4. Advance to document upload step (do **not** set `role: freelancer` yet)
 - `useEffect` when `dbUser?.role === "pending"`: restore `role` + `step` from server without regressing local step
 - Fix step indicator for 5-step freelancer / 4-step employer paths (includes location from multi-currency spec)
 - Pre-fill employer form from `GET /employers/me` when profile already saved
 - Remove or demote `localStorage` intended role when server state exists
-- **Resume import:** `handleResumeParsed` sets `bio` from parser output; include `bio` in both auto-create (`POST /freelancers` after parse) and manual freelancer submit so completeness bio factor is satisfied without a separate onboarding bio field. Resume must advance to **Verification**, not `/dashboard`.
+- **Resume import:** `handleResumeParsed` sets `bio` from parser output; include `bio` in both auto-create (`POST /freelancers` after parse) and manual freelancer submit so completeness bio factor is satisfied without a separate onboarding bio field. When the parsed preference is daily, convert the parsed amount to an hourly equivalent for storage while preserving `paymentPreference: "daily"`. Resume must advance to **Verification**, not `/dashboard`.
 
 ### Task 3.5 — Employer mandatory document onboarding step
 
@@ -175,6 +177,7 @@ See `spec/employee-verification/` Module 10 and `UI.md` onboarding section.
 - [ ] Freelancer path: cannot finish registration without uploading Aadhaar
 - [ ] Freelancer path: `PUT /users/me` with `role: freelancer` only runs after Aadhaar upload
 - [ ] Freelancer resume auto-create advances to Verification (does not skip to dashboard)
+- [ ] Freelancer onboarding persists both hourly and daily rate values from one entered amount using 8h/day normalization
 - [ ] Pending freelancers are hidden from Talent Vault list/detail
 - [ ] Freelancer dashboard shows checklist when score < 80% with point labels and profile links
 - [ ] Checklist hidden when score >= 80%

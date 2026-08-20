@@ -10,6 +10,7 @@ import { daysUntil } from "../lib/credentialExpiryUtils";
 import { evaluateTalentSearchForUpdatedProfile } from "../lib/talentSearchEvaluator";
 import { notifyWatchlistSubscribers, type FreelancerSnapshot } from "../lib/watchlistAlerts";
 import { syncFreelancerLocationFromUser } from "../lib/locationSync";
+import { repairFreelancerRatePair } from "../lib/rateConversion";
 import {
   CreateFreelancerProfileBody,
   UpdateMyFreelancerProfileBody,
@@ -20,6 +21,36 @@ import { countVerifiedDocuments } from "../lib/documentReview";
 import { sanitiseText } from "../lib/sanitise";
 
 const router = Router();
+
+function normaliseFreelancerRates<
+  T extends {
+    paymentPreference?: string;
+    hourlyRate?: number | string | null;
+    dailyRate?: number | string | null;
+  },
+>(data: T): T {
+  // Skip when the patch does not touch rates or preference (leave existing columns alone).
+  if (
+    data.paymentPreference === undefined &&
+    data.hourlyRate === undefined &&
+    data.dailyRate === undefined
+  ) {
+    return data;
+  }
+
+  const repaired = repairFreelancerRatePair({
+    paymentPreference: data.paymentPreference,
+    hourlyRate: data.hourlyRate,
+    dailyRate: data.dailyRate,
+  });
+
+  return {
+    ...data,
+    paymentPreference: repaired.paymentPreference,
+    hourlyRate: repaired.hourlyRate,
+    dailyRate: repaired.dailyRate,
+  };
+}
 
 function profileCompletenessInput(
   profile: typeof freelancerProfilesTable.$inferSelect,
@@ -273,6 +304,21 @@ router.patch("/freelancers/me", async (req, res) => {
       .where(eq(freelancerProfilesTable.clerkId, clerkId)).limit(1);
     if (!current) { res.status(404).json({ error: "Profile not found" }); return; }
 
+    if (
+      data.paymentPreference !== undefined ||
+      data.hourlyRate !== undefined ||
+      data.dailyRate !== undefined
+    ) {
+      const repaired = repairFreelancerRatePair({
+        paymentPreference: data.paymentPreference ?? current.paymentPreference,
+        hourlyRate: data.hourlyRate !== undefined ? data.hourlyRate : current.hourlyRate,
+        dailyRate: data.dailyRate !== undefined ? data.dailyRate : current.dailyRate,
+      });
+      data.paymentPreference = repaired.paymentPreference;
+      data.hourlyRate = repaired.hourlyRate ?? undefined;
+      data.dailyRate = repaired.dailyRate ?? undefined;
+    }
+
     const beforeSnapshot: FreelancerSnapshot = {
       isAvailable: current.isAvailable,
       hourlyRate: current.hourlyRate,
@@ -359,7 +405,7 @@ router.post("/freelancers", async (req, res) => {
   if (!clerkId) { res.status(401).json({ error: "Unauthorized" }); return; }
   const parsed = CreateFreelancerProfileBody.safeParse(req.body);
   if (!parsed.success) { res.status(400).json({ error: parsed.error.message }); return; }
-  const profileData = { ...parsed.data };
+  const profileData = normaliseFreelancerRates({ ...parsed.data });
   if (profileData.bio !== undefined && profileData.bio !== null) {
     profileData.bio = sanitiseText(profileData.bio);
   }
@@ -389,6 +435,7 @@ router.post("/freelancers", async (req, res) => {
           yearsExperience: insertData.yearsExperience,
           paymentPreference: insertData.paymentPreference,
           hourlyRate: insertData.hourlyRate ?? null,
+          dailyRate: insertData.dailyRate ?? null,
           subscriptionPlan: insertData.subscriptionPlan,
           resumeAnalysis: insertData.resumeAnalysis ?? null,
           professionCategory: insertData.professionCategory,

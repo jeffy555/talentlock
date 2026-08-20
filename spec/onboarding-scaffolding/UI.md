@@ -27,10 +27,17 @@ Sections (top to bottom):
 1. Contact details (required email + phone with **country calling code** selector — E.164 storage; used for meeting invites / calendar guests)
 2. Work category (Technology / Education + education subtype)
 3. Location (`CountryStateFields` once)
-4. Profile (resume import optional, tagline, field, skills, rate, teaching details if education)
+4. Profile (resume import optional, tagline, field, skills, payment preference + rate with daily/hourly auto-conversion, teaching details if education)
 5. Identity verification (embedded `FreelancerDocumentOnboardingStep` — Aadhaar required)
 
 Footer: Back (to account type) | **Finish registration →** (disabled until Aadhaar uploaded)
+
+Rate entry behavior:
+- Payment preference toggle: `Hourly Rate` / `Daily Rate`
+- One numeric rate input
+- If the user enters an hourly rate, show/save the derived daily equivalent using `hourly * 8`
+- If the user enters a daily rate, show/save the derived hourly equivalent using `daily / 8`
+- Preserve the selected payment preference in the UI and profile
 
 ### Employer
 

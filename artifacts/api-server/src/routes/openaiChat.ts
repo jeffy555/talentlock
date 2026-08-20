@@ -10,6 +10,7 @@ import { logTokenUsage } from "../lib/tokenLogger";
 import { resolveUserByClerkId, canAccessConversation } from "../lib/accessControl";
 import { sanitiseText } from "../lib/sanitise";
 import { buildProfessionContext } from "../lib/professionContext";
+import { resolveProfileDailyRate, resolveProfileHourlyRate } from "../lib/rateConversion";
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY_TALENTLOCK });
 
@@ -151,7 +152,9 @@ router.post("/openai/conversations/:id/messages", async (req, res) => {
         `Primary Field: ${f.fieldOfWork}`,
         `Years Experience: ${f.yearsExperience}`,
         `Skills: ${f.skills.length ? f.skills.join(", ") : "Not specified"}`,
-        `Rate: ${f.paymentPreference === "hourly" ? `$${f.hourlyRate ?? "TBD"}/hr` : `$${f.dailyRate ?? "TBD"}/day`}`,
+        `Rate: ${f.paymentPreference === "hourly"
+          ? `$${resolveProfileHourlyRate(f) ?? "TBD"}/hr`
+          : `$${resolveProfileDailyRate(f) ?? "TBD"}/day`}`,
       ].join("\n")
     ).join("\n\n");
 

@@ -153,7 +153,7 @@ AND column_name IN ('hours_used_today', 'daily_limit_hours', 'hours_reset_at');
 Implement:
 1. `preFilter(rules, job): boolean` — Stage 1 filter (from `plan.md` Q6) — no AI, no time cost
 2. `isInBlackoutWindow(rules): boolean` — timezone-aware check (from `plan.md` Q4)
-3. `normaliseJob(jobRow): NormalisedJob` — maps actual DB columns to standard interface
+3. `normaliseJob(jobRow): NormalisedJob` — maps actual DB columns to standard interface and converts any daily job budget to hourly using 8h/day
 4. `buildEvaluationPrompt(freelancer, rules, job): string` — verbatim from `plan.md` system prompt
 5. `validateEvaluationResponse(parsed): boolean` — checks score, decision, reasons, proposedMessage
 6. `getNextMidnightUTC(): Date` — returns next midnight at 00:00:00 UTC
@@ -484,6 +484,13 @@ Three tabs:
 
 Two input modes: structured form OR text paste/upload. AI parses text into the form. Preview shows parsed rules with warnings.
 
+Rate handling requirements:
+- Add a rate-unit toggle/input mode for `hourly` vs `daily`
+- Store Cruise Mode rule `minRate` / `maxRate` in hourly terms only
+- Convert daily UI input to hourly on save using `daily / 8`
+- When rendering saved hourly rules for a freelancer whose preferred rate entry is daily, convert back to daily with `hourly * 8`
+- Surface a short helper note that matching is normalized to hourly values
+
 ### Task 3.4 — Create `<CruiseModeActivityFeed />`
 
 **File:** `artifacts/talentlock/src/components/cruise-mode/CruiseModeActivityFeed.tsx`
@@ -517,6 +524,9 @@ The status bar also shows daily usage when active:
 - [ ] `hoursUsedToday`, `dailyLimitHours`, `hoursResetAt` columns on `cruise_mode_configs`
 - [ ] `cruise_mode_parse` and `cruise_mode_evaluation` in `TokenFeature`
 - [ ] `preFilter()` correctly rejects excluded keywords, rate mismatches, missing skills
+- [ ] Daily Cruise Mode input is converted to hourly before saving and matching
+- [ ] Daily job budgets are converted to hourly before pre-filtering and AI evaluation
+- [ ] Freelancer profiles with daily preference still produce correct Cruise Mode rate matching
 - [ ] `isInBlackoutWindow()` returns true during configured windows
 - [ ] Stage 1 pre-filter rejections do NOT deduct from `hoursUsedToday`
 - [ ] Stage 2 AI evaluation duration IS deducted from `hoursUsedToday`

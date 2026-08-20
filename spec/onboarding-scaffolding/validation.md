@@ -76,6 +76,33 @@ Attempt `PUT /api/employers/me` with no `users` row → 400 `User profile not fo
 
 After `PATCH /onboarding-step` with any valid step → `PUT /api/employers/me` succeeds.
 
+### V2.7 — Freelancer rate normalization on create
+
+**Hourly preference:**
+
+```bash
+curl -s -X POST /api/freelancers \
+  -H "Authorization: Bearer <freelancer_pending_token>" \
+  -H "Content-Type: application/json" \
+  -d '{"paymentPreference":"hourly","hourlyRate":80,"fieldOfWork":"Technology","skills":["React"],"tagline":"Dev"}'
+```
+
+Expected: `hourlyRate: 80`, `dailyRate: 640` (80 × 8).
+
+**Daily preference:**
+
+```bash
+curl -s -X POST /api/freelancers \
+  -H "Authorization: Bearer <freelancer_pending_token>" \
+  -H "Content-Type: application/json" \
+  -d '{"paymentPreference":"daily","dailyRate":640,"fieldOfWork":"Technology","skills":["React"],"tagline":"Dev"}'
+```
+
+Expected: `dailyRate: 640`, `hourlyRate: 80` (640 ÷ 8).
+
+- [ ] Both rate columns persisted regardless of which unit the user entered
+- [ ] Values rounded to 2 decimal places
+
 ---
 
 ## Phase 3 — Frontend
@@ -159,6 +186,33 @@ Expected: redirect to `/dashboard`; `GET /users/me` shows `role: freelancer`, on
 
 Click checklist row → navigates to `/profile#bio` (or correct anchor).
 
+### V3.10 — Freelancer rate toggle and dual persistence
+
+On the Profile details step during freelancer onboarding:
+
+1. Select **Daily** payment preference, enter `640`.
+2. Complete onboarding (through Aadhaar upload).
+
+- [ ] Rate field label shows "per day" when Daily is selected
+- [ ] Helper text explains both hourly and daily equivalents are saved
+- [ ] Switching to Hourly before submit converts display to `80` (640 ÷ 8)
+- [ ] `POST /freelancers` body includes both `dailyRate: 640` and `hourlyRate: 80`
+- [ ] `GET /freelancers/me` after completion returns both rates with `paymentPreference: "daily"`
+
+Repeat with **Hourly** preference and rate `80`:
+
+- [ ] `POST /freelancers` body includes `hourlyRate: 80`, `dailyRate: 640`
+- [ ] `paymentPreference: "hourly"` preserved
+
+### V3.11 — Resume import daily rate conversion
+
+1. Upload a resume whose parsed output includes `paymentPreference: "daily"` and a day rate (e.g. `$640/day`).
+2. Complete onboarding.
+
+- [ ] Rate field pre-fills with `640` and Daily preference selected
+- [ ] `POST /freelancers` stores `dailyRate: 640` and derived `hourlyRate: 80`
+- [ ] Onboarding advances to Verification (not dashboard) until Aadhaar uploaded
+
 ---
 
 ## Security
@@ -175,6 +229,7 @@ Click checklist row → navigates to `/profile#bio` (or correct anchor).
 - [ ] Resume importer auto-create advances to Verification (not dashboard) until Aadhaar uploaded
 - [ ] `CompletenessBanner` on `/profile` unchanged
 - [ ] Talent Vault 60% gate unchanged; pending freelancers remain hidden
+- [ ] Cruise Mode rate matching still works for freelancers onboarded with daily preference (hourly normalization intact)
 
 ---
 

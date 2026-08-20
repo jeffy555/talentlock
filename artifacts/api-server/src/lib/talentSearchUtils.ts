@@ -3,6 +3,10 @@ import type {
   MatchReasons,
   TalentSearchRules,
 } from "@workspace/db";
+import {
+  hourlyToTalentSearchUnit,
+  resolveProfileHourlyRate,
+} from "./rateConversion";
 
 export interface NormalisedFreelancer {
   id: number;
@@ -36,9 +40,7 @@ export interface EmployerContext {
 }
 
 function rateFromProfile(profile: FreelancerProfile): number {
-  if (profile.hourlyRate != null) return parseFloat(profile.hourlyRate);
-  if (profile.dailyRate != null) return parseFloat(profile.dailyRate);
-  return 0;
+  return resolveProfileHourlyRate(profile) ?? 0;
 }
 
 export function normaliseFreelancer(
@@ -55,6 +57,7 @@ export function normaliseFreelancer(
     teachingSubjects: profile.teachingSubjects ?? null,
     teachingLevels: profile.teachingLevels ?? null,
     fieldOfWork: profile.fieldOfWork,
+    // Canonical hourly; converted to rule rateType at pre-filter / prompt time.
     rate: rateFromProfile(profile),
     bio: profile.bio,
     dbsCheckStatus: profile.dbsCheckStatus,
@@ -78,10 +81,11 @@ export function talentSearchPreFilterReason(
     return `Education sub-type does not match (requires ${rules.educationSubType})`;
   }
 
-  if (rules.maxRate !== null && freelancer.rate > rules.maxRate) {
+  const freelancerRate = hourlyToTalentSearchUnit(freelancer.rate, rules.rateType);
+  if (rules.maxRate !== null && freelancerRate > rules.maxRate) {
     return `Rate above maximum (${rules.maxRate})`;
   }
-  if (rules.minRate !== null && freelancer.rate < rules.minRate) {
+  if (rules.minRate !== null && freelancerRate < rules.minRate) {
     return `Rate below minimum (${rules.minRate})`;
   }
 
@@ -159,6 +163,7 @@ export function buildTalentSearchEvaluationPrompt(
 ): string {
   const threshold = rules.matchThreshold ?? 70;
   const maxRateLabel = rules.maxRate ?? "∞";
+  const freelancerRate = hourlyToTalentSearchUnit(freelancer.rate, rules.rateType);
   const sector = employer.sector ?? "not specified";
   const recentHiring =
     employer.recentJobTitles && employer.recentJobTitles.length > 0
@@ -200,7 +205,7 @@ Profession type: ${freelancer.educationProfessionType ?? "not specified"}
 Skills: ${freelancer.skills.join(", ")}
 Teaching subjects: ${freelancer.teachingSubjects?.join(", ") ?? "N/A"}
 Teaching levels: ${freelancer.teachingLevels?.join(", ") ?? "N/A"}
-Rate: ${freelancer.rate} ${rules.rateType}
+Rate: ${freelancerRate} ${rules.rateType}
 Location: ${freelancer.location ?? "not specified"} (country=${freelancer.countryCode ?? "n/a"}, state=${freelancer.stateCode ?? "n/a"})
 DBS status: ${freelancer.dbsCheckStatus ?? "not provided"}
 Has verified credential: ${freelancer.hasAnyVerifiedDocument ? "Yes" : "No"}

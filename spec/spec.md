@@ -512,7 +512,7 @@ The `.cursor/rules/talentlock.mdc` file at the repo root enforces these rules au
 | **Auth Hardening (Access Control)** | `spec/AuthHardening/` | ✅ Complete (validated 2026-06-09) |
 | Agreement AI Summary | `agreement-ai-summary/` (repo root) | ✅ Complete |
 | Agreement PDF Download | `spec/agreement-pdf-download/` | ✅ Complete |
-| Cruise Mode | `spec/cruisemode/` | ✅ Complete · DM delivery spec in `spec/cruise-mode-dm-delivery/` |
+| Cruise Mode | `spec/cruisemode/` | ✅ Complete · DM delivery spec in `spec/cruise-mode-dm-delivery/` · rate matching normalized to hourly equivalents (daily ÷ 8) |
 | Teaching Professional Profile | `spec/teaching-professional-profile/` | ✅ Complete |
 | TalentSearch (Employer Cruise Mode) | `spec/employer-cruisemode/` | ✅ Complete · DM delivery spec in `spec/cruise-mode-dm-delivery/` |
 | **Cruise Mode & TalentSearch DM Delivery** | `spec/cruise-mode-dm-delivery/` | ✅ Complete |
@@ -526,7 +526,7 @@ The `.cursor/rules/talentlock.mdc` file at the repo root enforces these rules au
 | Post-Engagement AI Debrief | `spec/post-engagement-ai-debrief/` | ✅ Complete |
 | Multi-Currency & Location | `spec/multi-currency-location/` | ✅ Complete |
 | Employer Uploaded Agreement | `spec/employer-uploaded-agreement/` | ✅ Complete |
-| Onboarding Scaffolding | `spec/onboarding-scaffolding/` | ✅ Complete · single registration form after account type; mandatory Aadhaar; legacy multi-step API enum retained for resume |
+| Onboarding Scaffolding | `spec/onboarding-scaffolding/` | ✅ Complete · single registration form after account type; mandatory Aadhaar; legacy multi-step API enum retained for resume; freelancer daily/hourly rate auto-normalization |
 | **Automated API Testing (Regression)** | `spec/api-testing/` | 🔄 In progress — Phase 0 harness on `cursor/regression-tests-9a23` |
 | UI/UX Improvements | `spec/ui-ux-improvements/` | 🟡 Ready to Execute |
 

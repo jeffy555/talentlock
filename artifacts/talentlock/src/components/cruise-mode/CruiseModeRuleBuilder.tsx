@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   useParseCruiseModeRules,
   type CruiseModeRules,
@@ -15,10 +15,32 @@ import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Plus, Rocket, Sparkles, Upload, X } from "lucide-react";
 import { emptyCruiseModeRules } from "@/lib/cruiseModeDisplayUtils";
+import {
+  displayRateFromStoredHourly,
+  parseRateInput,
+  sanitizeStoredHourlyRate,
+  storedHourlyFromDisplayAmount,
+  type RateInputUnit,
+} from "@/lib/rateConversion";
+
+function normalizeRuleRates(rules: CruiseModeRules): CruiseModeRules {
+  return {
+    ...rules,
+    minRate: sanitizeStoredHourlyRate(rules.minRate),
+    maxRate: sanitizeStoredHourlyRate(rules.maxRate),
+  };
+}
+
+function storedRateFromDraft(draft: string, unit: RateInputUnit): number | null {
+  const parsed = parseRateInput(draft);
+  if (parsed == null) return null;
+  return storedHourlyFromDisplayAmount(parsed, unit);
+}
 
 interface CruiseModeRuleBuilderProps {
   initialRules?: CruiseModeRules | null;
   initialRawText?: string | null;
+  preferredRateInputUnit?: RateInputUnit;
   onSave: (rules: CruiseModeRules, rawRulesText?: string | null) => Promise<void>;
   isSaving: boolean;
 }
@@ -84,18 +106,24 @@ function TagListEditor({
 
 function ParsedPreview({
   result,
+  rateUnit,
   onUse,
   onEdit,
 }: {
   result: ParseCruiseModeRulesResult;
+  rateUnit: RateInputUnit;
   onUse: () => void;
   onEdit: () => void;
 }) {
   const { rules, warnings } = result;
+  const formatRuleRate = (value: number | null | undefined) => {
+    const formatted = displayRateFromStoredHourly(value, rateUnit);
+    return formatted || "—";
+  };
   const items = [
     rules.requiredSkills.length > 0 && `Required skills: ${rules.requiredSkills.join(", ")}`,
     rules.minRate != null || rules.maxRate != null
-      ? `Rate range: $${rules.minRate ?? "—"} – $${rules.maxRate ?? "—"}/hr`
+      ? `Rate range: $${formatRuleRate(rules.minRate)} – $${formatRuleRate(rules.maxRate)}/${rateUnit === "daily" ? "day" : "hr"}`
       : null,
     rules.excludedKeywords.length > 0 && `Excluded keywords: ${rules.excludedKeywords.join(", ")}`,
     rules.maxDurationWeeks != null && `Max duration: ${rules.maxDurationWeeks} weeks`,
@@ -134,6 +162,7 @@ function ParsedPreview({
 export function CruiseModeRuleBuilder({
   initialRules,
   initialRawText,
+  preferredRateInputUnit = "daily",
   onSave,
   isSaving,
 }: CruiseModeRuleBuilderProps) {
@@ -142,9 +171,16 @@ export function CruiseModeRuleBuilder({
   const [mode, setMode] = useState<"onboarding" | "form" | "parser">(
     initialRules ? "form" : "onboarding",
   );
-  const [rules, setRules] = useState<CruiseModeRules>(initialRules ?? emptyCruiseModeRules());
+  const [rules, setRules] = useState<CruiseModeRules>(
+    initialRules ? normalizeRuleRates(initialRules) : emptyCruiseModeRules(),
+  );
   const [rawText, setRawText] = useState(initialRawText ?? "");
   const [parsePreview, setParsePreview] = useState<ParseCruiseModeRulesResult | null>(null);
+  const [rateUnit, setRateUnit] = useState<RateInputUnit>(preferredRateInputUnit);
+  const [minRateDraft, setMinRateDraft] = useState("");
+  const [maxRateDraft, setMaxRateDraft] = useState("");
+  const minRateFocusedRef = useRef(false);
+  const maxRateFocusedRef = useRef(false);
 
   const parseRules = useParseCruiseModeRules();
 
@@ -152,9 +188,75 @@ export function CruiseModeRuleBuilder({
     setRules((prev) => ({ ...prev, ...patch }));
   };
 
+  useEffect(() => {
+    if (!minRateFocusedRef.current) {
+      setMinRateDraft(displayRateFromStoredHourly(rules.minRate, rateUnit));
+    }
+    if (!maxRateFocusedRef.current) {
+      setMaxRateDraft(displayRateFromStoredHourly(rules.maxRate, rateUnit));
+    }
+  }, [rules.minRate, rules.maxRate, rateUnit]);
+
+  const commitMinRateDraft = () => {
+    const stored = storedRateFromDraft(minRateDraft, rateUnit);
+    if (minRateDraft.trim() && stored == null) {
+      toast({
+        title: "Invalid rate",
+        description: rateUnit === "daily"
+          ? "Enter at least $8/day."
+          : "Enter at least $1/hr.",
+        variant: "destructive",
+      });
+      setMinRateDraft(displayRateFromStoredHourly(rules.minRate, rateUnit));
+      return;
+    }
+    updateRules({ minRate: stored });
+    setMinRateDraft(displayRateFromStoredHourly(stored, rateUnit));
+  };
+
+  const commitMaxRateDraft = () => {
+    const stored = storedRateFromDraft(maxRateDraft, rateUnit);
+    if (maxRateDraft.trim() && stored == null) {
+      toast({
+        title: "Invalid rate",
+        description: rateUnit === "daily"
+          ? "Enter at least $8/day."
+          : "Enter at least $1/hr.",
+        variant: "destructive",
+      });
+      setMaxRateDraft(displayRateFromStoredHourly(rules.maxRate, rateUnit));
+      return;
+    }
+    updateRules({ maxRate: stored });
+    setMaxRateDraft(displayRateFromStoredHourly(stored, rateUnit));
+  };
+
+  const switchRateUnit = (next: RateInputUnit) => {
+    if (next === rateUnit) return;
+    const rates = resolveRateDrafts();
+    updateRules(rates);
+    setRateUnit(next);
+    setMinRateDraft(displayRateFromStoredHourly(rates.minRate, next));
+    setMaxRateDraft(displayRateFromStoredHourly(rates.maxRate, next));
+  };
+
+  const resolveRateDrafts = () => {
+    const minStored = storedRateFromDraft(minRateDraft, rateUnit);
+    const maxStored = storedRateFromDraft(maxRateDraft, rateUnit);
+    return {
+      minRate: minRateDraft.trim() && minStored == null ? null : minStored,
+      maxRate: maxRateDraft.trim() && maxStored == null ? null : maxStored,
+    };
+  };
+
   const handleSave = async () => {
+    const rates = resolveRateDrafts();
+    const nextRules = { ...rules, ...rates };
+    setRules(nextRules);
+    setMinRateDraft(displayRateFromStoredHourly(rates.minRate, rateUnit));
+    setMaxRateDraft(displayRateFromStoredHourly(rates.maxRate, rateUnit));
     try {
-      await onSave(rules, rawText || null);
+      await onSave(nextRules, rawText || null);
       toast({ title: "Rules saved", description: "Your Cruise Mode rules have been updated." });
       if (mode === "onboarding") setMode("form");
     } catch {
@@ -263,12 +365,16 @@ export function CruiseModeRuleBuilder({
         {parsePreview && (
           <ParsedPreview
             result={parsePreview}
+            rateUnit={rateUnit}
             onEdit={() => {
               setParsePreview(null);
               setMode("form");
             }}
             onUse={() => {
-              setRules(parsePreview.rules);
+              const normalizedRules = normalizeRuleRates(parsePreview.rules);
+              setRules(normalizedRules);
+              setMinRateDraft(displayRateFromStoredHourly(normalizedRules.minRate, rateUnit));
+              setMaxRateDraft(displayRateFromStoredHourly(normalizedRules.maxRate, rateUnit));
               setParsePreview(null);
               setMode("form");
             }}
@@ -308,31 +414,53 @@ export function CruiseModeRuleBuilder({
           placeholder="e.g. Node.js"
         />
 
-        <div className="grid sm:grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label>Hourly rate range — From ($/hr)</Label>
-            <Input
-              type="number"
-              min={0}
-              value={rules.minRate ?? ""}
-              onChange={(e) =>
-                updateRules({ minRate: e.target.value ? Number(e.target.value) : null })
-              }
-              placeholder="80"
-            />
+        <div className="space-y-2">
+          <div className="flex items-center justify-between gap-3">
+            <Label>Rate range</Label>
+            <div className="flex items-center gap-2">
+              <Button type="button" size="sm" variant={rateUnit === "hourly" ? "default" : "outline"} onClick={() => switchRateUnit("hourly")}>
+                Hourly
+              </Button>
+              <Button type="button" size="sm" variant={rateUnit === "daily" ? "default" : "outline"} onClick={() => switchRateUnit("daily")}>
+                Daily
+              </Button>
+            </div>
           </div>
-          <div className="space-y-2">
-            <Label>To ($/hr)</Label>
-            <Input
-              type="number"
-              min={0}
-              value={rules.maxRate ?? ""}
-              onChange={(e) =>
-                updateRules({ maxRate: e.target.value ? Number(e.target.value) : null })
-              }
-              placeholder="120"
-            />
+          <div className="grid sm:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label className="text-xs text-muted-foreground">{rateUnit === "daily" ? "From ($/day)" : "From ($/hr)"}</Label>
+              <Input
+                type="text"
+                inputMode="decimal"
+                value={minRateDraft}
+                onChange={(e) => setMinRateDraft(e.target.value)}
+                onFocus={() => { minRateFocusedRef.current = true; }}
+                onBlur={() => {
+                  minRateFocusedRef.current = false;
+                  commitMinRateDraft();
+                }}
+                placeholder={rateUnit === "daily" ? "640" : "80"}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-xs text-muted-foreground">{rateUnit === "daily" ? "To ($/day)" : "To ($/hr)"}</Label>
+              <Input
+                type="text"
+                inputMode="decimal"
+                value={maxRateDraft}
+                onChange={(e) => setMaxRateDraft(e.target.value)}
+                onFocus={() => { maxRateFocusedRef.current = true; }}
+                onBlur={() => {
+                  maxRateFocusedRef.current = false;
+                  commitMaxRateDraft();
+                }}
+                placeholder={rateUnit === "daily" ? "960" : "120"}
+              />
+            </div>
           </div>
+          <p className="text-xs text-muted-foreground">
+            Daily values are converted and matched as hourly using 8 hours per day.
+          </p>
         </div>
 
         <div className="grid sm:grid-cols-2 gap-4">

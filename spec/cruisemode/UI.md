@@ -129,8 +129,9 @@ Amber badge.
 │  Preferred skills (bonus match points)                           │
 │  [Node.js]  [GraphQL]  [+ Add skill]                             │
 │                                                                  │
-│  Hourly rate range                                               │
+│  Rate range                                        [Hourly|Daily]│
 │  From: [$80]   To: [$120]   (leave blank for no limit)          │
+│  Daily values convert to hourly for matching (8h/day)           │
 │                                                                  │
 │  Project duration                                                │
 │  Min: [─]  weeks    Max: [12]  weeks                             │
@@ -364,7 +365,7 @@ The `Cruise Mode ✦` badge uses `text-xs bg-violet-100 text-violet-700 border b
 | Setup — heading | `Set up Cruise Mode` |
 | Form — required skills | `Required skills` |
 | Form — preferred skills | `Preferred skills (bonus match points)` |
-| Form — rate range | `Hourly rate range` |
+| Form — rate range | `Rate range` |
 | Form — duration | `Project duration` |
 | Form — excluded keywords | `Excluded keywords` |
 | Form — threshold | `Match threshold` |
