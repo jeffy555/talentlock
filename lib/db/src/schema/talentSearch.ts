@@ -16,7 +16,7 @@ import { messages } from "./messages";
 import { getNextMidnightUTC, type BlackoutWindow, type MatchReasons } from "./cruiseMode";
 
 export interface TalentSearchRules {
-  professionCategory: "technology" | "education" | null;
+  professionCategory: "technology" | "education" | "healthcare" | null;
   educationSubType:
     | "school_teacher"
     | "university_lecturer"

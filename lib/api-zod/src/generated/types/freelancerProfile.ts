@@ -5,11 +5,15 @@
  * TalentLock API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { AadhaarVerificationStatus } from "./aadhaarVerificationStatus";
 import type { DbsCheckStatus } from "./dbsCheckStatus";
 import type { EducationProfessionType } from "./educationProfessionType";
 import type { ExpiringCredential } from "./expiringCredential";
 import type { FreelancerProfileVerificationLevel } from "./freelancerProfileVerificationLevel";
+import type { HealthcareProfessionType } from "./healthcareProfessionType";
+import type { HealthcareQualification } from "./healthcareQualification";
 import type { HighestDegree } from "./highestDegree";
+import type { PreferredCareMode } from "./preferredCareMode";
 import type { PreferredTeachingMode } from "./preferredTeachingMode";
 import type { ProfessionCategory } from "./professionCategory";
 
@@ -86,6 +90,26 @@ export interface FreelancerProfile {
   preferredTeachingMode?: PreferredTeachingMode | null;
   /** @nullable */
   location?: string | null;
+  healthcareProfessionType?: HealthcareProfessionType | null;
+  /** @nullable */
+  clinicalSpecialties?: string[] | null;
+  /** @nullable */
+  clinicalSettings?: string[] | null;
+  /** @nullable */
+  yearsClinicalExperience?: number | null;
+  highestQualification?: HealthcareQualification | null;
+  /** @nullable */
+  qualificationSpecialization?: string | null;
+  /** @nullable */
+  qualificationInstitution?: string | null;
+  /** @nullable */
+  registrationCouncil?: string | null;
+  /** @nullable */
+  registrationNumber?: string | null;
+  /** @nullable */
+  registrationExpiry?: Date | null;
+  aadhaarVerificationStatus?: AadhaarVerificationStatus;
+  preferredCareMode?: PreferredCareMode | null;
   /** ISO 3166-1 alpha-2 country code */
   countryCode: string;
   /** ISO 4217 currency code derived from country */

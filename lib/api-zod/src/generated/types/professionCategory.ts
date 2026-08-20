@@ -12,4 +12,5 @@ export type ProfessionCategory =
 export const ProfessionCategory = {
   technology: "technology",
   education: "education",
+  healthcare: "healthcare",
 } as const;

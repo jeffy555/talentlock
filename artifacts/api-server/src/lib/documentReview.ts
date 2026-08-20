@@ -18,6 +18,7 @@ import { getSystemUserId } from "./systemUser";
 import { createNotification, NotificationType, userIdFromFreelancerProfileId } from "./createNotification";
 import { sendNotificationEmailAsync } from "./emailService";
 import { evaluateTalentSearchForUpdatedProfile } from "./talentSearchEvaluator";
+import { syncAadhaarVerificationStatus } from "./healthcareProfileUtils";
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY_TALENTLOCK });
 const objectStorageService = new ObjectStorageService();
@@ -200,6 +201,10 @@ export async function triggerDocumentReview(
 
     await updateVerificationLevel(dbOrTx, freelancerId);
 
+    if (documentType === "aadhaar") {
+      await syncAadhaarVerificationStatus(dbOrTx, freelancerId);
+    }
+
     if (verdict.verdict === "verified") {
       maybeTriggerTalentSearchAfterVerification(freelancerId, log).catch((err) =>
         log.warn({ err, freelancerId, documentType }, "talent-search trigger after AI verify failed"),
@@ -252,6 +257,9 @@ export async function triggerDocumentReview(
       })
       .where(and(eq(documentsTable.freelancerId, freelancerId), eq(documentsTable.documentType, documentType)));
     await updateVerificationLevel(dbOrTx, freelancerId);
+    if (documentType === "aadhaar") {
+      await syncAadhaarVerificationStatus(dbOrTx, freelancerId);
+    }
   }
 }
 

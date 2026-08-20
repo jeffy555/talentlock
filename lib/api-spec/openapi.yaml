@@ -288,13 +288,18 @@ paths:
           in: query
           schema:
             type: string
-            enum: [technology, education]
+            enum: [technology, education, healthcare]
           description: Filter by profession category
         - name: teachingSubject
           in: query
           schema:
             type: string
           description: Case-insensitive substring match on teachingSubjects (education professionals)
+        - name: clinicalSpecialty
+          in: query
+          schema:
+            type: string
+          description: Case-insensitive substring match on clinicalSpecialties (healthcare professionals)
         - name: countryCode
           in: query
           schema:
@@ -4732,7 +4737,7 @@ components:
     # ── Teaching Professional Profile enums ────────────────────────────────────
     ProfessionCategory:
       type: string
-      enum: [technology, education]
+      enum: [technology, education, healthcare]
 
     EducationProfessionType:
       type: string
@@ -4750,9 +4755,25 @@ components:
       type: string
       enum: [in_person, online, both]
 
+    HealthcareProfessionType:
+      type: string
+      enum: [physician, registered_nurse, nurse_practitioner, allied_health, care_worker]
+
+    HealthcareQualification:
+      type: string
+      enum: [mbbs, bds, md_ms, dnb, diploma_medical, bsc_nursing, msc_nursing, gnm, anm, post_basic_bsc, bpt, mph, other]
+
+    AadhaarVerificationStatus:
+      type: string
+      enum: [not_uploaded, uploaded, verified, rejected, expired]
+
+    PreferredCareMode:
+      type: string
+      enum: [in_person, telehealth, both]
+
     RateType:
       type: string
-      enum: [hourly, per_day, per_session, per_course]
+      enum: [hourly, per_day, per_session, per_course, per_shift]
 
     TeachingProfileFields:
       type: object
@@ -4916,6 +4937,41 @@ components:
           nullable: true
         location:
           type: ["string", "null"]
+        healthcareProfessionType:
+          allOf:
+            - $ref: "#/components/schemas/HealthcareProfessionType"
+          nullable: true
+        clinicalSpecialties:
+          type: ["array", "null"]
+          items:
+            type: string
+        clinicalSettings:
+          type: ["array", "null"]
+          items:
+            type: string
+        yearsClinicalExperience:
+          type: ["integer", "null"]
+        highestQualification:
+          allOf:
+            - $ref: "#/components/schemas/HealthcareQualification"
+          nullable: true
+        qualificationSpecialization:
+          type: ["string", "null"]
+        qualificationInstitution:
+          type: ["string", "null"]
+        registrationCouncil:
+          type: ["string", "null"]
+        registrationNumber:
+          type: ["string", "null"]
+        registrationExpiry:
+          type: ["string", "null"]
+          format: date-time
+        aadhaarVerificationStatus:
+          $ref: "#/components/schemas/AadhaarVerificationStatus"
+        preferredCareMode:
+          allOf:
+            - $ref: "#/components/schemas/PreferredCareMode"
+          nullable: true
         countryCode:
           type: string
           description: ISO 3166-1 alpha-2 country code
@@ -5068,6 +5124,39 @@ components:
           nullable: true
         location:
           type: ["string", "null"]
+        healthcareProfessionType:
+          allOf:
+            - $ref: "#/components/schemas/HealthcareProfessionType"
+          nullable: true
+        clinicalSpecialties:
+          type: ["array", "null"]
+          items:
+            type: string
+        clinicalSettings:
+          type: ["array", "null"]
+          items:
+            type: string
+        yearsClinicalExperience:
+          type: ["integer", "null"]
+        highestQualification:
+          allOf:
+            - $ref: "#/components/schemas/HealthcareQualification"
+          nullable: true
+        qualificationSpecialization:
+          type: ["string", "null"]
+        qualificationInstitution:
+          type: ["string", "null"]
+        registrationCouncil:
+          type: ["string", "null"]
+        registrationNumber:
+          type: ["string", "null"]
+        registrationExpiry:
+          type: ["string", "null"]
+          format: date-time
+        preferredCareMode:
+          allOf:
+            - $ref: "#/components/schemas/PreferredCareMode"
+          nullable: true
       required:
         - tagline
         - fieldOfWork
@@ -5265,6 +5354,39 @@ components:
           nullable: true
         location:
           type: ["string", "null"]
+        healthcareProfessionType:
+          allOf:
+            - $ref: "#/components/schemas/HealthcareProfessionType"
+          nullable: true
+        clinicalSpecialties:
+          type: ["array", "null"]
+          items:
+            type: string
+        clinicalSettings:
+          type: ["array", "null"]
+          items:
+            type: string
+        yearsClinicalExperience:
+          type: ["integer", "null"]
+        highestQualification:
+          allOf:
+            - $ref: "#/components/schemas/HealthcareQualification"
+          nullable: true
+        qualificationSpecialization:
+          type: ["string", "null"]
+        qualificationInstitution:
+          type: ["string", "null"]
+        registrationCouncil:
+          type: ["string", "null"]
+        registrationNumber:
+          type: ["string", "null"]
+        registrationExpiry:
+          type: ["string", "null"]
+          format: date-time
+        preferredCareMode:
+          allOf:
+            - $ref: "#/components/schemas/PreferredCareMode"
+          nullable: true
 
     # ── Employer Profile ───────────────────────────────────────────────────────
     EmployerProfile:
@@ -8750,6 +8872,41 @@ components:
             type: string
         location:
           type: ["string", "null"]
+        healthcareProfessionType:
+          allOf:
+            - $ref: "#/components/schemas/HealthcareProfessionType"
+          nullable: true
+        clinicalSpecialties:
+          type: ["array", "null"]
+          items:
+            type: string
+        clinicalSettings:
+          type: ["array", "null"]
+          items:
+            type: string
+        yearsClinicalExperience:
+          type: ["integer", "null"]
+        highestQualification:
+          allOf:
+            - $ref: "#/components/schemas/HealthcareQualification"
+          nullable: true
+        qualificationSpecialization:
+          type: ["string", "null"]
+        qualificationInstitution:
+          type: ["string", "null"]
+        registrationCouncil:
+          type: ["string", "null"]
+        registrationNumber:
+          type: ["string", "null"]
+        registrationExpiry:
+          type: ["string", "null"]
+          format: date-time
+        aadhaarVerificationStatus:
+          $ref: "#/components/schemas/AadhaarVerificationStatus"
+        preferredCareMode:
+          allOf:
+            - $ref: "#/components/schemas/PreferredCareMode"
+          nullable: true
         countryCode:
           type: string
           default: US

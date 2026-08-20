@@ -45,6 +45,10 @@ export type ListFreelancersParams = {
    */
   teachingSubject?: string;
   /**
+   * Case-insensitive substring match on clinicalSpecialties (healthcare professionals)
+   */
+  clinicalSpecialty?: string;
+  /**
    * Filter by freelancer country code (ISO 3166-1 alpha-2)
    * @minLength 2
    * @maxLength 2

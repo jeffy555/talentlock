@@ -17,6 +17,7 @@ import {
 } from "@workspace/api-zod";
 
 import { countVerifiedDocuments } from "../lib/documentReview";
+import { mapFreelancerProfileForApi } from "../lib/healthcareProfileUtils";
 import { sanitiseText } from "../lib/sanitise";
 
 const router = Router();
@@ -130,6 +131,16 @@ router.get("/freelancers", async (req, res) => {
       );
     }
 
+    if (params.clinicalSpecialty) {
+      const specialtyPattern = `%${params.clinicalSpecialty}%`;
+      conditions.push(
+        sql`EXISTS (
+          SELECT 1 FROM unnest(${freelancerProfilesTable.clinicalSpecialties}) AS specialty
+          WHERE specialty ILIKE ${specialtyPattern}
+        )`,
+      );
+    }
+
     if (params.countryCode) {
       conditions.push(eq(freelancerProfilesTable.countryCode, params.countryCode));
     }
@@ -170,6 +181,14 @@ router.get("/freelancers", async (req, res) => {
       )!,
     );
 
+    // Healthcare professionals require verified Aadhaar for Talent Vault visibility.
+    conditions.push(
+      or(
+        not(eq(freelancerProfilesTable.professionCategory, "healthcare")),
+        eq(freelancerProfilesTable.aadhaarVerificationStatus, "verified"),
+      )!,
+    );
+
     const results = await db
       .select()
       .from(freelancerProfilesTable)
@@ -201,7 +220,7 @@ router.get("/freelancers", async (req, res) => {
 
     res.json(
       results.map((p) => {
-        const mapped = mapProfile(p);
+        const mapped = mapProfile(p, { maskRegistration: true });
         let soonest: Date | null = docExpiryByFreelancer.get(p.id) ?? null;
         if (p.teachingLicenceExpiry && p.teachingLicenceExpiry >= now && p.teachingLicenceExpiry <= sevenDaysOut) {
           if (!soonest || p.teachingLicenceExpiry < soonest) soonest = p.teachingLicenceExpiry;
@@ -224,7 +243,7 @@ router.get("/freelancers/me", async (req, res) => {
   try {
     const [profile] = await db.select().from(freelancerProfilesTable).where(eq(freelancerProfilesTable.clerkId, clerkId)).limit(1);
     if (!profile) { res.status(404).json({ error: "Profile not found" }); return; }
-    res.json(mapProfile(profile));
+    res.json(mapProfile(profile, { maskRegistration: false }));
   } catch (err) {
     req.log.error({ err }, "Failed to get my freelancer profile");
     res.status(500).json({ error: "Internal server error" });
@@ -268,6 +287,26 @@ router.patch("/freelancers/me", async (req, res) => {
   if (data.location !== undefined) {
     data.location = data.location === null ? null : sanitiseText(data.location);
   }
+  if (data.clinicalSpecialties !== undefined) {
+    data.clinicalSpecialties = data.clinicalSpecialties?.map((s) => sanitiseText(s)) ?? null;
+  }
+  if (data.clinicalSettings !== undefined) {
+    data.clinicalSettings = data.clinicalSettings?.map((s) => sanitiseText(s)) ?? null;
+  }
+  if (data.qualificationSpecialization !== undefined) {
+    data.qualificationSpecialization =
+      data.qualificationSpecialization === null ? null : sanitiseText(data.qualificationSpecialization);
+  }
+  if (data.qualificationInstitution !== undefined) {
+    data.qualificationInstitution =
+      data.qualificationInstitution === null ? null : sanitiseText(data.qualificationInstitution);
+  }
+  if (data.registrationCouncil !== undefined) {
+    data.registrationCouncil = data.registrationCouncil === null ? null : sanitiseText(data.registrationCouncil);
+  }
+  if (data.registrationNumber !== undefined) {
+    data.registrationNumber = data.registrationNumber === null ? null : sanitiseText(data.registrationNumber);
+  }
   try {
     const [current] = await db.select().from(freelancerProfilesTable)
       .where(eq(freelancerProfilesTable.clerkId, clerkId)).limit(1);
@@ -310,11 +349,20 @@ router.patch("/freelancers/me", async (req, res) => {
     const teachingLicenceExpiryChanged =
       nextTeachingLicenceExpiry !== undefined && nextTeachingLicenceExpiry !== currentTeachingLicenceExpiry;
 
+    const nextRegistrationExpiry =
+      data.registrationExpiry !== undefined
+        ? (data.registrationExpiry ? new Date(data.registrationExpiry).getTime() : null)
+        : undefined;
+    const currentRegistrationExpiry = current.registrationExpiry?.getTime() ?? null;
+    const registrationExpiryChanged =
+      nextRegistrationExpiry !== undefined && nextRegistrationExpiry !== currentRegistrationExpiry;
+
     const [updated] = await db.update(freelancerProfilesTable)
       .set({
         ...data,
         completenessScore,
         ...(teachingLicenceExpiryChanged ? { teachingLicenceAlertStage: "none" } : {}),
+        ...(registrationExpiryChanged ? { registrationAlertStage: "none" } : {}),
         updatedAt: new Date(),
       } as any)
       .where(eq(freelancerProfilesTable.clerkId, clerkId))
@@ -344,10 +392,10 @@ router.patch("/freelancers/me", async (req, res) => {
       await refreshNextAvailableDate(db, updated.id);
       const [refreshed] = await db.select().from(freelancerProfilesTable)
         .where(eq(freelancerProfilesTable.id, updated.id)).limit(1);
-      res.json(mapProfile(refreshed ?? updated));
+      res.json(mapProfile(refreshed ?? updated, { maskRegistration: false }));
       return;
     }
-    res.json(mapProfile(updated));
+    res.json(mapProfile(updated, { maskRegistration: false }));
   } catch (err) {
     req.log.error({ err }, "Failed to update freelancer profile");
     res.status(500).json({ error: "Internal server error" });
@@ -405,6 +453,17 @@ router.post("/freelancers", async (req, res) => {
           researchPublications: insertData.researchPublications ?? null,
           preferredTeachingMode: insertData.preferredTeachingMode ?? null,
           location: insertData.location ?? null,
+          healthcareProfessionType: insertData.healthcareProfessionType ?? null,
+          clinicalSpecialties: insertData.clinicalSpecialties ?? null,
+          clinicalSettings: insertData.clinicalSettings ?? null,
+          yearsClinicalExperience: insertData.yearsClinicalExperience ?? null,
+          highestQualification: insertData.highestQualification ?? null,
+          qualificationSpecialization: insertData.qualificationSpecialization ?? null,
+          qualificationInstitution: insertData.qualificationInstitution ?? null,
+          registrationCouncil: insertData.registrationCouncil ?? null,
+          registrationNumber: insertData.registrationNumber ?? null,
+          registrationExpiry: insertData.registrationExpiry ?? null,
+          preferredCareMode: insertData.preferredCareMode ?? null,
           countryCode: insertData.countryCode,
           currencyCode: insertData.currencyCode,
           updatedAt: new Date(),
@@ -418,7 +477,7 @@ router.post("/freelancers", async (req, res) => {
       .where(eq(freelancerProfilesTable.id, profile.id))
       .limit(1);
     const saved = await finalizeFreelancerProfileAfterWrite(fresh ?? profile, user.avatarUrl, req.log);
-    res.status(201).json(mapProfile(saved));
+    res.status(201).json(mapProfile(saved, { maskRegistration: false }));
   } catch (err) {
     req.log.error({ err }, "Failed to create freelancer profile");
     res.status(500).json({ error: "Internal server error" });
@@ -443,7 +502,7 @@ router.get("/freelancers/:id", async (req, res) => {
     const verifiedDocumentCount = await countVerifiedDocuments(profile.id);
 
     res.json({
-      ...mapProfile(profile),
+      ...mapProfile(profile, { maskRegistration: true }),
       email: user?.email ?? null,
       verification: {
         level: profile.verificationLevel,
@@ -456,16 +515,11 @@ router.get("/freelancers/:id", async (req, res) => {
   }
 });
 
-function mapProfile(p: typeof freelancerProfilesTable.$inferSelect) {
-  return {
-    ...p,
-    hourlyRate: p.hourlyRate ? parseFloat(p.hourlyRate) : null,
-    dailyRate: p.dailyRate ? parseFloat(p.dailyRate) : null,
-    averageRating: p.averageRating ? parseFloat(p.averageRating) : null,
-    reviewCount: p.reviewCount ?? 0,
-    completenessScore: p.completenessScore ?? 0,
-    nextAvailableDate: p.nextAvailableDate ?? null,
-  };
+function mapProfile(
+  p: typeof freelancerProfilesTable.$inferSelect,
+  options?: { maskRegistration?: boolean },
+) {
+  return mapFreelancerProfileForApi(p, options);
 }
 
 export default router;

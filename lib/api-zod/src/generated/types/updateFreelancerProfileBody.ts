@@ -7,7 +7,10 @@
  */
 import type { DbsCheckStatus } from "./dbsCheckStatus";
 import type { EducationProfessionType } from "./educationProfessionType";
+import type { HealthcareProfessionType } from "./healthcareProfessionType";
+import type { HealthcareQualification } from "./healthcareQualification";
 import type { HighestDegree } from "./highestDegree";
+import type { PreferredCareMode } from "./preferredCareMode";
 import type { PreferredTeachingMode } from "./preferredTeachingMode";
 import type { ProfessionCategory } from "./professionCategory";
 
@@ -58,4 +61,23 @@ export interface UpdateFreelancerProfileBody {
   preferredTeachingMode?: PreferredTeachingMode | null;
   /** @nullable */
   location?: string | null;
+  healthcareProfessionType?: HealthcareProfessionType | null;
+  /** @nullable */
+  clinicalSpecialties?: string[] | null;
+  /** @nullable */
+  clinicalSettings?: string[] | null;
+  /** @nullable */
+  yearsClinicalExperience?: number | null;
+  highestQualification?: HealthcareQualification | null;
+  /** @nullable */
+  qualificationSpecialization?: string | null;
+  /** @nullable */
+  qualificationInstitution?: string | null;
+  /** @nullable */
+  registrationCouncil?: string | null;
+  /** @nullable */
+  registrationNumber?: string | null;
+  /** @nullable */
+  registrationExpiry?: Date | null;
+  preferredCareMode?: PreferredCareMode | null;
 }
