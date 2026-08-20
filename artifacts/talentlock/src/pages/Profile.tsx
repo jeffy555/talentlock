@@ -38,6 +38,7 @@ import { CountryStateFields, formatLocationLabel, isLocationComplete } from "@/c
 import { PhoneWithCountryFields } from "@/components/onboarding/PhoneWithCountryFields";
 import { COMPANY_SIZE_OPTIONS } from "@/lib/employerDocuments";
 import { isValidContactEmail, isValidContactPhone } from "@/lib/contactValidation";
+import { dailyToHourly, hourlyToDaily, parseRateInput } from "@/lib/rateConversion";
 
 const BASE = import.meta.env.BASE_URL ?? "/";
 
@@ -405,7 +406,9 @@ export default function Profile() {
   const [bio, setBio] = useState(freelancerProfile?.bio ?? "");
   const [tagline, setTagline] = useState(freelancerProfile?.tagline ?? "");
   const [portfolioUrl, setPortfolioUrl] = useState(freelancerProfile?.portfolioUrl ?? "");
-  const [hourlyRate, setHourlyRate] = useState(String(freelancerProfile?.hourlyRate ?? ""));
+  const [dailyRate, setDailyRate] = useState(
+    String(freelancerProfile?.dailyRate ?? (freelancerProfile?.hourlyRate != null ? hourlyToDaily(Number(freelancerProfile.hourlyRate)) : "")),
+  );
   const [skills, setSkills] = useState(freelancerProfile?.skills?.join(", ") ?? "");
   const [isAvailable, setIsAvailable] = useState(freelancerProfile?.isAvailable ?? true);
   const [availableFrom, setAvailableFrom] = useState(fp?.availableFrom ? fp.availableFrom.substring(0, 10) : "");
@@ -425,7 +428,7 @@ export default function Profile() {
     if (data.tagline) setTagline(data.tagline);
     if (data.bio) setBio(data.bio);
     if (data.skills?.length) setSkills(data.skills.join(", "));
-    if (data.hourlyRate) setHourlyRate(String(data.hourlyRate));
+    if (data.hourlyRate) setDailyRate(String(hourlyToDaily(data.hourlyRate)));
   };
 
   const handleSaveFreelancer = async () => {
@@ -480,11 +483,14 @@ export default function Profile() {
           }
         : {};
 
+      const parsedDaily = parseRateInput(dailyRate);
       await updateFreelancer.mutateAsync({
         data: {
           bio: bio || undefined, tagline: tagline || undefined,
           portfolioUrl: portfolioUrl || undefined,
-          hourlyRate: hourlyRate ? parseFloat(hourlyRate) : undefined,
+          paymentPreference: "daily",
+          dailyRate: parsedDaily ?? undefined,
+          hourlyRate: parsedDaily != null ? dailyToHourly(parsedDaily) : undefined,
           skills: skills ? skills.split(",").map(s => s.trim()).filter(Boolean) : undefined,
           isAvailable,
           availableFrom: availableFrom ? new Date(availableFrom).toISOString() : undefined,
@@ -619,7 +625,10 @@ export default function Profile() {
     setBio(freelancerProfile.bio ?? "");
     setTagline(freelancerProfile.tagline ?? "");
     setPortfolioUrl(freelancerProfile.portfolioUrl ?? "");
-    setHourlyRate(String(freelancerProfile.hourlyRate ?? ""));
+    setDailyRate(String(
+      freelancerProfile.dailyRate ??
+      (freelancerProfile.hourlyRate != null ? hourlyToDaily(Number(freelancerProfile.hourlyRate)) : ""),
+    ));
     setSkills(freelancerProfile.skills?.join(", ") ?? "");
     setIsAvailable(freelancerProfile.isAvailable ?? true);
     setAvailableFrom(fp2.availableFrom ? fp2.availableFrom.substring(0, 10) : "");
@@ -838,8 +847,13 @@ export default function Profile() {
             />
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2" id="rate">
-                <Label>Hourly Rate ($)</Label>
-                <Input type="number" value={hourlyRate} onChange={e => setHourlyRate(e.target.value)} placeholder="150" />
+                <Label>Daily Rate ($)</Label>
+                <Input type="number" value={dailyRate} onChange={e => setDailyRate(e.target.value)} placeholder="1200" />
+                {parseRateInput(dailyRate) != null && (
+                  <p className="text-xs text-muted-foreground">
+                    Saved as ${parseRateInput(dailyRate)}/day and ${dailyToHourly(parseRateInput(dailyRate) ?? 0)}/hr
+                  </p>
+                )}
               </div>
               <div className="space-y-2">
                 <Label>Portfolio URL</Label>

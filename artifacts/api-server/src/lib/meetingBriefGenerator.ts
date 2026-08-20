@@ -275,7 +275,12 @@ export async function generateMeetingBrief(
       freelancer.paymentPreference === "daily" ? "daily" : "hourly";
     const currencyCode = freelancer.currencyCode ?? "USD";
     const rate = toNumber(
-      rateType === "daily" ? freelancer.dailyRate : freelancer.hourlyRate,
+      rateType === "daily"
+        ? (freelancer.dailyRate ?? (freelancer.hourlyRate != null
+            ? // legacy: daily preference with value only in hourlyRate
+              freelancer.hourlyRate
+            : null))
+        : freelancer.hourlyRate,
     );
 
     const [marketMedianRaw, employerAvgRaw] = await Promise.all([

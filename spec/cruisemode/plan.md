@@ -93,7 +93,7 @@ After inspection, document confirmed column names. The evaluation engine uses:
 - Job title (likely `title`)
 - Job description (likely `description`)
 - Required skills (likely `skills` as text[] or jsonb)
-- Rate/budget (likely `budget`, `minRate`, `maxRate`, or `hourlyRate`)
+- Rate/budget (likely `budget`, `minRate`, `maxRate`, or `hourlyRate`) — normalize all daily rates to hourly equivalents using an 8-hour workday before pre-filtering or AI evaluation
 - Duration (likely `durationWeeks` or `estimatedDuration`)
 - Field of work (likely `fieldOfWork` or `category`)
 
@@ -359,7 +359,7 @@ JOB POSTING:
 Title: ${job.title}
 Description: ${job.description}
 Required skills: ${job.skills.join(', ')}
-Rate: ${job.minRate ? `$${job.minRate}` : 'not specified'}${job.maxRate ? `–$${job.maxRate}/hr` : ''}
+Rate: ${job.minRate ? `$${job.minRate}` : 'not specified'}${job.maxRate ? `–$${job.maxRate}/hr (hourly-normalized)` : ''}
 Duration: ${job.durationWeeks ? `${job.durationWeeks} weeks` : 'not specified'}
 Field: ${job.fieldOfWork}
 
@@ -385,6 +385,12 @@ Decision rules:
 ```
 
 Temperature: `0.4` (slight variation for natural-sounding messages).
+
+Rate normalization rule:
+- Cruise Mode stores and matches `minRate` / `maxRate` in hourly terms only.
+- If the user enters a daily rate in the UI or free-form parser, convert it to hourly using `daily / 8`.
+- If the underlying freelancer profile uses `paymentPreference = daily`, convert `dailyRate / 8` before inserting the freelancer's current rate into the prompt.
+- If a job uses `paymentType = daily`, convert `budget / 8` before pre-filter and prompt generation.
 
 ---
 

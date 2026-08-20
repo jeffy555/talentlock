@@ -37,6 +37,7 @@ import {
   parseHoursValue,
   PARSE_RULES_SYSTEM_PROMPT,
 } from "../lib/cruiseModeUtils";
+import { normalizeCruiseModeRuleRates } from "../lib/rateConversion";
 
 const router = Router();
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY_TALENTLOCK });
@@ -60,6 +61,7 @@ async function resolveFreelancer(clerkId: string) {
 function mapConfig(row: typeof cruiseModeConfigsTable.$inferSelect) {
   return {
     ...row,
+    rules: normalizeCruiseModeRuleRates(row.rules),
     hoursUsedToday: parseHoursValue(row.hoursUsedToday),
     dailyLimitHours: parseHoursValue(row.dailyLimitHours),
   };

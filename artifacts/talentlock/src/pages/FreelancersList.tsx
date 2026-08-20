@@ -41,6 +41,7 @@ import { resolveVerificationLevel } from "@/lib/verification";
 import { DatePicker } from "@/components/ui/date-picker";
 import { formatNextAvailable, nextAvailableColour, toApiDateString } from "@/lib/availabilityUtils";
 import { formatRate, profileDefaultRateType } from "@/lib/rateFormatUtils";
+import { resolveProfileDisplayRate } from "@/lib/rateConversion";
 import { DualRateDisplay } from "@/components/currency/DualRateDisplay";
 import { useExchangeRates, countryName } from "@/lib/currencyUtils";
 import { EDUCATION_TYPE_LABELS } from "@/components/onboarding/TeachingDetailsSection";
@@ -237,35 +238,26 @@ function FreelancerCard({
           <div>
             <span className="text-muted-foreground block text-[10px] font-bold uppercase tracking-widest mb-1">Rate</span>
             <div className="font-semibold text-foreground">
-              {freelancer.paymentPreference === "hourly" && freelancer.hourlyRate != null ? (
-                <DualRateDisplay
-                  amount={Number(freelancer.hourlyRate)}
-                  rateType={profileDefaultRateType(freelancer.professionCategory)}
-                  primaryCurrency={freelancer.currencyCode ?? "USD"}
-                  secondaryCurrency={
-                    employerCurrency !== (freelancer.currencyCode ?? "USD")
-                      ? employerCurrency
-                      : undefined
-                  }
-                  rates={exchangeRates}
-                  ratesSource={exchangeRates?.source}
-                />
-              ) : null}
-              {freelancer.paymentPreference === "daily" && freelancer.dailyRate != null ? (
-                <DualRateDisplay
-                  amount={Number(freelancer.dailyRate)}
-                  rateType="per_day"
-                  primaryCurrency={freelancer.currencyCode ?? "USD"}
-                  secondaryCurrency={
-                    employerCurrency !== (freelancer.currencyCode ?? "USD")
-                      ? employerCurrency
-                      : undefined
-                  }
-                  rates={exchangeRates}
-                  ratesSource={exchangeRates?.source}
-                />
-              ) : null}
-              {freelancer.paymentPreference === "fixed" && "Fixed Rate"}
+              {(() => {
+                const display = resolveProfileDisplayRate(freelancer);
+                if (!display) {
+                  return freelancer.paymentPreference === "fixed" ? "Fixed Rate" : null;
+                }
+                return (
+                  <DualRateDisplay
+                    amount={display.amount}
+                    rateType={display.unit === "hourly" ? profileDefaultRateType(freelancer.professionCategory) : "per_day"}
+                    primaryCurrency={freelancer.currencyCode ?? "USD"}
+                    secondaryCurrency={
+                      employerCurrency !== (freelancer.currencyCode ?? "USD")
+                        ? employerCurrency
+                        : undefined
+                    }
+                    rates={exchangeRates}
+                    ratesSource={exchangeRates?.source}
+                  />
+                );
+              })()}
             </div>
           </div>
         </div>

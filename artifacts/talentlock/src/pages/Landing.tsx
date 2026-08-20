@@ -15,6 +15,17 @@ export default function Landing() {
     query: { enabled: !!isSignedIn } as any,
   });
 
+  if (isLoaded && isSignedIn && isLoadingUser) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="text-center space-y-2">
+          <p className="text-sm font-medium text-foreground">Signing you in...</p>
+          <p className="text-xs text-muted-foreground">Loading your workspace</p>
+        </div>
+      </div>
+    );
+  }
+
   if (isLoaded && isSignedIn && (!isLoadingUser || isMeError)) {
     if (!dbUser) {
       return <Redirect to="/onboarding" />;

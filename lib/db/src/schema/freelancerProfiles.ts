@@ -18,7 +18,7 @@ export const freelancerProfilesTable = pgTable("freelancer_profiles", {
   yearsExperience: integer("years_experience").notNull().default(0),
   resumeUrl: text("resume_url"),
   portfolioUrl: text("portfolio_url"),
-  paymentPreference: text("payment_preference").notNull().default("hourly"),
+  paymentPreference: text("payment_preference").notNull().default("daily"),
   hourlyRate: numeric("hourly_rate", { precision: 10, scale: 2 }),
   dailyRate: numeric("daily_rate", { precision: 10, scale: 2 }),
   achievements: text("achievements"),

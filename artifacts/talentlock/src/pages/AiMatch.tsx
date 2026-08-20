@@ -35,6 +35,7 @@ import {
   resolveActiveJobId,
 } from "@/lib/aiMatchJobContext";
 import { formatRate, profileDefaultRateType } from "@/lib/rateFormatUtils";
+import { resolveProfileDisplayRate } from "@/lib/rateConversion";
 
 type Match = { id: number; score?: number; reason?: string };
 type Recommendation = { freelancerId: string; name: string };
@@ -144,11 +145,12 @@ function FreelancerContactCard({
   const profileJobId = jobRequirementId ?? readPersistedJobId();
   const f = freelancer as typeof freelancer & { email?: string | null };
   const initials = f.name.split(" ").map((w: string) => w[0]).join("").slice(0, 2).toUpperCase();
-  const rate = f.paymentPreference === "hourly" && f.hourlyRate != null
-    ? formatRate(Number(f.hourlyRate), profileDefaultRateType(f.professionCategory), f.currencyCode ?? "USD")
-    : f.paymentPreference === "daily" && f.dailyRate != null
-    ? formatRate(Number(f.dailyRate), "per_day", f.currencyCode ?? "USD")
-    : null;
+  const displayRate = resolveProfileDisplayRate(f);
+  const rate = displayRate == null
+    ? null
+    : displayRate.unit === "hourly"
+      ? formatRate(displayRate.amount, profileDefaultRateType(f.professionCategory), f.currencyCode ?? "USD")
+      : formatRate(displayRate.amount, "per_day", f.currencyCode ?? "USD");
 
   const isDemo = f.email?.endsWith("@demo.talentlock.io");
 

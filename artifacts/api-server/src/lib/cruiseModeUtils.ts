@@ -3,6 +3,11 @@ import type {
   JobRequirement,
   MatchReasons,
 } from "@workspace/db";
+import {
+  dailyToHourly,
+  normalizeCruiseModeRuleRates,
+  resolveProfileHourlyRate,
+} from "./rateConversion";
 
 export interface NormalisedJob {
   title: string;
@@ -26,6 +31,7 @@ export interface FreelancerEvaluationContext {
   fieldOfWork: string;
   skills: string[];
   bio: string | null;
+  paymentPreference?: string | null;
   hourlyRate: number | null;
   dailyRate: number | null;
 }
@@ -49,6 +55,9 @@ export function normaliseJob(job: JobRequirement): NormalisedJob {
   if (job.paymentType === "hourly" && budget != null) {
     minRate = budget;
     maxRate = budget;
+  } else if (job.paymentType === "daily" && budget != null) {
+    minRate = dailyToHourly(budget);
+    maxRate = dailyToHourly(budget);
   }
 
   return {
@@ -126,10 +135,8 @@ export function isInBlackoutWindow(rules: CruiseModeRules): boolean {
   });
 }
 
-function freelancerRateLabel(freelancer: FreelancerEvaluationContext): string {
-  if (freelancer.hourlyRate != null) return String(freelancer.hourlyRate);
-  if (freelancer.dailyRate != null) return String(freelancer.dailyRate);
-  return "0";
+function freelancerHourlyRate(freelancer: FreelancerEvaluationContext): number | null {
+  return resolveProfileHourlyRate(freelancer);
 }
 
 export function buildEvaluationPrompt(
@@ -137,9 +144,11 @@ export function buildEvaluationPrompt(
   rules: CruiseModeRules,
   job: NormalisedJob,
 ): string {
-  const rate = freelancerRateLabel(freelancer);
+  const rate = freelancerHourlyRate(freelancer);
   const threshold = rules.matchThreshold ?? 70;
   const maxRateLabel = rules.maxRate ?? "∞";
+  const profileRateLine =
+    rate != null ? `Current rate: $${rate}/hr (hourly-normalized from profile)` : "Current rate: not specified";
 
   return `You are an AI assistant for a freelance marketplace, evaluating job fit on behalf of a freelancer.
 
@@ -147,13 +156,13 @@ FREELANCER PROFILE:
 Name: ${freelancer.name}
 Field: ${freelancer.fieldOfWork}
 Skills: ${freelancer.skills.join(", ")}
-Current rate: $${rate}/hr
+${profileRateLine}
 Bio summary: ${freelancer.bio?.slice(0, 300) ?? ""}
 
 FREELANCER CRUISE MODE RULES:
 Required skills: ${rules.requiredSkills.join(", ") || "any"}
 Preferred skills: ${rules.preferredSkills.join(", ") || "none specified"}
-Rate range: $${rules.minRate ?? 0}–$${maxRateLabel}/hr
+Rate range: $${rules.minRate ?? 0}–$${maxRateLabel}/hr (hourly-normalized; THIS is the binding rate constraint)
 Max project duration: ${rules.maxDurationWeeks ? `${rules.maxDurationWeeks} weeks` : "any"}
 Excluded keywords: ${rules.excludedKeywords.join(", ") || "none"}
 Preferred fields: ${rules.preferredFields.join(", ") || "any"}
@@ -162,7 +171,7 @@ JOB POSTING:
 Title: ${job.title}
 Description: ${job.description}
 Required skills: ${job.skills.join(", ")}
-Rate: ${job.minRate ? `$${job.minRate}` : "not specified"}${job.maxRate ? `–$${job.maxRate}/hr` : ""}
+Rate: ${job.minRate != null ? `$${job.minRate}` : "not specified"}${job.maxRate != null ? `–$${job.maxRate}/hr (hourly-normalized)` : ""}
 Duration: ${job.durationWeeks ? `${job.durationWeeks} weeks` : "not specified"}
 Field: ${job.fieldOfWork}
 
@@ -179,6 +188,8 @@ Evaluate this job for the freelancer. Return ONLY a JSON object — no preamble,
 }
 
 Decision rules:
+- Rate matching: compare the job's hourly-normalized rate against the Cruise Mode Rate range above. Do NOT treat a profile-vs-job unit mismatch as a blocker when the job rate falls inside the Cruise Mode Rate range.
+- Profile "Current rate" is informational only (already hourly-normalized). Prefer Cruise Mode Rate range for accept/reject on pay.
 - score >= ${threshold}: decision = "send"
 - score < ${threshold}: decision = "skip"
 - If ANY blocker exists: decision = "skip" regardless of score
@@ -234,6 +245,7 @@ Return ONLY a JSON object with this shape — no preamble, no markdown:
   "warnings": string[]
 }
 
+Convert any daily/day-based rates into hourly equivalents using 8 hours per day.
 Defaults when not specified: matchThreshold 70, messageTone "professional", dailyDigest false, empty arrays, null dates/rates/duration.
 Add a warning for each ambiguous or missing preference the user did not specify.`;
 
@@ -259,7 +271,7 @@ export function defaultCruiseModeRules(): CruiseModeRules {
 
 export function normaliseParsedRules(raw: Partial<CruiseModeRules>): CruiseModeRules {
   const defaults = defaultCruiseModeRules();
-  return {
+  return normalizeCruiseModeRuleRates({
     ...defaults,
     ...raw,
     requiredSkills: raw.requiredSkills ?? defaults.requiredSkills,
@@ -270,5 +282,5 @@ export function normaliseParsedRules(raw: Partial<CruiseModeRules>): CruiseModeR
     messageTone: raw.messageTone ?? defaults.messageTone,
     dailyDigest: raw.dailyDigest ?? defaults.dailyDigest,
     version: raw.version ?? defaults.version,
-  };
+  });
 }

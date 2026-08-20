@@ -1,3 +1,5 @@
+import { resolveProfileHourlyRate } from "./rateConversion";
+
 export type CompletenessField =
   | "photo"
   | "bio"
@@ -51,8 +53,7 @@ export function getMissingCompletenessFields(
   if (!hasAvatar) missing.push("photo");
   if (!profile.bio || profile.bio.length < 50) missing.push("bio");
   if (!profile.skills || !hasMinSkills(profile.skills, 2)) missing.push("skills");
-  const rate = profile.paymentPreference === "daily" ? profile.dailyRate : profile.hourlyRate;
-  if (rate == null || rate <= 0) missing.push("rate");
+  if (resolveProfileHourlyRate(profile) == null) missing.push("rate");
   if (!profile.fieldOfWork) missing.push("field");
   if (profile.isAvailable === null || profile.isAvailable === undefined) missing.push("availability");
   return missing;

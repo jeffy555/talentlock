@@ -36,6 +36,7 @@ import {
 } from "@/components/onboarding/CountryStateFields";
 import { PhoneWithCountryFields } from "@/components/onboarding/PhoneWithCountryFields";
 import { isValidContactEmail, isValidContactPhone } from "@/lib/contactValidation";
+import { dailyToHourly, hourlyToDaily, parseRateInput } from "@/lib/rateConversion";
 import { cn } from "@/lib/utils";
 import { COMPANY_SIZE_OPTIONS } from "@/lib/employerDocuments";
 import type {
@@ -101,8 +102,7 @@ export default function Onboarding() {
   const [fieldOfWork, setFieldOfWork] = useState("");
   const [skills, setSkills] = useState("");
   const [yearsExperience, setYearsExperience] = useState("");
-  const [paymentPreference, setPaymentPreference] = useState("hourly");
-  const [hourlyRate, setHourlyRate] = useState("");
+  const [rateValue, setRateValue] = useState("");
 
   const [companyName, setCompanyName] = useState("");
   const [industry, setIndustry] = useState("");
@@ -110,6 +110,17 @@ export default function Onboarding() {
   const [description, setDescription] = useState("");
   const [contactEmail, setContactEmail] = useState("");
   const [contactPhone, setContactPhone] = useState("");
+  const buildRatePayload = () => {
+    const parsed = parseRateInput(rateValue);
+    if (parsed == null) {
+      return { hourlyRate: null, dailyRate: null };
+    }
+    return {
+      hourlyRate: dailyToHourly(parsed),
+      dailyRate: parsed,
+    };
+  };
+
 
   const profileSavedRef = useRef(false);
   const emailSeededRef = useRef(false);
@@ -298,8 +309,8 @@ export default function Onboarding() {
         fieldOfWork: fieldOfWork || FIELDS_OF_WORK[0],
         skills: skills.split(",").map((s) => s.trim()).filter(Boolean).slice(0, 15),
         yearsExperience: yearsExperience ? parseInt(yearsExperience, 10) : 0,
-        paymentPreference: paymentPreference || "hourly",
-        hourlyRate: hourlyRate ? parseInt(hourlyRate, 10) : null,
+        paymentPreference: "daily",
+        ...buildRatePayload(),
         subscriptionPlan: "basic",
         ...buildProfessionPayload(),
       },
@@ -309,8 +320,8 @@ export default function Onboarding() {
     await queryClient.invalidateQueries({ queryKey: getGetDocumentsMeQueryKey() });
   }, [
     user, contactEmail, contactPhone, countries, countryCode, stateCode, professionCategory, educationProfessionType, healthcareProfessionType,
-    tagline, bio, fieldOfWork, skills, yearsExperience, paymentPreference, hourlyRate,
-    teachingDetails, healthcareDetails, healthcareProfessionType, createFreelancerProfile, queryClient, patchOnboardingStep,
+    tagline, bio, fieldOfWork, skills, yearsExperience, rateValue,
+    teachingDetails, healthcareDetails, createFreelancerProfile, queryClient, patchOnboardingStep,
   ]);
 
   const ensureEmployerProfile = useCallback(async () => {
@@ -350,8 +361,9 @@ export default function Onboarding() {
     if (isFieldOfWork(data.fieldOfWork)) setFieldOfWork(data.fieldOfWork);
     if (data.skills?.length) setSkills(data.skills.join(", "));
     if (data.yearsExperience) setYearsExperience(String(data.yearsExperience));
-    if (data.paymentPreference) setPaymentPreference(data.paymentPreference);
-    if (data.hourlyRate) setHourlyRate(String(data.hourlyRate));
+    if (data.hourlyRate) {
+      setRateValue(String(hourlyToDaily(data.hourlyRate)));
+    }
     toast({
       title: "Resume imported",
       description: "Review the fields below, upload Aadhaar, then finish registration.",
@@ -402,7 +414,7 @@ export default function Onboarding() {
       toast({ title: "Location required", description: "Select country and state.", variant: "destructive" });
       return;
     }
-    if (!tagline.trim() || !fieldOfWork || !skills.trim() || !yearsExperience || !hourlyRate) {
+    if (!tagline.trim() || !fieldOfWork || !skills.trim() || !yearsExperience || !rateValue) {
       toast({ title: "Profile incomplete", description: "Fill in all required profile fields.", variant: "destructive" });
       return;
     }
@@ -801,21 +813,14 @@ export default function Onboarding() {
                     onChange={setHealthcareDetails}
                   />
                 )}
-                <div className="grid md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Payment Preference</Label>
-                    <Select value={paymentPreference} onValueChange={setPaymentPreference}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="hourly">Hourly Rate</SelectItem>
-                        <SelectItem value="daily">Daily Rate</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="rate">Rate</Label>
-                    <Input id="rate" type="number" min="0" value={hourlyRate} onChange={(e) => setHourlyRate(e.target.value)} required />
-                  </div>
+                <div className="space-y-2">
+                  <Label htmlFor="rate">Daily Rate ($)</Label>
+                  <Input id="rate" type="number" min="0" value={rateValue} onChange={(e) => setRateValue(e.target.value)} required />
+                  {parseRateInput(rateValue) != null && (
+                    <p className="text-xs text-muted-foreground">
+                      Saved as ${parseRateInput(rateValue)}/day and ${dailyToHourly(parseRateInput(rateValue) ?? 0)}/hr
+                    </p>
+                  )}
                 </div>
               </section>
 

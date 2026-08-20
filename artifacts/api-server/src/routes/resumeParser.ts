@@ -157,6 +157,7 @@ ${FIELDS_OF_WORK.join(", ")}
 Rules:
 - If the document is NOT a professional resume/CV, set isValidResume to false.
 - Skills must be concrete (e.g. "React", "Python", "Project Management") — not vague adjectives.
+- If the resume quotes a day/day-rate, keep "paymentPreference": "daily" but convert the numeric value into an hourly equivalent assuming 8 hours per day before returning "hourlyRate".
 - workExperience: extract ALL jobs, ordered most recent first. highlights should be 2-4 key bullet points per role.
 - education: extract ALL degrees/diplomas.
 - certifications: list any professional certifications or courses mentioned.
@@ -213,7 +214,7 @@ Rules:
       fieldOfWork: FIELDS_OF_WORK.includes(parsed.fieldOfWork) ? parsed.fieldOfWork : "Other",
       skills: Array.isArray(parsed.skills) ? parsed.skills.slice(0, 15) : [],
       yearsExperience: typeof parsed.yearsExperience === "number" ? Math.min(Math.max(0, Math.round(parsed.yearsExperience)), 50) : 0,
-      paymentPreference: parsed.paymentPreference === "daily" ? "daily" : "hourly",
+      paymentPreference: parsed.paymentPreference === "hourly" ? "hourly" : "daily",
       hourlyRate: typeof parsed.hourlyRate === "number" ? parsed.hourlyRate : null,
       bio: parsed.bio ?? "",
       resumeAnalysis,

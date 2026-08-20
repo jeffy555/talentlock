@@ -243,6 +243,7 @@ async function evaluateSingleCandidate(
         fieldOfWork: freelancerProfile.fieldOfWork,
         skills: freelancerProfile.skills,
         bio: freelancerProfile.bio,
+        paymentPreference: freelancerProfile.paymentPreference,
         hourlyRate: freelancerProfile.hourlyRate ? parseFloat(freelancerProfile.hourlyRate) : null,
         dailyRate: freelancerProfile.dailyRate ? parseFloat(freelancerProfile.dailyRate) : null,
       },

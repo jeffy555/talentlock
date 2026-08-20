@@ -16,6 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, BadgeCheck, Briefcase, Calendar, CheckCircle2, Clock, DollarSign, GraduationCap, Lock, Star, ExternalLink, Video, Heart, Image, Info, MessageSquare, Loader2, Stethoscope } from "lucide-react";
 import { formatRate, paymentTypeToRateType, profileDefaultRateType } from "@/lib/rateFormatUtils";
+import { resolveProfileDisplayRate } from "@/lib/rateConversion";
 import { BookingCurrencyBanner } from "@/components/currency/BookingCurrencyBanner";
 import { EDUCATION_TYPE_LABELS } from "@/components/onboarding/TeachingDetailsSection";
 import {
@@ -341,13 +342,15 @@ export default function FreelancerDetail() {
               </div>
               <div className="flex items-center gap-2 text-foreground font-medium">
                 <DollarSign className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                {freelancer.paymentPreference === "hourly" && freelancer.hourlyRate != null
-                  ? formatRate(Number(freelancer.hourlyRate), profileDefaultRateType(freelancer.professionCategory), freelancer.currencyCode ?? "USD")
-                  : null}
-                {freelancer.paymentPreference === "daily" && freelancer.dailyRate != null
-                  ? formatRate(Number(freelancer.dailyRate), "per_day", freelancer.currencyCode ?? "USD")
-                  : null}
-                {freelancer.paymentPreference === "fixed" && "Fixed Rate"}
+                {(() => {
+                  const display = resolveProfileDisplayRate(freelancer);
+                  if (!display) {
+                    return freelancer.paymentPreference === "fixed" ? "Fixed Rate" : null;
+                  }
+                  return display.unit === "hourly"
+                    ? formatRate(display.amount, profileDefaultRateType(freelancer.professionCategory), freelancer.currencyCode ?? "USD")
+                    : formatRate(display.amount, "per_day", freelancer.currencyCode ?? "USD");
+                })()}
               </div>
             </div>
           </div>

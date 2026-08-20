@@ -5,6 +5,7 @@ import {
   useGetMe,
   useGetCruiseMode,
   useGetCruiseModeStats,
+  useGetMyFreelancerProfile,
   useListCruiseModeActivity,
   useUpsertCruiseMode,
   getGetCruiseModeQueryKey,
@@ -98,6 +99,9 @@ export default function CruiseMode() {
   const { data: config, isLoading: configLoading } = useGetCruiseMode({
     query: { enabled: isFreelancer } as any,
   });
+  const { data: freelancerProfile } = useGetMyFreelancerProfile({
+    query: { enabled: isFreelancer } as any,
+  });
   const { data: stats, isLoading: statsLoading } = useGetCruiseModeStats({
     query: { enabled: isFreelancer } as any,
   });
@@ -159,6 +163,7 @@ export default function CruiseMode() {
               key={config?.id ?? "new"}
               initialRules={config?.rules}
               initialRawText={config?.rawRulesText}
+              preferredRateInputUnit={freelancerProfile?.paymentPreference === "hourly" ? "hourly" : "daily"}
               onSave={handleSaveRules}
               isSaving={upsert.isPending}
             />

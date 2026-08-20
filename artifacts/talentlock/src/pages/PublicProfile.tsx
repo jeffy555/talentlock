@@ -10,6 +10,7 @@ import ReviewList from "@/components/ReviewList";
 import { resolveVerificationLevel } from "@/lib/verification";
 import { AvailabilitySection } from "@/components/availability/AvailabilitySection";
 import { formatRate, profileDefaultRateType } from "@/lib/rateFormatUtils";
+import { resolveProfileDisplayRate } from "@/lib/rateConversion";
 import { EDUCATION_TYPE_LABELS } from "@/components/onboarding/TeachingDetailsSection";
 import {
   HEALTHCARE_QUALIFICATION_LABELS,
@@ -160,13 +161,15 @@ export default function PublicProfile() {
             </div>
             <div className="flex items-center gap-2 text-foreground font-medium">
               <DollarSign className="h-4 w-4 text-muted-foreground" />
-              {profile.paymentPreference === "hourly" && profile.hourlyRate != null
-                ? formatRate(Number(profile.hourlyRate), profileDefaultRateType(profile.professionCategory), profile.currencyCode ?? "USD")
-                : null}
-              {profile.paymentPreference === "daily" && profile.dailyRate != null
-                ? formatRate(Number(profile.dailyRate), "per_day", profile.currencyCode ?? "USD")
-                : null}
-              {profile.paymentPreference === "fixed" && "Fixed Rate"}
+              {(() => {
+                const display = resolveProfileDisplayRate(profile);
+                if (!display) {
+                  return profile.paymentPreference === "fixed" ? "Fixed Rate" : null;
+                }
+                return display.unit === "hourly"
+                  ? formatRate(display.amount, profileDefaultRateType(profile.professionCategory), profile.currencyCode ?? "USD")
+                  : formatRate(display.amount, "per_day", profile.currencyCode ?? "USD");
+              })()}
             </div>
           </div>
         </div>

@@ -177,8 +177,11 @@ function resolveFreelancerRate(
   paymentType: RatePaymentType,
 ): number {
   if (paymentType === "daily") {
-    const n = Number(freelancer.dailyRate);
-    return Number.isFinite(n) && n > 0 ? Math.round(n) : 0;
+    const daily = Number(freelancer.dailyRate);
+    if (Number.isFinite(daily) && daily > 0) return Math.round(daily);
+    // Legacy: daily preference value saved only in hourlyRate
+    const legacyDaily = Number(freelancer.hourlyRate);
+    return Number.isFinite(legacyDaily) && legacyDaily > 0 ? Math.round(legacyDaily) : 0;
   }
   if (paymentType === "hourly") {
     const n = Number(freelancer.hourlyRate);
@@ -351,7 +354,9 @@ router.post("/ai/proposal", async (req, res) => {
     const skills = (freelancer.skills ?? []).join(", ");
     const proposedRate = booking.proposedRate != null ? Number(booking.proposedRate) : null;
     const profileRate = booking.paymentType === "daily"
-      ? (freelancer.dailyRate != null ? Number(freelancer.dailyRate) : null)
+      ? (freelancer.dailyRate != null
+          ? Number(freelancer.dailyRate)
+          : (freelancer.hourlyRate != null ? Number(freelancer.hourlyRate) : null))
       : (freelancer.hourlyRate != null ? Number(freelancer.hourlyRate) : null);
     const rate = proposedRate ?? profileRate;
     const rateUnit = booking.paymentType === "daily" ? "day" : booking.paymentType === "fixed" ? "fixed" : "hr";

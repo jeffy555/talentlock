@@ -1,3 +1,5 @@
+import { resolveProfileDailyRate, resolveProfileHourlyRate } from "./rateConversion";
+
 /**
  * Product Gaps — profile completeness scoring.
  * Inspection: photo from users.avatarUrl; rate from hourlyRate/dailyRate; skills is text[].
@@ -9,6 +11,17 @@ export function hasMinSkills(skills: unknown, min: number): boolean {
 }
 
 type RateValue = string | number | null | undefined;
+
+function hasResolvedRate(profile: {
+  hourlyRate?: RateValue;
+  dailyRate?: RateValue;
+  paymentPreference?: string;
+}): boolean {
+  return (
+    resolveProfileHourlyRate(profile) != null ||
+    resolveProfileDailyRate(profile) != null
+  );
+}
 
 export function calculateCompletenessScore(
   profile: {
@@ -26,8 +39,7 @@ export function calculateCompletenessScore(
   if (avatarUrl) score += 15;
   if (profile.bio && profile.bio.length >= 50) score += 20;
   if (profile.skills && hasMinSkills(profile.skills, 2)) score += 20;
-  const rate = profile.paymentPreference === "daily" ? profile.dailyRate : profile.hourlyRate;
-  if (rate != null && Number(rate) > 0) score += 15;
+  if (hasResolvedRate(profile)) score += 15;
   if (profile.fieldOfWork) score += 15;
   if (profile.isAvailable !== null && profile.isAvailable !== undefined) score += 15;
   return score;
@@ -70,8 +82,7 @@ export function getMissingCompletenessFields(
   if (!avatarUrl) missing.push("photo");
   if (!profile.bio || profile.bio.length < 50) missing.push("bio");
   if (!profile.skills || !hasMinSkills(profile.skills, 2)) missing.push("skills");
-  const rate = profile.paymentPreference === "daily" ? profile.dailyRate : profile.hourlyRate;
-  if (!rate || Number(rate) <= 0) missing.push("rate");
+  if (!hasResolvedRate(profile)) missing.push("rate");
   if (!profile.fieldOfWork) missing.push("field");
   if (profile.isAvailable === null || profile.isAvailable === undefined) missing.push("availability");
   return missing;

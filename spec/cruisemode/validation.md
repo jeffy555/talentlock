@@ -57,7 +57,9 @@ preFilter({ excludedKeywords: ['crypto'], requiredSkills: [], minRate: null, max
 - [ ] Returns `false` when excluded keyword in description
 - [ ] Returns `true` when no excluded keywords match
 
-### V2.3 — Pre-Filter: Rate Range
+### V2.3 — Pre-Filter: Rate Range (Hourly-Normalized)
+
+All Cruise Mode rule rates and job budgets are compared in **hourly** terms. Daily values use `daily / 8`.
 
 ```ts
 preFilter({ minRate: 80, maxRate: 120, requiredSkills: [], excludedKeywords: [] },
@@ -69,6 +71,7 @@ preFilter({ minRate: 80, maxRate: 120, ... },
 - [ ] Rejects when job's max rate is below freelancer's min rate
 - [ ] Rejects when job's min rate is above freelancer's max rate
 - [ ] Passes when rate ranges overlap
+- [ ] Daily job budget (e.g. `$640/day`) is normalized to hourly (`$80/hr`) before comparison
 
 ### V2.4 — Blackout Window Check
 
@@ -193,6 +196,19 @@ curl -X POST http://localhost:8080/api/cruise-mode/parse-rules \
 - [ ] Response has `rules.excludedKeywords` containing "crypto" and "gambling"
 - [ ] Response has `warnings` array (may be empty)
 
+### V2.13b — Parse Rules: Daily Rate Normalization
+
+```bash
+curl -X POST http://localhost:8080/api/cruise-mode/parse-rules \
+  -H "Authorization: Bearer <freelancer_pro_token>" \
+  -d '{"rawText":"React projects, $640-$960/day, no crypto."}'
+```
+
+- [ ] Returns `HTTP 200`
+- [ ] `rules.minRate` is `80` (640 ÷ 8)
+- [ ] `rules.maxRate` is `120` (960 ÷ 8)
+- [ ] Stored/saved config always holds hourly values regardless of input phrasing
+
 ### V2.14 — Activity Feed Paginated
 
 ```bash
@@ -221,6 +237,27 @@ pnpm run typecheck
 ```
 
 - [ ] Zero TypeScript errors
+
+### V2.17 — Daily Job Budget Normalization
+
+Create a job with `paymentType: "daily"` and `budget: 640`. Configure Cruise Mode rules with `minRate: 75`, `maxRate: 85` (hourly):
+
+```bash
+curl -X POST http://localhost:8080/api/job-requirements \
+  -H "Authorization: Bearer <employer_token>" \
+  -d '{"title":"Daily Rate Job","description":"Test","skills":["React"],"paymentType":"daily","budget":640}'
+```
+
+- [ ] `normaliseJob()` converts budget to `minRate: 80`, `maxRate: 80` (640 ÷ 8)
+- [ ] Pre-filter and AI evaluation use the hourly-normalized rate, not the raw daily budget
+- [ ] A freelancer rule of `$75–$85/hr` matches; a rule of `$90–$100/hr` does not
+
+### V2.18 — Freelancer Daily Profile Rate in Evaluation
+
+Freelancer profile: `paymentPreference: "daily"`, `dailyRate: 640`, `hourlyRate: 80`.
+
+- [ ] Cruise Mode evaluation prompt shows hourly-normalized freelancer rate (`80/hr`), not raw `$640/day`
+- [ ] Rate pre-filter compares against stored hourly rule values correctly
 
 ---
 
@@ -256,6 +293,21 @@ Fill in the rule builder form. Click "Save rules":
 
 - [ ] Config saved (`GET /api/cruise-mode` returns the new rules)
 - [ ] Form repopulates with saved values on next load
+
+### V3.4b — Rate Unit Toggle (Hourly ↔ Daily)
+
+On the Cruise Mode rule builder:
+
+1. Switch rate input to **Daily**, enter `$640 – $960`.
+2. Save rules.
+3. Reload the page.
+
+- [ ] Hourly / Daily toggle is visible on the rate range fields
+- [ ] Helper text states daily values are converted using 8 hours per day
+- [ ] `GET /api/cruise-mode` returns `minRate: 80`, `maxRate: 120` (hourly storage)
+- [ ] On reload with daily toggle selected, fields show `$640 – $960` (converted back for display)
+- [ ] Switching to Hourly before save shows `$80 – $120` for the same underlying values
+- [ ] Freelancer whose profile preference is daily sees Daily selected by default on first visit
 
 ### V3.5 — Text Parser Populates Form
 

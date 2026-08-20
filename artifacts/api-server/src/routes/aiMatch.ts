@@ -16,6 +16,11 @@ import { checkTokenQuota } from "../lib/subscriptionGating";
 import { logTokenUsage } from "../lib/tokenLogger";
 import { normaliseSkills } from "../lib/skillsUtils";
 import { buildProfessionContext } from "../lib/professionContext";
+import {
+  resolveProfileDailyRate,
+  resolveProfileHourlyRate,
+  dailyToHourly,
+} from "../lib/rateConversion";
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY_TALENTLOCK });
 
@@ -112,17 +117,26 @@ router.post("/ai/match-explanation", async (req, res) => {
 
     const freelancerSkills = normaliseSkills(freelancer.skills);
     const jobSkills = job ? normaliseSkills(job.requiredSkills) : [];
+    const freelancerHourly = resolveProfileHourlyRate(freelancer);
+    const freelancerDaily = resolveProfileDailyRate(freelancer);
     const freelancerRate =
-      freelancer.paymentPreference === "hourly"
-        ? parseNumeric(freelancer.hourlyRate)
-        : parseNumeric(freelancer.dailyRate);
+      freelancer.paymentPreference === "hourly" ? freelancerHourly : freelancerDaily;
     const budget = job ? parseNumeric(job.budget) : null;
+    const jobHourly =
+      job == null || budget == null
+        ? null
+        : job.paymentType === "daily"
+          ? dailyToHourly(budget)
+          : job.paymentType === "hourly"
+            ? budget
+            : null;
 
     const userMessage = [
       "Freelancer profile:",
       `Name: ${freelancer.name}`,
       `Skills: ${freelancerSkills.length ? freelancerSkills.join(", ") : "None specified"}`,
       `Rate: ${freelancerRate != null ? `$${freelancerRate}/${freelancer.paymentPreference === "hourly" ? "hr" : "day"}` : "Not specified"}`,
+      freelancerHourly != null ? `Rate (hourly-normalized): $${freelancerHourly}/hr` : null,
       `Available: ${freelancer.isAvailable ? "Yes" : "No"}`,
       `Available from: ${freelancer.availableFrom?.toISOString() ?? "Not specified"}`,
       job ? "" : null,
@@ -130,6 +144,7 @@ router.post("/ai/match-explanation", async (req, res) => {
       job ? `Title: ${job.title}` : null,
       job ? `Required skills: ${jobSkills.length ? jobSkills.join(", ") : "None specified"}` : null,
       job ? `Budget: ${budget != null ? `$${budget} (${job.paymentType})` : "Not specified"}` : null,
+      jobHourly != null ? `Budget (hourly-normalized): $${jobHourly}/hr` : null,
       job ? `Required start date: ${job.startDate.toISOString()}` : null,
     ].filter((line): line is string => line != null).join("\n");
 

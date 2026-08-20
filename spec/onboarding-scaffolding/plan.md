@@ -146,7 +146,7 @@ On mount when `dbUser.role === "pending"`:
 
 | Parsed field | Onboarding state | Persisted via |
 |---|---|---|
-| `tagline`, `fieldOfWork`, `skills`, rates, `resumeAnalysis` | Form state + auto `POST /freelancers` | Existing create payload |
+| `tagline`, `fieldOfWork`, `skills`, rates, `resumeAnalysis` | Form state + auto `POST /freelancers` | Existing create payload; if resume indicates a daily preference, save both `dailyRate` and the derived hourly equivalent (`daily / 8`) |
 | **`bio`** | `bio` state (no separate onboarding field) | **`POST /freelancers` `bio` on auto-create and final submit** |
 
 **Contract:** `CreateFreelancerProfileBody` accepts optional `bio`. When the resume parser returns a bio (typically ≥50 chars), it is saved on profile create so completeness scoring and the dashboard checklist do **not** re-prompt for bio after a successful resume import.
@@ -187,6 +187,15 @@ setStep("freelancer-documents");
 `POST /api/documents/*` must allow `role: pending` + `onboardingRole: freelancer` when a freelancer profile exists (same pattern as employer documents).
 
 Resume auto-create uses the **same** gate — never skip to `/dashboard` without verification.
+
+### Rate normalization during onboarding
+
+Freelancer onboarding keeps `paymentPreference` as entered by the user, but persists **both** rates:
+
+- If `paymentPreference = hourly`: save `hourlyRate` directly and derive `dailyRate = hourlyRate * 8`
+- If `paymentPreference = daily`: save `dailyRate` directly and derive `hourlyRate = dailyRate / 8`
+
+This keeps downstream systems like Cruise Mode, search, and analytics working from a stable hourly equivalent while still preserving the user's preferred unit in the UI.
 
 Talent Vault list/detail exclude users whose `users.role` is still `pending`.
 
