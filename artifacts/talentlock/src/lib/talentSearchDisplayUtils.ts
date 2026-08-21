@@ -8,6 +8,8 @@ export function emptyTalentSearchRules(): TalentSearchRules {
     educationSubType: null,
     healthcareSubType: null,
     clinicalSpecialty: null,
+    legalFinanceSubType: null,
+    practiceArea: null,
     requireAadhaarVerified: false,
     requiredSkills: [],
     preferredSkills: [],

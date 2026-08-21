@@ -2,6 +2,7 @@ export * from "./users";
 export * from "./freelancerProfiles";
 export * from "./teachingProfileTypes";
 export * from "./healthcareProfileTypes";
+export * from "./legalFinanceProfileTypes";
 export * from "./employerProfiles";
 export * from "./jobRequirements";
 export * from "./bookings";

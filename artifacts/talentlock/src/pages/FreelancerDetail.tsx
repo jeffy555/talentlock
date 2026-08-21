@@ -14,7 +14,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, BadgeCheck, Briefcase, Calendar, CheckCircle2, Clock, DollarSign, GraduationCap, Lock, Star, ExternalLink, Video, Heart, Image, Info, MessageSquare, Loader2, Stethoscope } from "lucide-react";
+import { ArrowLeft, BadgeCheck, Briefcase, Calendar, CheckCircle2, Clock, DollarSign, GraduationCap, Lock, Star, ExternalLink, Video, Heart, Image, Info, MessageSquare, Loader2, Scale, Stethoscope } from "lucide-react";
 import { formatRate, paymentTypeToRateType, profileDefaultRateType } from "@/lib/rateFormatUtils";
 import { resolveProfileDisplayRate } from "@/lib/rateConversion";
 import { BookingCurrencyBanner } from "@/components/currency/BookingCurrencyBanner";
@@ -24,6 +24,8 @@ import {
   HEALTHCARE_TYPE_LABELS,
   PREFERRED_CARE_MODE_LABELS,
 } from "@/lib/healthcareDisplayUtils";
+import { LEGAL_FINANCE_TYPE_LABELS } from "@/lib/legalFinanceDisplayUtils";
+import { LegalFinanceProfileSection } from "@/components/legal-finance/LegalFinanceProfileSection";
 import { useEffect, useRef, useState } from "react";
 import { Link } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
@@ -289,9 +291,16 @@ export default function FreelancerDetail() {
                       {HEALTHCARE_TYPE_LABELS[freelancer.healthcareProfessionType]}
                     </span>
                   )}
-                  {freelancer.professionCategory === "healthcare" &&
+                  {freelancer.professionCategory === "legal_finance" && freelancer.legalFinanceProfessionType && (
+                    <span className="inline-flex items-center gap-1 text-xs bg-slate-100 text-slate-800 border border-slate-300 rounded px-1.5 py-0.5">
+                      <Scale className="h-3 w-3" />
+                      {LEGAL_FINANCE_TYPE_LABELS[freelancer.legalFinanceProfessionType]}
+                    </span>
+                  )}
+                  {(freelancer.professionCategory === "healthcare" ||
+                    freelancer.professionCategory === "legal_finance") &&
                     freelancer.aadhaarVerificationStatus === "verified" && (
-                      <span className="inline-flex items-center gap-1 text-xs bg-emerald-50 text-emerald-700 border border-emerald-200 rounded px-1.5 py-0.5">
+                      <span className="inline-flex items-center gap-1 text-xs bg-green-100 text-green-800 border border-green-200 rounded px-1.5 py-0.5">
                         <BadgeCheck className="h-3 w-3" />
                         Aadhaar verified
                       </span>
@@ -467,6 +476,10 @@ export default function FreelancerDetail() {
                 )}
               </div>
             </section>
+          )}
+
+          {freelancer.professionCategory === "legal_finance" && (
+            <LegalFinanceProfileSection profile={freelancer} />
           )}
 
           {/* Portfolio */}

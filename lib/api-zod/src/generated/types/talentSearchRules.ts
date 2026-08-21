@@ -7,6 +7,7 @@
  */
 import type { CruiseModeBlackoutWindows } from "./cruiseModeBlackoutWindows";
 import type { TalentSearchRulesHealthcareSubType } from "./talentSearchRulesHealthcareSubType";
+import type { TalentSearchRulesLegalFinanceSubType } from "./talentSearchRulesLegalFinanceSubType";
 import type { TalentSearchRulesMessageTone } from "./talentSearchRulesMessageTone";
 import type { TalentSearchRulesRateType } from "./talentSearchRulesRateType";
 
@@ -22,6 +23,13 @@ export interface TalentSearchRules {
    * @nullable
    */
   clinicalSpecialty?: string | null;
+  /** @nullable */
+  legalFinanceSubType?: TalentSearchRulesLegalFinanceSubType;
+  /**
+   * Case-insensitive match against freelancer practice areas
+   * @nullable
+   */
+  practiceArea?: string | null;
   /** When true, only freelancers with verified Aadhaar pass the pre-filter */
   requireAadhaarVerified: boolean;
   requiredSkills: string[];

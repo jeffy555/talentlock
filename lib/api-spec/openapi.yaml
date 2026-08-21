@@ -288,7 +288,7 @@ paths:
           in: query
           schema:
             type: string
-            enum: [technology, education, healthcare]
+            enum: [technology, education, healthcare, legal_finance]
           description: Filter by profession category
         - name: teachingSubject
           in: query
@@ -300,6 +300,11 @@ paths:
           schema:
             type: string
           description: Case-insensitive substring match on clinicalSpecialties (healthcare professionals)
+        - name: practiceArea
+          in: query
+          schema:
+            type: string
+          description: Case-insensitive substring match on practiceAreas (legal & finance professionals)
         - name: countryCode
           in: query
           schema:
@@ -4737,7 +4742,7 @@ components:
     # ── Teaching Professional Profile enums ────────────────────────────────────
     ProfessionCategory:
       type: string
-      enum: [technology, education, healthcare]
+      enum: [technology, education, healthcare, legal_finance]
 
     EducationProfessionType:
       type: string
@@ -4770,6 +4775,18 @@ components:
     PreferredCareMode:
       type: string
       enum: [in_person, telehealth, both]
+
+    LegalFinanceProfessionType:
+      type: string
+      enum: [advocate, chartered_accountant, company_secretary, tax_consultant, financial_advisor]
+
+    LegalFinanceQualification:
+      type: string
+      enum: [llb, llm, ca_final, cs_professional, cma_final, mba_finance, cfa, other]
+
+    PreferredEngagementMode:
+      type: string
+      enum: [in_person, remote, both]
 
     RateType:
       type: string
@@ -4972,6 +4989,43 @@ components:
           allOf:
             - $ref: "#/components/schemas/PreferredCareMode"
           nullable: true
+        legalFinanceProfessionType:
+          allOf:
+            - $ref: "#/components/schemas/LegalFinanceProfessionType"
+          nullable: true
+        practiceAreas:
+          type: ["array", "null"]
+          items:
+            type: string
+        practiceSettings:
+          type: ["array", "null"]
+          items:
+            type: string
+        yearsPracticeExperience:
+          type: ["integer", "null"]
+        legalFinanceHighestQualification:
+          allOf:
+            - $ref: "#/components/schemas/LegalFinanceQualification"
+          nullable: true
+        legalFinanceQualificationSpecialization:
+          type: ["string", "null"]
+        legalFinanceQualificationInstitution:
+          type: ["string", "null"]
+        enrolmentBody:
+          type: ["string", "null"]
+        enrolmentNumber:
+          type: ["string", "null"]
+        enrolmentExpiry:
+          type: ["string", "null"]
+          format: date-time
+        courtJurisdictions:
+          type: ["array", "null"]
+          items:
+            type: string
+        preferredEngagementMode:
+          allOf:
+            - $ref: "#/components/schemas/PreferredEngagementMode"
+          nullable: true
         countryCode:
           type: string
           description: ISO 3166-1 alpha-2 country code
@@ -5156,6 +5210,43 @@ components:
         preferredCareMode:
           allOf:
             - $ref: "#/components/schemas/PreferredCareMode"
+          nullable: true
+        legalFinanceProfessionType:
+          allOf:
+            - $ref: "#/components/schemas/LegalFinanceProfessionType"
+          nullable: true
+        practiceAreas:
+          type: ["array", "null"]
+          items:
+            type: string
+        practiceSettings:
+          type: ["array", "null"]
+          items:
+            type: string
+        yearsPracticeExperience:
+          type: ["integer", "null"]
+        legalFinanceHighestQualification:
+          allOf:
+            - $ref: "#/components/schemas/LegalFinanceQualification"
+          nullable: true
+        legalFinanceQualificationSpecialization:
+          type: ["string", "null"]
+        legalFinanceQualificationInstitution:
+          type: ["string", "null"]
+        enrolmentBody:
+          type: ["string", "null"]
+        enrolmentNumber:
+          type: ["string", "null"]
+        enrolmentExpiry:
+          type: ["string", "null"]
+          format: date-time
+        courtJurisdictions:
+          type: ["array", "null"]
+          items:
+            type: string
+        preferredEngagementMode:
+          allOf:
+            - $ref: "#/components/schemas/PreferredEngagementMode"
           nullable: true
       required:
         - tagline
@@ -5386,6 +5477,43 @@ components:
         preferredCareMode:
           allOf:
             - $ref: "#/components/schemas/PreferredCareMode"
+          nullable: true
+        legalFinanceProfessionType:
+          allOf:
+            - $ref: "#/components/schemas/LegalFinanceProfessionType"
+          nullable: true
+        practiceAreas:
+          type: ["array", "null"]
+          items:
+            type: string
+        practiceSettings:
+          type: ["array", "null"]
+          items:
+            type: string
+        yearsPracticeExperience:
+          type: ["integer", "null"]
+        legalFinanceHighestQualification:
+          allOf:
+            - $ref: "#/components/schemas/LegalFinanceQualification"
+          nullable: true
+        legalFinanceQualificationSpecialization:
+          type: ["string", "null"]
+        legalFinanceQualificationInstitution:
+          type: ["string", "null"]
+        enrolmentBody:
+          type: ["string", "null"]
+        enrolmentNumber:
+          type: ["string", "null"]
+        enrolmentExpiry:
+          type: ["string", "null"]
+          format: date-time
+        courtJurisdictions:
+          type: ["array", "null"]
+          items:
+            type: string
+        preferredEngagementMode:
+          allOf:
+            - $ref: "#/components/schemas/PreferredEngagementMode"
           nullable: true
 
     # ── Employer Profile ───────────────────────────────────────────────────────
@@ -8907,6 +9035,43 @@ components:
           allOf:
             - $ref: "#/components/schemas/PreferredCareMode"
           nullable: true
+        legalFinanceProfessionType:
+          allOf:
+            - $ref: "#/components/schemas/LegalFinanceProfessionType"
+          nullable: true
+        practiceAreas:
+          type: ["array", "null"]
+          items:
+            type: string
+        practiceSettings:
+          type: ["array", "null"]
+          items:
+            type: string
+        yearsPracticeExperience:
+          type: ["integer", "null"]
+        legalFinanceHighestQualification:
+          allOf:
+            - $ref: "#/components/schemas/LegalFinanceQualification"
+          nullable: true
+        legalFinanceQualificationSpecialization:
+          type: ["string", "null"]
+        legalFinanceQualificationInstitution:
+          type: ["string", "null"]
+        enrolmentBody:
+          type: ["string", "null"]
+        enrolmentNumber:
+          type: ["string", "null"]
+        enrolmentExpiry:
+          type: ["string", "null"]
+          format: date-time
+        courtJurisdictions:
+          type: ["array", "null"]
+          items:
+            type: string
+        preferredEngagementMode:
+          allOf:
+            - $ref: "#/components/schemas/PreferredEngagementMode"
+          nullable: true
         countryCode:
           type: string
           default: US
@@ -9229,6 +9394,18 @@ components:
         clinicalSpecialty:
           type: ["string", "null"]
           description: Case-insensitive match against freelancer clinical specialties
+        legalFinanceSubType:
+          type: ["string", "null"]
+          enum:
+            - advocate
+            - chartered_accountant
+            - company_secretary
+            - tax_consultant
+            - financial_advisor
+            - null
+        practiceArea:
+          type: ["string", "null"]
+          description: Case-insensitive match against freelancer practice areas
         requireAadhaarVerified:
           type: boolean
           description: When true, only freelancers with verified Aadhaar pass the pre-filter

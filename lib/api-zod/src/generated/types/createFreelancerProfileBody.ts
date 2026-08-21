@@ -10,7 +10,10 @@ import type { EducationProfessionType } from "./educationProfessionType";
 import type { HealthcareProfessionType } from "./healthcareProfessionType";
 import type { HealthcareQualification } from "./healthcareQualification";
 import type { HighestDegree } from "./highestDegree";
+import type { LegalFinanceProfessionType } from "./legalFinanceProfessionType";
+import type { LegalFinanceQualification } from "./legalFinanceQualification";
 import type { PreferredCareMode } from "./preferredCareMode";
+import type { PreferredEngagementMode } from "./preferredEngagementMode";
 import type { PreferredTeachingMode } from "./preferredTeachingMode";
 import type { ProfessionCategory } from "./professionCategory";
 import type { ResumeAnalysis } from "./resumeAnalysis";
@@ -78,4 +81,25 @@ export interface CreateFreelancerProfileBody {
   /** @nullable */
   registrationExpiry?: Date | null;
   preferredCareMode?: PreferredCareMode | null;
+  legalFinanceProfessionType?: LegalFinanceProfessionType | null;
+  /** @nullable */
+  practiceAreas?: string[] | null;
+  /** @nullable */
+  practiceSettings?: string[] | null;
+  /** @nullable */
+  yearsPracticeExperience?: number | null;
+  legalFinanceHighestQualification?: LegalFinanceQualification | null;
+  /** @nullable */
+  legalFinanceQualificationSpecialization?: string | null;
+  /** @nullable */
+  legalFinanceQualificationInstitution?: string | null;
+  /** @nullable */
+  enrolmentBody?: string | null;
+  /** @nullable */
+  enrolmentNumber?: string | null;
+  /** @nullable */
+  enrolmentExpiry?: Date | null;
+  /** @nullable */
+  courtJurisdictions?: string[] | null;
+  preferredEngagementMode?: PreferredEngagementMode | null;
 }

@@ -46,9 +46,10 @@ import { DualRateDisplay } from "@/components/currency/DualRateDisplay";
 import { useExchangeRates, countryName } from "@/lib/currencyUtils";
 import { EDUCATION_TYPE_LABELS } from "@/components/onboarding/TeachingDetailsSection";
 import { HEALTHCARE_TYPE_LABELS } from "@/lib/healthcareDisplayUtils";
+import { LEGAL_FINANCE_TYPE_LABELS } from "@/lib/legalFinanceDisplayUtils";
 import { cn } from "@/lib/utils";
 import type { ProfessionCategory } from "@workspace/api-client-react";
-import { GraduationCap, Stethoscope } from "lucide-react";
+import { GraduationCap, Scale, Stethoscope } from "lucide-react";
 import { WatchlistToggleButton } from "@/components/watchlist/WatchlistToggleButton";
 import { WatchlistNotesEditor } from "@/components/watchlist/WatchlistNotesEditor";
 
@@ -56,10 +57,12 @@ function FilterChip({
   active,
   onClick,
   children,
+  activeClassName,
 }: {
   active: boolean;
   onClick: () => void;
   children: React.ReactNode;
+  activeClassName?: string;
 }) {
   return (
     <button
@@ -68,7 +71,7 @@ function FilterChip({
       className={cn(
         "text-sm px-3 py-1.5 rounded-full border transition-colors",
         active
-          ? "bg-primary text-primary-foreground border-primary"
+          ? (activeClassName ?? "bg-primary text-primary-foreground border-primary")
           : "bg-secondary text-secondary-foreground border-border hover:border-primary/30",
       )}
     >
@@ -177,7 +180,14 @@ function FreelancerCard({
               {HEALTHCARE_TYPE_LABELS[freelancer.healthcareProfessionType]}
             </span>
           )}
-          {freelancer.professionCategory === "healthcare" && freelancer.aadhaarVerificationStatus === "verified" && (
+          {freelancer.professionCategory === "legal_finance" && freelancer.legalFinanceProfessionType && (
+            <span className="inline-flex items-center gap-1 text-xs bg-slate-100 text-slate-800 border border-slate-300 rounded px-1.5 py-0.5">
+              <Scale className="h-3 w-3" />
+              {LEGAL_FINANCE_TYPE_LABELS[freelancer.legalFinanceProfessionType]}
+            </span>
+          )}
+          {(freelancer.professionCategory === "healthcare" || freelancer.professionCategory === "legal_finance") &&
+            freelancer.aadhaarVerificationStatus === "verified" && (
             <span className="inline-flex items-center gap-1 text-xs bg-green-50 text-green-700 border border-green-200 rounded px-1.5 py-0.5">
               Aadhaar ✓
             </span>
@@ -323,6 +333,7 @@ export default function FreelancersList() {
   const [professionCategoryFilter, setProfessionCategoryFilter] = useState<ProfessionCategory | undefined>(undefined);
   const [teachingSubject, setTeachingSubject] = useState("");
   const [clinicalSpecialty, setClinicalSpecialty] = useState("");
+  const [practiceArea, setPracticeArea] = useState("");
   const [countryFilter, setCountryFilter] = useState<string>("all");
   const [currencyFilter, setCurrencyFilter] = useState<string>("all");
 
@@ -337,6 +348,7 @@ export default function FreelancersList() {
     ...(professionCategoryFilter ? { professionCategory: professionCategoryFilter } : {}),
     ...(professionCategoryFilter === "education" && teachingSubject ? { teachingSubject } : {}),
     ...(professionCategoryFilter === "healthcare" && clinicalSpecialty ? { clinicalSpecialty } : {}),
+    ...(professionCategoryFilter === "legal_finance" && practiceArea.trim() ? { practiceArea: practiceArea.trim() } : {}),
     ...(countryFilter !== "all" ? { countryCode: countryFilter } : {}),
     ...(currencyFilter !== "all" ? { currencyCode: currencyFilter } : {}),
   };
@@ -385,10 +397,10 @@ export default function FreelancersList() {
     return true;
   });
 
-  const hasActiveFilters = fieldFilter !== "all" || minRate || maxRate || availableOnly || verifiedOnly || availableFromDate || debouncedQuery || professionCategoryFilter || teachingSubject || clinicalSpecialty || countryFilter !== "all" || currencyFilter !== "all";
+  const hasActiveFilters = fieldFilter !== "all" || minRate || maxRate || availableOnly || verifiedOnly || availableFromDate || debouncedQuery || professionCategoryFilter || teachingSubject || clinicalSpecialty || practiceArea || countryFilter !== "all" || currencyFilter !== "all";
 
   const clearFilters = () => {
-    setFieldFilter("all"); setMinRate(""); setMaxRate(""); setAvailableOnly(false); setVerifiedOnly(false); setAvailableFromDate(undefined); setSearchQuery(""); setProfessionCategoryFilter(undefined); setTeachingSubject(""); setClinicalSpecialty(""); setCountryFilter("all"); setCurrencyFilter("all");
+    setFieldFilter("all"); setMinRate(""); setMaxRate(""); setAvailableOnly(false); setVerifiedOnly(false); setAvailableFromDate(undefined); setSearchQuery(""); setProfessionCategoryFilter(undefined); setTeachingSubject(""); setClinicalSpecialty(""); setPracticeArea(""); setCountryFilter("all"); setCurrencyFilter("all");
   };
 
   const watchlistCount = saved?.length ?? 0;
@@ -477,7 +489,7 @@ export default function FreelancersList() {
 
       {showSearchPanel && (
         <>
-          <div className="flex gap-2 mb-3">
+          <div className="flex flex-wrap gap-2 mb-3">
             <FilterChip active={professionCategoryFilter === undefined} onClick={() => setProfessionCategoryFilter(undefined)}>
               All
             </FilterChip>
@@ -489,6 +501,13 @@ export default function FreelancersList() {
             </FilterChip>
             <FilterChip active={professionCategoryFilter === "healthcare"} onClick={() => setProfessionCategoryFilter("healthcare")}>
               Healthcare
+            </FilterChip>
+            <FilterChip
+              active={professionCategoryFilter === "legal_finance"}
+              onClick={() => setProfessionCategoryFilter("legal_finance")}
+              activeClassName="bg-slate-800 text-white border-slate-800"
+            >
+              Legal & Finance
             </FilterChip>
           </div>
           {professionCategoryFilter === "education" && (
@@ -507,6 +526,16 @@ export default function FreelancersList() {
                 placeholder="Filter by specialty (e.g. Cardiology)"
                 value={clinicalSpecialty}
                 onChange={(e) => setClinicalSpecialty(e.target.value)}
+                className="max-w-xs"
+              />
+            </div>
+          )}
+          {professionCategoryFilter === "legal_finance" && (
+            <div className="mb-3">
+              <Input
+                placeholder="Filter by practice area (e.g. GST, Corporate)"
+                value={practiceArea}
+                onChange={(e) => setPracticeArea(e.target.value)}
                 className="max-w-xs"
               />
             </div>
@@ -664,7 +693,9 @@ export default function FreelancersList() {
                 </EmptyMedia>
                 <EmptyTitle className="font-serif">No talent matched</EmptyTitle>
                 <EmptyDescription>
-                  Try adjusting filters or keyword search. Profiles below 60% completeness stay hidden.
+                  {professionCategoryFilter === "legal_finance"
+                    ? "No verified Legal & Finance professionals match these filters."
+                    : "Try adjusting filters or keyword search. Profiles below 60% completeness stay hidden."}
                 </EmptyDescription>
               </EmptyHeader>
               {(searchQuery || hasActiveFilters) && (

@@ -2,7 +2,7 @@
 // Q1: skills column is text().array() — teachingSubjects/teachingLevels match that type
 // Q2: no existing location column on freelancer_profiles — location added as nullable text
 
-export type ProfessionCategory = "technology" | "education" | "healthcare";
+export type ProfessionCategory = "technology" | "education" | "healthcare" | "legal_finance";
 export type EducationProfessionType =
   | "school_teacher"
   | "university_lecturer"

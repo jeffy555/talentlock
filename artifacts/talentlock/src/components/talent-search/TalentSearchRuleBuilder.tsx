@@ -105,6 +105,8 @@ function ParsedPreview({
     rules.educationSubType && `Education sub-type: ${rules.educationSubType}`,
     rules.healthcareSubType && `Healthcare sub-type: ${rules.healthcareSubType}`,
     rules.clinicalSpecialty && `Clinical specialty: ${rules.clinicalSpecialty}`,
+    rules.legalFinanceSubType && `Legal & finance sub-type: ${rules.legalFinanceSubType}`,
+    rules.practiceArea && `Practice area: ${rules.practiceArea}`,
     rules.requiredSkills.length > 0 && `Required skills: ${rules.requiredSkills.join(", ")}`,
     rules.minRate != null || rules.maxRate != null
       ? `Rate range: ${rules.minRate ?? "—"} – ${rules.maxRate ?? "—"} ${rules.rateType}`
@@ -407,19 +409,27 @@ export function TalentSearchRuleBuilder({
                 educationSubType: value === "education" ? rules.educationSubType : null,
                 healthcareSubType: value === "healthcare" ? rules.healthcareSubType : null,
                 clinicalSpecialty: value === "healthcare" ? rules.clinicalSpecialty : null,
+                legalFinanceSubType: value === "legal_finance" ? rules.legalFinanceSubType : null,
+                practiceArea: value === "legal_finance" ? rules.practiceArea : null,
                 requireAadhaarVerified:
-                  value === "healthcare" ? rules.requireAadhaarVerified : false,
+                  value === "healthcare" || value === "legal_finance"
+                    ? rules.requireAadhaarVerified
+                    : false,
                 rateType:
-                  value === "healthcare" && rules.rateType === "hourly" ? "per_shift" : rules.rateType,
+                  value === "healthcare" && rules.rateType === "hourly"
+                    ? "per_shift"
+                    : value === "legal_finance" && rules.rateType === "hourly"
+                      ? "per_day"
+                      : rules.rateType,
               })
             }
             className="flex flex-wrap gap-4"
           >
-            {(["any", "technology", "education", "healthcare"] as const).map((cat) => (
+            {(["any", "technology", "education", "healthcare", "legal_finance"] as const).map((cat) => (
               <div key={cat} className="flex items-center space-x-2">
                 <RadioGroupItem value={cat} id={`prof-${cat}`} />
-                <Label htmlFor={`prof-${cat}`} className="capitalize font-normal cursor-pointer">
-                  {cat}
+                <Label htmlFor={`prof-${cat}`} className="font-normal cursor-pointer">
+                  {cat === "legal_finance" ? "Legal & Finance" : cat === "any" ? "Any" : cat.charAt(0).toUpperCase() + cat.slice(1)}
                 </Label>
               </div>
             ))}
@@ -502,6 +512,66 @@ export function TalentSearchRuleBuilder({
               <div>
                 <Label>Require verified Aadhaar</Label>
                 <p className="text-xs text-muted-foreground">Healthcare profiles with verified Aadhaar only</p>
+              </div>
+              <Switch
+                checked={rules.requireAadhaarVerified}
+                onCheckedChange={(requireAadhaarVerified) =>
+                  updateRules({ requireAadhaarVerified })
+                }
+              />
+            </div>
+          </div>
+        )}
+
+        {professionValue === "legal_finance" && (
+          <div className="space-y-4 rounded-lg border border-slate-200 bg-slate-50/40 p-4">
+            <div className="space-y-2">
+              <Label>Legal & finance sub-type</Label>
+              <RadioGroup
+                value={rules.legalFinanceSubType ?? "any"}
+                onValueChange={(value) =>
+                  updateRules({
+                    legalFinanceSubType:
+                      value === "any" ? null : (value as TalentSearchRules["legalFinanceSubType"]),
+                  })
+                }
+                className="flex flex-wrap gap-4"
+              >
+                {(
+                  [
+                    "any",
+                    "advocate",
+                    "chartered_accountant",
+                    "company_secretary",
+                    "tax_consultant",
+                    "financial_advisor",
+                  ] as const
+                ).map((sub) => (
+                  <div key={sub} className="flex items-center space-x-2">
+                    <RadioGroupItem value={sub} id={`lf-sub-${sub}`} />
+                    <Label htmlFor={`lf-sub-${sub}`} className="font-normal cursor-pointer">
+                      {sub === "any" ? "Any" : sub.replace(/_/g, " ")}
+                    </Label>
+                  </div>
+                ))}
+              </RadioGroup>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Practice area (optional)</Label>
+              <Input
+                value={rules.practiceArea ?? ""}
+                onChange={(e) =>
+                  updateRules({ practiceArea: e.target.value || null })
+                }
+                placeholder="e.g. GST, Corporate, M&A"
+              />
+            </div>
+
+            <div className="flex items-center justify-between rounded-lg border border-slate-200 bg-white/60 p-3">
+              <div>
+                <Label>Require verified Aadhaar</Label>
+                <p className="text-xs text-muted-foreground">Legal & finance profiles with verified Aadhaar only</p>
               </div>
               <Switch
                 checked={rules.requireAadhaarVerified}

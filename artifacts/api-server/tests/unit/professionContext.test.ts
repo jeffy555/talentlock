@@ -17,4 +17,10 @@ describe("buildProfessionContext", () => {
     expect(ctx.length).toBeGreaterThan(0);
     expect(ctx).toContain("healthcare");
   });
+
+  it("returns non-empty context for legal_finance jobs", () => {
+    const ctx = buildProfessionContext({ professionCategory: "legal_finance" });
+    expect(ctx.length).toBeGreaterThan(0);
+    expect(ctx).toContain("legal");
+  });
 });

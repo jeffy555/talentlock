@@ -15,6 +15,10 @@ export interface NormalisedFreelancer {
   healthcareProfessionType: string | null;
   clinicalSpecialties: string[] | null;
   clinicalSettings: string[] | null;
+  legalFinanceProfessionType: string | null;
+  practiceAreas: string[] | null;
+  practiceSettings: string[] | null;
+  courtJurisdictions: string[] | null;
   aadhaarVerificationStatus: string | null;
   skills: string[];
   teachingSubjects: string[] | null;
@@ -60,6 +64,10 @@ export function normaliseFreelancer(
     healthcareProfessionType: profile.healthcareProfessionType ?? null,
     clinicalSpecialties: profile.clinicalSpecialties ?? null,
     clinicalSettings: profile.clinicalSettings ?? null,
+    legalFinanceProfessionType: profile.legalFinanceProfessionType ?? null,
+    practiceAreas: profile.practiceAreas ?? null,
+    practiceSettings: profile.practiceSettings ?? null,
+    courtJurisdictions: profile.courtJurisdictions ?? null,
     aadhaarVerificationStatus: profile.aadhaarVerificationStatus ?? null,
     skills: profile.skills ?? [],
     teachingSubjects: profile.teachingSubjects ?? null,
@@ -102,6 +110,18 @@ export function talentSearchPreFilterReason(
     }
   }
 
+  if (rules.legalFinanceSubType && freelancer.legalFinanceProfessionType !== rules.legalFinanceSubType) {
+    return `Legal & finance sub-type does not match (requires ${rules.legalFinanceSubType})`;
+  }
+
+  if (rules.practiceArea?.trim()) {
+    const needle = rules.practiceArea.trim().toLowerCase();
+    const areas = freelancer.practiceAreas ?? [];
+    if (!areas.some((s) => s.toLowerCase().includes(needle))) {
+      return `Practice area does not match (requires ${rules.practiceArea})`;
+    }
+  }
+
   if (rules.requireAadhaarVerified && freelancer.aadhaarVerificationStatus !== "verified") {
     return "Verified Aadhaar required but not verified";
   }
@@ -120,6 +140,9 @@ export function talentSearchPreFilterReason(
     ...(freelancer.teachingLevels ?? []),
     ...(freelancer.clinicalSpecialties ?? []),
     ...(freelancer.clinicalSettings ?? []),
+    ...(freelancer.practiceAreas ?? []),
+    ...(freelancer.practiceSettings ?? []),
+    ...(freelancer.courtJurisdictions ?? []),
     freelancer.bio ?? "",
     freelancer.fieldOfWork ?? "",
   ]
@@ -215,8 +238,9 @@ Sector: ${sector}
 Recent hiring focus: ${recentHiring}
 
 EMPLOYER TALENT SEARCH RULES:
-Profession: ${rules.professionCategory ?? "any"}${rules.educationSubType ? ` — ${rules.educationSubType}` : ""}${rules.healthcareSubType ? ` — ${rules.healthcareSubType}` : ""}
+Profession: ${rules.professionCategory ?? "any"}${rules.educationSubType ? ` — ${rules.educationSubType}` : ""}${rules.healthcareSubType ? ` — ${rules.healthcareSubType}` : ""}${rules.legalFinanceSubType ? ` — ${rules.legalFinanceSubType}` : ""}
 Clinical specialty: ${rules.clinicalSpecialty ?? "any"}
+Practice area: ${rules.practiceArea ?? "any"}
 Aadhaar verified required: ${rules.requireAadhaarVerified ? "Yes" : "No"}
 Required skills: ${rules.requiredSkills.join(", ") || "any"}
 Preferred skills: ${rules.preferredSkills.join(", ") || "none specified"}
@@ -234,6 +258,10 @@ Education type: ${freelancer.educationProfessionType ?? "not specified"}
 Healthcare type: ${freelancer.healthcareProfessionType ?? "not specified"}
 Clinical specialties: ${freelancer.clinicalSpecialties?.join(", ") ?? "N/A"}
 Clinical settings: ${freelancer.clinicalSettings?.join(", ") ?? "N/A"}
+Legal & finance type: ${freelancer.legalFinanceProfessionType ?? "not specified"}
+Practice areas: ${freelancer.practiceAreas?.join(", ") ?? "N/A"}
+Practice settings: ${freelancer.practiceSettings?.join(", ") ?? "N/A"}
+Court jurisdictions: ${freelancer.courtJurisdictions?.join(", ") ?? "N/A"}
 Skills: ${freelancer.skills.join(", ")}
 Teaching subjects: ${freelancer.teachingSubjects?.join(", ") ?? "N/A"}
 Teaching levels: ${freelancer.teachingLevels?.join(", ") ?? "N/A"}
@@ -294,6 +322,8 @@ export function defaultTalentSearchRules(): TalentSearchRules {
     educationSubType: null,
     healthcareSubType: null,
     clinicalSpecialty: null,
+    legalFinanceSubType: null,
+    practiceArea: null,
     requireAadhaarVerified: false,
     requiredSkills: [],
     preferredSkills: [],
@@ -330,6 +360,8 @@ export function normaliseParsedTalentSearchRules(
     educationSubType: raw.educationSubType ?? defaults.educationSubType,
     healthcareSubType: raw.healthcareSubType ?? defaults.healthcareSubType,
     clinicalSpecialty: raw.clinicalSpecialty ?? defaults.clinicalSpecialty,
+    legalFinanceSubType: raw.legalFinanceSubType ?? defaults.legalFinanceSubType,
+    practiceArea: raw.practiceArea ?? defaults.practiceArea,
     requireAadhaarVerified: raw.requireAadhaarVerified ?? defaults.requireAadhaarVerified,
     requiredSkills: raw.requiredSkills ?? defaults.requiredSkills,
     preferredSkills: raw.preferredSkills ?? defaults.preferredSkills,
@@ -357,10 +389,12 @@ export const PARSE_TALENT_SEARCH_RULES_SYSTEM_PROMPT = `You parse free-form empl
 Return ONLY a JSON object with this shape — no preamble, no markdown:
 {
   "rules": {
-    "professionCategory": "technology" | "education" | "healthcare" | null,
+    "professionCategory": "technology" | "education" | "healthcare" | "legal_finance" | null,
     "educationSubType": "school_teacher" | "university_lecturer" | "tutor" | "researcher" | null,
     "healthcareSubType": "physician" | "registered_nurse" | "nurse_practitioner" | "allied_health" | "care_worker" | null,
     "clinicalSpecialty": string | null,
+    "legalFinanceSubType": "advocate" | "chartered_accountant" | "company_secretary" | "tax_consultant" | "financial_advisor" | null,
+    "practiceArea": string | null,
     "requireAadhaarVerified": boolean,
     "requiredSkills": string[],
     "preferredSkills": string[],
@@ -387,6 +421,6 @@ Return ONLY a JSON object with this shape — no preamble, no markdown:
   "warnings": string[]
 }
 
-Defaults when not specified: professionCategory null, healthcareSubType null, clinicalSpecialty null, requireAadhaarVerified false, rateType "hourly", matchThreshold 70, messageTone "professional", locationRequired false, requireDbs false, requireVerifiedCredentials false, dryRun false, dailyDigest false, empty arrays, null rates/dates/location/countryCode/stateCode.
+Defaults when not specified: professionCategory null, healthcareSubType null, clinicalSpecialty null, legalFinanceSubType null, practiceArea null, requireAadhaarVerified false, rateType "hourly", matchThreshold 70, messageTone "professional", locationRequired false, requireDbs false, requireVerifiedCredentials false, dryRun false, dailyDigest false, empty arrays, null rates/dates/location/countryCode/stateCode.
 When a city/region/country is mentioned, set locationRequired true, fill location with a human label, and set countryCode (ISO-2) / stateCode when identifiable.
 Add a warning for each ambiguous or missing preference the user did not specify.`;

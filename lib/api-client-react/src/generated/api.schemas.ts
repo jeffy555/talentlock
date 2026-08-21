@@ -200,6 +200,7 @@ export const ProfessionCategory = {
   technology: "technology",
   education: "education",
   healthcare: "healthcare",
+  legal_finance: "legal_finance",
 } as const;
 
 export type EducationProfessionType =
@@ -287,6 +288,40 @@ export type PreferredCareMode =
 export const PreferredCareMode = {
   in_person: "in_person",
   telehealth: "telehealth",
+  both: "both",
+} as const;
+
+export type LegalFinanceProfessionType =
+  (typeof LegalFinanceProfessionType)[keyof typeof LegalFinanceProfessionType];
+
+export const LegalFinanceProfessionType = {
+  advocate: "advocate",
+  chartered_accountant: "chartered_accountant",
+  company_secretary: "company_secretary",
+  tax_consultant: "tax_consultant",
+  financial_advisor: "financial_advisor",
+} as const;
+
+export type LegalFinanceQualification =
+  (typeof LegalFinanceQualification)[keyof typeof LegalFinanceQualification];
+
+export const LegalFinanceQualification = {
+  llb: "llb",
+  llm: "llm",
+  ca_final: "ca_final",
+  cs_professional: "cs_professional",
+  cma_final: "cma_final",
+  mba_finance: "mba_finance",
+  cfa: "cfa",
+  other: "other",
+} as const;
+
+export type PreferredEngagementMode =
+  (typeof PreferredEngagementMode)[keyof typeof PreferredEngagementMode];
+
+export const PreferredEngagementMode = {
+  in_person: "in_person",
+  remote: "remote",
   both: "both",
 } as const;
 
@@ -432,6 +467,27 @@ export interface FreelancerProfile {
   registrationExpiry?: string | null;
   aadhaarVerificationStatus?: AadhaarVerificationStatus;
   preferredCareMode?: PreferredCareMode | null;
+  legalFinanceProfessionType?: LegalFinanceProfessionType | null;
+  /** @nullable */
+  practiceAreas?: string[] | null;
+  /** @nullable */
+  practiceSettings?: string[] | null;
+  /** @nullable */
+  yearsPracticeExperience?: number | null;
+  legalFinanceHighestQualification?: LegalFinanceQualification | null;
+  /** @nullable */
+  legalFinanceQualificationSpecialization?: string | null;
+  /** @nullable */
+  legalFinanceQualificationInstitution?: string | null;
+  /** @nullable */
+  enrolmentBody?: string | null;
+  /** @nullable */
+  enrolmentNumber?: string | null;
+  /** @nullable */
+  enrolmentExpiry?: string | null;
+  /** @nullable */
+  courtJurisdictions?: string[] | null;
+  preferredEngagementMode?: PreferredEngagementMode | null;
   /** ISO 3166-1 alpha-2 country code */
   countryCode: string;
   /** ISO 4217 currency code derived from country */
@@ -546,6 +602,27 @@ export interface CreateFreelancerProfileBody {
   /** @nullable */
   registrationExpiry?: string | null;
   preferredCareMode?: PreferredCareMode | null;
+  legalFinanceProfessionType?: LegalFinanceProfessionType | null;
+  /** @nullable */
+  practiceAreas?: string[] | null;
+  /** @nullable */
+  practiceSettings?: string[] | null;
+  /** @nullable */
+  yearsPracticeExperience?: number | null;
+  legalFinanceHighestQualification?: LegalFinanceQualification | null;
+  /** @nullable */
+  legalFinanceQualificationSpecialization?: string | null;
+  /** @nullable */
+  legalFinanceQualificationInstitution?: string | null;
+  /** @nullable */
+  enrolmentBody?: string | null;
+  /** @nullable */
+  enrolmentNumber?: string | null;
+  /** @nullable */
+  enrolmentExpiry?: string | null;
+  /** @nullable */
+  courtJurisdictions?: string[] | null;
+  preferredEngagementMode?: PreferredEngagementMode | null;
 }
 
 export type AvailabilityBlockReason =
@@ -678,6 +755,27 @@ export interface UpdateFreelancerProfileBody {
   /** @nullable */
   registrationExpiry?: string | null;
   preferredCareMode?: PreferredCareMode | null;
+  legalFinanceProfessionType?: LegalFinanceProfessionType | null;
+  /** @nullable */
+  practiceAreas?: string[] | null;
+  /** @nullable */
+  practiceSettings?: string[] | null;
+  /** @nullable */
+  yearsPracticeExperience?: number | null;
+  legalFinanceHighestQualification?: LegalFinanceQualification | null;
+  /** @nullable */
+  legalFinanceQualificationSpecialization?: string | null;
+  /** @nullable */
+  legalFinanceQualificationInstitution?: string | null;
+  /** @nullable */
+  enrolmentBody?: string | null;
+  /** @nullable */
+  enrolmentNumber?: string | null;
+  /** @nullable */
+  enrolmentExpiry?: string | null;
+  /** @nullable */
+  courtJurisdictions?: string[] | null;
+  preferredEngagementMode?: PreferredEngagementMode | null;
 }
 
 export type EmployerProfileVerificationLevel =
@@ -2894,6 +2992,27 @@ export interface PublicFreelancerProfile {
   registrationExpiry?: string | null;
   aadhaarVerificationStatus?: AadhaarVerificationStatus;
   preferredCareMode?: PreferredCareMode | null;
+  legalFinanceProfessionType?: LegalFinanceProfessionType | null;
+  /** @nullable */
+  practiceAreas?: string[] | null;
+  /** @nullable */
+  practiceSettings?: string[] | null;
+  /** @nullable */
+  yearsPracticeExperience?: number | null;
+  legalFinanceHighestQualification?: LegalFinanceQualification | null;
+  /** @nullable */
+  legalFinanceQualificationSpecialization?: string | null;
+  /** @nullable */
+  legalFinanceQualificationInstitution?: string | null;
+  /** @nullable */
+  enrolmentBody?: string | null;
+  /** @nullable */
+  enrolmentNumber?: string | null;
+  /** @nullable */
+  enrolmentExpiry?: string | null;
+  /** @nullable */
+  courtJurisdictions?: string[] | null;
+  preferredEngagementMode?: PreferredEngagementMode | null;
   countryCode: string;
   currencyCode: string;
   createdAt: string;
@@ -3054,6 +3173,21 @@ export const TalentSearchRulesHealthcareSubType = {
   care_worker: "care_worker",
 } as const;
 
+/**
+ * @nullable
+ */
+export type TalentSearchRulesLegalFinanceSubType =
+  | (typeof TalentSearchRulesLegalFinanceSubType)[keyof typeof TalentSearchRulesLegalFinanceSubType]
+  | null;
+
+export const TalentSearchRulesLegalFinanceSubType = {
+  advocate: "advocate",
+  chartered_accountant: "chartered_accountant",
+  company_secretary: "company_secretary",
+  tax_consultant: "tax_consultant",
+  financial_advisor: "financial_advisor",
+} as const;
+
 export type TalentSearchRulesRateType =
   (typeof TalentSearchRulesRateType)[keyof typeof TalentSearchRulesRateType];
 
@@ -3086,6 +3220,13 @@ export interface TalentSearchRules {
    * @nullable
    */
   clinicalSpecialty?: string | null;
+  /** @nullable */
+  legalFinanceSubType?: TalentSearchRulesLegalFinanceSubType;
+  /**
+   * Case-insensitive match against freelancer practice areas
+   * @nullable
+   */
+  practiceArea?: string | null;
   /** When true, only freelancers with verified Aadhaar pass the pre-filter */
   requireAadhaarVerified: boolean;
   requiredSkills: string[];
@@ -3259,6 +3400,10 @@ export type ListFreelancersParams = {
    */
   clinicalSpecialty?: string;
   /**
+   * Case-insensitive substring match on practiceAreas (legal & finance professionals)
+   */
+  practiceArea?: string;
+  /**
    * Filter by freelancer country code (ISO 3166-1 alpha-2)
    * @minLength 2
    * @maxLength 2
@@ -3279,6 +3424,7 @@ export const ListFreelancersProfessionCategory = {
   technology: "technology",
   education: "education",
   healthcare: "healthcare",
+  legal_finance: "legal_finance",
 } as const;
 
 export type ListJobRequirementsParams = {

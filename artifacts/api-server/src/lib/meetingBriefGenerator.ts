@@ -159,7 +159,9 @@ export function buildMeetingBriefPrompt(ctx: PromptContext): string {
       ? `Healthcare type: ${f.healthcareProfessionType ?? "not specified"}`
       : f.professionCategory === "education"
         ? `Education type: ${f.educationProfessionType ?? "not specified"}`
-        : "Profession type: general";
+        : f.professionCategory === "legal_finance"
+          ? `Legal & finance type: ${f.legalFinanceProfessionType ?? "not specified"}`
+          : "Profession type: general";
 
   const healthcareLines =
     f.professionCategory === "healthcare"
@@ -169,6 +171,19 @@ export function buildMeetingBriefPrompt(ctx: PromptContext): string {
           `Highest qualification: ${f.highestQualification ?? "not specified"}`,
           `Registration council: ${f.registrationCouncil ?? "not specified"}`,
           `Preferred care mode: ${f.preferredCareMode ?? "not specified"}`,
+          `Aadhaar status: ${f.aadhaarVerificationStatus ?? "not provided"}`,
+        ].join("\n")
+      : "";
+
+  const legalFinanceLines =
+    f.professionCategory === "legal_finance"
+      ? [
+          `Practice areas: ${(f.practiceAreas ?? []).join(", ") || "not specified"}`,
+          `Practice settings: ${(f.practiceSettings ?? []).join(", ") || "not specified"}`,
+          `Qualification: ${f.legalFinanceHighestQualification ?? "not specified"}`,
+          `Enrolment body: ${f.enrolmentBody ?? "not specified"}`,
+          `Court jurisdictions: ${(f.courtJurisdictions ?? []).join(", ") || "not specified"}`,
+          `Engagement mode: ${f.preferredEngagementMode ?? "not specified"}`,
           `Aadhaar status: ${f.aadhaarVerificationStatus ?? "not provided"}`,
         ].join("\n")
       : "";
@@ -187,7 +202,7 @@ Profession:        ${f.professionCategory}
 ${professionDetail}
 Skills:            ${(f.skills ?? []).join(", ") || "not specified"}
 Teaching subjects: ${(f.teachingSubjects ?? []).join(", ") || "N/A"}
-${healthcareLines ? `${healthcareLines}\n` : ""}Experience:        ${f.yearsExperience} years
+${healthcareLines ? `${healthcareLines}\n` : ""}${legalFinanceLines ? `${legalFinanceLines}\n` : ""}Experience:        ${f.yearsExperience} years
 Experience bio:    ${f.bio?.slice(0, 400) ?? "not provided"}
 Rate:              ${rateLabel}
 Completeness:      ${f.completenessScore}/100

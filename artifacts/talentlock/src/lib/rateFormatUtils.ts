@@ -27,6 +27,7 @@ export function rateUnitLabel(rateType: RateType | null | undefined): string {
 export function profileDefaultRateType(professionCategory: string | null | undefined): RateType {
   if (professionCategory === "education") return "per_session";
   if (professionCategory === "healthcare") return "per_shift";
+  if (professionCategory === "legal_finance") return "per_day";
   return "hourly";
 }
 
