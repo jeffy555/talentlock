@@ -3152,8 +3152,7 @@ paths:
           in: path
           required: true
           schema:
-            type: string
-            enum: [aadhaar, government_id, professional_credential]
+            $ref: "#/components/schemas/FreelancerDocumentType"
       requestBody:
         required: true
         content:
@@ -7661,12 +7660,30 @@ components:
         - outcomes
 
     # ── Document Verification ─────────────────────────────────────────────────
+    FreelancerDocumentType:
+      type: string
+      enum:
+        - aadhaar
+        - government_id
+        - professional_credential
+        - experience_certificate
+        - mbbs_degree
+        - medical_registration_certificate
+        - nursing_degree
+        - nursing_registration_certificate
+        - allied_qualification
+        - bar_enrolment_certificate
+        - certificate_of_practice
+        - icai_membership_certificate
+        - icsi_membership_certificate
+        - gst_practitioner_certificate
+        - sebi_nism_certificate
+
     DocumentsUploadUrlBody:
       type: object
       properties:
         documentType:
-          type: string
-          enum: [aadhaar, government_id, professional_credential]
+          $ref: "#/components/schemas/FreelancerDocumentType"
         mimeType:
           type: string
           description: "image/jpeg, image/png, image/webp, or application/pdf"
@@ -7692,8 +7709,7 @@ components:
       type: object
       properties:
         documentType:
-          type: string
-          enum: [aadhaar, government_id, professional_credential]
+          $ref: "#/components/schemas/FreelancerDocumentType"
         storagePath:
           type: string
         expiryDate:

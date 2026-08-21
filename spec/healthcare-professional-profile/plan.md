@@ -2,6 +2,7 @@
 
 > **Status: APPROVED — Ready for implementation**
 > Resolves open questions from `clarify.md`.
+> Phases 1–4 shipped on `main`. Remaining work is **Phase 5 (Phase 2+ credentials)**.
 > The Cursor Agent MUST read this file alongside `task.md` before writing any code.
 > If this file and `task.md` conflict, **this file wins**.
 
@@ -110,7 +111,9 @@ const RATE_UNIT_LABELS: Record<RateType, string> = {
 
 ### Q6 — Phase 2 Document Types
 
-**Decision:** Define in `REQUIRED_DOCUMENTS_BY_HEALTHCARE_TYPE` constant and admin AI prompt registry. Upload API accepts **only `aadhaar`** in Phase 1:
+**Decision (Phase 1–4):** Define in `REQUIRED_DOCUMENTS_BY_HEALTHCARE_TYPE`. Upload API accepts **only `aadhaar`** until Phase 5.
+
+**Decision (Phase 5 / Phase 2+):** Add these strings to `DOCUMENT_TYPES` and OpenAPI upload/confirm enums:
 
 ```ts
 export const HEALTHCARE_DOCUMENT_TYPES_PHASE1 = ["aadhaar"] as const;
@@ -120,16 +123,46 @@ export const HEALTHCARE_DOCUMENT_TYPES_PHASE2 = [
   "medical_registration_certificate",
   "nursing_degree",
   "nursing_registration_certificate",
+  "allied_qualification",
 ] as const;
 ```
 
-OpenAPI `DocumentsConfirmBodyDocumentType` extended with `aadhaar` only until Phase 2 task explicitly adds the rest.
+`allied_qualification` is included (already in allied-health `futureRequired`). Phase 3 recommended types stay **out** of `DOCUMENT_TYPES`.
+
+**Shared `experience_certificate`:** one type across Healthcare and Legal & Finance. UNIQUE `(freelancerId, documentType)` — one experience letter per freelancer.
 
 ---
 
 ### Q7 — Allied Health Granularity
 
 **Decision:** Single `allied_health` sub-type for Phase 1.
+
+---
+
+### Q8 — Expired registration Vault drop
+
+**Decision: Scoped, same pattern as school-teacher teaching licence.** Phase 5 only.
+
+```ts
+// GET /api/freelancers — additional NOT() condition
+not(
+  and(
+    eq(freelancerProfiles.professionCategory, "healthcare"),
+    inArray(freelancerProfiles.healthcareProfessionType, [
+      "physician",
+      "registered_nurse",
+      "nurse_practitioner",
+    ]),
+    isNotNull(freelancerProfiles.registrationExpiry),
+    lt(freelancerProfiles.registrationExpiry, new Date()),
+  ),
+)
+```
+
+- Allied health / care worker: **never** dropped for `registrationExpiry`.
+- Missing Phase 2+ uploads: **never** dropped (Aadhaar verified remains the healthcare Vault gate).
+- Direct profile URLs unchanged.
+- `registrationAlertStage` already resets when `registrationExpiry` changes on `PUT /freelancers/me`.
 
 ---
 
@@ -241,3 +274,24 @@ State held client-side until `PUT /api/freelancers/me` + documents confirm — n
 | Nurse education | INC (standards) / SNRC (licence) | Nursing degree/diploma + SNRC registration |
 
 Experience certificate: hospital-issued letter on letterhead stating role, department, dates — standard for locum and foreign verification.
+
+---
+
+## Phase 2+ AI review prompts (Phase 5)
+
+Extend `buildDocumentReviewUserPrompt()` in `documentReview.ts` — do **not** extract Aadhaar numbers. Verdicts stay `verified | needs_review | rejected`.
+
+| `documentType` | Prompt focus |
+|---|---|
+| `experience_certificate` | Letterhead, role/designation, department, employment dates; reject blank pages and unrelated IDs |
+| `mbbs_degree` | Appears to be an MBBS / medical degree certificate; institution name present; not a screenshot of a news article |
+| `medical_registration_certificate` | SMC / NMR / medical council registration certificate; registration number region present; not Aadhaar |
+| `nursing_degree` | Nursing degree/diploma (B.Sc, GNM, ANM, post-basic); institution present |
+| `nursing_registration_certificate` | SNRC / nursing council registration (RN/RM); number region present |
+| `allied_qualification` | Allied health degree/diploma (physio, radiology, lab, OT, pharmacy); institution present |
+
+Never return full registration numbers in `employerNotes`. Admin `aiNotes` may note last 4 of a council number only.
+
+After AI status change on a Phase 2+ type: existing `updateVerificationLevel()` already counts `status = 'verified'` — no new completeness formula. Re-upload via confirm **must** reset document `expiryDate` / `expiryAlertStage` (already required by credential-expiry spec).
+
+Freelancer-supplied `expiryDate` is **recommended** on `medical_registration_certificate` and `nursing_registration_certificate` (optional in API). Profile `registrationExpiry` remains the Vault drop source (Q8) — keep them in sync in UI copy: “Set registration expiry on your profile so Talent Vault can hide an expired licence.”

@@ -5,10 +5,10 @@
  * TalentLock API specification
  * OpenAPI spec version: 0.1.0
  */
-import type { DocumentsConfirmBodyDocumentType } from "./documentsConfirmBodyDocumentType";
+import type { FreelancerDocumentType } from "./freelancerDocumentType";
 
 export interface DocumentsConfirmBody {
-  documentType: DocumentsConfirmBodyDocumentType;
+  documentType: FreelancerDocumentType;
   storagePath: string;
   /**
    * Optional freelancer-supplied credential expiry date

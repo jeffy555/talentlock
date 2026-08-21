@@ -20,7 +20,8 @@ Legal & Finance extends surfaces already changed by Teaching and Healthcare: Onb
 | Aadhaar pending / rejected | amber / red — reuse Healthcare tokens |
 | Filter chip active | `bg-slate-800 text-white` | Vault Legal & Finance filter |
 | Checklist required now | `text-red-600` + asterisk | Aadhaar row |
-| After-signup / planned | `text-slate-400` + "After signup" pill | Phase 2 documents |
+| After-signup / planned | `text-slate-400` + "After signup" pill | Phase 2 documents **before** Phase 5 |
+| After-signup / uploadable | existing DocumentUploader row | Phase 2 documents **after** Phase 5 |
 
 Icon: Lucide `Scale` (not a gavel emoji). Avoid court-seal imagery.
 
@@ -135,11 +136,13 @@ Your credentials
 
 Phase 1: only Aadhaar is interactive (re-upload if rejected). Phase 2 rows: muted **"After signup"** pill — **not** disabled upload buttons that 400.
 
+**Phase 5:** each `futureRequired` type becomes a real upload row (status, Upload / Re-upload, optional COP expiry, View). Recommended Phase 3 types stay hidden.
+
 Lookup: `REQUIRED_DOCUMENTS_BY_LEGAL_FINANCE_TYPE[legalFinanceProfessionType]`.
 
 Banner if Aadhaar not verified:
 
-> Complete Aadhaar verification to appear in Talent Vault. Professional certificates are optional until we open uploads on this page.
+> Complete Aadhaar verification to appear in Talent Vault. Professional certificates can be added on this page after signup.
 
 ---
 

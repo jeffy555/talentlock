@@ -44,3 +44,26 @@ export function aadhaarStatusLabel(status: string | null | undefined): string {
       return "Aadhaar not uploaded";
   }
 }
+
+export const HEALTHCARE_CREDENTIAL_DOCUMENT_LABELS: Record<string, string> = {
+  experience_certificate: "Experience letter",
+  mbbs_degree: "MBBS degree",
+  medical_registration_certificate: "Medical council registration",
+  nursing_degree: "Nursing degree",
+  nursing_registration_certificate: "SNRC registration",
+  allied_qualification: "Allied health qualification",
+};
+
+export const HEALTHCARE_CREDENTIAL_DOCUMENT_HINTS: Record<string, string> = {
+  experience_certificate: "Hospital or clinic letter on letterhead with role and dates",
+  mbbs_degree: "MBBS degree certificate (digital copy)",
+  medical_registration_certificate: "SMC / NMR registration certificate",
+  nursing_degree: "B.Sc, GNM, ANM, or post-basic nursing certificate",
+  nursing_registration_certificate: "State nursing council RN/RM certificate",
+  allied_qualification: "Degree or diploma for your allied health discipline",
+};
+
+export const HEALTHCARE_CREDENTIALS_WITH_EXPIRY = new Set([
+  "medical_registration_certificate",
+  "nursing_registration_certificate",
+]);

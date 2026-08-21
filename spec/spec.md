@@ -206,7 +206,7 @@ talentlock/
 │   │   ├── UI.md
 │   │   └── validation.md
 │   │
-│   ├── healthcare-professional-profile/            ← 🔄 In Progress (schema on Neon 2026-08-20; app partially shipped)
+│   ├── healthcare-professional-profile/            ← 🔄 In Progress (Phases 1–4 shipped; Phase 2+ credentials ready to execute)
 │   │   ├── features.md
 │   │   ├── clarify.md
 │   │   ├── plan.md
@@ -222,7 +222,7 @@ talentlock/
 │   │   ├── UI.md
 │   │   └── validation.md
 │   │
-│   ├── legal-finance-professional-profile/         ← 🟡 Ready to Execute
+│   ├── legal-finance-professional-profile/         ← 🔄 In Progress (Phases 1–4 shipped; Phase 5 credentials ready to execute)
 │   │   ├── features.md
 │   │   ├── clarify.md
 │   │   ├── plan.md
@@ -555,8 +555,8 @@ The `.cursor/rules/talentlock.mdc` file at the repo root enforces these rules au
 | Agreement PDF Download | `spec/agreement-pdf-download/` | ✅ Complete |
 | Cruise Mode | `spec/cruisemode/` | ✅ Complete · DM delivery spec in `spec/cruise-mode-dm-delivery/` · rate matching normalized to hourly equivalents (daily ÷ 8) via `rateConversion.ts` · profession-domain lock in `spec/domain-job-visibility/` |
 | Teaching Professional Profile | `spec/teaching-professional-profile/` | ✅ Complete |
-| Healthcare Professional Profile | `spec/healthcare-professional-profile/` | 🔄 In Progress · Phase 1 schema on Neon 2026-08-20 · onboarding/Vault/profile surfaces partially shipped |
-| Legal & Finance Professional Profile | `spec/legal-finance-professional-profile/` | 🔄 In Progress · Aadhaar mandatory at registration; Bar/ICAI/GST/NISM documents after signup (Phase 5) |
+| Healthcare Professional Profile | `spec/healthcare-professional-profile/` | 🔄 In Progress · Phases 1–4 shipped (schema on Neon 2026-08-20) · Phase 2+ credentials (degrees, SMC/SNRC, experience letter, allied qualification, scoped Vault drop) **ready to execute** |
+| Legal & Finance Professional Profile | `spec/legal-finance-professional-profile/` | 🔄 In Progress · Phases 1–4 shipped · Phase 5 Bar/ICAI/ICSI/GST/NISM/COP/experience uploads + scoped Vault drop **ready to execute** |
 | **Domain Job Visibility** | `spec/domain-job-visibility/` | ✅ Complete — freelancer `/jobs` + job detail + express interest + Cruise Mode locked to onboarded `professionCategory` |
 | TalentSearch (Employer Cruise Mode) | `spec/employer-cruisemode/` | ✅ Complete · DM delivery spec in `spec/cruise-mode-dm-delivery/` |
 | **Cruise Mode & TalentSearch DM Delivery** | `spec/cruise-mode-dm-delivery/` | ✅ Complete |

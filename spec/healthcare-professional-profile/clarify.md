@@ -87,7 +87,9 @@
 
 ### Q6 — Phase 2 Document Types in API
 
-**Decision:** Define in `REQUIRED_DOCUMENTS_BY_HEALTHCARE_TYPE` and constants. **Do not** add Phase 2 types to upload API until Phase 5 tasks ship. `aadhaar` already in OpenAPI from onboarding scaffolding.
+**Decision (updated 2026-08-21):** Phase 2+ **does** add types to `DOCUMENT_TYPES` / OpenAPI / upload-confirm. Registration upload remains `aadhaar` only. Phase 2+ files never block `PUT /users/me`.
+
+**Must resolve before:** Phase 5 document upload routes — **resolved in `plan.md` Q6 / Q8.**
 
 ---
 
@@ -96,6 +98,16 @@
 **Question:** How granular should `allied_health` be?
 
 **Recommendation:** Single sub-type for Phase 1; `clinicalSpecialties` + `highestQualification` carry discipline (Physiotherapy, Radiology). Split sub-types (physiotherapist, pharmacist) only if onboarding analytics show volume — defer.
+
+---
+
+### Q8 — Expired medical / nursing registration vs Talent Vault
+
+**Question:** School-teacher Vault exclusion is scoped to expired `teachingLicenceExpiry`. Should physician/nurse profiles drop from Vault when SMC/SNRC registration expires?
+
+**Recommendation:** **Yes, scoped.** Same pattern as school teachers: only `physician` | `registered_nurse` | `nurse_practitioner` with a non-null `registrationExpiry` in the past are excluded. Allied health and care workers are never dropped for registration expiry. Direct `/freelancers/:id` and `/f/:id` stay visible. Missing Phase 2+ uploads do **not** hide from Vault.
+
+**Must resolve before:** Phase 5 Vault filter — **resolved in `plan.md` Q8.**
 
 ---
 
@@ -138,7 +150,8 @@ Adding `healthcare` to `ProfessionCategory` and `aadhaar` to document types requ
 | Q1 | Aadhaar privacy / storage | Schema + API serializers |
 | Q2 | Aadhaar gating strictness | Onboarding + Vault filter |
 | Q3 | `per_shift` enum | OpenAPI + rateFormatUtils |
-| Q6 | Phase 2 doc types in API enum | Document upload routes |
+| Q6 | Phase 2+ doc types in API enum | Document upload routes |
+| Q8 | Expired SMC/SNRC Vault drop | Vault filter (Phase 5) |
 | — | Teaching prerequisite | Task 0 gate |
 
-Q4, Q5, Q7 resolved in `plan.md` / `UI.md`.
+Q4, Q5, Q7 resolved in `plan.md` / `UI.md`. Q6 and Q8 are binding for Phase 2+ (this spec Phase 5).

@@ -226,7 +226,8 @@ Healthcare profile with `hourlyRate: 2500`, `professionCategory: healthcare`:
 ### V3.5 — Profile Credential Checklist
 
 - [ ] Aadhaar row shows required asterisk
-- [ ] Phase 2 documents show "Planned" not broken upload
+- [ ] **Phases 1–4:** Phase 2+ documents show "Planned" not broken upload
+- [ ] **Phase 5:** those rows become real uploads — see V5.2
 
 ### V3.6 — Post Job UI
 
@@ -247,6 +248,47 @@ Employer TalentSearch rules: `professionCategory: healthcare`, `healthcareSubTyp
 
 ---
 
+## Phase 5 Validation — Phase 2+ Credentials
+
+### V5.1 — Upload types accepted
+
+```bash
+# confirm body documentType=mbbs_degree (physician) — 201, status pending
+# documentType=unknown_type — 400
+```
+
+- [ ] All six Phase 2+ types accepted
+- [ ] `aadhaar` / `government_id` / `professional_credential` still accepted
+- [ ] Technology freelancer can still confirm Aadhaar only at registration
+
+### V5.2 — Checklist UI
+
+- [ ] Physician sees Experience, MBBS, Medical council — each has Upload, not “Planned”
+- [ ] Care worker sees Experience letter only among Phase 2+ rows
+- [ ] Recommended types (BLS, indemnity) **not** shown as upload targets
+- [ ] Rejected MBBS allows re-upload; upsert resets expiry alert stage
+
+### V5.3 — Expired registration Vault drop
+
+Seed physician, Aadhaar verified, completeness ≥ 60, `registrationExpiry` yesterday.
+
+```bash
+curl "http://localhost:8080/api/freelancers?professionCategory=healthcare" \
+  -H "Authorization: Bearer <employer_token>"
+```
+
+- [ ] That physician **absent** from Vault
+- [ ] Allied health with past `registrationExpiry` **still present**
+- [ ] `GET /api/freelancers/:id` still 200 for the excluded physician
+- [ ] Renewing `registrationExpiry` to next year restores Vault
+
+### V5.4 — Privacy
+
+- [ ] Employer never sees document images or full council numbers
+- [ ] AI `aiNotes` admin-only
+
+---
+
 ## Security Validation
 
 - [ ] Aadhaar document preview: employer cannot access `/api/storage/` path for another user's Aadhaar
@@ -256,21 +298,20 @@ Employer TalentSearch rules: `professionCategory: healthcare`, `healthcareSubTyp
 
 ---
 
-## Phase 2 Credentials — Deferred Checklist (Future PR)
-
-When `healthcare-credential-verification` ships, re-run:
+## Phase 2+ Credentials — Phase 5 checklist
 
 - [ ] `experience_certificate` upload + AI review
 - [ ] `mbbs_degree` + `medical_registration_certificate` for physicians
 - [ ] `nursing_degree` + `nursing_registration_certificate` for nurses
-- [ ] Registration expiry removes from Vault when mandatory cert expired (mirror teaching licence rule)
-- [ ] Expiry cron advances `registrationAlertStage`
+- [ ] `allied_qualification` for allied health
+- [ ] Registration expiry removes physician/nurse from Vault (V5.3)
+- [ ] Expiry cron still advances document `expiryAlertStage`; profile `registrationAlertStage` resets on expiry change
 
 ---
 
 ## Sign-Off Criteria
 
-Phase 1 (this spec) complete when:
+Phase 1 (profile vertical) complete when:
 
 1. Healthcare professionals can onboard with mandatory Aadhaar
 2. Talent Vault discovery filters by healthcare + specialty
@@ -278,3 +319,5 @@ Phase 1 (this spec) complete when:
 4. Job posts support healthcare + per_shift rates
 5. All typecheck + unit tests pass
 6. Aadhaar privacy rules verified (V2.8)
+
+Phase 2+ (this spec Phase 5) complete when V5.1–V5.4 are ✅.

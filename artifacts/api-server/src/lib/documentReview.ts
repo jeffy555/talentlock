@@ -19,6 +19,7 @@ import { createNotification, NotificationType, userIdFromFreelancerProfileId } f
 import { sendNotificationEmailAsync } from "./emailService";
 import { evaluateTalentSearchForUpdatedProfile } from "./talentSearchEvaluator";
 import { syncAadhaarVerificationStatus } from "./healthcareProfileUtils";
+import { buildDocumentReviewUserPrompt } from "./documentReviewPrompts";
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY_TALENTLOCK });
 const objectStorageService = new ObjectStorageService();
@@ -41,24 +42,13 @@ If you cannot determine authenticity with reasonable confidence, return "needs_r
 Do NOT attempt to extract personal data (name, DOB, ID numbers) from the document.
 Never tell the user that Aadhaar is the wrong document type for aadhaar or government_id uploads.`;
 
-function buildDocumentReviewUserPrompt(documentType: DocumentType): string {
-  const labels: Record<DocumentType, string> = {
-    aadhaar: "Aadhaar Card (required Indian government photo ID)",
-    government_id: "Government ID (Aadhaar, passport, driving licence, or national ID)",
-    professional_credential: "Professional Credential (degree, licence, or certification)",
-  };
-  return `Submitted document type: ${documentType} — ${labels[documentType]}
-
-Assess the attached image against that declared type. Aadhaar is explicitly accepted for "aadhaar" and "government_id".`;
-}
-
-type DbClient = Pick<typeof db, "select" | "update" | "insert">;
-
-interface ReviewVerdict {
+type ReviewVerdict = {
   verdict: DocumentStatus;
   confidence: number;
   notes: string;
-}
+};
+
+type DbClient = Pick<typeof db, "select" | "update" | "insert">;
 
 function parseReviewResponse(content: string | null | undefined): ReviewVerdict {
   const fallback: ReviewVerdict = {

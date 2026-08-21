@@ -372,7 +372,7 @@ export default function Profile() {
     (employerProfileFetchError as { status: number }).status === 404;
   // Always show the employer block for employers (loading / missing / error / data).
   const showEmployerCompanyProfile = isEmployer;
-  const { data: documentsMe } = useGetDocumentsMe({ query: { enabled: isFreelancer } as any });
+  const { data: documentsMe, refetch: refetchDocumentsMe } = useGetDocumentsMe({ query: { enabled: isFreelancer } as any });
 
   const updateFreelancer = useUpdateMyFreelancerProfile();
   const upsertEmployer = useUpsertMyEmployerProfile();
@@ -937,6 +937,8 @@ export default function Profile() {
                 <HealthcareCredentialChecklist
                   healthcareProfessionType={(freelancerProfile as { healthcareProfessionType?: string | null }).healthcareProfessionType as import("@workspace/api-client-react").HealthcareProfessionType | null}
                   aadhaarVerificationStatus={(freelancerProfile as { aadhaarVerificationStatus?: string }).aadhaarVerificationStatus ?? "not_uploaded"}
+                  documents={documentsMe?.documents}
+                  onRefreshDocuments={() => void refetchDocumentsMe()}
                 />
               </>
             )}
@@ -951,6 +953,8 @@ export default function Profile() {
                 <LegalFinanceCredentialChecklist
                   legalFinanceProfessionType={(freelancerProfile as { legalFinanceProfessionType?: string | null }).legalFinanceProfessionType as import("@workspace/api-client-react").LegalFinanceProfessionType | null}
                   aadhaarVerificationStatus={(freelancerProfile as { aadhaarVerificationStatus?: string }).aadhaarVerificationStatus ?? "not_uploaded"}
+                  documents={documentsMe?.documents}
+                  onRefreshDocuments={() => void refetchDocumentsMe()}
                 />
               </>
             )}

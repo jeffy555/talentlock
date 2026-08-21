@@ -2,11 +2,13 @@
 
 ## Summary
 
-Four implementation phases after prerequisite gate: Database → Backend → Frontend → TalentSearch. Phase 5 (after-signup professional document uploads) is a separate spec / later PR.
+Four implementation phases after prerequisite gate: Database → Backend → Frontend → TalentSearch. **Phase 5 (after-signup professional document uploads) is specified in this folder and is ready to execute** after Phases 1–4.
 
 **Prerequisite:** Healthcare Phase 1 on branch (`aadhaarVerificationStatus`, Vault Aadhaar helper, three onboarding cards).
 
 **Credential scope Phase 1:** Reuse platform `aadhaar`. Legal & Finance Vault requires **verified** Aadhaar. Phase 2 document types in constants only; **no upload at registration**.
+
+**Credential scope Phase 5:** Add Phase 2 types to `DOCUMENT_TYPES` + OpenAPI; Profile checklist uploads; AI review; scoped Vault drop on expired advocate/CA/CS `enrolmentExpiry`.
 
 ---
 
@@ -185,7 +187,7 @@ Conditional section when `professionCategory === 'legal_finance'`.
 
 **File:** `artifacts/talentlock/src/components/legal-finance/LegalFinanceCredentialChecklist.tsx`
 
-Phase 1: Aadhaar interactive. Phase 2 rows: muted **"Upload after signup"** / Planned — **no** upload buttons.
+Phase 1: Aadhaar interactive. Phase 2 rows: muted **"After signup — coming soon"** / Planned — **no** upload buttons until Phase 5.
 
 ### Task 3.6 — Talent Vault
 
@@ -229,14 +231,54 @@ Include legal/finance fields when `professionCategory === 'legal_finance'`.
 
 ---
 
-## Phase 5 — After-signup credentials (`legal-finance-credential-verification`)
+## Phase 5 — After-signup credentials
 
-**Out of this task list.** When scheduled:
+**Prerequisite:** Phases 1–4 on `main`. If Healthcare Phase 2+ already added `experience_certificate` to `DOCUMENT_TYPES`, reuse it — do not invent `legal_experience_certificate`.
 
-- Add PHASE2 types to `DOCUMENT_TYPES` + OpenAPI
-- Upload UI on Profile checklist
-- AI review prompts (Bar sanad, ICAI membership, GSTN screenshot, NISM)
-- Optional scoped Vault drop on expired COP (explicit decision; not Phase 1)
+### Task 5.1 — Extend `DOCUMENT_TYPES`
+
+**File:** `artifacts/api-server/src/lib/documentConstants.ts`
+
+Append the Q6 PHASE2 list. Skip any string already present.
+
+### Task 5.2 — OpenAPI + codegen
+
+Extend document-type enums on upload-url, confirm, list-me, admin. Then:
+
+```bash
+pnpm --filter @workspace/api-spec run codegen
+pnpm run typecheck
+```
+
+Post-codegen checks unchanged (`indexFiles: false`, zod index exports).
+
+### Task 5.3 — AI review prompts
+
+**File:** `artifacts/api-server/src/lib/documentReview.ts`
+
+Prompts from `plan.md` Phase 5 table.
+
+### Task 5.4 — Vault drop on expired enrolment (Q9)
+
+**File:** `artifacts/api-server/src/routes/freelancers.ts`
+
+Add the Q9 `not(and(...))` next to school-teacher / healthcare registration exclusions.
+
+### Task 5.5 — Profile checklist uploads
+
+**File:** `artifacts/talentlock/src/components/legal-finance/LegalFinanceCredentialChecklist.tsx`
+
+Replace “After signup — coming soon” with DocumentUploader rows for `futureRequired` types. Pass `useGetDocumentsMe` from Profile. Optional expiry on `certificate_of_practice`. Recommended Phase 3 types stay hidden.
+
+Banner:
+
+> Complete Aadhaar verification to appear in Talent Vault. Bar, ICAI, GST, and NISM documents can be added here — they are not required for Vault visibility.
+
+### Task 5.6 — Tests
+
+- Confirm accepts `bar_enrolment_certificate`; rejects unknown
+- Vault excludes advocate with past `enrolmentExpiry`; includes tax_consultant with past `enrolmentExpiry`
+- Technology registration still Aadhaar-only
 
 ---
 
@@ -245,9 +287,9 @@ Include legal/finance fields when `professionCategory === 'legal_finance'`.
 | Area | Files |
 |---|---|
 | Schema | `freelancerProfiles.ts`, `legalFinanceProfileTypes.ts`, `teachingProfileTypes.ts`, `talentSearch.ts`, `index.ts` |
-| API | `freelancers.ts`, `professionContext.ts`, `talentSearchUtils.ts`, `meetingBriefGenerator.ts`, `openapi.yaml` |
-| Frontend | `Onboarding.tsx`, `Profile.tsx`, `FreelancersList.tsx`, `PostJob.tsx`, `FreelancerDetail.tsx`, `PublicProfile.tsx`, new legal-finance components |
-| Tests | `professionContext.test.ts`, `talentSearchUtils.test.ts` |
+| API | `freelancers.ts`, `documents.ts`, `documentReview.ts`, `documentConstants.ts`, `professionContext.ts`, `talentSearchUtils.ts`, `meetingBriefGenerator.ts`, `openapi.yaml` |
+| Frontend | `Onboarding.tsx`, `Profile.tsx`, `FreelancersList.tsx`, `PostJob.tsx`, `FreelancerDetail.tsx`, `PublicProfile.tsx`, new legal-finance components; Phase 5: `LegalFinanceCredentialChecklist.tsx` |
+| Tests | `professionContext.test.ts`, `talentSearchUtils.test.ts`; Phase 5: document-type + expired-enrolment Vault |
 
 ---
 
@@ -258,3 +300,4 @@ Include legal/finance fields when `professionCategory === 'legal_finance'`.
 - Legal agreement templates
 - `per_assignment` rate type
 - Employer firm-number enforcement
+- Phase 3 recommended types (AIBE, PI, Udyam) in the upload API

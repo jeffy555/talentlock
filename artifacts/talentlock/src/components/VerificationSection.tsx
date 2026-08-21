@@ -94,7 +94,12 @@ function DocumentRow({
   );
   let detail = hint;
   let action: ReactNode = (
-    <DocumentUploader documentType={documentType} onSuccess={onRefresh} label="Upload ↑" />
+    <DocumentUploader
+      documentType={documentType}
+      onSuccess={onRefresh}
+      label="Upload ↑"
+      allowExpiry={documentType === "professional_credential"}
+    />
   );
 
   if (status === "pending") {
@@ -123,6 +128,7 @@ function DocumentRow({
         onSuccess={onRefresh}
         variant="ghost"
         label="Re-upload ↑"
+        allowExpiry={documentType === "professional_credential"}
       />
     );
   } else if (status === "rejected") {
@@ -134,7 +140,7 @@ function DocumentRow({
     );
     detail = doc?.adminNotes || doc?.aiNotes || "Please upload a clearer photo.";
     action = (
-      <DocumentUploader documentType={documentType} onSuccess={onRefresh} label="Re-upload ↑" />
+      <DocumentUploader documentType={documentType} onSuccess={onRefresh} label="Re-upload ↑" allowExpiry={documentType === "professional_credential"} />
     );
   } else if (status === "needs_review") {
     icon = <AlertTriangle className="h-5 w-5 text-amber-600" />;
@@ -154,7 +160,7 @@ function DocumentRow({
     );
     detail = "This credential has expired — upload a renewed document to restore your verified status.";
     action = (
-      <DocumentUploader documentType={documentType} onSuccess={onRefresh} label="Renew ↑" />
+      <DocumentUploader documentType={documentType} onSuccess={onRefresh} label="Renew ↑" allowExpiry={documentType === "professional_credential"} />
     );
   }
 

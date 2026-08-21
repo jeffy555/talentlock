@@ -21,7 +21,8 @@ Healthcare extends four surfaces already changed by the Teaching spec: Onboardin
 | Aadhaar rejected | `bg-red-100 text-red-800` | Re-upload required |
 | Filter chip (active healthcare) | `bg-emerald-600 text-white` | Talent Vault Healthcare filter |
 | Credential checklist required | `text-red-600` + asterisk | Aadhaar row |
-| Credential future | `text-slate-400` + "Planned" pill | Phase 2 documents |
+| Credential future | `text-slate-400` + "Planned" pill | Phase 2+ rows **before** Phase 5 |
+| Credential uploadable | existing DocumentUploader row | Phase 2+ rows **after** Phase 5 |
 
 ---
 
@@ -144,7 +145,11 @@ Your credentials
 ○ Medical council registration            Planned
 ```
 
-Phase 1: only Aadhaar row is interactive. Phase 2 rows show muted "Planned" badge (not broken upload buttons).
+Phase 1: only Aadhaar row is interactive. Phase 2+ rows show muted "Planned" badge (not broken upload buttons).
+
+**Phase 5:** each `futureRequired` type becomes a real upload row (status, Upload / Re-upload, optional expiry on registration certs, View). Recommended Phase 3 types stay hidden. Banner:
+
+> Complete Aadhaar verification to appear in Talent Vault. Degree and council certificates can be added here — they are not required for Vault until we require them in a later spec.
 
 Lookup: `REQUIRED_DOCUMENTS_BY_HEALTHCARE_TYPE[healthcareProfessionType]`.
 

@@ -1523,6 +1523,8 @@ export const UpsertMyEmployerProfileResponse = zod.object({
 });
 
 /**
+ * Paginated job list. Signed-in freelancers are hard-filtered to `job_requirements.professionCategory` matching their onboarded `freelancer_profiles.professionCategory` (technology, education, healthcare, legal_finance). Employers and unauthenticated callers are not domain-scoped. Freelancers cannot override this with query params.
+
  * @summary List job requirements
  */
 export const listJobRequirementsQueryQMax = 100;
@@ -1615,6 +1617,8 @@ export const CreateJobRequirementBody = zod.object({
 });
 
 /**
+ * Signed-in freelancers receive 404 when the job's professionCategory does not match their onboarded profile (same as a missing job).
+
  * @summary Get a job requirement
  */
 export const GetJobRequirementParams = zod.object({
@@ -4856,6 +4860,18 @@ export const PostDocumentsUploadUrlBody = zod.object({
     "aadhaar",
     "government_id",
     "professional_credential",
+    "experience_certificate",
+    "mbbs_degree",
+    "medical_registration_certificate",
+    "nursing_degree",
+    "nursing_registration_certificate",
+    "allied_qualification",
+    "bar_enrolment_certificate",
+    "certificate_of_practice",
+    "icai_membership_certificate",
+    "icsi_membership_certificate",
+    "gst_practitioner_certificate",
+    "sebi_nism_certificate",
   ]),
   mimeType: zod
     .string()
@@ -4876,6 +4892,18 @@ export const PostDocumentsConfirmBody = zod.object({
     "aadhaar",
     "government_id",
     "professional_credential",
+    "experience_certificate",
+    "mbbs_degree",
+    "medical_registration_certificate",
+    "nursing_degree",
+    "nursing_registration_certificate",
+    "allied_qualification",
+    "bar_enrolment_certificate",
+    "certificate_of_practice",
+    "icai_membership_certificate",
+    "icsi_membership_certificate",
+    "gst_practitioner_certificate",
+    "sebi_nism_certificate",
   ]),
   storagePath: zod.string(),
   expiryDate: zod.coerce
@@ -4892,6 +4920,18 @@ export const PatchDocumentExpiryParams = zod.object({
     "aadhaar",
     "government_id",
     "professional_credential",
+    "experience_certificate",
+    "mbbs_degree",
+    "medical_registration_certificate",
+    "nursing_degree",
+    "nursing_registration_certificate",
+    "allied_qualification",
+    "bar_enrolment_certificate",
+    "certificate_of_practice",
+    "icai_membership_certificate",
+    "icsi_membership_certificate",
+    "gst_practitioner_certificate",
+    "sebi_nism_certificate",
   ]),
 });
 

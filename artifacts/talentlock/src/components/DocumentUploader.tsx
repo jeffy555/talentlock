@@ -36,6 +36,7 @@ export interface DocumentUploaderProps {
   disabled?: boolean;
   variant?: "outline" | "ghost";
   label?: string;
+  allowExpiry?: boolean;
 }
 
 function uploadWithProgress(
@@ -70,6 +71,7 @@ export default function DocumentUploader({
   disabled = false,
   variant = "outline",
   label = "Upload ↑",
+  allowExpiry = false,
 }: DocumentUploaderProps) {
   const fileRef = useRef<HTMLInputElement>(null);
   const uploadUrlMutation = usePostDocumentsUploadUrl();
@@ -185,7 +187,7 @@ export default function DocumentUploader({
 
   return (
     <>
-      {documentType === "professional_credential" && (
+      {allowExpiry && (
         <div className="space-y-1 mb-2">
           <Label htmlFor={`expiry-${documentType}`} className="text-xs text-muted-foreground">
             Expiry date (optional)

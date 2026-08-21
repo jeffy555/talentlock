@@ -222,6 +222,40 @@ router.get("/freelancers", async (req, res) => {
       )!,
     );
 
+    // Healthcare Phase 2+ (Q8): physician/nurse expired registrationExpiry only.
+    // Allied/care_worker never dropped; missing Phase 2+ uploads never dropped.
+    conditions.push(
+      not(
+        and(
+          eq(freelancerProfilesTable.professionCategory, "healthcare"),
+          inArray(freelancerProfilesTable.healthcareProfessionType, [
+            "physician",
+            "registered_nurse",
+            "nurse_practitioner",
+          ]),
+          isNotNull(freelancerProfilesTable.registrationExpiry),
+          lt(freelancerProfilesTable.registrationExpiry, new Date()),
+        )!,
+      )!,
+    );
+
+    // Legal & Finance Phase 5 (Q9): advocate/CA/CS expired enrolmentExpiry only.
+    // Tax/advisor never dropped; missing Phase 2 uploads never dropped.
+    conditions.push(
+      not(
+        and(
+          eq(freelancerProfilesTable.professionCategory, "legal_finance"),
+          inArray(freelancerProfilesTable.legalFinanceProfessionType, [
+            "advocate",
+            "chartered_accountant",
+            "company_secretary",
+          ]),
+          isNotNull(freelancerProfilesTable.enrolmentExpiry),
+          lt(freelancerProfilesTable.enrolmentExpiry, new Date()),
+        )!,
+      )!,
+    );
+
     // Healthcare and Legal & Finance professionals require verified Aadhaar for Talent Vault.
     conditions.push(
       or(

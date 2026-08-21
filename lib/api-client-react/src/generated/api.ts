@@ -84,6 +84,7 @@ import type {
   ErrorEnvelope,
   ExchangeRates,
   ExpressInterestBody,
+  FreelancerDocumentType,
   FreelancerProfile,
   FreelancerProfileDetail,
   FreelancerReviewsResult,
@@ -1877,6 +1878,8 @@ export const useUpsertMyEmployerProfile = <
 };
 
 /**
+ * Paginated job list. Signed-in freelancers are hard-filtered to `job_requirements.professionCategory` matching their onboarded `freelancer_profiles.professionCategory` (technology, education, healthcare, legal_finance). Employers and unauthenticated callers are not domain-scoped. Freelancers cannot override this with query params.
+
  * @summary List job requirements
  */
 export const getListJobRequirementsUrl = (
@@ -2067,6 +2070,8 @@ export const useCreateJobRequirement = <
 };
 
 /**
+ * Signed-in freelancers receive 404 when the job's professionCategory does not match their onboarded profile (same as a missing job).
+
  * @summary Get a job requirement
  */
 export const getGetJobRequirementUrl = (id: number) => {
@@ -9549,13 +9554,13 @@ export const usePostDocumentsConfirm = <
  * @summary Set or clear the expiry date on an existing document without re-uploading
  */
 export const getPatchDocumentExpiryUrl = (
-  documentType: "aadhaar" | "government_id" | "professional_credential",
+  documentType: FreelancerDocumentType,
 ) => {
   return `/api/documents/${documentType}/expiry`;
 };
 
 export const patchDocumentExpiry = async (
-  documentType: "aadhaar" | "government_id" | "professional_credential",
+  documentType: FreelancerDocumentType,
   patchDocumentExpiryBody: PatchDocumentExpiryBody,
   options?: RequestInit,
 ): Promise<PatchDocumentExpiryResponse> => {
@@ -9578,7 +9583,7 @@ export const getPatchDocumentExpiryMutationOptions = <
     Awaited<ReturnType<typeof patchDocumentExpiry>>,
     TError,
     {
-      documentType: "aadhaar" | "government_id" | "professional_credential";
+      documentType: FreelancerDocumentType;
       data: BodyType<PatchDocumentExpiryBody>;
     },
     TContext
@@ -9588,7 +9593,7 @@ export const getPatchDocumentExpiryMutationOptions = <
   Awaited<ReturnType<typeof patchDocumentExpiry>>,
   TError,
   {
-    documentType: "aadhaar" | "government_id" | "professional_credential";
+    documentType: FreelancerDocumentType;
     data: BodyType<PatchDocumentExpiryBody>;
   },
   TContext
@@ -9605,7 +9610,7 @@ export const getPatchDocumentExpiryMutationOptions = <
   const mutationFn: MutationFunction<
     Awaited<ReturnType<typeof patchDocumentExpiry>>,
     {
-      documentType: "aadhaar" | "government_id" | "professional_credential";
+      documentType: FreelancerDocumentType;
       data: BodyType<PatchDocumentExpiryBody>;
     }
   > = (props) => {
@@ -9634,7 +9639,7 @@ export const usePatchDocumentExpiry = <
     Awaited<ReturnType<typeof patchDocumentExpiry>>,
     TError,
     {
-      documentType: "aadhaar" | "government_id" | "professional_credential";
+      documentType: FreelancerDocumentType;
       data: BodyType<PatchDocumentExpiryBody>;
     },
     TContext
@@ -9644,7 +9649,7 @@ export const usePatchDocumentExpiry = <
   Awaited<ReturnType<typeof patchDocumentExpiry>>,
   TError,
   {
-    documentType: "aadhaar" | "government_id" | "professional_credential";
+    documentType: FreelancerDocumentType;
     data: BodyType<PatchDocumentExpiryBody>;
   },
   TContext

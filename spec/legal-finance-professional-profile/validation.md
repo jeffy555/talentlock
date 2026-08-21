@@ -96,7 +96,7 @@ pnpm --filter @workspace/api-server test -- professionContext
 - [ ] `technology` still `""`
 - [ ] education / healthcare strings unchanged
 
-### V2.5 — Documents confirm still Aadhaar-only for Phase 1
+### V2.5 — Documents confirm still Aadhaar-only for Phases 1–4
 
 ```bash
 curl -X POST http://localhost:8080/api/documents/confirm \
@@ -105,8 +105,9 @@ curl -X POST http://localhost:8080/api/documents/confirm \
   -d '{"documentType":"bar_enrolment_certificate"}'
 ```
 
-- [ ] 400 / validation error until Phase 5
+- [ ] **Phases 1–4:** 400 / validation error for `bar_enrolment_certificate`
 - [ ] `aadhaar` confirm still succeeds
+- [ ] **Phase 5:** same confirm returns 201 — see V5.1
 
 ### V2.6 — OpenAPI codegen
 
@@ -129,7 +130,8 @@ curl -X POST http://localhost:8080/api/documents/confirm \
 ### V3.2 — Profile checklist
 
 - [ ] Aadhaar row interactive
-- [ ] Phase 2 rows show “After signup” — no working upload control
+- [ ] **Phases 1–4:** Phase 2 rows show “After signup” — no working upload control
+- [ ] **Phase 5:** those rows become real uploads — see V5.2
 - [ ] Enrolment number masked on reload
 
 ### V3.3 — Vault
@@ -170,6 +172,64 @@ pnpm --filter @workspace/api-server test -- talentSearchUtils
 
 ---
 
+## Phase 5 Validation — After-signup credentials
+
+### V5.1 — Upload types accepted
+
+```bash
+# confirm body documentType=bar_enrolment_certificate (advocate) — 201, status pending
+# documentType=unknown_type — 400
+```
+
+- [ ] All seven Phase 2 types accepted: `experience_certificate`, `bar_enrolment_certificate`, `certificate_of_practice`, `icai_membership_certificate`, `icsi_membership_certificate`, `gst_practitioner_certificate`, `sebi_nism_certificate`
+- [ ] `aadhaar` / `government_id` / `professional_credential` still accepted
+- [ ] If Healthcare Phase 2+ already added `experience_certificate`, confirm still upserts **one** row per freelancer (UNIQUE `freelancerId, documentType`)
+- [ ] Technology freelancer can still confirm Aadhaar only at registration
+- [ ] Phase 3 types (`aibe_certificate`, `professional_indemnity_insurance`, `udyin_msme`) still 400
+
+### V5.2 — Checklist UI
+
+- [ ] Advocate sees Bar enrolment, Certificate of Practice, Experience letter — each has Upload, not “After signup”
+- [ ] Tax consultant sees GST practitioner + Experience letter among Phase 2 rows
+- [ ] Financial adviser sees SEBI/NISM + Experience letter
+- [ ] Recommended types (AIBE, PI, Udyam) **not** shown as upload targets
+- [ ] Optional expiry on `certificate_of_practice`; rejected Bar enrolment allows re-upload; upsert resets expiry alert stage
+
+### V5.3 — Expired enrolment Vault drop (Q9)
+
+Seed advocate, Aadhaar verified, completeness ≥ 60, `enrolmentExpiry` yesterday.
+
+```bash
+curl "http://localhost:8080/api/freelancers?professionCategory=legal_finance" \
+  -H "Authorization: Bearer <employer_token>"
+```
+
+- [ ] That advocate **absent** from Vault
+- [ ] Chartered accountant / company secretary with past `enrolmentExpiry` also **absent**
+- [ ] Tax consultant / financial adviser with past `enrolmentExpiry` **still present**
+- [ ] `GET /api/freelancers/:id` still 200 for the excluded advocate
+- [ ] Renewing `enrolmentExpiry` to next year restores Vault
+- [ ] Missing Phase 2 uploads never hide a verified-Aadhaar legal/finance profile
+
+### V5.4 — Privacy
+
+- [ ] Employer never sees document images or full enrolment numbers
+- [ ] AI `aiNotes` admin-only
+
+---
+
+## Phase 5 checklist
+
+- [ ] Shared `experience_certificate` upload + AI review
+- [ ] Advocate: Bar enrolment + Certificate of Practice
+- [ ] CA / CS: ICAI / ICSI membership + Certificate of Practice
+- [ ] Tax: GST practitioner certificate
+- [ ] Adviser: SEBI/NISM certificate
+- [ ] Enrolment expiry removes advocate/CA/CS from Vault (V5.3)
+- [ ] Expiry cron still advances document `expiryAlertStage`; profile `enrolmentAlertStage` resets when `enrolmentExpiry` changes
+
+---
+
 ## Security
 
 - [ ] Employer APIs never return `aadhaarLastFour` or full `enrolmentNumber`
@@ -186,7 +246,8 @@ pnpm --filter @workspace/api-server test -- talentSearchUtils
 - [ ] Healthcare Vault Aadhaar gate still applies
 - [ ] Education DBS / licence behaviour unchanged
 - [ ] Completeness score formula unchanged
-- [ ] School-teacher expired-licence Vault exclusion **not** applied to `enrolmentExpiry` in Phase 1
+- [ ] School-teacher expired-licence Vault exclusion **not** applied to `enrolmentExpiry` in Phases 1–4
+- [ ] Phase 5 Q9 drop applies only to `advocate` / `chartered_accountant` / `company_secretary` — never tax/advisor, never generic `professional_credential`
 
 ---
 
@@ -199,7 +260,8 @@ pnpm --filter @workspace/api-server test -- talentSearchUtils
 | 2 Backend | | | ⬜ |
 | 3 Frontend | | | ⬜ |
 | 4 TalentSearch | | | ⬜ |
+| 5 After-signup credentials | | | ⬜ |
 | Security | | | ⬜ |
 | Regression | | | ⬜ |
 
-Feature is not complete until every box is ✅. Phase 5 after-signup uploads are **out of this sign-off**.
+Feature is not complete until every box is ✅. Phase 5 (V5.1–V5.4) is **in this sign-off**.

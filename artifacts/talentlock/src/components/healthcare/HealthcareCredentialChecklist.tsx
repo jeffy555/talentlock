@@ -1,25 +1,57 @@
 import { CheckCircle2, Circle, Clock } from "lucide-react";
-import type { HealthcareProfessionType, AadhaarVerificationStatus } from "@workspace/api-client-react";
-import { aadhaarStatusLabel } from "@/lib/healthcareDisplayUtils";
+import type {
+  DocumentMeItem,
+  DocumentType,
+  HealthcareProfessionType,
+  AadhaarVerificationStatus,
+} from "@workspace/api-client-react";
 
-const PHASE2_DOCS: Record<HealthcareProfessionType, string[]> = {
-  physician: ["Experience letter", "MBBS degree", "Medical council registration"],
-  registered_nurse: ["Experience letter", "Nursing degree", "SNRC registration"],
-  nurse_practitioner: ["Experience letter", "Nursing degree", "SNRC registration"],
-  allied_health: ["Experience letter", "Allied health qualification"],
-  care_worker: ["Experience letter"],
+import { CredentialDocumentRow } from "@/components/CredentialDocumentRow";
+import {
+  aadhaarStatusLabel,
+  HEALTHCARE_CREDENTIAL_DOCUMENT_HINTS,
+  HEALTHCARE_CREDENTIAL_DOCUMENT_LABELS,
+  HEALTHCARE_CREDENTIALS_WITH_EXPIRY,
+} from "@/lib/healthcareDisplayUtils";
+
+const FUTURE_REQUIRED_BY_TYPE: Record<HealthcareProfessionType, DocumentType[]> = {
+  physician: [
+    "mbbs_degree",
+    "medical_registration_certificate",
+    "experience_certificate",
+  ],
+  registered_nurse: [
+    "nursing_registration_certificate",
+    "nursing_degree",
+    "experience_certificate",
+  ],
+  nurse_practitioner: [
+    "nursing_registration_certificate",
+    "nursing_degree",
+    "experience_certificate",
+  ],
+  allied_health: ["allied_qualification", "experience_certificate"],
+  care_worker: ["experience_certificate"],
 };
 
 interface HealthcareCredentialChecklistProps {
   healthcareProfessionType: HealthcareProfessionType | null;
   aadhaarVerificationStatus: AadhaarVerificationStatus | string;
+  documents?: DocumentMeItem[];
+  onRefreshDocuments?: () => void;
 }
 
 export function HealthcareCredentialChecklist({
   healthcareProfessionType,
   aadhaarVerificationStatus,
+  documents = [],
+  onRefreshDocuments,
 }: HealthcareCredentialChecklistProps) {
-  const futureDocs = healthcareProfessionType ? PHASE2_DOCS[healthcareProfessionType] : [];
+  const docMap = new Map(documents.map((d) => [d.documentType, d]));
+  const futureTypes = healthcareProfessionType
+    ? FUTURE_REQUIRED_BY_TYPE[healthcareProfessionType]
+    : [];
+  const onRefresh = onRefreshDocuments ?? (() => {});
 
   return (
     <div className="rounded-lg border border-emerald-200 bg-emerald-50/40 p-4 space-y-3">
@@ -33,22 +65,31 @@ export function HealthcareCredentialChecklist({
           <Circle className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
         )}
         <div>
-          <p className="font-medium">Aadhaar</p>
+          <p className="font-medium">
+            Aadhaar <span className="text-red-600">*</span>
+          </p>
           <p className="text-xs text-muted-foreground">{aadhaarStatusLabel(aadhaarVerificationStatus)}</p>
+          <p className="text-xs text-muted-foreground mt-1">
+            Upload Aadhaar in Identity Verification below.
+          </p>
         </div>
       </div>
-      {futureDocs.map((label) => (
-        <div key={label} className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Circle className="h-4 w-4 shrink-0" />
-          <span>{label}</span>
-          <span className="text-[10px] uppercase tracking-wide font-medium text-slate-400">Planned</span>
-        </div>
+
+      {futureTypes.map((documentType) => (
+        <CredentialDocumentRow
+          key={documentType}
+          documentType={documentType}
+          label={HEALTHCARE_CREDENTIAL_DOCUMENT_LABELS[documentType] ?? documentType}
+          hint={HEALTHCARE_CREDENTIAL_DOCUMENT_HINTS[documentType] ?? "Upload a clear scan or PDF"}
+          doc={docMap.get(documentType)}
+          onRefresh={onRefresh}
+          allowExpiry={HEALTHCARE_CREDENTIALS_WITH_EXPIRY.has(documentType)}
+        />
       ))}
-      {aadhaarVerificationStatus !== "verified" && (
-        <p className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded px-2 py-1.5">
-          Verified Aadhaar is required to appear in Talent Vault for healthcare profiles.
-        </p>
-      )}
+
+      <p className="text-xs text-emerald-900/80 bg-emerald-50 border border-emerald-100 rounded px-2 py-1.5">
+        Complete Aadhaar verification to appear in Talent Vault. Degree and council certificates can be added here — they are not required for Vault visibility. Set registration expiry on your profile if your council licence expires.
+      </p>
     </div>
   );
 }
