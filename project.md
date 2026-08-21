@@ -25,7 +25,7 @@ The Vite dev server has a proxy rule that forwards `/api` calls to `localhost:80
 | Table | Purpose |
 |-------|---------|
 | `users` | Core accounts (linked to Clerk IDs). Has `signatureImageUrl`, `emailNotificationsEnabled`, `phone` (E.164 contact phone with country dial, nullable until set — required for new onboarding and prompted for existing users), `countryCode`, `stateCode`, `currencyCode`, `onboardingRole`, `onboardingStep` columns. |
-| `freelancer_profiles` | Freelancer professional info, skills, rate, availability. Has `averageRating`, `reviewCount`, `nextAvailableDate`, `completenessScore`, `countryCode`, `currencyCode`, `talentSearchNotificationsToday`, `talentSearchNotificationsResetAt`, `teachingLicenceAlertStage`, and education-profile columns. |
+| `freelancer_profiles` | Freelancer professional info, skills, rate, availability. Has `averageRating`, `reviewCount`, `nextAvailableDate`, `completenessScore`, `countryCode`, `currencyCode`, `talentSearchNotificationsToday`, `talentSearchNotificationsResetAt`, `teachingLicenceAlertStage`, education-profile columns, and healthcare-profile columns (`healthcareProfessionType`, clinical specialties/settings, registration + Aadhaar status fields, `preferredCareMode`). |
 | `employer_profiles` | Employer company info. Has `verificationLevel`, `isVerified` (recalculated from `employer_documents`). |
 | `job_requirements` | Job postings by employers. Has `professionCategory`, `rateType`. |
 | `bookings` | Exclusive engagements. Has negotiation columns: `proposedRate`, `lastProposedBy`, `negotiationStatus`, optional employer `message`; frozen `currencyCode` + `exchangeRateAtCreation` snapshot; post-engagement debrief cache: `debriefContent` (jsonb — dual employer/freelancer slices), `debriefGeneratedAt`, `debriefRegeneratedAt`. |
@@ -79,6 +79,14 @@ UI is binary **Next round vs Final** (Final forks to proceed / do not hire). **H
 `job_requirements` gains `professionCategory` (text, NOT NULL DEFAULT 'technology') and `rateType` (text, NOT NULL DEFAULT 'hourly').
 
 All existing rows backfilled to `'technology'` / `'hourly'` via column default — zero behaviour change for existing data.
+
+### Healthcare Professional Profile additions (additive, non-breaking)
+
+`professionCategory` extended with `'healthcare'` (column already existed from Teaching). `rateType` gains `'per_shift'` for healthcare jobs (OpenAPI + UI; DB remains text).
+
+`freelancer_profiles` gains nullable healthcare fields (Neon applied 2026-08-20): `healthcareProfessionType`, `clinicalSpecialties`, `clinicalSettings`, `yearsClinicalExperience`, `highestQualification`, `qualificationSpecialization`, `qualificationInstitution`, `registrationCouncil`, `registrationNumber`, `registrationExpiry`, `registrationAlertStage` (NOT NULL DEFAULT `'none'`), `aadhaarVerificationStatus` (NOT NULL DEFAULT `'not_uploaded'`), `aadhaarLastFour`, `preferredCareMode`. Types/enums in `lib/db/src/schema/healthcareProfileTypes.ts`.
+
+Platform Aadhaar upload remains gated by onboarding scaffolding — healthcare inherits it and may require **verified** Aadhaar for Vault visibility (see `spec/healthcare-professional-profile/`).
 
 ### Credential Expiry Tracking additions (additive, non-breaking)
 
@@ -372,8 +380,9 @@ POST /api/admin/logout                            Admin: logout
 32. **Auth Hardening (Access Control)** — Per-resource authorization on 11 routes + storage ACL via `accessControl.ts`; server-side agreement signing role; namespaced upload paths; IDOR protection (401/403/404 convention)
 33. **Agreement AI Summary** — Freelancer-only "✦ Summarise for me" button on `/agreements/:id`; AI produces 6-section plain-English summary (what you do, payment, IP, termination, restrictions, key dates) + up to 3 attention flags; disclaimer always first; cached on agreements table (`freelancerSummary`, `freelancerSummaryScoredAt`); invalidated on redline accept alongside health score; `agreement_summary` token label; 403 for employers
 34. **Agreement PDF Download** — `GET /api/agreements/:id/download` returns a professionally formatted PDF for fully signed agreements; rendered via `@react-pdf/renderer` with both signature images (or cursive typed names), signing timestamps, metadata block, and TalentLock footer; cached in GCS after first generation; available to both parties on all plans; GDPR deletion removes cached PDFs
-35. **Cruise Mode** — `freelancer_pro` feature; freelancer defines rules (skills, rate range, exclusions, blackout windows) via form or free-form text/file; AI evaluates every new job post against the rules and sends a personalised interest **DM** to the employer on the freelancer's behalf when score ≥ threshold (`spec/cruise-mode-dm-delivery/`); two-stage filter (pre-filter + AI evaluation); dry run mode; daily digest option; activity feed with match scores and sent messages; monthly quota of 10 messages; employer sees a "Cruise Mode ✦" badge; `cruise_mode_evaluation` token label. **Rate matching is normalized to hourly**: daily freelancer/job/rule values are converted using `8h/day` before matching and prompting.
+35. **Cruise Mode** — `freelancer_pro` feature; freelancer defines rules (skills, rate range, exclusions, blackout windows) via form or free-form text/file; AI evaluates every new job post against the rules and sends a personalised interest **DM** to the employer on the freelancer's behalf when score ≥ threshold (`spec/cruise-mode-dm-delivery/`); two-stage filter (pre-filter + AI evaluation); dry run mode; daily digest option; activity feed with match scores and sent messages; monthly quota of 10 messages; employer sees a "Cruise Mode ✦" badge; `cruise_mode_evaluation` token label. **Rate matching is normalized to hourly**: daily freelancer/job/rule values are converted using `8h/day` before matching and prompting. Shared helpers: `artifacts/api-server/src/lib/rateConversion.ts`, `artifacts/talentlock/src/lib/rateConversion.ts`. Freelancer profiles prefer **daily** as the primary entered rate (`paymentPreference` default `daily`) with paired hourly derived via ÷8.
 36. **Teaching Professional Profile** — `professionCategory` (`technology`|`education`, NOT NULL DEFAULT `technology`) on `freelancer_profiles` and `job_requirements`; `rateType` (`hourly`|`per_day`|`per_session`|`per_course`, NOT NULL DEFAULT `hourly`) on `job_requirements`; 12 nullable education fields on `freelancer_profiles` for `educationProfessionType` (`school_teacher`|`university_lecturer`|`tutor`|`researcher`); onboarding gains a conditional profession-category step for freelancers (employers unaffected); Talent Vault gains `professionCategory`/`teachingSubject` filters; AI matching prompt gains profession-context injection that is byte-identical (empty string) for technology jobs; `formatRate()`/`rateUnitLabel()` utility centralises rate unit display. Freelancer onboarding preserves `paymentPreference` but now persists both `hourlyRate` and `dailyRate` using `8h/day` normalization.
+36b. **Healthcare Professional Profile** — `professionCategory: 'healthcare'`; sub-types `physician` \| `registered_nurse` \| `nurse_practitioner` \| `allied_health` \| `care_worker`; clinical profile fields + registration/Aadhaar status on `freelancer_profiles`; job `rateType: 'per_shift'`; Vault/AI/TalentSearch healthcare context; India-first councils Phase 1. Spec: `spec/healthcare-professional-profile/` (🔄 In progress — schema on Neon 2026-08-20; app surfaces partially shipped).
 37. **TalentSearch (Employer Cruise Mode)** — mirror of Cruise Mode for employers; fires on `PATCH /api/freelancers/me`, `POST /api/freelancers`, and document verification when `completenessScore >= 60`; employer sets profession/skill/rate/location/required-document rules; AI evaluates freelancer profile fit 0–100; sends personalised **DM** with "TalentSearch ✦" badge to freelancer when score >= threshold (`spec/cruise-mode-dm-delivery/`); 30-day duplicate prevention per `(employerId, freelancerId)` for `sent` decisions; activity feed logs `prefilter_rejected`, `duplicate_skipped`, and `ai_parse_failed`; freelancer daily cap (3 notifications/day); 6h/day budget; activate backfill for existing profiles; `talent_search_evaluation` token label; employer-only `/talent-search` page with teal accent
 38. **AI Meeting Brief Generator** — fires fire-and-forget when meeting `status → confirmed`; generates 5-section brief for employer: candidate snapshot, why they match, suggested questions, rate context, watch points; cached as `briefContent` jsonb on `meetings` table; manual regeneration via `POST /api/meetings/:id/brief` (202 Accepted); employer-only — freelancers never see it; plan-gated questions (Growth+ only in UI, always generated server-side); `meeting_brief` token label charged to employer; amber accent UI card on meeting detail page. Discovery invites retain a short in-app notification and email the scheduled UTC time, meeting link, and accept/decline CTA.
 39. **Discovery Meeting Outcome** — after meeting `status → completed`, employer submits **internal** notes + `disposition` (`next_round` \| `proceed_to_booking` \| `rejected`). UI: **Next round vs Final**. Next round → hybrid team-member/email handoff + **AI-1** `feedbackSummary` (`interview_handoff_summary` tokens). Final → upsert employer **candidate hiring file** (F2); proceed unlocks Book; reject stores only. **Never** candidate-facing. Spec: `spec/discovery-meeting-outcome/` (✅ Complete — locked 2026-08-01). Distinct from AI Meeting Brief and Reviews.
@@ -382,10 +391,11 @@ POST /api/admin/logout                            Admin: logout
 42. **Credential Expiry Tracking** — daily scan (`POST /api/cron/credential-expiry`, machine-only, `x-cron-secret` header) tracks `documents.expiryDate` and `freelancer_profiles.teachingLicenceExpiry`; alert schedule 90d → 30d → 7d → expiry; `expiryAlertStage` prevents duplicate alerts; Vault exclusion scoped only to expired school-teacher teaching licences; all plans, no token consumption
 43. **Freelancer Watchlist** — employer personal talent pipeline built on `saved_freelancers`; dedicated Watchlist tab on `/freelancers` (non-enterprise); private notes per entry; in-app `WATCHLIST_UPDATE` notifications when a watched freelancer becomes available or changes rate ≥ 5% (debounced 24 h); plan limits (starter 25 / growth 100); active enterprise team members use `team_shortlist` instead
 44. **Post-Engagement AI Debrief** — fires fire-and-forget when booking `status → completed`; dual role-specific debrief cached as `debriefContent` jsonb on `bookings`; each party reads their slice via `GET /api/bookings/:id/debrief`; manual regeneration via `POST /api/bookings/:id/debrief` (202, 24h cooldown); `booking_debrief` token label charged to employer; violet/indigo `DebriefCard` on `/bookings/:id`
-45. **Multi-Currency & Location** — country-derived currency on `users` and denormalised on `freelancer_profiles`; booking `currencyCode` frozen at creation with `exchangeRateAtCreation` snapshot; `GET /api/countries` + `GET /api/exchange-rates`; onboarding `location` step; Talent Vault dual-currency display and country/currency filters; agreement rate clause uses booking currency
+45. **Multi-Currency & Location** — country-derived currency on `users` and denormalised on `freelancer_profiles`; booking `currencyCode` frozen at creation with `exchangeRateAtCreation` snapshot; `GET /api/countries` + `GET /api/exchange-rates`; onboarding `location` step; Talent Vault dual-currency display and country/currency filters; agreement rate clause uses booking currency. **Does not localize `/pricing` subscription amounts** — that is Localized Plan Pricing.
 46. **Employer Uploaded Agreement** — employers can upload PDF/DOCX/TXT agreements via presigned upload; AI employer-facing summary; amendment points; AI enrich with booking dates/rate; finalize runs contract health review; employer signs via existing e-sign flow (`agreements.source`, `uploadStage`, `employerSummary`, `amendments`); `agreement_upload_summary` and `agreement_upload_enrich` token labels
 47. **Job Timeline Validation** — job end dates must be on or after start dates; both the posting form and create API reject invalid timelines.
 48. **Engagement Lists (Search / Filter / Pagination)** — Shared list chrome (`pageSize: 10`, Showing X–Y of Z, server-side `q` + status/decision filters) on `/meetings`, `/bookings`, `/agreements`, `/jobs`, Messages inbox, TalentSearch activity (employer), and Cruise Mode activity (freelancer). Spec: `spec/engagement-lists/` (✅ Complete). Never client-filter a single page. Jobs list API is paginated `{ data, total, page, pageSize, totalPages }`.
+49. **Localized Plan Pricing (USD / EUR / INR)** — fixed regional price book for TalentLock subscription cards (`/pricing`); display bucket from `users.currencyCode` (`INR`→INR, `EUR`→EUR, else USD); **not** live FX; Stripe still deferred. Spec: `spec/localized-plan-pricing/` (✅ Complete).
 
 ### Dashboard analytics panels
 
@@ -522,6 +532,16 @@ Shared server utilities: `artifacts/api-server/src/lib/earningsUtils.ts` (`getLa
 - Agreement `content` field must NEVER be passed to the debrief prompt
 - Plan gating for employer sections 3–5 is UI-only — server always generates full employer debrief
 
+### Cursor notes — Healthcare Professional Profile
+
+- Spec home: `spec/healthcare-professional-profile/` (🔄 In progress — healthcare columns on Neon 2026-08-20)
+- Healthcare columns are additive on `freelancer_profiles` — never drop education columns
+- Reuse `location` and platform Aadhaar (`documents.documentType = 'aadhaar'`) — do not invent a second Aadhaar upload path
+- Mask `registrationNumber` for employer-facing APIs; never return full Aadhaar — `aadhaarLastFour` only when needed
+- `buildProfessionContext()` injects healthcare matching text only when `professionCategory === 'healthcare'`; technology jobs stay empty-string context
+- Job posting default rate unit for healthcare: `per_shift`
+- Types live in `lib/db/src/schema/healthcareProfileTypes.ts`
+
 ### Cursor notes — Multi-Currency & Location
 
 - `users.countryCode` + `users.currencyCode` are set during onboarding `location` step or via `PATCH /api/users/me/location`
@@ -529,6 +549,18 @@ Shared server utilities: `artifacts/api-server/src/lib/earningsUtils.ts` (`getLa
 - `bookings.currencyCode` is frozen at creation; `exchangeRateAtCreation` snapshot is stored for spend analytics conversion
 - `GET /api/exchange-rates` reads from `exchange_rate_cache` table — never call external FX API from route handlers directly
 - Agreement generation and enrichment must use booking currency, not hardcoded USD
+- Subscription `/pricing` amounts are **not** governed here — see Localized Plan Pricing
+
+### Cursor notes — Localized Plan Pricing
+
+- Spec home: `spec/localized-plan-pricing/` (✅ Complete)
+- Price book: `artifacts/api-server/src/lib/planPrices.ts`; display helpers: `artifacts/talentlock/src/lib/planPriceFormat.ts`
+- `GET /api/subscriptions/plans?currency=USD|EUR|INR` — invalid currency → **400**; omit → user bucket → USD
+- Fixed price book USD / EUR / INR — **do not** convert plan prices with `exchange_rate_cache`
+- Bucket: `INR`→INR, `EUR`→EUR, all other `currencyCode` values → USD book in Phase 1
+- `Pricing.tsx` uses API `displayCurrency` + `formatPlanPrice()`; switcher in `sessionStorage` (`tl_pricing_currency`) only
+- Stripe Price IDs out of scope until paid launch
+- Respect `PREMIUM_FEATURES_FREE` (zero Growth/Pro in every display currency while flag is on)
 
 ### Cursor notes — Employer Uploaded Agreement
 
@@ -626,6 +658,8 @@ Shared server utilities: `artifacts/api-server/src/lib/earningsUtils.ts` (`getLa
 | `artifacts/api-server/src/routes/countries.ts` | `GET /api/countries` — country list with default currencies |
 | `artifacts/api-server/src/routes/exchangeRates.ts` | `GET /api/exchange-rates` — cached FX rates |
 | `artifacts/api-server/src/lib/locationSync.ts` | `syncFreelancerLocationFromUser()` — denormalise location/currency to freelancer profile |
+| `artifacts/api-server/src/lib/planPrices.ts` | Fixed USD/EUR/INR subscription price book; `planDisplayCurrency()`, `resolvePlanPrice()` |
+| `artifacts/talentlock/src/lib/planPriceFormat.ts` | `formatPlanPrice()`, pricing currency sessionStorage helpers for `/pricing` |
 | `scripts/src/reset-platform.ts` | Destructive platform reset — truncate all tables, optionally delete Clerk users, optional seed |
 
 ---
@@ -648,17 +682,21 @@ pnpm --filter @workspace/talentlock run dev
 
 ---
 
-## Subscription Plans (defined in `artifacts/api-server/src/lib/plans.ts`)
+## Subscription Plans (defined in `artifacts/api-server/src/lib/plans.ts` + `planPrices.ts`)
 
-| Plan ID | Role | Price | Limits |
-|---------|------|-------|--------|
-| `freelancer_free` | Freelancer | $0 | 3 active bookings, 5 job interests/month, no token quota |
-| `freelancer_pro` | Freelancer | $0/mo (temporary — was $19) | 10 active bookings, unlimited interests, no token quota |
-| `employer_starter` | Employer | $49/mo | 3 active bookings, 5 job posts/month, 50k tokens/month |
-| `employer_growth` | Employer | $0/mo (temporary — was $199) | 15 active bookings, 30 job posts/month, 250k tokens/month |
-| `employer_enterprise` | Employer | Custom | Unlimited; team accounts enabled |
+`/pricing` localizes subscription amounts via `GET /api/subscriptions/plans?currency=USD|EUR|INR` (✅ `spec/localized-plan-pricing/`). Canonical regional list prices (Growth/Pro display as **0** while `PREMIUM_FEATURES_FREE` is on):
 
-> **Temporary:** `PREMIUM_FEATURES_FREE` is on — Growth, Pro, and Enterprise feature gates (including team accounts, custom clauses, quotas, and token limits) are open for all plans; Growth/Pro/Enterprise list as free/Start Free. Flip `PREMIUM_FEATURES_FREE` / `VITE_PREMIUM_FEATURES_FREE` to `false` and restore prices before paid launch (`artifacts/api-server/src/lib/plans.ts`, `artifacts/talentlock/src/lib/planAccess.ts`).
+| Plan ID | Role | USD / mo | EUR / mo | INR / mo | Limits |
+|---------|------|----------|----------|----------|--------|
+| `freelancer_free` | Freelancer | 0 | 0 | 0 | 3 active bookings, 5 job interests/month, no token quota |
+| `freelancer_pro` | Freelancer | 19 (temp display $0) | 19 | 1,499 | 10 active bookings, unlimited interests, no token quota |
+| `employer_starter` | Employer | 49 | 49 | 4,099 | 3 active bookings, 5 job posts/month, 50k tokens/month |
+| `employer_growth` | Employer | 199 (temp display $0) | 199 | 16,499 | 15 active bookings, 30 job posts/month, 250k tokens/month |
+| `employer_enterprise` | Employer | Custom (`null`) | Custom | Custom | Unlimited; team accounts enabled |
+
+Display bucket: account `currencyCode` `INR` → INR book, `EUR` → EUR book, **all other currencies (including GBP)** → USD book. UI switcher may override for the session (`sessionStorage` `tl_pricing_currency`). Engagement freelancer rates remain separate (`spec/multi-currency-location/`).
+
+> **Temporary:** `PREMIUM_FEATURES_FREE` is on — Growth, Pro, and Enterprise feature gates (including team accounts, custom clauses, quotas, and token limits) are open for all plans; Growth/Pro/Enterprise list as free/Start Free. Flip `PREMIUM_FEATURES_FREE` / `VITE_PREMIUM_FEATURES_FREE` to `false` and restore paid regional amounts before paid launch (`artifacts/api-server/src/lib/plans.ts`, `planPrices.ts`, `artifacts/talentlock/src/lib/planAccess.ts`).
 
 ---
 
@@ -748,4 +786,7 @@ pnpm --filter @workspace/talentlock run dev
 - **Agreement PDF download** — `GET /api/agreements/:id/download` requires `status === 'fully_signed'` (403 with `code: NOT_FULLY_SIGNED` otherwise); GCS upload of cached PDF is fire-and-forget `.catch()` — never block the response
 - **Agreement summary is freelancer-only** — `POST /api/agreements/:id/summarise` returns 403 for any employer; `<AgreementSummaryPanel />` is conditionally rendered only when `userRole === 'freelancer'` — not hidden with CSS, not rendered at all
 - **Employer uploaded agreements** — employer sign blocked until `uploadStage === 'finalized'`; `employerSummary` never returned to freelancers; upload flow uses presigned URL pattern same as document uploads
-- **Multi-currency** — never hardcode USD in agreement text or rate display; use `booking.currencyCode` and `formatRate()` with currency symbol
+- **Multi-currency (engagement)** — never hardcode USD in agreement text or rate display; use `booking.currencyCode` and `formatRate()` with currency symbol
+- **Plan pricing (subscription)** — do not hardcode `$` on `/pricing` once `spec/localized-plan-pricing/` ships; use USD/EUR/INR price book — never live-FX plan amounts
+- **Rate unit conversion** — daily ↔ hourly uses `8h/day` via `rateConversion.ts` (api-server + talentlock); Cruise Mode / TalentSearch / onboarding must normalise before comparing rates
+- **Healthcare** — `professionCategory: 'healthcare'` + healthcare columns; see `spec/healthcare-professional-profile/`

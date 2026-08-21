@@ -220,6 +220,13 @@ No token consumption. No new subscription tiers.
 - **All world countries** — Phase 1 limited to 10 countries; expandable via static config
 - **Cruise Mode / TalentSearch rule currency conversion** — rules continue to use numeric thresholds in user's local context; full cross-currency rule normalisation deferred
 - **Historical booking migration** — existing bookings backfilled to `USD` with null `exchangeRateAtCreation`
+- **TalentLock subscription / plan pricing localization (USD · EUR · INR)** — **out of scope here**; see follow-on `spec/localized-plan-pricing/`. This spec covers engagement rates and FX display only. `/pricing` remaining on hardcoded `$` is expected until that feature ships.
+
+---
+
+## Follow-on: Localized Plan Pricing
+
+Platform subscription cards (`/pricing`, `plans.ts`) need a separate **fixed regional price book** for **USD / EUR / INR** (not live FX). Spec home: `spec/localized-plan-pricing/`.
 
 ---
 

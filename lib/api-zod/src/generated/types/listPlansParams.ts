@@ -6,7 +6,13 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { ListPlansAudience } from "./listPlansAudience";
+import type { ListPlansCurrency } from "./listPlansCurrency";
 
 export type ListPlansParams = {
   audience?: ListPlansAudience;
+  /**
+ * Plan price book. Allowed USD, EUR, INR. When omitted, uses the authenticated user's currency bucket (INR→INR, EUR→EUR, else USD); unauthenticated defaults to USD.
+
+ */
+  currency?: ListPlansCurrency;
 };

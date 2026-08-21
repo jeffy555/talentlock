@@ -1,45 +1,118 @@
-import { useUser } from "@clerk/react";
+import { useEffect, useState } from "react";
+import { useUser, useClerk } from "@clerk/react";
 import { useGetMe } from "@workspace/api-client-react";
 import { Link, Redirect, useLocation } from "wouter";
+import { useQueryClient } from "@tanstack/react-query";
 import { Lock, FileSignature, Zap, Briefcase, Building2, ArrowRight } from "lucide-react";
 import { BrandLogo } from "@/components/BrandLogo";
+import {
+  isRegistrationComplete,
+  needsOnboarding,
+  RegistrationCheckStatus,
+} from "@/components/OnboardingGate";
+
+const ME_CHECK_TIMEOUT_MS = 8000;
 
 function setIntendedRole(role: "freelancer" | "employer") {
-  localStorage.setItem("talentlock_intended_role", role);
+  try {
+    sessionStorage.setItem("talentlock_intended_role", role);
+  } catch {
+    /* ignore */
+  }
+  try {
+    localStorage.setItem("talentlock_intended_role", role);
+  } catch {
+    /* ignore */
+  }
 }
 
 export default function Landing() {
   const { isLoaded, isSignedIn } = useUser();
+  const { signOut } = useClerk();
   const [, setLocation] = useLocation();
-  const { data: dbUser, isLoading: isLoadingUser, isError: isMeError } = useGetMe({
-    query: { enabled: !!isSignedIn } as any,
+  const queryClient = useQueryClient();
+  const {
+    data: dbUser,
+    isLoading: isLoadingUser,
+    isError: isMeError,
+    isSuccess: isMeSuccess,
+  } = useGetMe({
+    query: {
+      enabled: !!isSignedIn,
+      refetchOnMount: "always",
+    } as any,
   });
 
-  if (isLoaded && isSignedIn && isLoadingUser) {
-    return (
+  const [meTimedOut, setMeTimedOut] = useState(false);
+  useEffect(() => {
+    if (!isSignedIn || isMeSuccess || isMeError) {
+      setMeTimedOut(false);
+      return;
+    }
+    const id = window.setTimeout(() => setMeTimedOut(true), ME_CHECK_TIMEOUT_MS);
+    return () => window.clearTimeout(id);
+  }, [isSignedIn, isMeSuccess, isMeError]);
+
+  const meSettled = isMeSuccess || isMeError || meTimedOut;
+  // Wait only for Clerk + the first /users/me result. Incomplete, 404, and
+  // timeouts must leave this screen — never spin on background refetch.
+  const authSettling =
+    !isLoaded || (!!isSignedIn && !meSettled && isLoadingUser);
+  const registrationIncomplete =
+    !!isSignedIn &&
+    isLoaded &&
+    !authSettling &&
+    (isMeError || meTimedOut || needsOnboarding(dbUser));
+  const registrationComplete =
+    !!isSignedIn &&
+    isLoaded &&
+    !authSettling &&
+    isMeSuccess &&
+    isRegistrationComplete(dbUser);
+
+  const handleSignOut = async () => {
+    queryClient.clear();
+    await signOut({ redirectUrl: "/" });
+  };
+
+  if (authSettling) {
+    return isSignedIn ? (
+      <RegistrationCheckStatus onSignOut={() => void handleSignOut()} />
+    ) : (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center space-y-2">
-          <p className="text-sm font-medium text-foreground">Signing you in...</p>
-          <p className="text-xs text-muted-foreground">Loading your workspace</p>
+          <div className="mx-auto h-8 w-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+          <p className="text-sm font-medium text-foreground">Loading…</p>
+          <p className="text-xs text-muted-foreground">Preparing TalentLock</p>
         </div>
       </div>
     );
   }
 
-  if (isLoaded && isSignedIn && (!isLoadingUser || isMeError)) {
-    if (!dbUser) {
-      return <Redirect to="/onboarding" />;
-    }
-    return <Redirect to="/dashboard" />;
+  // Fully registered users only — never redirect while /users/me is still in flight
+  if (registrationComplete) {
+    return <Redirect to="/dashboard" replace />;
   }
 
   const handleFreelancerSignup = () => {
+    if (!isLoaded || authSettling) return;
     setIntendedRole("freelancer");
+    if (isSignedIn) {
+      // Incomplete → registration form. Complete users never see these buttons
+      // (they already redirected), but keep the safe path explicit.
+      setLocation(registrationComplete ? "/dashboard" : "/onboarding");
+      return;
+    }
     setLocation("/sign-up");
   };
 
   const handleEmployerSignup = () => {
+    if (!isLoaded || authSettling) return;
     setIntendedRole("employer");
+    if (isSignedIn) {
+      setLocation(registrationComplete ? "/dashboard" : "/onboarding");
+      return;
+    }
     setLocation("/sign-up");
   };
 
@@ -53,13 +126,55 @@ export default function Landing() {
         <div className="flex items-center">
           <BrandLogo variant="onDark" size="md" />
         </div>
-        <Link
-          href="/sign-in"
-          className="text-sm font-medium transition-colors text-white/70 hover:text-white"
-        >
-          Sign In
-        </Link>
+        <div className="flex items-center gap-3">
+          {registrationIncomplete ? (
+            <>
+              <Link
+                href="/onboarding"
+                className="rounded-md bg-gold px-3 py-1.5 text-xs font-semibold text-primary hover:bg-gold/90 sm:text-sm"
+              >
+                Continue registration
+              </Link>
+              <button
+                type="button"
+                onClick={handleSignOut}
+                className="text-sm font-medium transition-colors text-white/70 hover:text-white"
+              >
+                Sign out
+              </button>
+            </>
+          ) : (
+            <Link
+              href="/sign-in"
+              className="text-sm font-medium transition-colors text-white/70 hover:text-white"
+            >
+              Sign In
+            </Link>
+          )}
+        </div>
       </header>
+
+      {registrationIncomplete && (
+        <div className="border-b border-gold/30 bg-gold/10 px-4 py-2 text-center text-sm text-foreground">
+          {isMeError || meTimedOut ? (
+            <>
+              We could not confirm a finished account, so the dashboard stayed closed.{" "}
+              <Link href="/onboarding" className="font-semibold text-primary underline-offset-2 hover:underline">
+                Continue registration
+              </Link>
+              {" "}or sign out.
+            </>
+          ) : (
+            <>
+              Finish registration to access your dashboard. Choose Freelancer or Employer below, or{" "}
+              <Link href="/onboarding" className="font-semibold text-primary underline-offset-2 hover:underline">
+                continue where you left off
+              </Link>
+              .
+            </>
+          )}
+        </div>
+      )}
 
       <main className="flex-1 flex flex-col">
         {/* Hero — navy gradient with subtle grid */}
@@ -139,10 +254,25 @@ export default function Landing() {
             </div>
 
             <p className="mt-10 text-sm text-white/40">
-              Already have an account?{" "}
-              <Link href="/sign-in" className="font-medium text-white/70 hover:text-white transition-colors">
-                Sign in
-              </Link>
+              {registrationIncomplete ? (
+                <>
+                  Need a different account?{" "}
+                  <button
+                    type="button"
+                    onClick={handleSignOut}
+                    className="font-medium text-white/70 hover:text-white transition-colors"
+                  >
+                    Sign out
+                  </button>
+                </>
+              ) : (
+                <>
+                  Already have an account?{" "}
+                  <Link href="/sign-in" className="font-medium text-white/70 hover:text-white transition-colors">
+                    Sign in
+                  </Link>
+                </>
+              )}
             </p>
           </div>
         </section>

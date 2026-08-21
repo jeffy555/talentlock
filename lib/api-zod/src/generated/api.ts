@@ -1597,13 +1597,24 @@ export const MarkNotificationReadResponse = zod.object({
  */
 export const ListPlansQueryParams = zod.object({
   audience: zod.enum(["freelancer", "employer", "any"]).optional(),
+  currency: zod
+    .enum(["USD", "EUR", "INR"])
+    .optional()
+    .describe(
+      "Plan price book. Allowed USD, EUR, INR. When omitted, uses the authenticated user's currency bucket (INR→INR, EUR→EUR, else USD); unauthenticated defaults to USD.\n",
+    ),
 });
 
 export const ListPlansResponseItem = zod.object({
   id: zod.string(),
   audience: zod.string(),
   name: zod.string(),
-  priceMonthly: zod.number(),
+  priceMonthly: zod
+    .number()
+    .nullable()
+    .describe(
+      "Monthly price in displayCurrency major units; null means Custom (enterprise)",
+    ),
   tagline: zod.string(),
   features: zod.array(zod.string()),
   limits: zod.object({
@@ -1614,6 +1625,8 @@ export const ListPlansResponseItem = zod.object({
     monthlyTokenLimit: zod.number().nullish(),
   }),
   priority: zod.number(),
+  displayCurrency: zod.enum(["USD", "EUR", "INR"]),
+  currencySymbol: zod.string(),
 });
 export const ListPlansResponse = zod.array(ListPlansResponseItem);
 
@@ -1625,7 +1638,12 @@ export const GetMySubscriptionResponse = zod.object({
     id: zod.string(),
     audience: zod.string(),
     name: zod.string(),
-    priceMonthly: zod.number(),
+    priceMonthly: zod
+      .number()
+      .nullable()
+      .describe(
+        "Monthly price in displayCurrency major units; null means Custom (enterprise)",
+      ),
     tagline: zod.string(),
     features: zod.array(zod.string()),
     limits: zod.object({
@@ -1636,6 +1654,8 @@ export const GetMySubscriptionResponse = zod.object({
       monthlyTokenLimit: zod.number().nullish(),
     }),
     priority: zod.number(),
+    displayCurrency: zod.enum(["USD", "EUR", "INR"]),
+    currencySymbol: zod.string(),
   }),
   status: zod.string(),
   currentPeriodEnd: zod.coerce.date().nullish(),
@@ -1658,7 +1678,12 @@ export const UpgradeSubscriptionResponse = zod.object({
     id: zod.string(),
     audience: zod.string(),
     name: zod.string(),
-    priceMonthly: zod.number(),
+    priceMonthly: zod
+      .number()
+      .nullable()
+      .describe(
+        "Monthly price in displayCurrency major units; null means Custom (enterprise)",
+      ),
     tagline: zod.string(),
     features: zod.array(zod.string()),
     limits: zod.object({
@@ -1669,6 +1694,8 @@ export const UpgradeSubscriptionResponse = zod.object({
       monthlyTokenLimit: zod.number().nullish(),
     }),
     priority: zod.number(),
+    displayCurrency: zod.enum(["USD", "EUR", "INR"]),
+    currencySymbol: zod.string(),
   }),
   status: zod.string(),
   currentPeriodEnd: zod.coerce.date().nullish(),

@@ -2968,7 +2968,7 @@ export const getListPlansQueryKey = (params?: ListPlansParams) => {
 
 export const getListPlansQueryOptions = <
   TData = Awaited<ReturnType<typeof listPlans>>,
-  TError = ErrorType<unknown>,
+  TError = ErrorType<ErrorEnvelope>,
 >(
   params?: ListPlansParams,
   options?: {
@@ -2998,7 +2998,7 @@ export const getListPlansQueryOptions = <
 export type ListPlansQueryResult = NonNullable<
   Awaited<ReturnType<typeof listPlans>>
 >;
-export type ListPlansQueryError = ErrorType<unknown>;
+export type ListPlansQueryError = ErrorType<ErrorEnvelope>;
 
 /**
  * @summary List available subscription plans
@@ -3006,7 +3006,7 @@ export type ListPlansQueryError = ErrorType<unknown>;
 
 export function useListPlans<
   TData = Awaited<ReturnType<typeof listPlans>>,
-  TError = ErrorType<unknown>,
+  TError = ErrorType<ErrorEnvelope>,
 >(
   params?: ListPlansParams,
   options?: {

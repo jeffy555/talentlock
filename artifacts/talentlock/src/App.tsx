@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider, useQueryClient } from "@tanstack/reac
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AppLayout } from "@/components/layout/AppLayout";
+import { OnboardingGate } from "@/components/OnboardingGate";
 import { setAuthTokenGetter } from "@workspace/api-client-react";
 
 import Landing from "@/pages/Landing";
@@ -189,7 +190,10 @@ function SignInPage() {
         routing="path"
         path={`${basePath}/sign-in`}
         signUpUrl={`${basePath}/sign-up`}
-        fallbackRedirectUrl={`${basePath}/dashboard`}
+        // Incomplete users must land on onboarding; completed users are bounced to
+        // /dashboard by OnboardingGate. Never send post-auth traffic straight to dashboard.
+        fallbackRedirectUrl={`${basePath}/onboarding`}
+        forceRedirectUrl={`${basePath}/onboarding`}
       />
     </AuthPageWrapper>
   );
@@ -203,6 +207,7 @@ function SignUpPage() {
         path={`${basePath}/sign-up`}
         signInUrl={`${basePath}/sign-in`}
         fallbackRedirectUrl={`${basePath}/onboarding`}
+        forceRedirectUrl={`${basePath}/onboarding`}
       />
       <p className="px-1 text-center text-xs text-[hsl(222_12%_48%)]">
         A valid email address is required to create a TalentLock account.
@@ -267,13 +272,21 @@ function ClerkQueryClientCacheInvalidator() {
   return null;
 }
 
-function ProtectedRoute({ component: Component }: { component: React.ComponentType }) {
+function ProtectedRoute({
+  component: Component,
+  allowPending = false,
+}: {
+  component: React.ComponentType;
+  allowPending?: boolean;
+}) {
   return (
     <>
       <Show when="signed-in">
-        <AppLayout>
-          <Component />
-        </AppLayout>
+        <OnboardingGate allowPending={allowPending}>
+          <AppLayout>
+            <Component />
+          </AppLayout>
+        </OnboardingGate>
       </Show>
       <Show when="signed-out">
         <Redirect to="/" />
@@ -331,7 +344,7 @@ function ClerkProviderWithRoutes() {
           <Route path="/sign-in/*?" component={SignInPage} />
           <Route path="/sign-up/*?" component={SignUpPage} />
           
-          <Route path="/onboarding" component={() => <ProtectedRoute component={Onboarding} />} />
+          <Route path="/onboarding" component={() => <ProtectedRoute component={Onboarding} allowPending />} />
           <Route path="/dashboard" component={() => <ProtectedRoute component={Dashboard} />} />
           <Route path="/freelancers" component={() => <ProtectedRoute component={FreelancersList} />} />
           <Route path="/freelancers/:id" component={() => <ProtectedRoute component={FreelancerDetail} />} />

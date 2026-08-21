@@ -32,9 +32,15 @@ describe("plans", () => {
     expect(getPlan("freelancer_pro").limits.monthlyTokenLimit).toBeNull();
   });
 
-  it("lists Growth and Pro at $0 while premium features are free", () => {
-    expect(PLANS.employer_growth.priceMonthly).toBe(0);
-    expect(PLANS.freelancer_pro.priceMonthly).toBe(0);
+  it("keeps canonical USD book amounts on PLANS; display zeros via PREMIUM_FEATURES_FREE", () => {
+    expect(PLANS.employer_growth.priceMonthly).toBe(199);
+    expect(PLANS.freelancer_pro.priceMonthly).toBe(19);
+    expect(getPlan("employer_growth").priceMonthly).toBe(0);
+    expect(getPlan("freelancer_pro").priceMonthly).toBe(0);
+    expect(getPlan("employer_starter", "INR").priceMonthly).toBe(4099);
+    expect(getPlan("employer_enterprise").priceMonthly).toBeNull();
+    expect(getPlan("employer_starter").displayCurrency).toBe("USD");
+    expect(getPlan("employer_starter", "EUR").currencySymbol).toBe("€");
   });
 
   it("opens Growth/Pro/Enterprise feature gates while PREMIUM_FEATURES_FREE is on", () => {

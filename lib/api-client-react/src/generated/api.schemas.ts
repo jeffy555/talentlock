@@ -2395,15 +2395,30 @@ export type PlanDefLimits = {
   monthlyTokenLimit?: number | null;
 };
 
+export type PlanDefDisplayCurrency =
+  (typeof PlanDefDisplayCurrency)[keyof typeof PlanDefDisplayCurrency];
+
+export const PlanDefDisplayCurrency = {
+  USD: "USD",
+  EUR: "EUR",
+  INR: "INR",
+} as const;
+
 export interface PlanDef {
   id: string;
   audience: string;
   name: string;
-  priceMonthly: number;
+  /**
+   * Monthly price in displayCurrency major units; null means Custom (enterprise)
+   * @nullable
+   */
+  priceMonthly: number | null;
   tagline: string;
   features: string[];
   limits: PlanDefLimits;
   priority: number;
+  displayCurrency: PlanDefDisplayCurrency;
+  currencySymbol: string;
 }
 
 export interface TokenUsageBreakdown {
@@ -3329,6 +3344,11 @@ export type ListNotificationsParams = {
 
 export type ListPlansParams = {
   audience?: ListPlansAudience;
+  /**
+ * Plan price book. Allowed USD, EUR, INR. When omitted, uses the authenticated user's currency bucket (INR→INR, EUR→EUR, else USD); unauthenticated defaults to USD.
+
+ */
+  currency?: ListPlansCurrency;
 };
 
 export type ListPlansAudience =
@@ -3338,6 +3358,15 @@ export const ListPlansAudience = {
   freelancer: "freelancer",
   employer: "employer",
   any: "any",
+} as const;
+
+export type ListPlansCurrency =
+  (typeof ListPlansCurrency)[keyof typeof ListPlansCurrency];
+
+export const ListPlansCurrency = {
+  USD: "USD",
+  EUR: "EUR",
+  INR: "INR",
 } as const;
 
 export type ListBookingsParams = {

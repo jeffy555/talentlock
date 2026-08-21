@@ -8,6 +8,7 @@ import { Separator } from "@/components/ui/separator";
 import { format } from "date-fns";
 import { CreditCard, ArrowUpRight, ShieldCheck } from "lucide-react";
 import { TokenUsageWidget } from "@/components/TokenUsageWidget";
+import { formatPlanPrice, type PlanDisplayCurrency } from "@/lib/planPriceFormat";
 
 function UsageRow({ label, used, limit }: { label: string; used: number; limit: number | null }) {
   const isUnlimited = limit === null;
@@ -59,9 +60,14 @@ export default function Billing() {
               <CardDescription className="mt-1">{plan.tagline}</CardDescription>
             </div>
             <div className="text-right">
-              <div className="text-2xl font-bold">
-                {plan.priceMonthly > 0 ? `$${plan.priceMonthly}` : plan.id === "employer_enterprise" ? "Custom" : "$0"}
-                <span className="text-sm text-muted-foreground font-normal">/mo</span>
+              <div className="text-2xl font-bold tabular-nums">
+                {formatPlanPrice(
+                  plan.priceMonthly,
+                  (plan.displayCurrency ?? "USD") as PlanDisplayCurrency,
+                )}
+                {plan.priceMonthly != null && (
+                  <span className="text-sm text-muted-foreground font-normal">/mo</span>
+                )}
               </div>
               {sub.currentPeriodEnd && (
                 <div className="text-xs text-muted-foreground mt-1">
