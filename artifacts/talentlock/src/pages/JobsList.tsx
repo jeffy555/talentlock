@@ -72,7 +72,7 @@ export default function JobsList() {
           <p className="text-muted-foreground mt-1 font-light max-w-xl">
             {isEmployer
               ? "Manage your open roles and track AI-matched candidates."
-              : "Browse exclusive, verified engagements looking for premium talent."}
+              : "Browse open roles in your profession. Jobs from other domains are hidden."}
           </p>
         </div>
         {isEmployer && (
@@ -119,7 +119,7 @@ export default function JobsList() {
                 ? "Try a different keyword or clear filters."
                 : isEmployer
                   ? "You haven't posted any job requirements yet. Describe your needs to let our AI find the perfect match."
-                  : "There are currently no open requirements matching your profile. Check back soon."}
+                  : "There are currently no open roles in your profession. Check back soon."}
             </EmptyDescription>
           </EmptyHeader>
           {hasFilters ? (

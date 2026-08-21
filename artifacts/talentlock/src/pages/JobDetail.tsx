@@ -131,7 +131,11 @@ export default function JobDetail() {
           <Trash2 className="h-8 w-8 text-muted-foreground" />
         </div>
         <h2 className="text-2xl font-serif font-bold mb-2 text-foreground">Requirement Not Found</h2>
-        <p className="text-muted-foreground mb-8 max-w-sm font-light">The job you are looking for does not exist or has been removed.</p>
+        <p className="text-muted-foreground mb-8 max-w-sm font-light">
+          {isFreelancer
+            ? "This role is not in your profession, or it is no longer available."
+            : "The job you are looking for does not exist or has been removed."}
+        </p>
         <Button asChild className="font-semibold shadow-sm">
           <Link href="/jobs">Back to Job Board</Link>
         </Button>

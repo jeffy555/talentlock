@@ -22,6 +22,7 @@ import { sendNotificationEmailAsync } from "./emailService";
 import { sendAutomatedOutreachMessage } from "./automatedOutreachMessaging";
 import { sanitiseText } from "./sanitise";
 import { logTokenUsage } from "./tokenLogger";
+import { isSameProfessionDomain } from "./professionDomain";
 import {
   buildEvaluationPrompt,
   getNextMidnightUTC,
@@ -131,8 +132,15 @@ export async function evaluateCruiseModeForNewJob(
   if (!job) return;
 
   const configs = await dbClient
-    .select()
+    .select({
+      config: cruiseModeConfigsTable,
+      professionCategory: freelancerProfilesTable.professionCategory,
+    })
     .from(cruiseModeConfigsTable)
+    .innerJoin(
+      freelancerProfilesTable,
+      eq(cruiseModeConfigsTable.freelancerId, freelancerProfilesTable.id),
+    )
     .where(
       and(
         eq(cruiseModeConfigsTable.isActive, true),
@@ -142,15 +150,19 @@ export async function evaluateCruiseModeForNewJob(
   if (configs.length === 0) return;
 
   const normalJob = normaliseJob(job);
-  const candidates = configs.filter((c) => preFilter(c.rules, normalJob));
+  const candidates = configs.filter(
+    (row) =>
+      isSameProfessionDomain(row.professionCategory, job.professionCategory) &&
+      preFilter(row.config.rules, normalJob),
+  );
   log.info(
-    { jobId, total: configs.length, candidates: candidates.length },
+    { jobId, total: configs.length, candidates: candidates.length, professionCategory: job.professionCategory },
     "cruise mode pre-filter",
   );
 
   const batch = candidates.slice(0, 50);
   await Promise.allSettled(
-    batch.map((config) => evaluateSingleCandidate(dbClient, config, job, normalJob, log)),
+    batch.map((row) => evaluateSingleCandidate(dbClient, row.config, job, normalJob, log)),
   );
 }
 
@@ -162,6 +174,16 @@ async function evaluateSingleCandidate(
   log: Log,
 ): Promise<void> {
   try {
+    const [freelancerProfile] = await dbClient
+      .select()
+      .from(freelancerProfilesTable)
+      .where(eq(freelancerProfilesTable.id, config.freelancerId))
+      .limit(1);
+    if (!freelancerProfile) return;
+    if (!isSameProfessionDomain(freelancerProfile.professionCategory, job.professionCategory)) {
+      return;
+    }
+
     if (isInBlackoutWindow(config.rules)) {
       await logActivity(dbClient, config, job.id, {
         decision: "blackout",
@@ -212,12 +234,6 @@ async function evaluateSingleCandidate(
       });
 
       if (!alreadyNotifiedToday) {
-        const [freelancerProfile] = await dbClient
-          .select()
-          .from(freelancerProfilesTable)
-          .where(eq(freelancerProfilesTable.id, config.freelancerId))
-          .limit(1);
-        if (freelancerProfile) {
           createNotification(dbClient, {
             userId: freelancerProfile.userId,
             type: NotificationType.CRUISE_MODE_DAILY_LIMIT,
@@ -225,17 +241,9 @@ async function evaluateSingleCandidate(
             entityId: config.id,
             message: `Your daily Cruise Mode budget of ${dailyLimit}h is used up. New jobs will be skipped until midnight UTC.`,
           }).catch((err) => log.warn({ err }, "cruise mode daily limit notification failed"));
-        }
       }
       return;
     }
-
-    const [freelancerProfile] = await dbClient
-      .select()
-      .from(freelancerProfilesTable)
-      .where(eq(freelancerProfilesTable.id, config.freelancerId))
-      .limit(1);
-    if (!freelancerProfile) return;
 
     const prompt = buildEvaluationPrompt(
       {
@@ -246,6 +254,7 @@ async function evaluateSingleCandidate(
         paymentPreference: freelancerProfile.paymentPreference,
         hourlyRate: freelancerProfile.hourlyRate ? parseFloat(freelancerProfile.hourlyRate) : null,
         dailyRate: freelancerProfile.dailyRate ? parseFloat(freelancerProfile.dailyRate) : null,
+        professionCategory: freelancerProfile.professionCategory,
       },
       config.rules,
       normalJob,

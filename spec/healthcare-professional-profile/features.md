@@ -254,6 +254,8 @@ Job posting form: when `professionCategory === 'healthcare'`, show rate type pic
 
 **Cruise Mode** (freelancer-side): healthcare freelancers evaluating **technology** jobs unchanged; evaluating healthcare jobs uses clinical context in AI evaluator (future: healthcare job posts with `professionCategory: 'healthcare'`).
 
+> **Superseded 2026-08-21:** `spec/domain-job-visibility/` hard-locks Cruise Mode and the freelancer job board to the onboarded profession. Healthcare freelancers no longer evaluate or see technology jobs.
+
 Implementation touches `talentSearchUtils.ts`, `talentSearchEvaluator.ts`, `cruiseModeUtils.ts` — **Phase 4** after profile + credential Phase 1 ship.
 
 ---

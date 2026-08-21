@@ -17,6 +17,7 @@ export interface NormalisedJob {
   maxRate: number | null;
   durationWeeks: number | null;
   fieldOfWork: string;
+  professionCategory: string;
 }
 
 export interface EvaluationResult {
@@ -34,6 +35,7 @@ export interface FreelancerEvaluationContext {
   paymentPreference?: string | null;
   hourlyRate: number | null;
   dailyRate: number | null;
+  professionCategory: string;
 }
 
 export function getNextMidnightUTC(): Date {
@@ -68,6 +70,7 @@ export function normaliseJob(job: JobRequirement): NormalisedJob {
     maxRate,
     durationWeeks: deriveDurationWeeks(job.startDate, job.endDate),
     fieldOfWork: job.fieldOfWork,
+    professionCategory: job.professionCategory || "technology",
   };
 }
 
@@ -154,6 +157,7 @@ export function buildEvaluationPrompt(
 
 FREELANCER PROFILE:
 Name: ${freelancer.name}
+Profession domain: ${freelancer.professionCategory}
 Field: ${freelancer.fieldOfWork}
 Skills: ${freelancer.skills.join(", ")}
 ${profileRateLine}
@@ -169,6 +173,7 @@ Preferred fields: ${rules.preferredFields.join(", ") || "any"}
 
 JOB POSTING:
 Title: ${job.title}
+Profession domain: ${job.professionCategory}
 Description: ${job.description}
 Required skills: ${job.skills.join(", ")}
 Rate: ${job.minRate != null ? `$${job.minRate}` : "not specified"}${job.maxRate != null ? `–$${job.maxRate}/hr (hourly-normalized)` : ""}
@@ -188,6 +193,7 @@ Evaluate this job for the freelancer. Return ONLY a JSON object — no preamble,
 }
 
 Decision rules:
+- Profession domain is a hard lock: if the job profession domain does not exactly match the freelancer profession domain, decision = "skip" with a blocker. Never send interest to another vertical (technology, education, healthcare, legal_finance).
 - Rate matching: compare the job's hourly-normalized rate against the Cruise Mode Rate range above. Do NOT treat a profile-vs-job unit mismatch as a blocker when the job rate falls inside the Cruise Mode Rate range.
 - Profile "Current rate" is informational only (already hourly-normalized). Prefer Cruise Mode Rate range for accept/reject on pay.
 - score >= ${threshold}: decision = "send"

@@ -247,6 +247,8 @@ requireAadhaarVerified?: boolean; // already exists from Healthcare — reuse, d
 
 Pre-filter after healthcare rules. Cruise Mode: legal_finance freelancers evaluating technology jobs unchanged.
 
+> **Superseded 2026-08-21:** `spec/domain-job-visibility/` — legal/finance freelancers no longer see or Cruise-match technology (or other) jobs.
+
 ---
 
 ### Module 10 — Agreement & Employer Verification Hooks

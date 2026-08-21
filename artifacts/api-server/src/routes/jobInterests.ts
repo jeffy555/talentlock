@@ -13,6 +13,7 @@ import { getUserSubscription, checkLimit } from "../lib/subscriptionGating";
 import { createNotification, NotificationType, userIdFromEmployerProfileId } from "../lib/createNotification";
 import { sendNotificationEmailAsync } from "../lib/emailService";
 import { sanitiseText } from "../lib/sanitise";
+import { isSameProfessionDomain } from "../lib/professionDomain";
 
 const router = Router();
 
@@ -34,6 +35,10 @@ router.post("/job-requirements/:id/interest", async (req, res) => {
     const [job] = await db.select().from(jobRequirementsTable)
       .where(eq(jobRequirementsTable.id, jobId)).limit(1);
     if (!job) { res.status(404).json({ error: "Job not found" }); return; }
+    if (!isSameProfessionDomain(freelancer.professionCategory, job.professionCategory)) {
+      res.status(404).json({ error: "Job not found" });
+      return;
+    }
     if (job.status !== "open") { res.status(400).json({ error: "This role is no longer open" }); return; }
 
     const [user] = await db.select().from(usersTable).where(eq(usersTable.clerkId, clerkId)).limit(1);

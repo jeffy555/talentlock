@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { getAuth } from "@clerk/express";
 import { db } from "@workspace/db";
-import { jobRequirementsTable, employerProfilesTable, usersTable } from "@workspace/db";
+import { jobRequirementsTable, employerProfilesTable, usersTable, freelancerProfilesTable } from "@workspace/db";
 import { eq, and, gte, sql, SQL, or, ilike, count, desc } from "drizzle-orm";
 import {
   CreateJobRequirementBody,
@@ -14,14 +14,36 @@ import { resolveUserByClerkId, canAccessJobRequirement } from "../lib/accessCont
 import { evaluateCruiseModeForNewJob } from "../lib/cruiseModeEvaluator";
 import { parsePagination, paginatedResponse } from "../lib/paginationUtils";
 import { sanitiseIlikeQuery } from "../lib/searchUtils";
+import { isSameProfessionDomain } from "../lib/professionDomain";
 
 const router = Router();
+
+/** Freelancers only see jobs in their onboarded profession. Employers / anonymous: no domain lock. */
+async function freelancerProfessionFilter(clerkId: string | null | undefined): Promise<SQL | undefined> {
+  if (!clerkId) return undefined;
+  const [user] = await db
+    .select({ role: usersTable.role })
+    .from(usersTable)
+    .where(eq(usersTable.clerkId, clerkId))
+    .limit(1);
+  if (!user || user.role !== "freelancer") return undefined;
+  const [profile] = await db
+    .select({ professionCategory: freelancerProfilesTable.professionCategory })
+    .from(freelancerProfilesTable)
+    .where(eq(freelancerProfilesTable.clerkId, clerkId))
+    .limit(1);
+  if (!profile) return sql`false`;
+  return eq(jobRequirementsTable.professionCategory, profile.professionCategory);
+}
 
 router.get("/job-requirements", async (req, res) => {
   const parsed = ListJobRequirementsQueryParams.safeParse(req.query);
   const params = parsed.success ? parsed.data : { page: 1, pageSize: 20 };
   try {
+    const { userId: clerkId } = getAuth(req);
     const conditions: SQL[] = [];
+    const domainFilter = await freelancerProfessionFilter(clerkId);
+    if (domainFilter) conditions.push(domainFilter);
     if (params.employerId !== undefined) {
       conditions.push(eq(jobRequirementsTable.employerId, params.employerId));
     }
@@ -128,12 +150,31 @@ router.get("/job-requirements/:id", async (req, res) => {
   const id = parseInt(req.params.id);
   if (isNaN(id)) { res.status(400).json({ error: "Invalid ID" }); return; }
   try {
+    const { userId: clerkId } = getAuth(req);
     const [row] = await db.select({ job: jobRequirementsTable, verificationLevel: employerProfilesTable.verificationLevel })
       .from(jobRequirementsTable)
       .leftJoin(employerProfilesTable, eq(jobRequirementsTable.employerId, employerProfilesTable.id))
       .where(eq(jobRequirementsTable.id, id))
       .limit(1);
     if (!row) { res.status(404).json({ error: "Job requirement not found" }); return; }
+    if (clerkId) {
+      const [user] = await db
+        .select({ role: usersTable.role })
+        .from(usersTable)
+        .where(eq(usersTable.clerkId, clerkId))
+        .limit(1);
+      if (user?.role === "freelancer") {
+        const [profile] = await db
+          .select({ professionCategory: freelancerProfilesTable.professionCategory })
+          .from(freelancerProfilesTable)
+          .where(eq(freelancerProfilesTable.clerkId, clerkId))
+          .limit(1);
+        if (!profile || !isSameProfessionDomain(profile.professionCategory, row.job.professionCategory)) {
+          res.status(404).json({ error: "Job requirement not found" });
+          return;
+        }
+      }
+    }
     res.json(mapJob(row.job, row.verificationLevel));
   } catch (err) {
     req.log.error({ err }, "Failed to get job requirement");

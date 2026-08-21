@@ -590,6 +590,12 @@ paths:
       operationId: listJobRequirements
       tags: [job-requirements]
       summary: List job requirements
+      description: >
+        Paginated job list. Signed-in freelancers are hard-filtered to
+        `job_requirements.professionCategory` matching their onboarded
+        `freelancer_profiles.professionCategory` (technology, education,
+        healthcare, legal_finance). Employers and unauthenticated callers
+        are not domain-scoped. Freelancers cannot override this with query params.
       parameters:
         - name: employerId
           in: query
@@ -651,6 +657,9 @@ paths:
       operationId: getJobRequirement
       tags: [job-requirements]
       summary: Get a job requirement
+      description: >
+        Signed-in freelancers receive 404 when the job's professionCategory
+        does not match their onboarded profile (same as a missing job).
       parameters:
         - name: id
           in: path

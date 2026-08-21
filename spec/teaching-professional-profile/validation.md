@@ -296,6 +296,8 @@ Using a pre-existing technology freelancer account:
 - [ ] Existing Cruise Mode configs continue to evaluate jobs correctly
 - [ ] `preFilter()` and evaluation logic untouched — `professionCategory`/`rateType` on `job_requirements` do not affect Cruise Mode in this phase
 
+> **Superseded 2026-08-21** by `spec/domain-job-visibility/`: Cruise Mode now skips jobs whose `professionCategory` does not match the freelancer.
+
 ### R4 — Agreements, Bookings, Meetings, Reviews Unaffected
 
 - [ ] No schema changes detected on `bookings`, `agreements`, `meetings`, `reviews`, `milestones`, `availability_blocks` tables
