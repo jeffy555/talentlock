@@ -117,10 +117,12 @@ export default function Landing() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-background font-sans">
+    <div className="bg-background font-sans">
+      {/* First viewport: header + hero CTAs stay fully visible without scrolling */}
+      <div className="min-h-svh flex flex-col">
       {/* Header — deep navy */}
       <header
-        className="sticky top-0 z-50 px-6 h-16 flex items-center justify-between"
+        className="sticky top-0 z-50 px-6 h-16 shrink-0 flex items-center justify-between"
         style={{ backgroundColor: "hsl(var(--primary))", borderBottom: "1px solid rgba(255,255,255,0.07)" }}
       >
         <div className="flex items-center">
@@ -155,7 +157,7 @@ export default function Landing() {
       </header>
 
       {registrationIncomplete && (
-        <div className="border-b border-gold/30 bg-gold/10 px-4 py-2 text-center text-sm text-foreground">
+        <div className="shrink-0 border-b border-gold/30 bg-gold/10 px-4 py-2 text-center text-sm text-foreground">
           {isMeError || meTimedOut ? (
             <>
               We could not confirm a finished account, so the dashboard stayed closed.{" "}
@@ -176,10 +178,8 @@ export default function Landing() {
         </div>
       )}
 
-      <main className="flex-1 flex flex-col">
-        {/* Hero — navy gradient with subtle grid */}
-        <section
-          className="relative overflow-hidden py-24 md:py-32 px-6 flex flex-col items-center text-center"
+      <section
+          className="relative overflow-hidden flex-1 flex flex-col items-center justify-center text-center px-6 py-6 sm:py-8"
           style={{ background: "linear-gradient(160deg, hsl(222 47% 11%) 0%, hsl(222 47% 15%) 55%, hsl(222 47% 11%) 100%)" }}
         >
           {/* Grid texture */}
@@ -194,22 +194,22 @@ export default function Landing() {
           <div className="relative z-10 max-w-3xl mx-auto animate-slide-up-fade">
             {/* Badge */}
             <div
-              className="inline-flex items-center gap-2 rounded-full px-4 py-1.5 mb-8 text-xs font-semibold uppercase tracking-widest bg-gold/10 text-gold border border-gold/20 backdrop-blur-sm"
+              className="inline-flex items-center gap-2 rounded-full px-4 py-1.5 mb-5 text-xs font-semibold uppercase tracking-widest bg-gold/10 text-gold border border-gold/20 backdrop-blur-sm"
             >
               <span className="h-1.5 w-1.5 rounded-full bg-gold animate-pulse" />
               Premium Talent Platform
             </div>
 
-            <h1 className="text-5xl md:text-6xl lg:text-7xl font-serif font-bold tracking-tight text-white mb-6 leading-tight">
+            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-serif font-bold tracking-tight text-white mb-4 leading-[1.15]">
               Exclusive engagements,{" "}
               <span className="text-gold italic font-light">locked in.</span>
             </h1>
 
-            <p className="text-lg md:text-xl mb-14 leading-relaxed max-w-xl mx-auto text-white/60 font-light">
+            <p className="text-base md:text-lg mb-8 leading-relaxed max-w-xl mx-auto text-white/60 font-light">
               AI-matched requirements, legally binding agreements, and guaranteed exclusivity for serious professionals.
             </p>
 
-            <p className="text-xs font-bold uppercase tracking-widest mb-6 text-gold/80">
+            <p className="text-xs font-bold uppercase tracking-widest mb-4 text-gold/80">
               Get started as
             </p>
 
@@ -217,7 +217,7 @@ export default function Landing() {
               {/* Freelancer card */}
               <button
                 onClick={handleFreelancerSignup}
-                className="group flex flex-col items-start gap-4 rounded-xl p-7 text-left transition-all duration-300 bg-white/5 border border-gold/20 backdrop-blur-md hover:bg-white/10 hover:border-gold/40 hover:shadow-2xl hover:shadow-gold/10"
+                className="group flex flex-col items-start gap-3 rounded-xl p-5 text-left transition-all duration-300 bg-white/5 border border-gold/20 backdrop-blur-md hover:bg-white/10 hover:border-gold/40 hover:shadow-2xl hover:shadow-gold/10"
               >
                 <div className="flex items-center justify-between w-full">
                   <div className="h-11 w-11 rounded-lg flex items-center justify-center bg-gold/10 group-hover:bg-gold/20 transition-colors">
@@ -236,7 +236,7 @@ export default function Landing() {
               {/* Employer card — gold tint */}
               <button
                 onClick={handleEmployerSignup}
-                className="group flex flex-col items-start gap-4 rounded-xl p-7 text-left transition-all duration-300 bg-gold/10 border border-gold/30 backdrop-blur-md hover:bg-gold/15 hover:border-gold/50 hover:shadow-2xl hover:shadow-gold/20"
+                className="group flex flex-col items-start gap-3 rounded-xl p-5 text-left transition-all duration-300 bg-gold/10 border border-gold/30 backdrop-blur-md hover:bg-gold/15 hover:border-gold/50 hover:shadow-2xl hover:shadow-gold/20"
               >
                 <div className="flex items-center justify-between w-full">
                   <div className="h-11 w-11 rounded-lg flex items-center justify-center bg-gold/20 group-hover:bg-gold/30 transition-colors">
@@ -253,7 +253,7 @@ export default function Landing() {
               </button>
             </div>
 
-            <p className="mt-10 text-sm text-white/40">
+            <p className="mt-6 text-sm text-white/40">
               {registrationIncomplete ? (
                 <>
                   Need a different account?{" "}
@@ -276,7 +276,9 @@ export default function Landing() {
             </p>
           </div>
         </section>
+      </div>
 
+      <main>
         {/* Features — warm cream */}
         <section className="py-24 px-6 bg-background relative">
           <div className="max-w-5xl mx-auto animate-fade-in">
