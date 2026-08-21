@@ -2,7 +2,7 @@ import { useParams } from "wouter";
 import { useGetPublicFreelancerProfile } from "@workspace/api-client-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { BadgeCheck, Briefcase, Building, Building2, CheckCircle, DollarSign, ExternalLink, GraduationCap, Globe, Lock, Star, Award, Calendar, Stethoscope } from "lucide-react";
+import { BadgeCheck, Briefcase, Building, Building2, CheckCircle, DollarSign, ExternalLink, GraduationCap, Globe, Lock, Star, Award, Calendar, Scale, Stethoscope } from "lucide-react";
 import { format } from "date-fns";
 import VerificationBadge from "@/components/VerificationBadge";
 import StarRating from "@/components/StarRating";
@@ -17,6 +17,8 @@ import {
   HEALTHCARE_TYPE_LABELS,
   PREFERRED_CARE_MODE_LABELS,
 } from "@/lib/healthcareDisplayUtils";
+import { LEGAL_FINANCE_TYPE_LABELS } from "@/lib/legalFinanceDisplayUtils";
+import { LegalFinanceProfileSection } from "@/components/legal-finance/LegalFinanceProfileSection";
 
 function TimelineDot({ isFirst }: { isFirst?: boolean }) {
   return (
@@ -115,9 +117,16 @@ export default function PublicProfile() {
                     {HEALTHCARE_TYPE_LABELS[profile.healthcareProfessionType]}
                   </span>
                 )}
-                {profile.professionCategory === "healthcare" &&
+                {profile.professionCategory === "legal_finance" && profile.legalFinanceProfessionType && (
+                  <span className="inline-flex items-center gap-1 text-xs bg-slate-100 text-slate-800 border border-slate-300 rounded px-1.5 py-0.5">
+                    <Scale className="h-3 w-3" />
+                    {LEGAL_FINANCE_TYPE_LABELS[profile.legalFinanceProfessionType]}
+                  </span>
+                )}
+                {(profile.professionCategory === "healthcare" ||
+                  profile.professionCategory === "legal_finance") &&
                   profile.aadhaarVerificationStatus === "verified" && (
-                    <span className="inline-flex items-center gap-1 text-xs bg-emerald-50 text-emerald-700 border border-emerald-200 rounded px-1.5 py-0.5">
+                    <span className="inline-flex items-center gap-1 text-xs bg-green-100 text-green-800 border border-green-200 rounded px-1.5 py-0.5">
                       <BadgeCheck className="h-3 w-3" />
                       Aadhaar verified
                     </span>
@@ -376,6 +385,10 @@ export default function PublicProfile() {
                   )}
                 </div>
               </section>
+            )}
+
+            {profile.professionCategory === "legal_finance" && (
+              <LegalFinanceProfileSection profile={profile} />
             )}
 
             {profile.availabilityNote && (

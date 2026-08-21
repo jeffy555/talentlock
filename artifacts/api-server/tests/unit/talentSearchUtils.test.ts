@@ -19,6 +19,7 @@ const baseProfile = {
   teachingSubjects: ["Mathematics"],
   teachingLevels: ["GCSE"],
   fieldOfWork: "Education",
+  paymentPreference: "hourly",
   hourlyRate: "80",
   dailyRate: null,
   bio: "Experienced teacher",
@@ -113,6 +114,60 @@ describe("talentSearchPreFilter healthcare rules", () => {
     rules.requireAadhaarVerified = true;
     const unverified = {
       ...healthcareProfile,
+      aadhaarVerificationStatus: "uploaded",
+    } as FreelancerProfile;
+    const fl = normaliseFreelancer(unverified, true, null);
+    expect(talentSearchPreFilterReason(rules, fl)).toContain("Aadhaar");
+  });
+});
+
+describe("talentSearchPreFilter legal_finance rules", () => {
+  const legalProfile = {
+    ...baseProfile,
+    id: 3,
+    name: "Advocate Sharma",
+    professionCategory: "legal_finance",
+    educationProfessionType: null,
+    legalFinanceProfessionType: "advocate",
+    practiceAreas: ["GST", "Corporate"],
+    practiceSettings: ["Chambers"],
+    courtJurisdictions: ["Bombay High Court"],
+    aadhaarVerificationStatus: "verified",
+    fieldOfWork: "Law & Legal Services",
+    hourlyRate: "8000",
+  } as FreelancerProfile;
+
+  it("passes when legal sub-type and practice area match", () => {
+    const rules = defaultTalentSearchRules();
+    rules.professionCategory = "legal_finance";
+    rules.legalFinanceSubType = "advocate";
+    rules.practiceArea = "gst";
+    const fl = normaliseFreelancer(legalProfile, true, null);
+    expect(talentSearchPreFilter(rules, fl)).toBe(true);
+  });
+
+  it("rejects legal finance sub-type mismatch", () => {
+    const rules = defaultTalentSearchRules();
+    rules.professionCategory = "legal_finance";
+    rules.legalFinanceSubType = "chartered_accountant";
+    const fl = normaliseFreelancer(legalProfile, true, null);
+    expect(talentSearchPreFilterReason(rules, fl)).toContain("Legal & finance sub-type");
+  });
+
+  it("rejects practice area mismatch", () => {
+    const rules = defaultTalentSearchRules();
+    rules.professionCategory = "legal_finance";
+    rules.practiceArea = "Insolvency";
+    const fl = normaliseFreelancer(legalProfile, true, null);
+    expect(talentSearchPreFilterReason(rules, fl)).toContain("Practice area");
+  });
+
+  it("rejects unverified Aadhaar when requireAadhaarVerified is set", () => {
+    const rules = defaultTalentSearchRules();
+    rules.professionCategory = "legal_finance";
+    rules.requireAadhaarVerified = true;
+    const unverified = {
+      ...legalProfile,
       aadhaarVerificationStatus: "uploaded",
     } as FreelancerProfile;
     const fl = normaliseFreelancer(unverified, true, null);

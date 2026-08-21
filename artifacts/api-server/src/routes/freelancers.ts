@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { getAuth } from "@clerk/express";
 import { db } from "@workspace/db";
-import { freelancerProfilesTable, usersTable, documentsTable } from "@workspace/db";
+import { freelancerProfilesTable, usersTable, documentsTable, AADHAAR_VAULT_CATEGORIES } from "@workspace/db";
 import { eq, and, or, isNull, isNotNull, lte, gte, lt, not, inArray, sql, SQL, exists } from "drizzle-orm";
 import { refreshNextAvailableDate, toDateString } from "../lib/availabilityUtils";
 import { sanitiseSearchQuery } from "../lib/searchUtils";
@@ -172,6 +172,16 @@ router.get("/freelancers", async (req, res) => {
       );
     }
 
+    if (params.practiceArea) {
+      const areaPattern = `%${params.practiceArea}%`;
+      conditions.push(
+        sql`EXISTS (
+          SELECT 1 FROM unnest(${freelancerProfilesTable.practiceAreas}) AS area
+          WHERE area ILIKE ${areaPattern}
+        )`,
+      );
+    }
+
     if (params.countryCode) {
       conditions.push(eq(freelancerProfilesTable.countryCode, params.countryCode));
     }
@@ -212,10 +222,10 @@ router.get("/freelancers", async (req, res) => {
       )!,
     );
 
-    // Healthcare professionals require verified Aadhaar for Talent Vault visibility.
+    // Healthcare and Legal & Finance professionals require verified Aadhaar for Talent Vault.
     conditions.push(
       or(
-        not(eq(freelancerProfilesTable.professionCategory, "healthcare")),
+        not(inArray(freelancerProfilesTable.professionCategory, [...AADHAAR_VAULT_CATEGORIES])),
         eq(freelancerProfilesTable.aadhaarVerificationStatus, "verified"),
       )!,
     );
@@ -338,6 +348,33 @@ router.patch("/freelancers/me", async (req, res) => {
   if (data.registrationNumber !== undefined) {
     data.registrationNumber = data.registrationNumber === null ? null : sanitiseText(data.registrationNumber);
   }
+  if (data.practiceAreas !== undefined) {
+    data.practiceAreas = data.practiceAreas?.map((s) => sanitiseText(s)) ?? null;
+  }
+  if (data.practiceSettings !== undefined) {
+    data.practiceSettings = data.practiceSettings?.map((s) => sanitiseText(s)) ?? null;
+  }
+  if (data.legalFinanceQualificationSpecialization !== undefined) {
+    data.legalFinanceQualificationSpecialization =
+      data.legalFinanceQualificationSpecialization === null
+        ? null
+        : sanitiseText(data.legalFinanceQualificationSpecialization);
+  }
+  if (data.legalFinanceQualificationInstitution !== undefined) {
+    data.legalFinanceQualificationInstitution =
+      data.legalFinanceQualificationInstitution === null
+        ? null
+        : sanitiseText(data.legalFinanceQualificationInstitution);
+  }
+  if (data.enrolmentBody !== undefined) {
+    data.enrolmentBody = data.enrolmentBody === null ? null : sanitiseText(data.enrolmentBody);
+  }
+  if (data.enrolmentNumber !== undefined) {
+    data.enrolmentNumber = data.enrolmentNumber === null ? null : sanitiseText(data.enrolmentNumber);
+  }
+  if (data.courtJurisdictions !== undefined) {
+    data.courtJurisdictions = data.courtJurisdictions?.map((s) => sanitiseText(s)) ?? null;
+  }
   try {
     const [current] = await db.select().from(freelancerProfilesTable)
       .where(eq(freelancerProfilesTable.clerkId, clerkId)).limit(1);
@@ -403,12 +440,21 @@ router.patch("/freelancers/me", async (req, res) => {
     const registrationExpiryChanged =
       nextRegistrationExpiry !== undefined && nextRegistrationExpiry !== currentRegistrationExpiry;
 
+    const nextEnrolmentExpiry =
+      data.enrolmentExpiry !== undefined
+        ? (data.enrolmentExpiry ? new Date(data.enrolmentExpiry).getTime() : null)
+        : undefined;
+    const currentEnrolmentExpiry = current.enrolmentExpiry?.getTime() ?? null;
+    const enrolmentExpiryChanged =
+      nextEnrolmentExpiry !== undefined && nextEnrolmentExpiry !== currentEnrolmentExpiry;
+
     const [updated] = await db.update(freelancerProfilesTable)
       .set({
         ...data,
         completenessScore,
         ...(teachingLicenceExpiryChanged ? { teachingLicenceAlertStage: "none" } : {}),
         ...(registrationExpiryChanged ? { registrationAlertStage: "none" } : {}),
+        ...(enrolmentExpiryChanged ? { enrolmentAlertStage: "none" } : {}),
         updatedAt: new Date(),
       } as any)
       .where(eq(freelancerProfilesTable.clerkId, clerkId))
@@ -511,6 +557,18 @@ router.post("/freelancers", async (req, res) => {
           registrationNumber: insertData.registrationNumber ?? null,
           registrationExpiry: insertData.registrationExpiry ?? null,
           preferredCareMode: insertData.preferredCareMode ?? null,
+          legalFinanceProfessionType: insertData.legalFinanceProfessionType ?? null,
+          practiceAreas: insertData.practiceAreas ?? null,
+          practiceSettings: insertData.practiceSettings ?? null,
+          yearsPracticeExperience: insertData.yearsPracticeExperience ?? null,
+          legalFinanceHighestQualification: insertData.legalFinanceHighestQualification ?? null,
+          legalFinanceQualificationSpecialization: insertData.legalFinanceQualificationSpecialization ?? null,
+          legalFinanceQualificationInstitution: insertData.legalFinanceQualificationInstitution ?? null,
+          enrolmentBody: insertData.enrolmentBody ?? null,
+          enrolmentNumber: insertData.enrolmentNumber ?? null,
+          enrolmentExpiry: insertData.enrolmentExpiry ?? null,
+          courtJurisdictions: insertData.courtJurisdictions ?? null,
+          preferredEngagementMode: insertData.preferredEngagementMode ?? null,
           countryCode: insertData.countryCode,
           currencyCode: insertData.currencyCode,
           updatedAt: new Date(),

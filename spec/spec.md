@@ -222,6 +222,14 @@ talentlock/
 │   │   ├── UI.md
 │   │   └── validation.md
 │   │
+│   ├── legal-finance-professional-profile/         ← 🟡 Ready to Execute
+│   │   ├── features.md
+│   │   ├── clarify.md
+│   │   ├── plan.md
+│   │   ├── task.md
+│   │   ├── UI.md
+│   │   └── validation.md
+│   │
 │   ├── employer-cruisemode/                        ← ✅ Complete (TalentSearch)
 │   ├── cruise-mode-dm-delivery/                    ← ✅ Complete (real DM for Cruise Mode + TalentSearch)
 │   │   ├── features.md
@@ -540,6 +548,7 @@ The `.cursor/rules/talentlock.mdc` file at the repo root enforces these rules au
 | Cruise Mode | `spec/cruisemode/` | ✅ Complete · DM delivery spec in `spec/cruise-mode-dm-delivery/` · rate matching normalized to hourly equivalents (daily ÷ 8) via `rateConversion.ts` |
 | Teaching Professional Profile | `spec/teaching-professional-profile/` | ✅ Complete |
 | Healthcare Professional Profile | `spec/healthcare-professional-profile/` | 🔄 In Progress · Phase 1 schema on Neon 2026-08-20 · onboarding/Vault/profile surfaces partially shipped |
+| Legal & Finance Professional Profile | `spec/legal-finance-professional-profile/` | 🔄 In Progress · Aadhaar mandatory at registration; Bar/ICAI/GST/NISM documents after signup (Phase 5) |
 | TalentSearch (Employer Cruise Mode) | `spec/employer-cruisemode/` | ✅ Complete · DM delivery spec in `spec/cruise-mode-dm-delivery/` |
 | **Cruise Mode & TalentSearch DM Delivery** | `spec/cruise-mode-dm-delivery/` | ✅ Complete |
 | AI Meeting Brief Generator | `spec/aimeetingdebrief/` | ✅ Complete |

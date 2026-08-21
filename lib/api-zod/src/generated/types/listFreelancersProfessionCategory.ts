@@ -13,4 +13,5 @@ export const ListFreelancersProfessionCategory = {
   technology: "technology",
   education: "education",
   healthcare: "healthcare",
+  legal_finance: "legal_finance",
 } as const;

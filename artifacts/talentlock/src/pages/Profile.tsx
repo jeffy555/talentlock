@@ -33,6 +33,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import TeachingDetailsSection, { emptyTeachingDetails, type TeachingDetailsValues } from "@/components/onboarding/TeachingDetailsSection";
 import HealthcareDetailsSection, { emptyHealthcareDetails, type HealthcareDetailsValues } from "@/components/onboarding/HealthcareDetailsSection";
 import { HealthcareCredentialChecklist } from "@/components/healthcare/HealthcareCredentialChecklist";
+import LegalFinanceDetailsSection, { emptyLegalFinanceDetails, type LegalFinanceDetailsValues } from "@/components/onboarding/LegalFinanceDetailsSection";
+import { LegalFinanceCredentialChecklist } from "@/components/legal-finance/LegalFinanceCredentialChecklist";
 import EmployerVerificationSection from "@/components/employer/EmployerVerificationSection";
 import { CountryStateFields, formatLocationLabel, isLocationComplete } from "@/components/onboarding/CountryStateFields";
 import { PhoneWithCountryFields } from "@/components/onboarding/PhoneWithCountryFields";
@@ -415,6 +417,7 @@ export default function Profile() {
   const [availabilityNote, setAvailabilityNote] = useState(fp?.availabilityNote ?? "");
   const [teachingDetails, setTeachingDetails] = useState<TeachingDetailsValues>(emptyTeachingDetails());
   const [healthcareDetails, setHealthcareDetails] = useState<HealthcareDetailsValues>(emptyHealthcareDetails());
+  const [legalFinanceDetails, setLegalFinanceDetails] = useState<LegalFinanceDetailsValues>(emptyLegalFinanceDetails());
   const [countryCode, setCountryCode] = useState(dbUser?.countryCode ?? "US");
   const [stateCode, setStateCode] = useState<string | null>(dbUser?.stateCode ?? null);
 
@@ -442,6 +445,7 @@ export default function Profile() {
         professionCategory?: string;
         educationProfessionType?: string | null;
         healthcareProfessionType?: string | null;
+        legalFinanceProfessionType?: string | null;
         aadhaarVerificationStatus?: string;
       };
       const teachingPayload = fp3?.professionCategory === "education"
@@ -482,6 +486,32 @@ export default function Profile() {
             location: formatLocationLabel(countriesData?.countries ?? [], countryCode, stateCode) || undefined,
           }
         : {};
+      const legalFinancePayload = fp3?.professionCategory === "legal_finance"
+        ? {
+            practiceAreas: legalFinanceDetails.practiceAreas.length
+              ? legalFinanceDetails.practiceAreas
+              : undefined,
+            practiceSettings: legalFinanceDetails.practiceSettings.length
+              ? legalFinanceDetails.practiceSettings
+              : undefined,
+            yearsPracticeExperience: legalFinanceDetails.yearsPracticeExperience ?? undefined,
+            legalFinanceHighestQualification: legalFinanceDetails.legalFinanceHighestQualification ?? undefined,
+            legalFinanceQualificationSpecialization:
+              legalFinanceDetails.legalFinanceQualificationSpecialization || undefined,
+            legalFinanceQualificationInstitution:
+              legalFinanceDetails.legalFinanceQualificationInstitution || undefined,
+            enrolmentBody: legalFinanceDetails.enrolmentBody || undefined,
+            enrolmentNumber: legalFinanceDetails.enrolmentNumber || undefined,
+            enrolmentExpiry: legalFinanceDetails.enrolmentExpiry
+              ? new Date(legalFinanceDetails.enrolmentExpiry).toISOString()
+              : undefined,
+            courtJurisdictions: legalFinanceDetails.courtJurisdictions.length
+              ? legalFinanceDetails.courtJurisdictions
+              : undefined,
+            preferredEngagementMode: legalFinanceDetails.preferredEngagementMode ?? undefined,
+            location: formatLocationLabel(countriesData?.countries ?? [], countryCode, stateCode) || undefined,
+          }
+        : {};
 
       const parsedDaily = parseRateInput(dailyRate);
       await updateFreelancer.mutateAsync({
@@ -497,6 +527,7 @@ export default function Profile() {
           availabilityNote: availabilityNote || undefined,
           ...teachingPayload,
           ...healthcarePayload,
+          ...legalFinancePayload,
         },
       });
       toast({ title: "Profile updated", description: "Your freelancer profile has been saved." });
@@ -621,6 +652,18 @@ export default function Profile() {
       registrationExpiry?: string | null;
       preferredCareMode?: string | null;
       aadhaarVerificationStatus?: string;
+      legalFinanceProfessionType?: string | null;
+      practiceAreas?: string[] | null;
+      practiceSettings?: string[] | null;
+      yearsPracticeExperience?: number | null;
+      legalFinanceHighestQualification?: string | null;
+      legalFinanceQualificationSpecialization?: string | null;
+      legalFinanceQualificationInstitution?: string | null;
+      enrolmentBody?: string | null;
+      enrolmentNumber?: string | null;
+      enrolmentExpiry?: string | null;
+      courtJurisdictions?: string[] | null;
+      preferredEngagementMode?: string | null;
     };
     setBio(freelancerProfile.bio ?? "");
     setTagline(freelancerProfile.tagline ?? "");
@@ -657,6 +700,21 @@ export default function Profile() {
       registrationNumber: fp2.registrationNumber ?? "",
       registrationExpiry: fp2.registrationExpiry ? fp2.registrationExpiry.substring(0, 10) : "",
       preferredCareMode: (fp2.preferredCareMode as HealthcareDetailsValues["preferredCareMode"]) ?? null,
+    });
+    setLegalFinanceDetails({
+      practiceAreas: fp2.practiceAreas ?? [],
+      practiceSettings: fp2.practiceSettings ?? [],
+      yearsPracticeExperience: fp2.yearsPracticeExperience ?? null,
+      legalFinanceHighestQualification:
+        (fp2.legalFinanceHighestQualification as LegalFinanceDetailsValues["legalFinanceHighestQualification"]) ?? null,
+      legalFinanceQualificationSpecialization: fp2.legalFinanceQualificationSpecialization ?? "",
+      legalFinanceQualificationInstitution: fp2.legalFinanceQualificationInstitution ?? "",
+      enrolmentBody: fp2.enrolmentBody ?? "",
+      enrolmentNumber: fp2.enrolmentNumber ?? "",
+      enrolmentExpiry: fp2.enrolmentExpiry ? String(fp2.enrolmentExpiry).substring(0, 10) : "",
+      courtJurisdictions: fp2.courtJurisdictions ?? [],
+      preferredEngagementMode:
+        (fp2.preferredEngagementMode as LegalFinanceDetailsValues["preferredEngagementMode"]) ?? null,
     });
   }, [freelancerProfile]);
 
@@ -878,6 +936,20 @@ export default function Profile() {
                 />
                 <HealthcareCredentialChecklist
                   healthcareProfessionType={(freelancerProfile as { healthcareProfessionType?: string | null }).healthcareProfessionType as import("@workspace/api-client-react").HealthcareProfessionType | null}
+                  aadhaarVerificationStatus={(freelancerProfile as { aadhaarVerificationStatus?: string }).aadhaarVerificationStatus ?? "not_uploaded"}
+                />
+              </>
+            )}
+
+            {(freelancerProfile as { professionCategory?: string }).professionCategory === "legal_finance" && (
+              <>
+                <LegalFinanceDetailsSection
+                  legalFinanceProfessionType={(freelancerProfile as { legalFinanceProfessionType?: string | null }).legalFinanceProfessionType as import("@workspace/api-client-react").LegalFinanceProfessionType | null}
+                  values={legalFinanceDetails}
+                  onChange={setLegalFinanceDetails}
+                />
+                <LegalFinanceCredentialChecklist
+                  legalFinanceProfessionType={(freelancerProfile as { legalFinanceProfessionType?: string | null }).legalFinanceProfessionType as import("@workspace/api-client-react").LegalFinanceProfessionType | null}
                   aadhaarVerificationStatus={(freelancerProfile as { aadhaarVerificationStatus?: string }).aadhaarVerificationStatus ?? "not_uploaded"}
                 />
               </>

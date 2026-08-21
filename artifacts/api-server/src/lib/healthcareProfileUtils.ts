@@ -51,5 +51,8 @@ export function mapFreelancerProfileForApi(
     registrationNumber: mask
       ? maskRegistrationNumber(p.registrationNumber)
       : p.registrationNumber,
+    enrolmentNumber: mask
+      ? maskRegistrationNumber(p.enrolmentNumber)
+      : p.enrolmentNumber,
   };
 }

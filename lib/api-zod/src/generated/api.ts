@@ -464,7 +464,7 @@ export const ListFreelancersQueryParams = zod.object({
     .optional()
     .describe("Full-text keyword search across bio and skills"),
   professionCategory: zod
-    .enum(["technology", "education", "healthcare"])
+    .enum(["technology", "education", "healthcare", "legal_finance"])
     .optional()
     .describe("Filter by profession category"),
   teachingSubject: zod.coerce
@@ -478,6 +478,12 @@ export const ListFreelancersQueryParams = zod.object({
     .optional()
     .describe(
       "Case-insensitive substring match on clinicalSpecialties (healthcare professionals)",
+    ),
+  practiceArea: zod.coerce
+    .string()
+    .optional()
+    .describe(
+      "Case-insensitive substring match on practiceAreas (legal & finance professionals)",
     ),
   countryCode: zod.coerce
     .string()
@@ -539,7 +545,12 @@ export const ListFreelancersResponseItem = zod.object({
   completenessScore: zod
     .number()
     .describe("Profile completeness score 0–100 (Talent Vault requires ≥ 60)"),
-  professionCategory: zod.enum(["technology", "education", "healthcare"]),
+  professionCategory: zod.enum([
+    "technology",
+    "education",
+    "healthcare",
+    "legal_finance",
+  ]),
   educationProfessionType: zod
     .enum(["school_teacher", "university_lecturer", "tutor", "researcher"])
     .nullish(),
@@ -595,6 +606,37 @@ export const ListFreelancersResponseItem = zod.object({
     .enum(["not_uploaded", "uploaded", "verified", "rejected", "expired"])
     .optional(),
   preferredCareMode: zod.enum(["in_person", "telehealth", "both"]).nullish(),
+  legalFinanceProfessionType: zod
+    .enum([
+      "advocate",
+      "chartered_accountant",
+      "company_secretary",
+      "tax_consultant",
+      "financial_advisor",
+    ])
+    .nullish(),
+  practiceAreas: zod.array(zod.string()).nullish(),
+  practiceSettings: zod.array(zod.string()).nullish(),
+  yearsPracticeExperience: zod.number().nullish(),
+  legalFinanceHighestQualification: zod
+    .enum([
+      "llb",
+      "llm",
+      "ca_final",
+      "cs_professional",
+      "cma_final",
+      "mba_finance",
+      "cfa",
+      "other",
+    ])
+    .nullish(),
+  legalFinanceQualificationSpecialization: zod.string().nullish(),
+  legalFinanceQualificationInstitution: zod.string().nullish(),
+  enrolmentBody: zod.string().nullish(),
+  enrolmentNumber: zod.string().nullish(),
+  enrolmentExpiry: zod.coerce.date().nullish(),
+  courtJurisdictions: zod.array(zod.string()).nullish(),
+  preferredEngagementMode: zod.enum(["in_person", "remote", "both"]).nullish(),
   countryCode: zod
     .string()
     .default(listFreelancersResponseCountryCodeDefault)
@@ -658,7 +700,7 @@ export const CreateFreelancerProfileBody = zod.object({
     })
     .nullish(),
   professionCategory: zod
-    .enum(["technology", "education", "healthcare"])
+    .enum(["technology", "education", "healthcare", "legal_finance"])
     .optional(),
   educationProfessionType: zod
     .enum(["school_teacher", "university_lecturer", "tutor", "researcher"])
@@ -712,6 +754,37 @@ export const CreateFreelancerProfileBody = zod.object({
   registrationNumber: zod.string().nullish(),
   registrationExpiry: zod.coerce.date().nullish(),
   preferredCareMode: zod.enum(["in_person", "telehealth", "both"]).nullish(),
+  legalFinanceProfessionType: zod
+    .enum([
+      "advocate",
+      "chartered_accountant",
+      "company_secretary",
+      "tax_consultant",
+      "financial_advisor",
+    ])
+    .nullish(),
+  practiceAreas: zod.array(zod.string()).nullish(),
+  practiceSettings: zod.array(zod.string()).nullish(),
+  yearsPracticeExperience: zod.number().nullish(),
+  legalFinanceHighestQualification: zod
+    .enum([
+      "llb",
+      "llm",
+      "ca_final",
+      "cs_professional",
+      "cma_final",
+      "mba_finance",
+      "cfa",
+      "other",
+    ])
+    .nullish(),
+  legalFinanceQualificationSpecialization: zod.string().nullish(),
+  legalFinanceQualificationInstitution: zod.string().nullish(),
+  enrolmentBody: zod.string().nullish(),
+  enrolmentNumber: zod.string().nullish(),
+  enrolmentExpiry: zod.coerce.date().nullish(),
+  courtJurisdictions: zod.array(zod.string()).nullish(),
+  preferredEngagementMode: zod.enum(["in_person", "remote", "both"]).nullish(),
 });
 
 /**
@@ -763,7 +836,12 @@ export const GetMyFreelancerProfileResponse = zod.object({
   completenessScore: zod
     .number()
     .describe("Profile completeness score 0–100 (Talent Vault requires ≥ 60)"),
-  professionCategory: zod.enum(["technology", "education", "healthcare"]),
+  professionCategory: zod.enum([
+    "technology",
+    "education",
+    "healthcare",
+    "legal_finance",
+  ]),
   educationProfessionType: zod
     .enum(["school_teacher", "university_lecturer", "tutor", "researcher"])
     .nullish(),
@@ -819,6 +897,37 @@ export const GetMyFreelancerProfileResponse = zod.object({
     .enum(["not_uploaded", "uploaded", "verified", "rejected", "expired"])
     .optional(),
   preferredCareMode: zod.enum(["in_person", "telehealth", "both"]).nullish(),
+  legalFinanceProfessionType: zod
+    .enum([
+      "advocate",
+      "chartered_accountant",
+      "company_secretary",
+      "tax_consultant",
+      "financial_advisor",
+    ])
+    .nullish(),
+  practiceAreas: zod.array(zod.string()).nullish(),
+  practiceSettings: zod.array(zod.string()).nullish(),
+  yearsPracticeExperience: zod.number().nullish(),
+  legalFinanceHighestQualification: zod
+    .enum([
+      "llb",
+      "llm",
+      "ca_final",
+      "cs_professional",
+      "cma_final",
+      "mba_finance",
+      "cfa",
+      "other",
+    ])
+    .nullish(),
+  legalFinanceQualificationSpecialization: zod.string().nullish(),
+  legalFinanceQualificationInstitution: zod.string().nullish(),
+  enrolmentBody: zod.string().nullish(),
+  enrolmentNumber: zod.string().nullish(),
+  enrolmentExpiry: zod.coerce.date().nullish(),
+  courtJurisdictions: zod.array(zod.string()).nullish(),
+  preferredEngagementMode: zod.enum(["in_person", "remote", "both"]).nullish(),
   countryCode: zod
     .string()
     .default(getMyFreelancerProfileResponseCountryCodeDefault)
@@ -858,7 +967,7 @@ export const UpdateMyFreelancerProfileBody = zod.object({
   availableFrom: zod.coerce.date().nullish(),
   availabilityNote: zod.string().nullish(),
   professionCategory: zod
-    .enum(["technology", "education", "healthcare"])
+    .enum(["technology", "education", "healthcare", "legal_finance"])
     .optional(),
   educationProfessionType: zod
     .enum(["school_teacher", "university_lecturer", "tutor", "researcher"])
@@ -912,6 +1021,37 @@ export const UpdateMyFreelancerProfileBody = zod.object({
   registrationNumber: zod.string().nullish(),
   registrationExpiry: zod.coerce.date().nullish(),
   preferredCareMode: zod.enum(["in_person", "telehealth", "both"]).nullish(),
+  legalFinanceProfessionType: zod
+    .enum([
+      "advocate",
+      "chartered_accountant",
+      "company_secretary",
+      "tax_consultant",
+      "financial_advisor",
+    ])
+    .nullish(),
+  practiceAreas: zod.array(zod.string()).nullish(),
+  practiceSettings: zod.array(zod.string()).nullish(),
+  yearsPracticeExperience: zod.number().nullish(),
+  legalFinanceHighestQualification: zod
+    .enum([
+      "llb",
+      "llm",
+      "ca_final",
+      "cs_professional",
+      "cma_final",
+      "mba_finance",
+      "cfa",
+      "other",
+    ])
+    .nullish(),
+  legalFinanceQualificationSpecialization: zod.string().nullish(),
+  legalFinanceQualificationInstitution: zod.string().nullish(),
+  enrolmentBody: zod.string().nullish(),
+  enrolmentNumber: zod.string().nullish(),
+  enrolmentExpiry: zod.coerce.date().nullish(),
+  courtJurisdictions: zod.array(zod.string()).nullish(),
+  preferredEngagementMode: zod.enum(["in_person", "remote", "both"]).nullish(),
 });
 
 export const updateMyFreelancerProfileResponseCountryCodeDefault = `US`;
@@ -960,7 +1100,12 @@ export const UpdateMyFreelancerProfileResponse = zod.object({
   completenessScore: zod
     .number()
     .describe("Profile completeness score 0–100 (Talent Vault requires ≥ 60)"),
-  professionCategory: zod.enum(["technology", "education", "healthcare"]),
+  professionCategory: zod.enum([
+    "technology",
+    "education",
+    "healthcare",
+    "legal_finance",
+  ]),
   educationProfessionType: zod
     .enum(["school_teacher", "university_lecturer", "tutor", "researcher"])
     .nullish(),
@@ -1016,6 +1161,37 @@ export const UpdateMyFreelancerProfileResponse = zod.object({
     .enum(["not_uploaded", "uploaded", "verified", "rejected", "expired"])
     .optional(),
   preferredCareMode: zod.enum(["in_person", "telehealth", "both"]).nullish(),
+  legalFinanceProfessionType: zod
+    .enum([
+      "advocate",
+      "chartered_accountant",
+      "company_secretary",
+      "tax_consultant",
+      "financial_advisor",
+    ])
+    .nullish(),
+  practiceAreas: zod.array(zod.string()).nullish(),
+  practiceSettings: zod.array(zod.string()).nullish(),
+  yearsPracticeExperience: zod.number().nullish(),
+  legalFinanceHighestQualification: zod
+    .enum([
+      "llb",
+      "llm",
+      "ca_final",
+      "cs_professional",
+      "cma_final",
+      "mba_finance",
+      "cfa",
+      "other",
+    ])
+    .nullish(),
+  legalFinanceQualificationSpecialization: zod.string().nullish(),
+  legalFinanceQualificationInstitution: zod.string().nullish(),
+  enrolmentBody: zod.string().nullish(),
+  enrolmentNumber: zod.string().nullish(),
+  enrolmentExpiry: zod.coerce.date().nullish(),
+  courtJurisdictions: zod.array(zod.string()).nullish(),
+  preferredEngagementMode: zod.enum(["in_person", "remote", "both"]).nullish(),
   countryCode: zod
     .string()
     .default(updateMyFreelancerProfileResponseCountryCodeDefault)
@@ -1091,7 +1267,12 @@ export const GetFreelancerProfileResponse = zod
       .describe(
         "Profile completeness score 0–100 (Talent Vault requires ≥ 60)",
       ),
-    professionCategory: zod.enum(["technology", "education", "healthcare"]),
+    professionCategory: zod.enum([
+      "technology",
+      "education",
+      "healthcare",
+      "legal_finance",
+    ]),
     educationProfessionType: zod
       .enum(["school_teacher", "university_lecturer", "tutor", "researcher"])
       .nullish(),
@@ -1149,6 +1330,39 @@ export const GetFreelancerProfileResponse = zod
       .enum(["not_uploaded", "uploaded", "verified", "rejected", "expired"])
       .optional(),
     preferredCareMode: zod.enum(["in_person", "telehealth", "both"]).nullish(),
+    legalFinanceProfessionType: zod
+      .enum([
+        "advocate",
+        "chartered_accountant",
+        "company_secretary",
+        "tax_consultant",
+        "financial_advisor",
+      ])
+      .nullish(),
+    practiceAreas: zod.array(zod.string()).nullish(),
+    practiceSettings: zod.array(zod.string()).nullish(),
+    yearsPracticeExperience: zod.number().nullish(),
+    legalFinanceHighestQualification: zod
+      .enum([
+        "llb",
+        "llm",
+        "ca_final",
+        "cs_professional",
+        "cma_final",
+        "mba_finance",
+        "cfa",
+        "other",
+      ])
+      .nullish(),
+    legalFinanceQualificationSpecialization: zod.string().nullish(),
+    legalFinanceQualificationInstitution: zod.string().nullish(),
+    enrolmentBody: zod.string().nullish(),
+    enrolmentNumber: zod.string().nullish(),
+    enrolmentExpiry: zod.coerce.date().nullish(),
+    courtJurisdictions: zod.array(zod.string()).nullish(),
+    preferredEngagementMode: zod
+      .enum(["in_person", "remote", "both"])
+      .nullish(),
     countryCode: zod
       .string()
       .default(getFreelancerProfileResponseOneCountryCodeDefault)
@@ -1357,7 +1571,12 @@ export const ListJobRequirementsResponse = zod.object({
       startDate: zod.coerce.date(),
       endDate: zod.coerce.date(),
       status: zod.string().describe("open, filled, closed"),
-      professionCategory: zod.enum(["technology", "education", "healthcare"]),
+      professionCategory: zod.enum([
+        "technology",
+        "education",
+        "healthcare",
+        "legal_finance",
+      ]),
       rateType: zod.enum([
         "hourly",
         "per_day",
@@ -1388,7 +1607,7 @@ export const CreateJobRequirementBody = zod.object({
   startDate: zod.coerce.date(),
   endDate: zod.coerce.date(),
   professionCategory: zod
-    .enum(["technology", "education", "healthcare"])
+    .enum(["technology", "education", "healthcare", "legal_finance"])
     .optional(),
   rateType: zod
     .enum(["hourly", "per_day", "per_session", "per_course", "per_shift"])
@@ -1420,7 +1639,12 @@ export const GetJobRequirementResponse = zod.object({
   startDate: zod.coerce.date(),
   endDate: zod.coerce.date(),
   status: zod.string().describe("open, filled, closed"),
-  professionCategory: zod.enum(["technology", "education", "healthcare"]),
+  professionCategory: zod.enum([
+    "technology",
+    "education",
+    "healthcare",
+    "legal_finance",
+  ]),
   rateType: zod.enum([
     "hourly",
     "per_day",
@@ -1448,7 +1672,7 @@ export const UpdateJobRequirementBody = zod.object({
   endDate: zod.coerce.date().optional(),
   status: zod.string().optional(),
   professionCategory: zod
-    .enum(["technology", "education", "healthcare"])
+    .enum(["technology", "education", "healthcare", "legal_finance"])
     .optional(),
   rateType: zod
     .enum(["hourly", "per_day", "per_session", "per_course", "per_shift"])
@@ -1473,7 +1697,12 @@ export const UpdateJobRequirementResponse = zod.object({
   startDate: zod.coerce.date(),
   endDate: zod.coerce.date(),
   status: zod.string().describe("open, filled, closed"),
-  professionCategory: zod.enum(["technology", "education", "healthcare"]),
+  professionCategory: zod.enum([
+    "technology",
+    "education",
+    "healthcare",
+    "legal_finance",
+  ]),
   rateType: zod.enum([
     "hourly",
     "per_day",
@@ -4123,7 +4352,12 @@ export const ListSavedFreelancersResponseItem = zod.object({
       .describe(
         "Profile completeness score 0–100 (Talent Vault requires ≥ 60)",
       ),
-    professionCategory: zod.enum(["technology", "education", "healthcare"]),
+    professionCategory: zod.enum([
+      "technology",
+      "education",
+      "healthcare",
+      "legal_finance",
+    ]),
     educationProfessionType: zod
       .enum(["school_teacher", "university_lecturer", "tutor", "researcher"])
       .nullish(),
@@ -4181,6 +4415,39 @@ export const ListSavedFreelancersResponseItem = zod.object({
       .enum(["not_uploaded", "uploaded", "verified", "rejected", "expired"])
       .optional(),
     preferredCareMode: zod.enum(["in_person", "telehealth", "both"]).nullish(),
+    legalFinanceProfessionType: zod
+      .enum([
+        "advocate",
+        "chartered_accountant",
+        "company_secretary",
+        "tax_consultant",
+        "financial_advisor",
+      ])
+      .nullish(),
+    practiceAreas: zod.array(zod.string()).nullish(),
+    practiceSettings: zod.array(zod.string()).nullish(),
+    yearsPracticeExperience: zod.number().nullish(),
+    legalFinanceHighestQualification: zod
+      .enum([
+        "llb",
+        "llm",
+        "ca_final",
+        "cs_professional",
+        "cma_final",
+        "mba_finance",
+        "cfa",
+        "other",
+      ])
+      .nullish(),
+    legalFinanceQualificationSpecialization: zod.string().nullish(),
+    legalFinanceQualificationInstitution: zod.string().nullish(),
+    enrolmentBody: zod.string().nullish(),
+    enrolmentNumber: zod.string().nullish(),
+    enrolmentExpiry: zod.coerce.date().nullish(),
+    courtJurisdictions: zod.array(zod.string()).nullish(),
+    preferredEngagementMode: zod
+      .enum(["in_person", "remote", "both"])
+      .nullish(),
     countryCode: zod
       .string()
       .default(listSavedFreelancersResponseFreelancerCountryCodeDefault)
@@ -4491,7 +4758,12 @@ export const GetPublicFreelancerProfileResponse = zod.object({
   averageRating: zod.number().nullish(),
   reviewCount: zod.number().optional(),
   totalReviews: zod.number(),
-  professionCategory: zod.enum(["technology", "education", "healthcare"]),
+  professionCategory: zod.enum([
+    "technology",
+    "education",
+    "healthcare",
+    "legal_finance",
+  ]),
   educationProfessionType: zod
     .enum(["school_teacher", "university_lecturer", "tutor", "researcher"])
     .nullish(),
@@ -4536,6 +4808,37 @@ export const GetPublicFreelancerProfileResponse = zod.object({
     .enum(["not_uploaded", "uploaded", "verified", "rejected", "expired"])
     .optional(),
   preferredCareMode: zod.enum(["in_person", "telehealth", "both"]).nullish(),
+  legalFinanceProfessionType: zod
+    .enum([
+      "advocate",
+      "chartered_accountant",
+      "company_secretary",
+      "tax_consultant",
+      "financial_advisor",
+    ])
+    .nullish(),
+  practiceAreas: zod.array(zod.string()).nullish(),
+  practiceSettings: zod.array(zod.string()).nullish(),
+  yearsPracticeExperience: zod.number().nullish(),
+  legalFinanceHighestQualification: zod
+    .enum([
+      "llb",
+      "llm",
+      "ca_final",
+      "cs_professional",
+      "cma_final",
+      "mba_finance",
+      "cfa",
+      "other",
+    ])
+    .nullish(),
+  legalFinanceQualificationSpecialization: zod.string().nullish(),
+  legalFinanceQualificationInstitution: zod.string().nullish(),
+  enrolmentBody: zod.string().nullish(),
+  enrolmentNumber: zod.string().nullish(),
+  enrolmentExpiry: zod.coerce.date().nullish(),
+  courtJurisdictions: zod.array(zod.string()).nullish(),
+  preferredEngagementMode: zod.enum(["in_person", "remote", "both"]).nullish(),
   countryCode: zod
     .string()
     .default(getPublicFreelancerProfileResponseCountryCodeDefault),
@@ -4960,7 +5263,12 @@ export const ListTeamShortlistResponseItem = zod.object({
       .describe(
         "Profile completeness score 0–100 (Talent Vault requires ≥ 60)",
       ),
-    professionCategory: zod.enum(["technology", "education", "healthcare"]),
+    professionCategory: zod.enum([
+      "technology",
+      "education",
+      "healthcare",
+      "legal_finance",
+    ]),
     educationProfessionType: zod
       .enum(["school_teacher", "university_lecturer", "tutor", "researcher"])
       .nullish(),
@@ -5018,6 +5326,39 @@ export const ListTeamShortlistResponseItem = zod.object({
       .enum(["not_uploaded", "uploaded", "verified", "rejected", "expired"])
       .optional(),
     preferredCareMode: zod.enum(["in_person", "telehealth", "both"]).nullish(),
+    legalFinanceProfessionType: zod
+      .enum([
+        "advocate",
+        "chartered_accountant",
+        "company_secretary",
+        "tax_consultant",
+        "financial_advisor",
+      ])
+      .nullish(),
+    practiceAreas: zod.array(zod.string()).nullish(),
+    practiceSettings: zod.array(zod.string()).nullish(),
+    yearsPracticeExperience: zod.number().nullish(),
+    legalFinanceHighestQualification: zod
+      .enum([
+        "llb",
+        "llm",
+        "ca_final",
+        "cs_professional",
+        "cma_final",
+        "mba_finance",
+        "cfa",
+        "other",
+      ])
+      .nullish(),
+    legalFinanceQualificationSpecialization: zod.string().nullish(),
+    legalFinanceQualificationInstitution: zod.string().nullish(),
+    enrolmentBody: zod.string().nullish(),
+    enrolmentNumber: zod.string().nullish(),
+    enrolmentExpiry: zod.coerce.date().nullish(),
+    courtJurisdictions: zod.array(zod.string()).nullish(),
+    preferredEngagementMode: zod
+      .enum(["in_person", "remote", "both"])
+      .nullish(),
     countryCode: zod
       .string()
       .default(listTeamShortlistResponseFreelancerCountryCodeDefault)
@@ -5101,7 +5442,12 @@ export const AddTeamShortlistResponse = zod.object({
       .describe(
         "Profile completeness score 0–100 (Talent Vault requires ≥ 60)",
       ),
-    professionCategory: zod.enum(["technology", "education", "healthcare"]),
+    professionCategory: zod.enum([
+      "technology",
+      "education",
+      "healthcare",
+      "legal_finance",
+    ]),
     educationProfessionType: zod
       .enum(["school_teacher", "university_lecturer", "tutor", "researcher"])
       .nullish(),
@@ -5159,6 +5505,39 @@ export const AddTeamShortlistResponse = zod.object({
       .enum(["not_uploaded", "uploaded", "verified", "rejected", "expired"])
       .optional(),
     preferredCareMode: zod.enum(["in_person", "telehealth", "both"]).nullish(),
+    legalFinanceProfessionType: zod
+      .enum([
+        "advocate",
+        "chartered_accountant",
+        "company_secretary",
+        "tax_consultant",
+        "financial_advisor",
+      ])
+      .nullish(),
+    practiceAreas: zod.array(zod.string()).nullish(),
+    practiceSettings: zod.array(zod.string()).nullish(),
+    yearsPracticeExperience: zod.number().nullish(),
+    legalFinanceHighestQualification: zod
+      .enum([
+        "llb",
+        "llm",
+        "ca_final",
+        "cs_professional",
+        "cma_final",
+        "mba_finance",
+        "cfa",
+        "other",
+      ])
+      .nullish(),
+    legalFinanceQualificationSpecialization: zod.string().nullish(),
+    legalFinanceQualificationInstitution: zod.string().nullish(),
+    enrolmentBody: zod.string().nullish(),
+    enrolmentNumber: zod.string().nullish(),
+    enrolmentExpiry: zod.coerce.date().nullish(),
+    courtJurisdictions: zod.array(zod.string()).nullish(),
+    preferredEngagementMode: zod
+      .enum(["in_person", "remote", "both"])
+      .nullish(),
     countryCode: zod
       .string()
       .default(addTeamShortlistResponseFreelancerCountryCodeDefault)
@@ -5783,6 +6162,20 @@ export const GetTalentSearchResponse = zod.union([
         .describe(
           "Case-insensitive match against freelancer clinical specialties",
         ),
+      legalFinanceSubType: zod
+        .union([
+          zod.literal("advocate"),
+          zod.literal("chartered_accountant"),
+          zod.literal("company_secretary"),
+          zod.literal("tax_consultant"),
+          zod.literal("financial_advisor"),
+          zod.literal(null),
+        ])
+        .nullish(),
+      practiceArea: zod
+        .string()
+        .nullish()
+        .describe("Case-insensitive match against freelancer practice areas"),
       requireAadhaarVerified: zod
         .boolean()
         .describe(
@@ -5886,6 +6279,20 @@ export const UpsertTalentSearchBody = zod.object({
       .describe(
         "Case-insensitive match against freelancer clinical specialties",
       ),
+    legalFinanceSubType: zod
+      .union([
+        zod.literal("advocate"),
+        zod.literal("chartered_accountant"),
+        zod.literal("company_secretary"),
+        zod.literal("tax_consultant"),
+        zod.literal("financial_advisor"),
+        zod.literal(null),
+      ])
+      .nullish(),
+    practiceArea: zod
+      .string()
+      .nullish()
+      .describe("Case-insensitive match against freelancer practice areas"),
     requireAadhaarVerified: zod
       .boolean()
       .describe(
@@ -5979,6 +6386,20 @@ export const UpsertTalentSearchResponse = zod.object({
       .describe(
         "Case-insensitive match against freelancer clinical specialties",
       ),
+    legalFinanceSubType: zod
+      .union([
+        zod.literal("advocate"),
+        zod.literal("chartered_accountant"),
+        zod.literal("company_secretary"),
+        zod.literal("tax_consultant"),
+        zod.literal("financial_advisor"),
+        zod.literal(null),
+      ])
+      .nullish(),
+    practiceArea: zod
+      .string()
+      .nullish()
+      .describe("Case-insensitive match against freelancer practice areas"),
     requireAadhaarVerified: zod
       .boolean()
       .describe(
@@ -6084,6 +6505,20 @@ export const ActivateTalentSearchResponse = zod.object({
       .describe(
         "Case-insensitive match against freelancer clinical specialties",
       ),
+    legalFinanceSubType: zod
+      .union([
+        zod.literal("advocate"),
+        zod.literal("chartered_accountant"),
+        zod.literal("company_secretary"),
+        zod.literal("tax_consultant"),
+        zod.literal("financial_advisor"),
+        zod.literal(null),
+      ])
+      .nullish(),
+    practiceArea: zod
+      .string()
+      .nullish()
+      .describe("Case-insensitive match against freelancer practice areas"),
     requireAadhaarVerified: zod
       .boolean()
       .describe(
@@ -6189,6 +6624,20 @@ export const DryRunTalentSearchResponse = zod.object({
       .describe(
         "Case-insensitive match against freelancer clinical specialties",
       ),
+    legalFinanceSubType: zod
+      .union([
+        zod.literal("advocate"),
+        zod.literal("chartered_accountant"),
+        zod.literal("company_secretary"),
+        zod.literal("tax_consultant"),
+        zod.literal("financial_advisor"),
+        zod.literal(null),
+      ])
+      .nullish(),
+    practiceArea: zod
+      .string()
+      .nullish()
+      .describe("Case-insensitive match against freelancer practice areas"),
     requireAadhaarVerified: zod
       .boolean()
       .describe(
@@ -6294,6 +6743,20 @@ export const DeactivateTalentSearchResponse = zod.object({
       .describe(
         "Case-insensitive match against freelancer clinical specialties",
       ),
+    legalFinanceSubType: zod
+      .union([
+        zod.literal("advocate"),
+        zod.literal("chartered_accountant"),
+        zod.literal("company_secretary"),
+        zod.literal("tax_consultant"),
+        zod.literal("financial_advisor"),
+        zod.literal(null),
+      ])
+      .nullish(),
+    practiceArea: zod
+      .string()
+      .nullish()
+      .describe("Case-insensitive match against freelancer practice areas"),
     requireAadhaarVerified: zod
       .boolean()
       .describe(
@@ -6401,6 +6864,20 @@ export const ParseTalentSearchRulesResponse = zod.object({
       .describe(
         "Case-insensitive match against freelancer clinical specialties",
       ),
+    legalFinanceSubType: zod
+      .union([
+        zod.literal("advocate"),
+        zod.literal("chartered_accountant"),
+        zod.literal("company_secretary"),
+        zod.literal("tax_consultant"),
+        zod.literal("financial_advisor"),
+        zod.literal(null),
+      ])
+      .nullish(),
+    practiceArea: zod
+      .string()
+      .nullish()
+      .describe("Case-insensitive match against freelancer practice areas"),
     requireAadhaarVerified: zod
       .boolean()
       .describe(

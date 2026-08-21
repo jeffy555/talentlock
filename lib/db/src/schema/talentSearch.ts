@@ -16,7 +16,7 @@ import { messages } from "./messages";
 import { getNextMidnightUTC, type BlackoutWindow, type MatchReasons } from "./cruiseMode";
 
 export interface TalentSearchRules {
-  professionCategory: "technology" | "education" | "healthcare" | null;
+  professionCategory: "technology" | "education" | "healthcare" | "legal_finance" | null;
   educationSubType:
     | "school_teacher"
     | "university_lecturer"
@@ -31,6 +31,14 @@ export interface TalentSearchRules {
     | "care_worker"
     | null;
   clinicalSpecialty: string | null;
+  legalFinanceSubType:
+    | "advocate"
+    | "chartered_accountant"
+    | "company_secretary"
+    | "tax_consultant"
+    | "financial_advisor"
+    | null;
+  practiceArea: string | null;
   requireAadhaarVerified: boolean;
   requiredSkills: string[];
   preferredSkills: string[];

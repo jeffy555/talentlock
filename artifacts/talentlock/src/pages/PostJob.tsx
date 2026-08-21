@@ -45,6 +45,7 @@ export default function PostJob() {
   useEffect(() => {
     if (professionCategory === "education") setRateType("per_session");
     if (professionCategory === "healthcare") setRateType("per_shift");
+    if (professionCategory === "legal_finance") setRateType("per_day");
     if (professionCategory === "technology") setRateType("hourly");
   }, [professionCategory]);
 
@@ -80,9 +81,7 @@ export default function PostJob() {
           endDate: new Date(endDate).toISOString(),
           professionCategory,
           rateType:
-            professionCategory === "education" || professionCategory === "healthcare"
-              ? rateType
-              : "hourly",
+            professionCategory === "technology" ? "hourly" : rateType,
         }
       });
 
@@ -204,15 +203,23 @@ export default function PostJob() {
               <RadioGroup
                 value={professionCategory}
                 onValueChange={(v) => setProfessionCategory(v as ProfessionCategory)}
-                className="flex gap-4"
+                className="flex flex-wrap gap-4"
               >
                 <div className="flex items-center gap-2">
                   <RadioGroupItem value="technology" id="prof-technology" />
                   <Label htmlFor="prof-technology" className="font-normal cursor-pointer">Technology</Label>
                 </div>
                 <div className="flex items-center gap-2">
+                  <RadioGroupItem value="education" id="prof-education" />
+                  <Label htmlFor="prof-education" className="font-normal cursor-pointer">Education</Label>
+                </div>
+                <div className="flex items-center gap-2">
                   <RadioGroupItem value="healthcare" id="prof-healthcare" />
                   <Label htmlFor="prof-healthcare" className="font-normal cursor-pointer">Healthcare</Label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <RadioGroupItem value="legal_finance" id="prof-legal-finance" />
+                  <Label htmlFor="prof-legal-finance" className="font-normal cursor-pointer">Legal & Finance</Label>
                 </div>
               </RadioGroup>
             </div>
@@ -242,7 +249,7 @@ export default function PostJob() {
               </div>
             </CardHeader>
             <CardContent className="space-y-6 pt-6">
-              {(professionCategory === "education" || professionCategory === "healthcare") && (
+              {(professionCategory === "education" || professionCategory === "healthcare" || professionCategory === "legal_finance") && (
                 <div className="space-y-2.5">
                   <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Rate type</Label>
                   <RadioGroup

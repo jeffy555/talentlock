@@ -21,12 +21,13 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { Briefcase, Building, CheckCircle, GraduationCap, Laptop, Loader2, Stethoscope } from "lucide-react";
+import { Briefcase, Building, CheckCircle, GraduationCap, Laptop, Loader2, Scale, Stethoscope } from "lucide-react";
 import { FIELDS_OF_WORK, isFieldOfWork } from "@/lib/fields";
 import { ResumeImporter, type ParsedResume } from "@/components/ResumeImporter";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import TeachingDetailsSection, { emptyTeachingDetails, type TeachingDetailsValues } from "@/components/onboarding/TeachingDetailsSection";
 import HealthcareDetailsSection, { emptyHealthcareDetails, type HealthcareDetailsValues } from "@/components/onboarding/HealthcareDetailsSection";
+import LegalFinanceDetailsSection, { emptyLegalFinanceDetails, type LegalFinanceDetailsValues } from "@/components/onboarding/LegalFinanceDetailsSection";
 import { EmployerDocumentOnboardingStep } from "@/components/onboarding/EmployerDocumentOnboardingStep";
 import { FreelancerDocumentOnboardingStep } from "@/components/onboarding/FreelancerDocumentOnboardingStep";
 import {
@@ -42,6 +43,7 @@ import { COMPANY_SIZE_OPTIONS } from "@/lib/employerDocuments";
 import type {
   EducationProfessionType,
   HealthcareProfessionType,
+  LegalFinanceProfessionType,
   ProfessionCategory,
   PatchOnboardingStepBodyOnboardingStep,
 } from "@workspace/api-client-react";
@@ -109,8 +111,10 @@ export default function Onboarding() {
   const [professionCategory, setProfessionCategory] = useState<ProfessionCategory | null>("technology");
   const [educationProfessionType, setEducationProfessionType] = useState<EducationProfessionType | null>(null);
   const [healthcareProfessionType, setHealthcareProfessionType] = useState<HealthcareProfessionType | null>(null);
+  const [legalFinanceProfessionType, setLegalFinanceProfessionType] = useState<LegalFinanceProfessionType | null>(null);
   const [teachingDetails, setTeachingDetails] = useState<TeachingDetailsValues>(emptyTeachingDetails());
   const [healthcareDetails, setHealthcareDetails] = useState<HealthcareDetailsValues>(emptyHealthcareDetails());
+  const [legalFinanceDetails, setLegalFinanceDetails] = useState<LegalFinanceDetailsValues>(emptyLegalFinanceDetails());
 
   const [tagline, setTagline] = useState("");
   const [bio, setBio] = useState("");
@@ -295,6 +299,34 @@ export default function Onboarding() {
         location: formatLocationLabel(countries, countryCode, stateCode) || undefined,
       };
     }
+    if (professionCategory === "legal_finance") {
+      return {
+        professionCategory: "legal_finance" as const,
+        legalFinanceProfessionType: legalFinanceProfessionType ?? undefined,
+        practiceAreas: legalFinanceDetails.practiceAreas.length
+          ? legalFinanceDetails.practiceAreas
+          : undefined,
+        practiceSettings: legalFinanceDetails.practiceSettings.length
+          ? legalFinanceDetails.practiceSettings
+          : undefined,
+        yearsPracticeExperience: legalFinanceDetails.yearsPracticeExperience ?? undefined,
+        legalFinanceHighestQualification: legalFinanceDetails.legalFinanceHighestQualification ?? undefined,
+        legalFinanceQualificationSpecialization:
+          legalFinanceDetails.legalFinanceQualificationSpecialization || undefined,
+        legalFinanceQualificationInstitution:
+          legalFinanceDetails.legalFinanceQualificationInstitution || undefined,
+        enrolmentBody: legalFinanceDetails.enrolmentBody || undefined,
+        enrolmentNumber: legalFinanceDetails.enrolmentNumber || undefined,
+        enrolmentExpiry: legalFinanceDetails.enrolmentExpiry
+          ? new Date(legalFinanceDetails.enrolmentExpiry).toISOString()
+          : undefined,
+        courtJurisdictions: legalFinanceDetails.courtJurisdictions.length
+          ? legalFinanceDetails.courtJurisdictions
+          : undefined,
+        preferredEngagementMode: legalFinanceDetails.preferredEngagementMode ?? undefined,
+        location: formatLocationLabel(countries, countryCode, stateCode) || undefined,
+      };
+    }
     return { professionCategory: "technology" as const };
   };
 
@@ -317,6 +349,9 @@ export default function Onboarding() {
     if (professionCategory === "healthcare" && !healthcareProfessionType) {
       throw new Error("Select what best describes you in Healthcare.");
     }
+    if (professionCategory === "legal_finance" && !legalFinanceProfessionType) {
+      throw new Error("Select what best describes you in Legal & Finance.");
+    }
     await persistOnboardingStep("freelancer", "form", { countryCode, stateCode });
     await createFreelancerProfile.mutateAsync({
       data: {
@@ -335,9 +370,9 @@ export default function Onboarding() {
     await queryClient.invalidateQueries({ queryKey: getGetMeQueryKey() });
     await queryClient.invalidateQueries({ queryKey: getGetDocumentsMeQueryKey() });
   }, [
-    user, contactEmail, contactPhone, countries, countryCode, stateCode, professionCategory, educationProfessionType, healthcareProfessionType,
+    user, contactEmail, contactPhone, countries, countryCode, stateCode, professionCategory, educationProfessionType, healthcareProfessionType, legalFinanceProfessionType,
     tagline, bio, fieldOfWork, skills, yearsExperience, rateValue,
-    teachingDetails, healthcareDetails, createFreelancerProfile, queryClient, patchOnboardingStep,
+    teachingDetails, healthcareDetails, legalFinanceDetails, createFreelancerProfile, queryClient, patchOnboardingStep,
   ]);
 
   const ensureEmployerProfile = useCallback(async () => {
@@ -422,7 +457,7 @@ export default function Onboarding() {
       });
       return;
     }
-    if (!professionCategory || (professionCategory === "education" && !educationProfessionType) || (professionCategory === "healthcare" && !healthcareProfessionType)) {
+    if (!professionCategory || (professionCategory === "education" && !educationProfessionType) || (professionCategory === "healthcare" && !healthcareProfessionType) || (professionCategory === "legal_finance" && !legalFinanceProfessionType)) {
       toast({ title: "Work category required", description: "Select your work category.", variant: "destructive" });
       return;
     }
@@ -660,13 +695,14 @@ export default function Onboarding() {
 
               <section className="space-y-4">
                 <h3 className="text-sm font-semibold text-foreground">Work category</h3>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                   <button
                     type="button"
                     onClick={() => {
                       setProfessionCategory("technology");
                       setEducationProfessionType(null);
                       setHealthcareProfessionType(null);
+                      setLegalFinanceProfessionType(null);
                     }}
                     className={cn(
                       "rounded-lg border-2 p-4 text-left transition-colors",
@@ -684,6 +720,7 @@ export default function Onboarding() {
                     onClick={() => {
                       setProfessionCategory("education");
                       setHealthcareProfessionType(null);
+                      setLegalFinanceProfessionType(null);
                     }}
                     className={cn(
                       "rounded-lg border-2 p-4 text-left transition-colors",
@@ -701,6 +738,7 @@ export default function Onboarding() {
                     onClick={() => {
                       setProfessionCategory("healthcare");
                       setEducationProfessionType(null);
+                      setLegalFinanceProfessionType(null);
                     }}
                     className={cn(
                       "rounded-lg border-2 p-4 text-left transition-colors",
@@ -712,6 +750,25 @@ export default function Onboarding() {
                     <Stethoscope className="h-5 w-5 mb-2 text-emerald-700" />
                     <p className="font-semibold">Healthcare</p>
                     <p className="text-xs text-muted-foreground mt-1">Doctors, nurses, allied health</p>
+                  </button>
+                  <button
+                    type="button"
+                    aria-pressed={professionCategory === "legal_finance"}
+                    onClick={() => {
+                      setProfessionCategory("legal_finance");
+                      setEducationProfessionType(null);
+                      setHealthcareProfessionType(null);
+                    }}
+                    className={cn(
+                      "rounded-lg border-2 p-5 text-left transition-colors",
+                      professionCategory === "legal_finance"
+                        ? "border-slate-800 ring-2 ring-slate-200 bg-slate-50"
+                        : "border-slate-200 hover:border-slate-300",
+                    )}
+                  >
+                    <Scale className="h-6 w-6 mb-2 text-slate-800" />
+                    <p className="font-semibold text-slate-800">Legal & Finance</p>
+                    <p className="text-xs text-muted-foreground mt-1">Advocates, CAs, company secretaries, tax, advisers</p>
                   </button>
                 </div>
                 {professionCategory === "education" && (
@@ -763,6 +820,34 @@ export default function Onboarding() {
                     <div className="flex items-center gap-2">
                       <RadioGroupItem value="care_worker" id="care_worker" />
                       <Label htmlFor="care_worker" className="font-normal cursor-pointer">Care Worker</Label>
+                    </div>
+                  </RadioGroup>
+                )}
+                {professionCategory === "legal_finance" && (
+                  <RadioGroup
+                    value={legalFinanceProfessionType ?? ""}
+                    onValueChange={(v) => setLegalFinanceProfessionType(v as LegalFinanceProfessionType)}
+                    className="space-y-2"
+                  >
+                    <div className="flex items-center gap-2">
+                      <RadioGroupItem value="advocate" id="lf_advocate" />
+                      <Label htmlFor="lf_advocate" className="font-normal cursor-pointer">Advocate / Lawyer (Bar Council enrolled)</Label>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <RadioGroupItem value="chartered_accountant" id="lf_ca" />
+                      <Label htmlFor="lf_ca" className="font-normal cursor-pointer">Chartered Accountant (ICAI)</Label>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <RadioGroupItem value="company_secretary" id="lf_cs" />
+                      <Label htmlFor="lf_cs" className="font-normal cursor-pointer">Company Secretary (ICSI)</Label>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <RadioGroupItem value="tax_consultant" id="lf_tax" />
+                      <Label htmlFor="lf_tax" className="font-normal cursor-pointer">Tax Consultant (GST / direct tax)</Label>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <RadioGroupItem value="financial_advisor" id="lf_advisor" />
+                      <Label htmlFor="lf_advisor" className="font-normal cursor-pointer">Financial Advisor (SEBI / NISM)</Label>
                     </div>
                   </RadioGroup>
                 )}
@@ -829,6 +914,13 @@ export default function Onboarding() {
                     onChange={setHealthcareDetails}
                   />
                 )}
+                {professionCategory === "legal_finance" && (
+                  <LegalFinanceDetailsSection
+                    legalFinanceProfessionType={legalFinanceProfessionType}
+                    values={legalFinanceDetails}
+                    onChange={setLegalFinanceDetails}
+                  />
+                )}
                 <div className="space-y-2">
                   <Label htmlFor="rate">Daily Rate ($)</Label>
                   <Input id="rate" type="number" min="0" value={rateValue} onChange={(e) => setRateValue(e.target.value)} required />
@@ -847,6 +939,11 @@ export default function Onboarding() {
                   onReadyChange={setDocReady}
                   onBusyChange={setDocBusy}
                 />
+                {professionCategory === "legal_finance" && (
+                  <p className="mt-3 text-xs text-muted-foreground">
+                    Identity verification (Aadhaar) is required to finish registration. Bar Council, ICAI, and GST documents can be added on Profile after signup.
+                  </p>
+                )}
               </section>
             </CardContent>
             <CardFooter className="flex justify-between">

@@ -9,8 +9,11 @@ import type { AadhaarVerificationStatus } from "./aadhaarVerificationStatus";
 import type { EducationProfessionType } from "./educationProfessionType";
 import type { HealthcareProfessionType } from "./healthcareProfessionType";
 import type { HealthcareQualification } from "./healthcareQualification";
+import type { LegalFinanceProfessionType } from "./legalFinanceProfessionType";
+import type { LegalFinanceQualification } from "./legalFinanceQualification";
 import type { PortfolioItem } from "./portfolioItem";
 import type { PreferredCareMode } from "./preferredCareMode";
+import type { PreferredEngagementMode } from "./preferredEngagementMode";
 import type { ProfessionCategory } from "./professionCategory";
 import type { PublicReview } from "./publicReview";
 import type { ResumeAnalysis } from "./resumeAnalysis";
@@ -71,6 +74,27 @@ export interface PublicFreelancerProfile {
   registrationExpiry?: Date | null;
   aadhaarVerificationStatus?: AadhaarVerificationStatus;
   preferredCareMode?: PreferredCareMode | null;
+  legalFinanceProfessionType?: LegalFinanceProfessionType | null;
+  /** @nullable */
+  practiceAreas?: string[] | null;
+  /** @nullable */
+  practiceSettings?: string[] | null;
+  /** @nullable */
+  yearsPracticeExperience?: number | null;
+  legalFinanceHighestQualification?: LegalFinanceQualification | null;
+  /** @nullable */
+  legalFinanceQualificationSpecialization?: string | null;
+  /** @nullable */
+  legalFinanceQualificationInstitution?: string | null;
+  /** @nullable */
+  enrolmentBody?: string | null;
+  /** @nullable */
+  enrolmentNumber?: string | null;
+  /** @nullable */
+  enrolmentExpiry?: Date | null;
+  /** @nullable */
+  courtJurisdictions?: string[] | null;
+  preferredEngagementMode?: PreferredEngagementMode | null;
   countryCode: string;
   currencyCode: string;
   createdAt: Date;
