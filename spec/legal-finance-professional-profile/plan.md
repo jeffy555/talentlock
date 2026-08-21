@@ -2,6 +2,7 @@
 
 > **Status: APPROVED — Ready for implementation**
 > Resolves open questions from `clarify.md`.
+> Phases 1–4 shipped on `main`. Remaining work is **Phase 5 (after-signup credentials)**.
 > The Cursor Agent MUST read this file alongside `task.md` before writing any code.
 > If this file and `task.md` conflict, **this file wins**.
 
@@ -79,7 +80,7 @@ export const LEGAL_FINANCE_DOCUMENT_TYPES_PHASE2 = [
 ] as const;
 ```
 
-Do not add PHASE2 strings to `DOCUMENT_TYPES` until Phase 5.
+Do not add PHASE2 strings to `DOCUMENT_TYPES` until **Phase 5**. Phase 5 **does** add them (this Q6 list + OpenAPI). Q9 is the Vault drop only.
 
 ### Q7 — Sub-type granularity
 
@@ -88,6 +89,30 @@ Do not add PHASE2 strings to `DOCUMENT_TYPES` until Phase 5.
 ### Q8 — Enrolment columns
 
 **Decision: New columns.** Do not write legal enrolment into healthcare `registration_*` fields.
+
+### Q9 — Expired COP / membership Vault drop
+
+**Decision: Scoped, Phase 5 only.** Mirror school-teacher teaching licence:
+
+```ts
+not(
+  and(
+    eq(freelancerProfiles.professionCategory, "legal_finance"),
+    inArray(freelancerProfiles.legalFinanceProfessionType, [
+      "advocate",
+      "chartered_accountant",
+      "company_secretary",
+    ]),
+    isNotNull(freelancerProfiles.enrolmentExpiry),
+    lt(freelancerProfiles.enrolmentExpiry, new Date()),
+  ),
+)
+```
+
+- Tax consultant / financial advisor: **never** dropped for `enrolmentExpiry`.
+- Missing Phase 2 uploads: **never** dropped (Aadhaar verified remains the legal/finance Vault gate).
+- Direct profile URLs unchanged.
+- `enrolmentAlertStage` already resets when `enrolmentExpiry` changes on `PUT /freelancers/me`.
 
 ---
 
@@ -206,4 +231,28 @@ Finish registration requires Aadhaar confirm. Does **not** require enrolment doc
 | Tax consultant | GSTN | GST Practitioner enrolment (optional CA/Bar docs) |
 | Financial adviser | SEBI / NISM | RIA registration and/or NISM certificate |
 
-Experience letter: firm/chambers letterhead, role, dates — same `experience_certificate` type as Healthcare Phase 2.
+Experience letter: firm/chambers letterhead, role, dates — same `experience_certificate` type as Healthcare Phase 2+.
+
+---
+
+## Phase 5 — After-signup credential uploads
+
+**No new tables.** Reuse `documents` UNIQUE `(freelancerId, documentType)`.
+
+### AI review prompts
+
+Extend `buildDocumentReviewUserPrompt()`:
+
+| `documentType` | Prompt focus |
+|---|---|
+| `experience_certificate` | Same as Healthcare — letterhead, role, dates (shared type) |
+| `bar_enrolment_certificate` | State Bar Council enrolment / sanad; enrolment number region; not Aadhaar |
+| `certificate_of_practice` | BCI / ICAI / ICSI Certificate of Practice; holder name region; not a visiting card |
+| `icai_membership_certificate` | ICAI membership certificate |
+| `icsi_membership_certificate` | ICSI membership certificate |
+| `gst_practitioner_certificate` | GSTN GST Practitioner enrolment screenshot or certificate; GSTIN region may be present — do not require storing GSTIN on profile |
+| `sebi_nism_certificate` | SEBI RIA acknowledgement or NISM pass certificate |
+
+Never return full enrolment numbers in `employerNotes`.
+
+Recommended Phase 3 types (`aibe_certificate`, `professional_indemnity_insurance`, `udyin_msme`) stay **out** of `DOCUMENT_TYPES`.

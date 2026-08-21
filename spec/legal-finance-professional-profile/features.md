@@ -112,9 +112,9 @@ Uses the existing `documents` table. Phase 1 does **not** add new upload types t
 
 **Privacy (binding):** identical to Healthcare — never store the 12-digit Aadhaar on the profile; mask `enrolmentNumber` for employers; AI `aiNotes` admin-only.
 
-#### Phase 2 — After signup (document types defined now; upload UI + AI prompts deferred)
+#### Phase 2 — After signup (document types — **Phase 5 of this spec ships the uploads**)
 
-These appear on `/profile` as a **credential checklist with "Upload after signup"** / "Planned" until Phase 5 ships. They are **not** required to finish registration.
+These appear on `/profile` as a **credential checklist**. Until Phase 5 they show **"After signup — coming soon"**. After Phase 5 they are **interactive uploads**. They are **not** required to finish registration. Missing Phase 2 files do **not** hide a legal/finance profile from Talent Vault (verified Aadhaar remains the Vault gate).
 
 | Document type | Purpose | Typical for |
 |---|---|---|
@@ -253,7 +253,7 @@ Pre-filter after healthcare rules. Cruise Mode: legal_finance freelancers evalua
 
 ### Module 10 — Agreement & Employer Verification Hooks
 
-- Agreement templates should eventually include **engagement letter / Vakalatnama-adjacent** clauses (conflict, privilege, COP status). Deferred to `spec/legal-finance-credential-verification/` or `legal-finance-agreement-templates`.
+- Agreement templates should eventually include **engagement letter / Vakalatnama-adjacent** clauses (conflict, privilege, COP status). **Still deferred** — not in Phase 5.
 - Employer `business_licence` already notes regulated sectors. Law firms / CA firms posting jobs should be **prompted** (not gated) to upload firm registration / ICAI firm number.
 
 ---
@@ -263,8 +263,8 @@ Pre-filter after healthcare rules. Cruise Mode: legal_finance freelancers evalua
 Reuse `spec/credential-expiry-tracking/`:
 
 - `enrolmentExpiry` → same alert ladder as `teachingLicenceExpiry` / healthcare `registrationExpiry`
-- Phase 2 COP / membership documents: freelancer-supplied `expiryDate` on the document row
-- Vault removal when **legally required** COP expires — **Phase 5 only**, scoped the same way as school-teacher licence (explicit spec decision; do not silently extend generic credential expiry)
+- Phase 2 COP / membership documents: freelancer-supplied `expiryDate` on the document row (Phase 5)
+- Vault removal when **legally required** COP / membership expiry has passed: `advocate`, `chartered_accountant`, and `company_secretary` with `enrolmentExpiry` in the past — mirror school-teacher licence (`plan.md` Q9). Tax consultants and financial advisers are **not** dropped for enrolment expiry.
 
 ---
 
@@ -290,7 +290,7 @@ Reuse `spec/credential-expiry-tracking/`:
 | 2 | Backend filters, AI context, OpenAPI + codegen; reuse Aadhaar sync |
 | 3 | Frontend: fourth onboarding card, details section, Vault, Post Job default `/day` |
 | 4 | TalentSearch rules (`legalFinanceSubType`, `practiceArea`) |
-| 5 | After-signup document uploads via `legal-finance-credential-verification/` |
+| 5 | After-signup document uploads **in this folder** — Bar / ICAI / ICSI / GST / NISM / COP / experience letter; AI review; scoped Vault drop on expired advocate/CA/CS enrolment |
 
 ---
 
@@ -301,7 +301,7 @@ Reuse `spec/credential-expiry-tracking/`:
 | `spec/teaching-professional-profile/` | **Prerequisite** — `professionCategory`, onboarding cards |
 | `spec/healthcare-professional-profile/` | **Prerequisite** — Aadhaar Vault gate, fourth-card pattern, mask helper |
 | `spec/onboarding-scaffolding/` | **Prerequisite** — mandatory Aadhaar at registration |
-| `spec/legal-finance-credential-verification/` | **Follow-up** — Phase 2/5 after-signup uploads |
+| `spec/legal-finance-credential-verification/` | **Superseded** — Phase 5 lives in this folder, not a separate spec |
 | `spec/credential-expiry-tracking/` | **Reuse** — enrolment expiry alerts |
 | `spec/document-verification/` | **Extend** — Phase 5 `documentType` values |
 | `spec/employee-verification/` | **Parallel** — firm / CA firm licence prompt |

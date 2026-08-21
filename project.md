@@ -88,6 +88,18 @@ All existing rows backfilled to `'technology'` / `'hourly'` via column default �
 
 Platform Aadhaar upload remains gated by onboarding scaffolding — healthcare inherits it and may require **verified** Aadhaar for Vault visibility (see `spec/healthcare-professional-profile/`).
 
+Phase 2+ credentials (this spec Phase 5, **ready to execute**): add `experience_certificate`, `mbbs_degree`, `medical_registration_certificate`, `nursing_degree`, `nursing_registration_certificate`, `allied_qualification` to `DOCUMENT_TYPES` / OpenAPI. Registration stays Aadhaar-only. Missing Phase 2+ files never hide a healthcare profile from Vault.
+
+### Legal & Finance Professional Profile additions (additive, non-breaking)
+
+`professionCategory` extended with `'legal_finance'`. Types/enums in `lib/db/src/schema/legalFinanceProfileTypes.ts`.
+
+`freelancer_profiles` gains nullable legal/finance fields: `legalFinanceProfessionType`, `practiceAreas`, `practiceSettings`, `yearsPracticeExperience`, `legalFinanceHighestQualification`, `legalFinanceQualificationSpecialization`, `legalFinanceQualificationInstitution`, `enrolmentBody`, `enrolmentNumber`, `enrolmentExpiry`, `enrolmentAlertStage` (NOT NULL DEFAULT `'none'`), `courtJurisdictions`, `preferredEngagementMode`.
+
+Reuse healthcare `aadhaarVerificationStatus` / `aadhaarLastFour` / `location` — do **not** write legal enrolment into healthcare `registration_*` columns.
+
+Phase 5 credentials (**ready to execute**): add `experience_certificate` (shared UNIQUE type with Healthcare), `bar_enrolment_certificate`, `certificate_of_practice`, `icai_membership_certificate`, `icsi_membership_certificate`, `gst_practitioner_certificate`, `sebi_nism_certificate` to `DOCUMENT_TYPES` / OpenAPI. Registration stays Aadhaar-only. Missing Phase 2 files never hide a legal/finance profile from Vault.
+
 ### Credential Expiry Tracking additions (additive, non-breaking)
 
 `freelancer_profiles` gains `teachingLicenceAlertStage` (text NOT NULL DEFAULT 'none' — `none|90d|30d|7d|expired`), tracking the last expiry alert stage sent for `teachingLicenceExpiry` so alerts never duplicate and safely catch up if the daily scan misses a day.
@@ -185,7 +197,7 @@ GET  /api/countries                               Country list with currencies +
 GET  /api/exchange-rates                          Cached FX rates for dual-currency display (public)
 
 GET  /api/freelancers                             List freelancers (filters + ?q=keyword + ?availableFrom=YYYY-MM-DD; completeness ≥ 60%)
-                                                   Additive optional filters: ?professionCategory=technology|education, ?teachingSubject=<text> (case-insensitive array match)
+                                                   Additive optional filters: ?professionCategory=technology|education|healthcare|legal_finance, ?teachingSubject=<text> (case-insensitive array match)
 GET  /api/freelancers/:id                         Freelancer detail (includes nextAvailableDate)
 GET  /api/freelancers/me                          My freelancer profile
 PUT  /api/freelancers/me                          Update my freelancer profile (recalculates completenessScore atomically)
@@ -382,13 +394,14 @@ POST /api/admin/logout                            Admin: logout
 34. **Agreement PDF Download** — `GET /api/agreements/:id/download` returns a professionally formatted PDF for fully signed agreements; rendered via `@react-pdf/renderer` with both signature images (or cursive typed names), signing timestamps, metadata block, and TalentLock footer; cached in GCS after first generation; available to both parties on all plans; GDPR deletion removes cached PDFs
 35. **Cruise Mode** — `freelancer_pro` feature; freelancer defines rules (skills, rate range, exclusions, blackout windows) via form or free-form text/file; AI evaluates every new job post against the rules **in the freelancer's onboarded `professionCategory` only** (`spec/domain-job-visibility/`) and sends a personalised interest **DM** to the employer on the freelancer's behalf when score ≥ threshold (`spec/cruise-mode-dm-delivery/`); two-stage filter (profession-domain lock + pre-filter + AI evaluation); dry run mode; daily digest option; activity feed with match scores and sent messages; monthly quota of 10 messages; employer sees a "Cruise Mode ✦" badge; `cruise_mode_evaluation` token label. **Rate matching is normalized to hourly**: daily freelancer/job/rule values are converted using `8h/day` before matching and prompting. Shared helpers: `artifacts/api-server/src/lib/rateConversion.ts`, `artifacts/talentlock/src/lib/rateConversion.ts`. Freelancer profiles prefer **daily** as the primary entered rate (`paymentPreference` default `daily`) with paired hourly derived via ÷8.
 36. **Teaching Professional Profile** — `professionCategory` (`technology`|`education`, NOT NULL DEFAULT `technology`) on `freelancer_profiles` and `job_requirements`; `rateType` (`hourly`|`per_day`|`per_session`|`per_course`, NOT NULL DEFAULT `hourly`) on `job_requirements`; 12 nullable education fields on `freelancer_profiles` for `educationProfessionType` (`school_teacher`|`university_lecturer`|`tutor`|`researcher`); onboarding gains a conditional profession-category step for freelancers (employers unaffected); Talent Vault gains `professionCategory`/`teachingSubject` filters; AI matching prompt gains profession-context injection that is byte-identical (empty string) for technology jobs; `formatRate()`/`rateUnitLabel()` utility centralises rate unit display. Freelancer onboarding preserves `paymentPreference` but now persists both `hourlyRate` and `dailyRate` using `8h/day` normalization.
-36b. **Healthcare Professional Profile** — `professionCategory: 'healthcare'`; sub-types `physician` \| `registered_nurse` \| `nurse_practitioner` \| `allied_health` \| `care_worker`; clinical profile fields + registration/Aadhaar status on `freelancer_profiles`; job `rateType: 'per_shift'`; Vault/AI/TalentSearch healthcare context; India-first councils Phase 1. Spec: `spec/healthcare-professional-profile/` (🔄 In progress — schema on Neon 2026-08-20; app surfaces partially shipped).
+36b. **Healthcare Professional Profile** — `professionCategory: 'healthcare'`; sub-types `physician` \| `registered_nurse` \| `nurse_practitioner` \| `allied_health` \| `care_worker`; clinical profile fields + registration/Aadhaar status on `freelancer_profiles`; job `rateType: 'per_shift'`; Vault/AI/TalentSearch healthcare context; India-first councils Phase 1. Spec: `spec/healthcare-professional-profile/` (🔄 In progress — Phases 1–4 shipped, schema on Neon 2026-08-20; Phase 2+ credentials specified and ready to execute).
+36c. **Legal & Finance Professional Profile** — `professionCategory: 'legal_finance'`; sub-types `advocate` \| `chartered_accountant` \| `company_secretary` \| `tax_consultant` \| `financial_advisor`; practice/enrolment fields on `freelancer_profiles` (separate `enrolment_*` columns, not healthcare `registration_*`); Vault Aadhaar gate shared with healthcare; job posting default `/day`. Spec: `spec/legal-finance-professional-profile/` (🔄 In progress — Phases 1–4 shipped; Phase 5 Bar/ICAI/ICSI/GST/NISM/COP/experience uploads specified and ready to execute).
 37. **TalentSearch (Employer Cruise Mode)** — mirror of Cruise Mode for employers; fires on `PATCH /api/freelancers/me`, `POST /api/freelancers`, and document verification when `completenessScore >= 60`; employer sets profession/skill/rate/location/required-document rules; AI evaluates freelancer profile fit 0–100; sends personalised **DM** with "TalentSearch ✦" badge to freelancer when score >= threshold (`spec/cruise-mode-dm-delivery/`); 30-day duplicate prevention per `(employerId, freelancerId)` for `sent` decisions; activity feed logs `prefilter_rejected`, `duplicate_skipped`, and `ai_parse_failed`; freelancer daily cap (3 notifications/day); 6h/day budget; activate backfill for existing profiles; `talent_search_evaluation` token label; employer-only `/talent-search` page with teal accent
 38. **AI Meeting Brief Generator** — fires fire-and-forget when meeting `status → confirmed`; generates 5-section brief for employer: candidate snapshot, why they match, suggested questions, rate context, watch points; cached as `briefContent` jsonb on `meetings` table; manual regeneration via `POST /api/meetings/:id/brief` (202 Accepted); employer-only — freelancers never see it; plan-gated questions (Growth+ only in UI, always generated server-side); `meeting_brief` token label charged to employer; amber accent UI card on meeting detail page. Discovery invites retain a short in-app notification and email the scheduled UTC time, meeting link, and accept/decline CTA.
 39. **Discovery Meeting Outcome** — after meeting `status → completed`, employer submits **internal** notes + `disposition` (`next_round` \| `proceed_to_booking` \| `rejected`). UI: **Next round vs Final**. Next round → hybrid team-member/email handoff + **AI-1** `feedbackSummary` (`interview_handoff_summary` tokens). Final → upsert employer **candidate hiring file** (F2); proceed unlocks Book; reject stores only. **Never** candidate-facing. Spec: `spec/discovery-meeting-outcome/` (✅ Complete — locked 2026-08-01). Distinct from AI Meeting Brief and Reviews.
 40. **In-App Direct Messaging** — extends existing `conversations` and `messages` tables with additive columns; AI chat (`type='ai_match'`) completely unchanged; human threads (`type='human_direct'`) support employer↔freelancer messaging scoped to optional booking or meeting; fire-and-forget `new_message` notification + email on each message; 30 messages/hour rate limit per user per conversation; `/messages` inbox + `/messages/:id` thread; unread badge in nav; all plans
 41. **Employer Verification** — parallel to freelancer document verification; `employer_documents` table (5 document types); `employer_profiles` gains `verificationLevel` and `isVerified` calculated atomically on every doc status change; AI vision review produces admin-facing `aiNotes` and employer-facing `employerNotes` separately; upsert on re-upload; `employer_doc_review` token label (tracked, not deducted from plan quota); Verified Employer badge on job posts, bookings, meetings; **onboarding gate:** one Representative ID upload required before employer registration completes (additional docs optional on `/profile` later)
-42. **Credential Expiry Tracking** — daily scan (`POST /api/cron/credential-expiry`, machine-only, `x-cron-secret` header) tracks `documents.expiryDate` and `freelancer_profiles.teachingLicenceExpiry`; alert schedule 90d → 30d → 7d → expiry; `expiryAlertStage` prevents duplicate alerts; Vault exclusion scoped only to expired school-teacher teaching licences; all plans, no token consumption
+42. **Credential Expiry Tracking** — daily scan (`POST /api/cron/credential-expiry`, machine-only, `x-cron-secret` header) tracks `documents.expiryDate` and `freelancer_profiles.teachingLicenceExpiry`; alert schedule 90d → 30d → 7d → expiry; `expiryAlertStage` prevents duplicate alerts; Vault exclusion **shipped** for expired school-teacher teaching licences; **specified (not yet in code)** for expired physician/nurse `registrationExpiry` (`spec/healthcare-professional-profile/` Phase 5 Q8) and expired advocate/CA/CS `enrolmentExpiry` (`spec/legal-finance-professional-profile/` Phase 5 Q9); all plans, no token consumption
 43. **Freelancer Watchlist** — employer personal talent pipeline built on `saved_freelancers`; dedicated Watchlist tab on `/freelancers` (non-enterprise); private notes per entry; in-app `WATCHLIST_UPDATE` notifications when a watched freelancer becomes available or changes rate ≥ 5% (debounced 24 h); plan limits (starter 25 / growth 100); active enterprise team members use `team_shortlist` instead
 44. **Post-Engagement AI Debrief** — fires fire-and-forget when booking `status → completed`; dual role-specific debrief cached as `debriefContent` jsonb on `bookings`; each party reads their slice via `GET /api/bookings/:id/debrief`; manual regeneration via `POST /api/bookings/:id/debrief` (202, 24h cooldown); `booking_debrief` token label charged to employer; violet/indigo `DebriefCard` on `/bookings/:id`
 45. **Multi-Currency & Location** — country-derived currency on `users` and denormalised on `freelancer_profiles`; booking `currencyCode` frozen at creation with `exchangeRateAtCreation` snapshot; `GET /api/countries` + `GET /api/exchange-rates`; onboarding `location` step; Talent Vault dual-currency display and country/currency filters; agreement rate clause uses booking currency. **Does not localize `/pricing` subscription amounts** — that is Localized Plan Pricing.
@@ -506,9 +519,13 @@ Shared server utilities: `artifacts/api-server/src/lib/earningsUtils.ts` (`getLa
 - Fails closed: if `CRON_SECRET` is unset, the route returns 500 (same pattern as `CSRF_SECRET`), never silently skipping auth.
 - No in-process `setInterval` scheduler exists or should be added — the deployment target (`.replit`, `deploymentTarget = "autoscale"`) idles/scales instances, so a persistent in-process timer is unreliable. The daily trigger is an external scheduled GitHub Actions workflow (`.github/workflows/credential-expiry-cron.yml`) that POSTs to the cron endpoint.
 - `expiryAlertStage` (`documents`) and `teachingLicenceAlertStage` (`freelancer_profiles`) only ever advance forward (`none → 90d → 30d → 7d → expired`) — the scan is safe to run more than once a day and safe if a day is skipped.
-- Vault exclusion in `GET /api/freelancers` is scoped to `professionCategory: 'education' && educationProfessionType: 'school_teacher' && teachingLicenceExpiry < now()` only — do not extend this to generic `professional_credential` expiry without a separate, explicitly scoped decision; verification status has never gated Vault visibility for the general freelancer population.
+- Vault exclusion in `GET /api/freelancers` is **never** generic `professional_credential` expiry. Shipped today: `professionCategory: 'education' && educationProfessionType: 'school_teacher' && teachingLicenceExpiry < now()`. Additional **explicitly scoped** rules (implement with those Phase 5 specs, not as a blanket expiry gate):
+  - Healthcare Phase 2+ (Q8): `healthcare` + `physician` | `registered_nurse` | `nurse_practitioner` with non-null `registrationExpiry` in the past. Allied health and care workers are **never** dropped for registration expiry. Missing Phase 2+ uploads never drop Vault.
+  - Legal & Finance Phase 5 (Q9): `legal_finance` + `advocate` | `chartered_accountant` | `company_secretary` with non-null `enrolmentExpiry` in the past. Tax consultant and financial adviser are **never** dropped for enrolment expiry. Missing Phase 2 uploads never drop Vault.
+  - Direct `GET /api/freelancers/:id` and `/f/:id` stay visible for all three scoped drops. Verification status has never gated Vault visibility for the general (technology) freelancer population.
 - Re-upload via `POST /documents/confirm` (existing upsert on `(freelancerId, documentType)`) MUST reset `expiryDate: null, expiryAlertStage: 'none'` — otherwise a renewed credential inherits a stale `expired` stage and immediately re-triggers a false alert.
 - `PATCH /api/freelancers/me` MUST reset `teachingLicenceAlertStage: 'none'` whenever `teachingLicenceExpiry` changes to a new value — otherwise a renewed licence stays excluded from Vault after renewal.
+- Same reset for healthcare `registrationAlertStage` when `registrationExpiry` changes, and legal/finance `enrolmentAlertStage` when `enrolmentExpiry` changes (required before those Phase 5 Vault drops ship).
 - `updateVerificationLevel()` (`documentReview.ts`) is unchanged and reused as-is — it already only counts `status = 'verified'`, so flipping a document to `expired` automatically downgrades the badge with zero new logic.
 
 ### Cursor notes — Freelancer Watchlist
@@ -535,13 +552,31 @@ Shared server utilities: `artifacts/api-server/src/lib/earningsUtils.ts` (`getLa
 
 ### Cursor notes — Healthcare Professional Profile
 
-- Spec home: `spec/healthcare-professional-profile/` (🔄 In progress — healthcare columns on Neon 2026-08-20)
+- Spec home: `spec/healthcare-professional-profile/` (🔄 In progress — Phases 1–4 shipped; Phase 2+ credentials ready to execute)
 - Healthcare columns are additive on `freelancer_profiles` — never drop education columns
 - Reuse `location` and platform Aadhaar (`documents.documentType = 'aadhaar'`) — do not invent a second Aadhaar upload path
 - Mask `registrationNumber` for employer-facing APIs; never return full Aadhaar — `aadhaarLastFour` only when needed
 - `buildProfessionContext()` injects healthcare matching text only when `professionCategory === 'healthcare'`; technology jobs stay empty-string context
 - Job posting default rate unit for healthcare: `per_shift`
 - Types live in `lib/db/src/schema/healthcareProfileTypes.ts`
+- Phase 2+ never blocks `PUT /users/me`. Add the six types in `plan.md` Q6 to `DOCUMENT_TYPES` + OpenAPI; keep Phase 3 recommended types out of the upload enum
+- `experience_certificate` is **one** `documentType` shared with Legal & Finance (UNIQUE `freelancerId, documentType`) — do not create a second experience type
+- Phase 2+ Vault drop is Q8 only (physician/nurse expired `registrationExpiry`); allied/care_worker never dropped; missing Phase 2+ uploads never dropped
+- `PATCH /api/freelancers/me` MUST reset `registrationAlertStage: 'none'` whenever `registrationExpiry` changes (same pattern as teaching licence)
+
+### Cursor notes — Legal & Finance Professional Profile
+
+- Spec home: `spec/legal-finance-professional-profile/` (🔄 In progress — Phases 1–4 shipped; Phase 5 credentials ready to execute)
+- Legal/finance columns are additive on `freelancer_profiles` — never reuse healthcare `registration_*` for Bar/ICAI/ICSI numbers; use `enrolment_*`
+- Reuse `aadhaarVerificationStatus` / `aadhaarLastFour` / `location` and `maskRegistrationNumber()` — do not duplicate Aadhaar or mask helpers
+- Vault gate for `legal_finance` is the same Aadhaar-verified OR as healthcare; completeness score formula is unchanged
+- `buildProfessionContext()` injects legal/finance matching text only when `professionCategory === 'legal_finance'`
+- Job posting default rate unit for legal/finance: `per_day` (healthcare stays `per_shift`)
+- Types live in `lib/db/src/schema/legalFinanceProfileTypes.ts`
+- Phase 5 never blocks `PUT /users/me`. Add the PHASE2 list in `plan.md` Q6 to `DOCUMENT_TYPES` + OpenAPI; keep Phase 3 recommended types (`aibe_certificate`, PI, Udyam) out of the upload enum
+- Reuse `experience_certificate` if Healthcare Phase 2+ already added it
+- Phase 5 Vault drop is Q9 only (advocate/CA/CS expired `enrolmentExpiry`); tax/advisor never dropped; missing Phase 2 uploads never dropped
+- `PATCH /api/freelancers/me` MUST reset `enrolmentAlertStage: 'none'` whenever `enrolmentExpiry` changes
 
 ### Cursor notes — Multi-Currency & Location
 
@@ -605,6 +640,8 @@ Shared server utilities: `artifacts/api-server/src/lib/earningsUtils.ts` (`getLa
 | `artifacts/talentlock/src/lib/rateFormatUtils.ts` | `formatRate(amount, rateType, currencySymbol)`, `rateUnitLabel(rateType)` — centralised rate display for hourly/per_day/per_session/per_course |
 | `artifacts/talentlock/src/components/onboarding/TeachingDetailsSection.tsx` | Conditional onboarding/profile section for `professionCategory: 'education'` freelancers |
 | `lib/db/src/schema/` — `REQUIRED_DOCUMENTS_BY_EDUCATION_TYPE` | Static lookup: required/recommended documents per `educationProfessionType` |
+| `lib/db/src/schema/healthcareProfileTypes.ts` | Healthcare enums + `REQUIRED_DOCUMENTS_BY_HEALTHCARE_TYPE` (Phase 2+ types upload in spec Phase 5) |
+| `lib/db/src/schema/legalFinanceProfileTypes.ts` | Legal/finance enums + `REQUIRED_DOCUMENTS_BY_LEGAL_FINANCE_TYPE` (Phase 5 types upload in spec Phase 5) |
 | `artifacts/api-server/src/lib/sanitise.ts` | `sanitiseText()`, `sanitiseRichText()` — strip HTML from all free-text writes |
 | `artifacts/api-server/src/lib/auditLogger.ts` | `logAudit()` — fire-and-forget structured audit events |
 | `artifacts/api-server/src/lib/csrf.ts` | `generateCsrfToken`, `doubleCsrfProtection` for admin routes |
@@ -790,4 +827,5 @@ Display bucket: account `currencyCode` `INR` → INR book, `EUR` → EUR book, *
 - **Multi-currency (engagement)** — never hardcode USD in agreement text or rate display; use `booking.currencyCode` and `formatRate()` with currency symbol
 - **Plan pricing (subscription)** — do not hardcode `$` on `/pricing` once `spec/localized-plan-pricing/` ships; use USD/EUR/INR price book — never live-FX plan amounts
 - **Rate unit conversion** — daily ↔ hourly uses `8h/day` via `rateConversion.ts` (api-server + talentlock); Cruise Mode / TalentSearch / onboarding must normalise before comparing rates
-- **Healthcare** — `professionCategory: 'healthcare'` + healthcare columns; see `spec/healthcare-professional-profile/`
+- **Healthcare** — `professionCategory: 'healthcare'` + healthcare columns; Phase 2+ credentials ready to execute in `spec/healthcare-professional-profile/`
+- **Legal & Finance** — `professionCategory: 'legal_finance'` + enrolment columns; Phase 5 credentials ready to execute in `spec/legal-finance-professional-profile/`

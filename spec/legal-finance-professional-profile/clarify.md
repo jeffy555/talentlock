@@ -74,7 +74,7 @@
 
 ### Q6 — Phase 2 document types in upload API
 
-**Decision:** Constants + checklist only. **Do not** add Bar/ICAI/GST types to `DOCUMENT_TYPES` / OpenAPI until Phase 5. Registration upload remains `aadhaar` only.
+**Decision (updated 2026-08-21):** Phase 1–4: constants + muted checklist only. **Phase 5:** add Bar/ICAI/GST/NISM/COP/experience types to `DOCUMENT_TYPES` / OpenAPI. Registration upload remains `aadhaar` only. Phase 2 files never block `PUT /users/me`.
 
 ---
 
@@ -91,6 +91,16 @@
 **Question:** `registrationCouncil` / `registrationNumber` already exist.
 
 **Recommendation:** **Do not reuse.** Add `enrolmentBody` / `enrolmentNumber` / `enrolmentExpiry`. Category switch must not overwrite clinical registration.
+
+---
+
+### Q9 — Expired COP / membership vs Talent Vault
+
+**Question:** `project.md` forbids extending school-teacher Vault exclusion without an explicit decision. Phase 1 does not hide expired `enrolmentExpiry`. Should Phase 5 hide advocates/CAs/CS?
+
+**Recommendation:** **Yes, scoped.** Exclude `legal_finance` rows where sub-type is `advocate` | `chartered_accountant` | `company_secretary` **and** `enrolmentExpiry` is non-null and in the past. Tax consultant and financial advisor: **never** dropped for enrolment expiry. Missing Phase 2 uploads do **not** hide from Vault. Direct URLs unchanged.
+
+**Must resolve before:** Phase 5 Vault filter — **resolved in `plan.md` Q9.**
 
 ---
 
@@ -122,7 +132,7 @@ Adding `legal_finance` to `ProfessionCategory` requires OpenAPI → codegen → 
 
 ### Risk 6 — COP expiry Vault drop
 
-`project.md` forbids extending school-teacher Vault exclusion to generic credentials without an explicit decision. Phase 1 **does not** hide profiles with expired `enrolmentExpiry`. Phase 5 may add a scoped rule for advocates/CAs with COP — separate task.
+`project.md` now records Q9 as the explicit scoped decision. Phase 1 **does not** hide profiles with expired `enrolmentExpiry`. **Phase 5 Q9** adds a scoped rule for `advocate` / `chartered_accountant` / `company_secretary` only — never tax/advisor, never generic `professional_credential`.
 
 ---
 
@@ -132,8 +142,9 @@ Adding `legal_finance` to `ProfessionCategory` requires OpenAPI → codegen → 
 |---|---|---|
 | Q2 | Aadhaar Vault strictness vs after-signup docs | Onboarding + Vault filter |
 | Q3 | No new rate enum | Confirmed — skip OpenAPI rate change |
-| Q6 | Phase 2 types not in upload API | Document routes |
+| Q6 | Phase 2 types in upload API | Document routes (Phase 5) |
 | Q8 | Separate enrolment columns | Schema |
+| Q9 | Expired COP Vault drop | Vault filter (Phase 5) |
 | — | Healthcare + Aadhaar prerequisite | Task 0 |
 
-Q1 copies Healthcare. Q4, Q5, Q7 resolved in `plan.md` / `UI.md`.
+Q1 copies Healthcare. Q4, Q5, Q7 resolved in `plan.md` / `UI.md`. Q6 and Q9 are binding for Phase 5.

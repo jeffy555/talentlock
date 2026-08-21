@@ -2,11 +2,13 @@
 
 ## Summary
 
-Four implementation phases after prerequisite gate: Database → Backend (filters, Aadhaar doc type, AI context, OpenAPI) → Frontend (onboarding, profile, Vault, rates) → TalentSearch/Cruise healthcare rules.
+Four implementation phases after prerequisite gate: Database → Backend → Frontend → TalentSearch. **Phase 5 (Phase 2+ credentials)** is specified in this folder and is **ready to execute** after Phases 1–4.
 
 **Prerequisite:** `spec/teaching-professional-profile/` Phase 1 complete on branch.
 
-**Credential scope Phase 1:** Reuse platform `aadhaar` document + sync `aadhaarVerificationStatus`; healthcare Vault requires **verified** Aadhaar. Phase 2 document types in constants; upload API in Phase 5.
+**Credential scope Phase 1:** Reuse platform `aadhaar` document + sync `aadhaarVerificationStatus`; healthcare Vault requires **verified** Aadhaar.
+
+**Credential scope Phase 5:** Add Phase 2+ types to `DOCUMENT_TYPES` + OpenAPI; Profile checklist uploads; AI review; scoped Vault drop on expired physician/nurse `registrationExpiry`.
 
 ---
 
@@ -246,7 +248,7 @@ Fields: clinical specialties (chip), clinical settings (chip), years experience,
 Conditional section when `professionCategory === 'healthcare'`:
 - Healthcare details form
 - Aadhaar status badge + re-upload
-- Document checklist widget from `REQUIRED_DOCUMENTS_BY_HEALTHCARE_TYPE` (Phase 1: Aadhaar required; Phase 2 items shown as "Coming soon" or greyed)
+- Document checklist widget from `REQUIRED_DOCUMENTS_BY_HEALTHCARE_TYPE` (Phase 1: Aadhaar required; Phase 2+ items muted **"Planned"** until Phase 5)
 
 ### Task 3.6 — Talent Vault Filters
 
@@ -298,16 +300,81 @@ Include healthcare profile fields in brief context when applicable.
 
 ---
 
-## Phase 5 — Phase 2 Credentials (Separate PR / `healthcare-credential-verification`)
+## Phase 5 — Phase 2+ Credentials (after signup)
 
-Not in Phase 1 scope — document types only in constants:
+**Prerequisite:** Phases 1–4 on `main` (healthcare profile, Aadhaar Vault gate, checklist component).
 
-- `experience_certificate`
-- `mbbs_degree`, `medical_registration_certificate`
-- `nursing_degree`, `nursing_registration_certificate`
-- Specialist / indemnity / BLS certs
+Do **not** block registration. Do **not** add UIDAI OTP. Do **not** add Phase 3 recommended types to `DOCUMENT_TYPES`.
 
-See `features.md` Module 4 Phase 2–3.
+### Task 5.1 — Extend `DOCUMENT_TYPES`
+
+**File:** `artifacts/api-server/src/lib/documentConstants.ts`
+
+Append (do not remove `aadhaar` / `government_id` / `professional_credential`):
+
+```ts
+"experience_certificate",
+"mbbs_degree",
+"medical_registration_certificate",
+"nursing_degree",
+"nursing_registration_certificate",
+"allied_qualification",
+```
+
+If Legal & Finance Phase 5 already added `experience_certificate`, do **not** duplicate.
+
+Update `HEALTHCARE_DOCUMENT_TYPES_PHASE2` in `healthcareProfileTypes.ts` to include `allied_qualification`.
+
+### Task 5.2 — OpenAPI + codegen
+
+**File:** `lib/api-spec/openapi.yaml`
+
+Extend every document-type enum (`DocumentsUploadUrlBody`, `DocumentsConfirmBody`, GET documents responses, admin document types) with the Phase 2+ strings.
+
+```bash
+pnpm --filter @workspace/api-spec run codegen
+pnpm run typecheck
+```
+
+Post-codegen: `indexFiles: false`; `lib/api-zod/src/index.ts` exports `./generated/api` only.
+
+### Task 5.3 — AI review prompts
+
+**File:** `artifacts/api-server/src/lib/documentReview.ts`
+
+Add labels + `buildDocumentReviewUserPrompt()` branches from `plan.md` Phase 2+ table. After verify, existing `updateVerificationLevel()` + TalentSearch trigger stay as-is (no Aadhaar-only restriction for verification level).
+
+### Task 5.4 — Vault drop on expired registration
+
+**File:** `artifacts/api-server/src/routes/freelancers.ts`
+
+Add the Q8 `not(and(...))` condition next to the school-teacher licence exclusion. Comment must say: allied/care_worker never dropped; missing Phase 2+ uploads never dropped.
+
+### Task 5.5 — Profile checklist uploads
+
+**File:** `artifacts/talentlock/src/components/healthcare/HealthcareCredentialChecklist.tsx`
+
+Replace muted “Planned” rows with interactive rows for `futureRequired` types for the current sub-type:
+
+- Status icon from `useGetDocumentsMe`
+- Upload / re-upload via existing `DocumentUploader` (or shared row used by `VerificationSection`)
+- Optional expiry date on registration certificates
+- View via existing signed-URL / proxied preview
+- **No** upload buttons for Phase 3 recommended types
+
+**File:** `artifacts/talentlock/src/pages/Profile.tsx` — pass documents list into the checklist.
+
+Copy: Aadhaar still required for Vault. Professional certificates are optional for Vault visibility.
+
+### Task 5.6 — Tests
+
+- Document type validation accepts Phase 2+ strings; rejects unknown types
+- Vault list excludes physician with past `registrationExpiry`; includes allied_health with past `registrationExpiry`
+- Unit: prompt builder returns non-empty text for `mbbs_degree`
+
+- [ ] Technology / education upload enum still works
+- [ ] Finish-registration still only requires Aadhaar
+- [ ] Completeness score unchanged
 
 ---
 
@@ -317,9 +384,9 @@ See `features.md` Module 4 Phase 2–3.
 |---|---|
 | Schema | `freelancerProfiles.ts`, `healthcareProfileTypes.ts`, `documentConstants.ts` |
 | API | `freelancers.ts`, `documents.ts`, `documentReview.ts`, `professionContext.ts`, `openapi.yaml` |
-| Frontend | `Onboarding.tsx`, `Profile.tsx`, `FreelancersList.tsx`, `PostJob.tsx`, new healthcare components |
+| Frontend | `Onboarding.tsx`, `Profile.tsx`, `FreelancersList.tsx`, `PostJob.tsx`, new healthcare components; Phase 5: `HealthcareCredentialChecklist.tsx` |
 | Utils | `rateFormatUtils.ts`, `healthcareDisplayUtils.ts` |
-| Tests | `professionContext.test.ts`, integration vault tests |
+| Tests | `professionContext.test.ts`, integration vault tests; Phase 5: document-type + expired-registration Vault |
 
 ---
 
@@ -329,3 +396,4 @@ See `features.md` Module 4 Phase 2–3.
 - UIDAI OTP API
 - Healthcare agreement templates
 - Employer hospital licence enforcement
+- Phase 3 recommended document types (`specialist_qualification`, indemnity, BLS, `allied_registration`)

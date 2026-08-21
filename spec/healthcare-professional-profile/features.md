@@ -105,15 +105,18 @@ Healthcare uses the existing `documents` table with **new `documentType` values*
 - AI `aiNotes` for Aadhaar are **admin-only** (existing documents pattern).
 - Optional: store `aadhaarLastFour` on profile for support dedup — nullable, never shown on public profile.
 
-#### Phase 2 — Planned (document types defined now; upload UI + AI prompts deferred)
+#### Phase 2+ — After signup (upload UI + AI review — this spec, Phase 5)
+
+These appear on `/profile` as an **interactive credential checklist**. They are **not** required to finish registration. Missing Phase 2+ files do **not** hide a healthcare profile from Talent Vault (Aadhaar verified remains the healthcare Vault gate).
 
 | Document type | Purpose | Typical for |
 |---|---|---|
-| `experience_certificate` | Work experience letter from hospital/clinic/employer | All sub-types |
+| `experience_certificate` | Work experience letter from hospital/clinic/employer | All sub-types (shared type with Legal & Finance — one row per freelancer) |
 | `mbbs_degree` | MBBS degree certificate (digital copy per NMC NMR guidance) | `physician` |
 | `medical_registration_certificate` | SMC / NMR registration certificate (legal licence to practice) | `physician` |
 | `nursing_degree` | B.Sc / GNM / ANM diploma certificate | `registered_nurse`, `nurse_practitioner` |
 | `nursing_registration_certificate` | SNRC registration (RN/RM number certificate) | `registered_nurse`, `nurse_practitioner` |
+| `allied_qualification` | Degree/diploma for physio/radiology/lab/OT/pharmacy | `allied_health` |
 
 #### Phase 3 — Recommended / specialist (future)
 
@@ -122,7 +125,6 @@ Healthcare uses the existing `documents` table with **new `documentType` values*
 | `specialist_qualification` | MD/MS/DNB/Fellowship certificate |
 | `medical_indemnity_insurance` | Professional indemnity policy |
 | `bls_acls_certificate` | BLS/ACLS/ATLS life-support certs |
-| `allied_qualification` | Degree/diploma for physio/radiology/lab |
 | `allied_registration` | Council registration where applicable |
 
 #### Checklist lookup table (UI completeness widget)
@@ -162,7 +164,7 @@ export const REQUIRED_DOCUMENTS_BY_HEALTHCARE_TYPE: Record<
 
 **Research basis (India):** NMC's National Medical Register (NMR) requires doctors to authenticate with **Aadhaar**, upload **MBBS degree**, and **State Medical Council registration certificate** for registration. Nurses obtain legal practice authority via **State Nursing Registration Councils** (RN/RM registration + nursing qualification certificates). Experience letters are standard for hospital locum/contract verification and foreign nursing verification workflows.
 
-Aadhaar upload UI, storage paths, and AI review for `documentType: aadhaar` are **already implemented** (`FreelancerDocumentOnboardingStep`, `documentConstants.ts`). Phase 1 of *this* spec wires healthcare profile + Vault gates to the existing Aadhaar row. Phase 2 medical document upload flows are bundled in tasks below (or a follow-up PR if scope-split).
+Aadhaar upload UI, storage paths, and AI review for `documentType: aadhaar` are **already implemented**. Phase 1 of *this* spec wires healthcare profile + Vault gates to the existing Aadhaar row. **Phase 2+ (this spec Phase 5)** adds medical document types to the upload API, Profile checklist upload buttons, AI review prompts, and a scoped Vault drop when a **physician / registered nurse / nurse practitioner** `registrationExpiry` has passed (mirror school-teacher teaching licence — see `plan.md` Q8).
 
 ---
 
@@ -262,7 +264,7 @@ Implementation touches `talentSearchUtils.ts`, `talentSearchEvaluator.ts`, `crui
 
 ### Module 10 — Agreement & Employer Verification Hooks
 
-- Agreement template picker should eventually include **healthcare/locum** clauses (shift coverage, indemnity, clinical governance). Deferred to `spec/healthcare-credential-verification/` Phase 2 or a small `healthcare-agreement-templates` follow-up.
+- Agreement template picker should eventually include **healthcare/locum** clauses (shift coverage, indemnity, clinical governance). **Still deferred** — not in Phase 2+.
 - Employer Verification (`employer_documents.business_licence`) already notes regulated sectors (education, healthcare). Hospitals/clinics posting healthcare jobs should be prompted to upload **business licence / clinical establishment registration** — informational in Phase 1, not gating.
 
 ---
@@ -273,15 +275,17 @@ Reuse `spec/credential-expiry-tracking/` infrastructure:
 
 - `registrationExpiry` on profile → same alert stages as `teachingLicenceExpiry`
 - `aadhaar` documents → typically no expiry; `expiryDate` nullable
-- `medical_registration_certificate` / `nursing_registration_certificate` → freelancer-supplied `expiryDate` on document row when Phase 2 ships
-- Talent Vault removal when **legally required** registration expires (physician + nurse with mandatory registration cert in Phase 2) — mirror `school_teacher` teaching licence rule
+- `medical_registration_certificate` / `nursing_registration_certificate` → freelancer-supplied `expiryDate` on document row (Phase 2+)
+- Talent Vault removal when **legally required** registration expires: `physician`, `registered_nurse`, and `nurse_practitioner` with `registrationExpiry` in the past — mirror `school_teacher` teaching licence rule (`plan.md` Q8). Allied health and care workers are **not** dropped for missing or expired registration.
 
 ---
 
 ## Non-Goals
 
 - Prescribing, EMR integration, or clinical workflow (orders, notes, telemedicine video)
-- Aadhaar OTP / UIDAI API integration — document upload + AI vision only in Phase 1
+- Aadhaar OTP / UIDAI API integration — document upload + AI vision only
+- Blocking registration on MBBS / SNRC / experience files (those are **after signup**)
+- Booking gating on medical registration verified
 - Cross-border credential equivalency (INC foreign nurse equivalency workflow)
 - Renaming "Freelancer" → "Clinician" in global UI copy
 - Stripe / payment rails changes
@@ -298,7 +302,7 @@ Reuse `spec/credential-expiry-tracking/` infrastructure:
 | 2 | Backend filters, AI context, OpenAPI + codegen, Aadhaar document type |
 | 3 | Frontend onboarding, profile section, Vault filters, rate `/shift` |
 | 4 | TalentSearch/Cruise healthcare rules |
-| 5 | Phase 2 credentials (`experience_certificate`, degree, registration certs) via `healthcare-credential-verification/` |
+| 5 | Phase 2+ credentials on this spec — `experience_certificate`, degrees, SMC/SNRC registration, allied qualification; checklist uploads; AI review; scoped Vault drop on expired physician/nurse registration |
 
 ---
 
@@ -308,7 +312,7 @@ Reuse `spec/credential-expiry-tracking/` infrastructure:
 |---|---|
 | `spec/teaching-professional-profile/` | **Prerequisite** — shared `professionCategory`, `rateType`, onboarding pattern |
 | `spec/onboarding-scaffolding/` | **Prerequisite** — mandatory Aadhaar at registration |
-| `spec/healthcare-credential-verification/` | **Optional split** — Phase 2 medical docs if not in Phase 5 tasks |
+| `spec/healthcare-credential-verification/` | **Superseded** — Phase 2+ lives in this folder (Phase 5), not a separate spec |
 | `spec/credential-expiry-tracking/` | **Reuse** — expiry scan for registration + documents |
 | `spec/document-verification/` | **Extend** — Phase 2 healthcare `documentType` values |
 | `spec/employee-verification/` | **Parallel** — employer hospital/clinic verification |
