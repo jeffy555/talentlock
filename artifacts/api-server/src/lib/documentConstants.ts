@@ -8,9 +8,29 @@ export const DOCUMENT_TYPES = [
   "aadhaar",
   "government_id",
   "professional_credential",
+  "experience_certificate",
+  "mbbs_degree",
+  "medical_registration_certificate",
+  "nursing_degree",
+  "nursing_registration_certificate",
+  "allied_qualification",
+  "bar_enrolment_certificate",
+  "certificate_of_practice",
+  "icai_membership_certificate",
+  "icsi_membership_certificate",
+  "gst_practitioner_certificate",
+  "sebi_nism_certificate",
 ] as const;
 
 export type DocumentType = (typeof DOCUMENT_TYPES)[number];
+
+/** Document types that accept an optional freelancer-supplied expiry date at upload. */
+export const DOCUMENT_TYPES_WITH_OPTIONAL_EXPIRY = new Set<DocumentType>([
+  "professional_credential",
+  "medical_registration_certificate",
+  "nursing_registration_certificate",
+  "certificate_of_practice",
+]);
 
 export const DOCUMENT_STATUSES = [
   "pending",

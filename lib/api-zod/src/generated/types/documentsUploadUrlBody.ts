@@ -5,10 +5,10 @@
  * TalentLock API specification
  * OpenAPI spec version: 0.1.0
  */
-import type { DocumentsUploadUrlBodyDocumentType } from "./documentsUploadUrlBodyDocumentType";
+import type { FreelancerDocumentType } from "./freelancerDocumentType";
 
 export interface DocumentsUploadUrlBody {
-  documentType: DocumentsUploadUrlBodyDocumentType;
+  documentType: FreelancerDocumentType;
   /** image/jpeg, image/png, image/webp, or application/pdf */
   mimeType: string;
   fileSize: number;

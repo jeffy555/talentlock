@@ -39,6 +39,7 @@ export const HEALTHCARE_DOCUMENT_TYPES_PHASE2 = [
   "medical_registration_certificate",
   "nursing_degree",
   "nursing_registration_certificate",
+  "allied_qualification",
 ] as const;
 
 export const REQUIRED_DOCUMENTS_BY_HEALTHCARE_TYPE: Record<

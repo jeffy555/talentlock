@@ -2154,17 +2154,29 @@ export interface HiringAnalytics {
   outcomes: HiringAnalyticsOutcomes;
 }
 
-export type DocumentsUploadUrlBodyDocumentType =
-  (typeof DocumentsUploadUrlBodyDocumentType)[keyof typeof DocumentsUploadUrlBodyDocumentType];
+export type FreelancerDocumentType =
+  (typeof FreelancerDocumentType)[keyof typeof FreelancerDocumentType];
 
-export const DocumentsUploadUrlBodyDocumentType = {
+export const FreelancerDocumentType = {
   aadhaar: "aadhaar",
   government_id: "government_id",
   professional_credential: "professional_credential",
+  experience_certificate: "experience_certificate",
+  mbbs_degree: "mbbs_degree",
+  medical_registration_certificate: "medical_registration_certificate",
+  nursing_degree: "nursing_degree",
+  nursing_registration_certificate: "nursing_registration_certificate",
+  allied_qualification: "allied_qualification",
+  bar_enrolment_certificate: "bar_enrolment_certificate",
+  certificate_of_practice: "certificate_of_practice",
+  icai_membership_certificate: "icai_membership_certificate",
+  icsi_membership_certificate: "icsi_membership_certificate",
+  gst_practitioner_certificate: "gst_practitioner_certificate",
+  sebi_nism_certificate: "sebi_nism_certificate",
 } as const;
 
 export interface DocumentsUploadUrlBody {
-  documentType: DocumentsUploadUrlBodyDocumentType;
+  documentType: FreelancerDocumentType;
   /** image/jpeg, image/png, image/webp, or application/pdf */
   mimeType: string;
   fileSize: number;
@@ -2175,17 +2187,8 @@ export interface DocumentsUploadUrlResponse {
   storagePath: string;
 }
 
-export type DocumentsConfirmBodyDocumentType =
-  (typeof DocumentsConfirmBodyDocumentType)[keyof typeof DocumentsConfirmBodyDocumentType];
-
-export const DocumentsConfirmBodyDocumentType = {
-  aadhaar: "aadhaar",
-  government_id: "government_id",
-  professional_credential: "professional_credential",
-} as const;
-
 export interface DocumentsConfirmBody {
-  documentType: DocumentsConfirmBodyDocumentType;
+  documentType: FreelancerDocumentType;
   storagePath: string;
   /**
    * Optional freelancer-supplied credential expiry date

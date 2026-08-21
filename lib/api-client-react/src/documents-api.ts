@@ -6,8 +6,10 @@ import type {
 
 import { customFetch } from "./custom-fetch";
 
+import type { FreelancerDocumentType } from "./generated/api.schemas";
+
 export type VerificationLevel = "unverified" | "partially_verified" | "fully_verified";
-export type DocumentType = "aadhaar" | "government_id" | "professional_credential";
+export type DocumentType = FreelancerDocumentType;
 
 export interface DocumentMeItem {
   documentType: string;
@@ -37,6 +39,7 @@ export interface DocumentsUploadUrlResponse {
 export interface DocumentsConfirmBody {
   documentType: DocumentType;
   storagePath: string;
+  expiryDate?: string | null;
 }
 
 export interface FreelancerVerification {
