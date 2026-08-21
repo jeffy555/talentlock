@@ -35,6 +35,7 @@ import {
   PanelLeft,
 } from "lucide-react";
 import { BrandLogo } from "@/components/BrandLogo";
+import { needsOnboarding } from "@/components/OnboardingGate";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { NotificationBell } from "@/components/NotificationBell";
 import { ChatBoxProvider, useChatBox } from "@/components/messages/ChatBoxProvider";
@@ -340,14 +341,31 @@ function AppLayoutInner({ children }: { children: React.ReactNode }) {
     </div>
   );
 
-  if (!dbUser) {
+  if (!dbUser || needsOnboarding(dbUser)) {
     return (
       <div className="min-h-screen bg-background font-sans">
         <header className="sticky top-0 z-50 border-b border-white/10 bg-primary">
-          <div className="container mx-auto flex h-16 items-center px-4">
-            <Link href="/">
+          <div className="container mx-auto flex h-16 items-center justify-between gap-3 px-4">
+            <Link href="/" onClick={() => undefined}>
               <BrandLogo variant="onDark" size="md" />
             </Link>
+            <div className="flex items-center gap-2 sm:gap-3">
+              <Link
+                href="/onboarding"
+                className="rounded-md bg-gold px-3 py-1.5 text-xs font-semibold text-primary hover:bg-gold/90 sm:text-sm"
+              >
+                Continue registration
+              </Link>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="text-white/70 hover:bg-white/10 hover:text-white"
+                onClick={handleSignOut}
+              >
+                Sign out
+              </Button>
+            </div>
           </div>
         </header>
         <main className="container mx-auto px-4 py-8 md:py-12 animate-fade-in">{children}</main>

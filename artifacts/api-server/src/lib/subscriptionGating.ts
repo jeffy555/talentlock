@@ -1,7 +1,7 @@
 import { db } from "@workspace/db";
 import { subscriptionsTable, bookingsTable, jobRequirementsTable, jobInterestsTable, freelancerProfilesTable, tokenUsage } from "@workspace/db";
 import { eq, and, gte, inArray, sql } from "drizzle-orm";
-import { getPlan, PREMIUM_FEATURES_FREE, type PlanDef, type PlanId } from "./plans";
+import { getPlan, PREMIUM_FEATURES_FREE, type PlanDef, type PlanId, type PlanDisplayCurrency } from "./plans";
 import { getSystemUserId, isSystemUserId } from "./systemUser";
 import { TOKEN_FEATURES, type TokenFeature } from "./tokenLogger";
 
@@ -11,12 +11,15 @@ export interface UsageCounts {
   monthlyExpressInterests: number;
 }
 
-export async function getUserSubscription(userId: number): Promise<{ plan: PlanDef; status: string; currentPeriodEnd: Date | null }> {
+export async function getUserSubscription(
+  userId: number,
+  currency: PlanDisplayCurrency = "USD",
+): Promise<{ plan: PlanDef; status: string; currentPeriodEnd: Date | null }> {
   const [sub] = await db.select().from(subscriptionsTable).where(eq(subscriptionsTable.userId, userId)).limit(1);
   if (!sub) {
-    return { plan: getPlan("free"), status: "active", currentPeriodEnd: null };
+    return { plan: getPlan("free", currency), status: "active", currentPeriodEnd: null };
   }
-  return { plan: getPlan(sub.plan), status: sub.status, currentPeriodEnd: sub.currentPeriodEnd };
+  return { plan: getPlan(sub.plan, currency), status: sub.status, currentPeriodEnd: sub.currentPeriodEnd };
 }
 
 function startOfMonth(): Date {

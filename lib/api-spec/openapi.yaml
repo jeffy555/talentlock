@@ -869,6 +869,15 @@ paths:
           schema:
             type: string
             enum: [freelancer, employer, any]
+        - name: currency
+          in: query
+          description: >
+            Plan price book. Allowed USD, EUR, INR.
+            When omitted, uses the authenticated user's currency bucket
+            (INR→INR, EUR→EUR, else USD); unauthenticated defaults to USD.
+          schema:
+            type: string
+            enum: [USD, EUR, INR]
       responses:
         "200":
           description: Plans
@@ -878,6 +887,12 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/PlanDef"
+        "400":
+          description: Invalid currency query
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
 
   /subscriptions/me:
     get:
@@ -8103,7 +8118,9 @@ components:
         id: { type: string }
         audience: { type: string }
         name: { type: string }
-        priceMonthly: { type: number }
+        priceMonthly:
+          type: ["number", "null"]
+          description: Monthly price in displayCurrency major units; null means Custom (enterprise)
         tagline: { type: string }
         features:
           type: array
@@ -8117,7 +8134,21 @@ components:
             teamSeats: { type: ["integer", "null"] }
             monthlyTokenLimit: { type: ["integer", "null"] }
         priority: { type: integer }
-      required: [id, audience, name, priceMonthly, tagline, features, limits, priority]
+        displayCurrency:
+          type: string
+          enum: [USD, EUR, INR]
+        currencySymbol: { type: string }
+      required:
+        - id
+        - audience
+        - name
+        - priceMonthly
+        - tagline
+        - features
+        - limits
+        - priority
+        - displayCurrency
+        - currencySymbol
 
     TokenUsageBreakdown:
       type: object

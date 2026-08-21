@@ -1,3 +1,10 @@
+import {
+  currencySymbolForPlan,
+  planDisplayCurrency,
+  resolvePlanPrice,
+  type PlanDisplayCurrency,
+} from "./planPrices";
+
 export type PlanId =
   | "freelancer_free"
   | "freelancer_pro"
@@ -20,6 +27,22 @@ export interface PlanDef {
   id: PlanId;
   audience: Audience;
   name: string;
+  /** Amount in `displayCurrency` major units; null = Custom (enterprise). */
+  priceMonthly: number | null;
+  tagline: string;
+  features: string[];
+  limits: PlanLimits;
+  priority: number;
+  displayCurrency: PlanDisplayCurrency;
+  currencySymbol: string;
+}
+
+/** Canonical USD list prices on static defs (before localization / free-flag). */
+interface PlanDefBase {
+  id: PlanId;
+  audience: Audience;
+  name: string;
+  /** Canonical USD book amount; enterprise uses 0 placeholder (API returns null). */
   priceMonthly: number;
   tagline: string;
   features: string[];
@@ -53,7 +76,7 @@ export function hasFreelancerProFeatures(planId: string | null | undefined): boo
   return planId === "freelancer_pro";
 }
 
-export const PLANS: Record<PlanId, PlanDef> = {
+export const PLANS: Record<PlanId, PlanDefBase> = {
   free: {
     id: "free",
     audience: "any",
@@ -82,7 +105,7 @@ export const PLANS: Record<PlanId, PlanDef> = {
     id: "freelancer_pro",
     audience: "freelancer",
     name: "Freelancer Pro",
-    priceMonthly: 0, // temporary — was 19; restore when PREMIUM_FEATURES_FREE is flipped off
+    priceMonthly: 19, // localized via resolvePlanPrice; PREMIUM_FEATURES_FREE zeros display
     tagline: "Stand out and pitch unlimited",
     features: [
       "Unlimited Express Interest pitches",
@@ -112,7 +135,7 @@ export const PLANS: Record<PlanId, PlanDef> = {
     id: "employer_growth",
     audience: "employer",
     name: "Employer Growth",
-    priceMonthly: 0, // temporary — was 199; restore when PREMIUM_FEATURES_FREE is flipped off
+    priceMonthly: 199, // localized via resolvePlanPrice; PREMIUM_FEATURES_FREE zeros display
     tagline: "For scaling teams hiring regularly",
     features: [
       "10 active bookings",
@@ -128,7 +151,7 @@ export const PLANS: Record<PlanId, PlanDef> = {
     id: "employer_enterprise",
     audience: "employer",
     name: "Employer Enterprise",
-    priceMonthly: 0, // contact sales
+    priceMonthly: 0, // contact sales — API exposes priceMonthly: null
     tagline: "Custom — for large organizations",
     features: [
       "Unlimited bookings and job posts",
@@ -142,13 +165,35 @@ export const PLANS: Record<PlanId, PlanDef> = {
   },
 };
 
-export function getPlan(planId: string | null | undefined): PlanDef {
-  if (planId && planId in PLANS) return PLANS[planId as PlanId];
-  return PLANS.free;
+export function localizePlan(
+  base: PlanDefBase,
+  currency: PlanDisplayCurrency = "USD",
+): PlanDef {
+  return {
+    ...base,
+    priceMonthly: resolvePlanPrice(base.id, currency, PREMIUM_FEATURES_FREE),
+    displayCurrency: currency,
+    currencySymbol: currencySymbolForPlan(currency),
+  };
 }
 
-export function listPlansForAudience(audience: Audience): PlanDef[] {
+export function getPlan(
+  planId: string | null | undefined,
+  currency: PlanDisplayCurrency = "USD",
+): PlanDef {
+  const base = planId && planId in PLANS ? PLANS[planId as PlanId] : PLANS.free;
+  return localizePlan(base, currency);
+}
+
+export function listPlansForAudience(
+  audience: Audience,
+  currency: PlanDisplayCurrency = "USD",
+): PlanDef[] {
   return Object.values(PLANS)
     .filter((p) => p.id !== "free" && (audience === "any" || p.audience === audience))
-    .sort((a, b) => a.priority - b.priority);
+    .sort((a, b) => a.priority - b.priority)
+    .map((p) => localizePlan(p, currency));
 }
+
+export { planDisplayCurrency, resolvePlanPrice };
+export type { PlanDisplayCurrency };

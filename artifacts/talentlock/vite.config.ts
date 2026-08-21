@@ -53,6 +53,11 @@ export default defineConfig({
     strictPort: true,
     host: "0.0.0.0",
     allowedHosts: true,
+    // WSL + /mnt/d does not reliably fire inotify; polling picks up source edits.
+    watch: {
+      usePolling: true,
+      interval: 1000,
+    },
     fs: {
       strict: true,
     },

@@ -5,15 +5,22 @@
  * TalentLock API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { PlanDefDisplayCurrency } from "./planDefDisplayCurrency";
 import type { PlanDefLimits } from "./planDefLimits";
 
 export interface PlanDef {
   id: string;
   audience: string;
   name: string;
-  priceMonthly: number;
+  /**
+   * Monthly price in displayCurrency major units; null means Custom (enterprise)
+   * @nullable
+   */
+  priceMonthly: number | null;
   tagline: string;
   features: string[];
   limits: PlanDefLimits;
   priority: number;
+  displayCurrency: PlanDefDisplayCurrency;
+  currencySymbol: string;
 }

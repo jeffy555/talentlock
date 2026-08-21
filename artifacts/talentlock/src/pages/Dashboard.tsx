@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { useQueries } from "@tanstack/react-query";
 import { subDays } from "date-fns";
+import { Redirect } from "wouter";
 import {
   useGetMe,
   useGetDashboardStats,
@@ -10,6 +11,7 @@ import {
   useGetMyFreelancerProfile,
   getBooking,
 } from "@workspace/api-client-react";
+import { needsOnboarding } from "@/components/OnboardingGate";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Activity, Briefcase, Calendar, CheckCircle2, Clock, FileText, User, TrendingUp, Star, AlertTriangle } from "lucide-react";
 import { format } from "date-fns";
@@ -68,7 +70,7 @@ const CustomTooltip = ({ active, payload, label, valueKey, prefix }: any) => {
 };
 
 export default function Dashboard() {
-  const { data: user } = useGetMe();
+  const { data: user, isError: isMeError, isSuccess: isMeSuccess } = useGetMe();
   const { data: stats, isLoading: isLoadingStats } = useGetDashboardStats();
   const { data: activity, isLoading: isLoadingActivity } = useGetDashboardActivity();
   const { data: analytics } = useGetMyAnalytics();
@@ -110,6 +112,10 @@ export default function Dashboard() {
   const monthly = analytics?.monthly ?? [];
   const totals = analytics?.totals as Record<string, number | null | undefined> | undefined;
   const valueKey = isEmployer ? "spend" : "earnings";
+
+  if (isMeError || !isMeSuccess || needsOnboarding(user)) {
+    return <Redirect to="/" replace />;
+  }
 
   if (isLoadingStats || isLoadingActivity) {
     return (

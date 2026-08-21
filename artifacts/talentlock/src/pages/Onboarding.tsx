@@ -63,12 +63,27 @@ function mapServerStepToUi(step: string | null | undefined): OnboardingUiStep {
 }
 
 function getIntendedRole(): "freelancer" | "employer" | null {
-  const val = localStorage.getItem("talentlock_intended_role");
-  if (val === "freelancer" || val === "employer") return val;
+  for (const store of [sessionStorage, localStorage]) {
+    try {
+      const val = store.getItem("talentlock_intended_role");
+      if (val === "freelancer" || val === "employer") return val;
+    } catch {
+      /* ignore */
+    }
+  }
   return null;
 }
 function clearIntendedRole() {
-  localStorage.removeItem("talentlock_intended_role");
+  try {
+    sessionStorage.removeItem("talentlock_intended_role");
+  } catch {
+    /* ignore */
+  }
+  try {
+    localStorage.removeItem("talentlock_intended_role");
+  } catch {
+    /* ignore */
+  }
 }
 
 export default function Onboarding() {
@@ -235,8 +250,9 @@ export default function Onboarding() {
   };
 
   useEffect(() => {
-    if (dbUser && dbUser.role && dbUser.role !== "pending") {
-      setLocation("/dashboard");
+    // Only leave onboarding after a confirmed completed role — never on stale/empty me
+    if (dbUser && (dbUser.role === "freelancer" || dbUser.role === "employer")) {
+      setLocation("/dashboard", { replace: true });
     }
   }, [dbUser, setLocation]);
 
@@ -470,7 +486,7 @@ export default function Onboarding() {
         },
       });
       toast({ title: "Welcome to TalentLock", description: "Your freelancer account is ready." });
-      setLocation("/dashboard");
+      setLocation("/dashboard", { replace: true });
     } catch (err) {
       toast({
         title: "Could not finish registration",
@@ -521,7 +537,7 @@ export default function Onboarding() {
         },
       });
       toast({ title: "Welcome to TalentLock", description: "Your employer account is ready." });
-      setLocation("/dashboard");
+      setLocation("/dashboard", { replace: true });
     } catch (err) {
       toast({
         title: "Could not finish registration",

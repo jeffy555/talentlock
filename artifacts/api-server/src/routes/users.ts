@@ -1,7 +1,14 @@
 import { Router } from "express";
 import { getAuth } from "@clerk/express";
 import { db } from "@workspace/db";
-import { usersTable, notificationsTable } from "@workspace/db";
+import {
+  usersTable,
+  notificationsTable,
+  freelancerProfilesTable,
+  employerProfilesTable,
+  documentsTable,
+  employerDocumentsTable,
+} from "@workspace/db";
 import { and, eq } from "drizzle-orm";
 import { UpsertMeBody, PatchNotificationPreferencesBody, PatchOnboardingStepBody, PatchMyContactBody } from "@workspace/api-zod";
 import { sanitiseText } from "../lib/sanitise";
@@ -13,6 +20,60 @@ import { createNotification, NotificationType } from "../lib/createNotification"
 import { z } from "zod/v4";
 
 const router = Router();
+
+/** Block finishing registration until profile + required identity doc exist. */
+async function assertOnboardingComplete(
+  clerkId: string,
+  role: "freelancer" | "employer",
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  if (role === "freelancer") {
+    const [profile] = await db
+      .select({ id: freelancerProfilesTable.id })
+      .from(freelancerProfilesTable)
+      .where(eq(freelancerProfilesTable.clerkId, clerkId))
+      .limit(1);
+    if (!profile) {
+      return { ok: false, error: "Complete your freelancer profile before finishing registration." };
+    }
+    const [aadhaar] = await db
+      .select({ id: documentsTable.id })
+      .from(documentsTable)
+      .where(
+        and(
+          eq(documentsTable.freelancerId, profile.id),
+          eq(documentsTable.documentType, "aadhaar"),
+        ),
+      )
+      .limit(1);
+    if (!aadhaar) {
+      return { ok: false, error: "Upload your Aadhaar card before finishing registration." };
+    }
+    return { ok: true };
+  }
+
+  const [employer] = await db
+    .select({ id: employerProfilesTable.id })
+    .from(employerProfilesTable)
+    .where(eq(employerProfilesTable.clerkId, clerkId))
+    .limit(1);
+  if (!employer) {
+    return { ok: false, error: "Complete your company profile before finishing registration." };
+  }
+  const [repId] = await db
+    .select({ id: employerDocumentsTable.id })
+    .from(employerDocumentsTable)
+    .where(
+      and(
+        eq(employerDocumentsTable.employerId, employer.id),
+        eq(employerDocumentsTable.documentType, "representative_id"),
+      ),
+    )
+    .limit(1);
+  if (!repId) {
+    return { ok: false, error: "Upload your Aadhaar / representative ID before finishing registration." };
+  }
+  return { ok: true };
+}
 
 async function ensureContactUpdateNotification(user: typeof usersTable.$inferSelect, log: { warn: Function }) {
   if (user.role !== "freelancer" && user.role !== "employer") return;
@@ -85,6 +146,29 @@ router.put("/users/me", async (req, res) => {
     return;
   }
   try {
+    const isCompletingOnboarding =
+      parsed.data.role === "freelancer" || parsed.data.role === "employer";
+    if (isCompletingOnboarding) {
+      const [current] = await db
+        .select({ countryCode: usersTable.countryCode })
+        .from(usersTable)
+        .where(eq(usersTable.clerkId, clerkId))
+        .limit(1);
+      if (!current?.countryCode) {
+        res.status(400).json({
+          error: "Select your country and region before finishing registration.",
+        });
+        return;
+      }
+      const gate = await assertOnboardingComplete(
+        clerkId,
+        parsed.data.role as "freelancer" | "employer",
+      );
+      if (!gate.ok) {
+        res.status(400).json({ error: gate.error });
+        return;
+      }
+    }
     const data = {
       ...parsed.data,
       email: parsed.data.email.trim(),
@@ -93,8 +177,6 @@ router.put("/users/me", async (req, res) => {
     };
     const [existing] = await db.select().from(usersTable).where(eq(usersTable.clerkId, clerkId)).limit(1);
     if (existing) {
-      const isCompletingOnboarding =
-        parsed.data.role === "freelancer" || parsed.data.role === "employer";
       const [updated] = await db.update(usersTable)
         .set({
           ...data,
@@ -107,8 +189,6 @@ router.put("/users/me", async (req, res) => {
         .returning();
       res.json(updated);
     } else {
-      const isCompletingOnboarding =
-        parsed.data.role === "freelancer" || parsed.data.role === "employer";
       const [created] = await db.insert(usersTable)
         .values({
           ...data,

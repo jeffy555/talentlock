@@ -3,7 +3,15 @@ import { getAuth } from "@clerk/express";
 import { db } from "@workspace/db";
 import { subscriptionsTable, usersTable, freelancerProfilesTable, employerProfilesTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
-import { PLANS, getPlan, listPlansForAudience, type Audience } from "../lib/plans";
+import {
+  PLANS,
+  getPlan,
+  listPlansForAudience,
+  planDisplayCurrency,
+  type Audience,
+  type PlanDisplayCurrency,
+} from "../lib/plans";
+import { isPlanDisplayCurrency } from "../lib/planPrices";
 import { getUserSubscription, getCombinedUsage } from "../lib/subscriptionGating";
 import { logAudit } from "../lib/auditLogger";
 
@@ -11,7 +19,35 @@ const router = Router();
 
 router.get("/subscriptions/plans", async (req, res) => {
   const audience = (req.query.audience as Audience) || "any";
-  res.json(listPlansForAudience(audience));
+  const currencyParam = typeof req.query.currency === "string" ? req.query.currency : undefined;
+
+  let currency: PlanDisplayCurrency;
+  if (currencyParam !== undefined) {
+    if (!isPlanDisplayCurrency(currencyParam)) {
+      res.status(400).json({
+        error: "Invalid currency. Allowed values: USD, EUR, INR",
+      });
+      return;
+    }
+    currency = currencyParam;
+  } else {
+    currency = "USD";
+    const { userId: clerkId } = getAuth(req);
+    if (clerkId) {
+      try {
+        const [user] = await db
+          .select({ currencyCode: usersTable.currencyCode })
+          .from(usersTable)
+          .where(eq(usersTable.clerkId, clerkId))
+          .limit(1);
+        if (user) currency = planDisplayCurrency(user.currencyCode);
+      } catch (err) {
+        req.log.warn({ err }, "Failed to resolve user currency for plans list; defaulting to USD");
+      }
+    }
+  }
+
+  res.json(listPlansForAudience(audience, currency));
 });
 
 router.get("/subscriptions/me", async (req, res) => {
@@ -21,7 +57,8 @@ router.get("/subscriptions/me", async (req, res) => {
     const [user] = await db.select().from(usersTable).where(eq(usersTable.clerkId, clerkId)).limit(1);
     if (!user) { res.status(404).json({ error: "User not found" }); return; }
 
-    const sub = await getUserSubscription(user.id);
+    const displayCurrency = planDisplayCurrency(user.currencyCode);
+    const sub = await getUserSubscription(user.id, displayCurrency);
     const [freelancer] = await db.select().from(freelancerProfilesTable).where(eq(freelancerProfilesTable.clerkId, clerkId)).limit(1);
     const [employer] = await db.select().from(employerProfilesTable).where(eq(employerProfilesTable.clerkId, clerkId)).limit(1);
     const usage = await getCombinedUsage({
@@ -52,7 +89,8 @@ router.post("/subscriptions/upgrade", async (req, res) => {
     const [user] = await db.select().from(usersTable).where(eq(usersTable.clerkId, clerkId)).limit(1);
     if (!user) { res.status(404).json({ error: "User not found" }); return; }
 
-    const plan = getPlan(planId);
+    const displayCurrency = planDisplayCurrency(user.currencyCode);
+    const plan = getPlan(planId, displayCurrency);
 
     // Audience guard: prevent freelancer accounts from buying employer plans
     // and vice versa, which would create inconsistent entitlements.
@@ -65,7 +103,7 @@ router.post("/subscriptions/upgrade", async (req, res) => {
       return;
     }
 
-    const existingSub = await getUserSubscription(user.id);
+    const existingSub = await getUserSubscription(user.id, displayCurrency);
     const previousPlan = existingSub.plan;
     const periodEnd = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
 

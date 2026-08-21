@@ -206,7 +206,15 @@ talentlock/
 │   │   ├── UI.md
 │   │   └── validation.md
 │   │
-│   ├── healthcare-professional-profile/            ← 🟡 Ready to Execute
+│   ├── healthcare-professional-profile/            ← 🔄 In Progress (schema on Neon 2026-08-20; app partially shipped)
+│   │   ├── features.md
+│   │   ├── clarify.md
+│   │   ├── plan.md
+│   │   ├── task.md
+│   │   ├── UI.md
+│   │   └── validation.md
+│   │
+│   ├── localized-plan-pricing/                     ← ✅ Complete (USD / EUR / INR subscription costing)
 │   │   ├── features.md
 │   │   ├── clarify.md
 │   │   ├── plan.md
@@ -255,7 +263,7 @@ talentlock/
 │   │   ├── UI.md
 │   │   └── validation.md
 │   │
-│   ├── multi-currency-location/                    ← ✅ Complete
+│   ├── multi-currency-location/                    ← ✅ Complete (engagement FX; plan pricing → localized-plan-pricing)
 │   │   ├── features.md
 │   │   ├── clarify.md
 │   │   ├── plan.md
@@ -269,6 +277,15 @@ talentlock/
 │   │   ├── plan.md
 │   │   ├── task.md
 │   │   ├── UI.md
+│   │   └── validation.md
+│   │
+│   ├── ui-ux-improvements/                         ← 🟡 Ready to Execute
+│   │   ├── features.md
+│   │   ├── clarify.md
+│   │   ├── plan.md
+│   │   ├── task.md
+│   │   ├── UI.md
+│   │   ├── COLOR.md
 │   │   └── validation.md
 │   │
 │   └── {next-feature}/                             ← Future features follow the same pattern
@@ -528,10 +545,10 @@ The `.cursor/rules/talentlock.mdc` file at the repo root enforces these rules au
 | **Auth Hardening (Access Control)** | `spec/AuthHardening/` | ✅ Complete (validated 2026-06-09) |
 | Agreement AI Summary | `agreement-ai-summary/` (repo root) | ✅ Complete |
 | Agreement PDF Download | `spec/agreement-pdf-download/` | ✅ Complete |
-| Cruise Mode | `spec/cruisemode/` | ✅ Complete · DM delivery spec in `spec/cruise-mode-dm-delivery/` · rate matching normalized to hourly equivalents (daily ÷ 8) |
+| Cruise Mode | `spec/cruisemode/` | ✅ Complete · DM delivery spec in `spec/cruise-mode-dm-delivery/` · rate matching normalized to hourly equivalents (daily ÷ 8) via `rateConversion.ts` |
 | Teaching Professional Profile | `spec/teaching-professional-profile/` | ✅ Complete |
-| Healthcare Professional Profile | `spec/healthcare-professional-profile/` | 🟡 Ready to Execute |
-| Legal & Finance Professional Profile | `spec/legal-finance-professional-profile/` | 🟡 Ready to Execute · Aadhaar mandatory at registration; Bar/ICAI/GST/NISM documents after signup (Phase 5) |
+| Healthcare Professional Profile | `spec/healthcare-professional-profile/` | 🔄 In Progress · Phase 1 schema on Neon 2026-08-20 · onboarding/Vault/profile surfaces partially shipped |
+| Legal & Finance Professional Profile | `spec/legal-finance-professional-profile/` | 🔄 In Progress · Aadhaar mandatory at registration; Bar/ICAI/GST/NISM documents after signup (Phase 5) |
 | TalentSearch (Employer Cruise Mode) | `spec/employer-cruisemode/` | ✅ Complete · DM delivery spec in `spec/cruise-mode-dm-delivery/` |
 | **Cruise Mode & TalentSearch DM Delivery** | `spec/cruise-mode-dm-delivery/` | ✅ Complete |
 | AI Meeting Brief Generator | `spec/aimeetingdebrief/` | ✅ Complete |
@@ -542,9 +559,10 @@ The `.cursor/rules/talentlock.mdc` file at the repo root enforces these rules au
 | Credential Expiry Tracking | `spec/credential-expiry-tracking/` | ✅ Complete |
 | Freelancer Watchlist | `spec/freelancer-watchlist/` | ✅ Complete |
 | Post-Engagement AI Debrief | `spec/post-engagement-ai-debrief/` | ✅ Complete |
-| Multi-Currency & Location | `spec/multi-currency-location/` | ✅ Complete |
+| Multi-Currency & Location | `spec/multi-currency-location/` | ✅ Complete · engagement rates + FX; does **not** localize `/pricing` |
+| **Localized Plan Pricing (USD / EUR / INR)** | `spec/localized-plan-pricing/` | ✅ Complete · fixed regional subscription price book; Stripe deferred |
 | Employer Uploaded Agreement | `spec/employer-uploaded-agreement/` | ✅ Complete |
-| Onboarding Scaffolding | `spec/onboarding-scaffolding/` | ✅ Complete · single registration form after account type; mandatory Aadhaar; legacy multi-step API enum retained for resume; freelancer daily/hourly rate auto-normalization |
+| Onboarding Scaffolding | `spec/onboarding-scaffolding/` | ✅ Complete · single registration form after account type; mandatory Aadhaar; legacy multi-step API enum retained for resume; freelancer daily/hourly rate auto-normalization (`8h/day`) |
 | **Automated API Testing (Regression)** | `spec/api-testing/` | 🔄 In progress — Phase 0 harness on `cursor/regression-tests-9a23` |
 | UI/UX Improvements | `spec/ui-ux-improvements/` | 🟡 Ready to Execute |
 
@@ -568,6 +586,9 @@ These landed as product hardening outside a dedicated feature folder. Canonical 
 | Discovery meeting interview outcome | `spec/discovery-meeting-outcome/` | ✅ Complete — A / Hybrid C / AI-1 / F2 — not candidate DM |
 | Mandatory registration email | `spec/onboarding-scaffolding/plan.md` | Clerk primary email required; `isValidEmail` on onboarding + `PUT /users/me` |
 | Country/State selectors | `spec/multi-currency-location/plan.md` + onboarding scaffolding | Shared `CountryStateFields` — no free-text country/state |
+| **Localized plan prices (USD/EUR/INR)** | `spec/localized-plan-pricing/` | ✅ Complete — subscription `/pricing` regional books; not live FX |
+| Daily ↔ hourly rate conversion (`8h/day`) | `project.md` Cruise Mode + onboarding + `rateConversion.ts` | Cruise Mode / TalentSearch / profile rates normalise before compare |
+| Healthcare schema on Neon | `spec/healthcare-professional-profile/` | `freelancer_profiles` healthcare columns pushed 2026-08-20 |
 | Demo Login panel removed | `spec/AvailabilityCalendar/validation.md` | `/sign-in` panel gone; automation may still call `POST /api/demo/sign-in-token` |
 | Admin document preview / `about:blank` | `spec/document-verification/plan.md` | Same-origin proxy + open blank tab without `noopener`, then navigate |
 | TalentSearch DM on match | `spec/cruise-mode-dm-delivery/` + `project.md` TalentSearch notes | Already on main before PR #16; live `sent` uses `sendAutomatedOutreachMessage` |
