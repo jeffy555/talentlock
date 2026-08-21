@@ -19,6 +19,7 @@ const baseProfile = {
   teachingSubjects: ["Mathematics"],
   teachingLevels: ["GCSE"],
   fieldOfWork: "Education",
+  paymentPreference: "hourly",
   hourlyRate: "80",
   dailyRate: null,
   bio: "Experienced teacher",
